@@ -1,0 +1,11 @@
+target
+!target/doc
+.changelog
+.github
+.vscode
+audit
+test
+wasm_for_tests
+genesis
+test_fixtures
+.changelog

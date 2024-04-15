@@ -1,0 +1,29 @@
+[package]
+name = "shared"
+description = "Namada IT shared data."
+resolver = "2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+version.workspace = true
+
+[lib]
+name = "shared"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+tendermint-rpc.workspace = true
+namada_sdk.workspace = true
+namada_core.workspace = true
+namada_tx.workspace = true
+namada_governance.workspace = true
+namada_ibc.workspace = true
+tendermint.workspace = true
+subtle-encoding.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bimap.workspace = true
+orm.workspace = true
+chrono.workspace = true

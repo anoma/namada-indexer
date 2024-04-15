@@ -1,0 +1,46 @@
+[package]
+name = "pos"
+description = "Namada proof of stake crawler."
+resolver = "2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "pos"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true 
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true 
+anyhow.workspace = true
+thiserror.workspace = true
+namada_sdk.workspace = true
+namada_core.workspace = true
+namada_governance.workspace = true
+tendermint-config.workspace = true
+tendermint-rpc.workspace = true
+tendermint-proto.workspace = true
+tendermint.workspace = true
+subtle-encoding.workspace = true
+shared.workspace = true
+async-stream.workspace = true
+futures-util.workspace = true
+futures-core.workspace = true
+futures.workspace = true
+tokio-retry.workspace = true
+diesel_migrations.workspace = true
+deadpool-diesel.workspace = true
+diesel.workspace = true
+chrono.workspace = true
+orm.workspace = true
+clap-verbosity-flag.workspace = true
+
+[build-dependencies]
+vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

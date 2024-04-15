@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    command: -c 'max_connections=200'
+    ports:
+      - 5435:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      PGUSER: postgres
+      POSTGRES_DB: indexer_local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "indexer_local"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 80s
+      
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly
+    command: --logtostderr --cache_mode=true --port 6379 -dbnum 1 --maxmemory=2gb
+    ulimits:
+      memlock: -1
+    ports:
+      - "6379:6379"

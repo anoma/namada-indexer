@@ -1,0 +1,20 @@
+[package]
+name = "orm"
+description = "Namada indexer orm."
+resolver = "2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+version.workspace = true
+
+[lib]
+name = "orm"
+path = "src/lib.rs"
+
+[dependencies]
+diesel_migrations.workspace = true
+diesel.workspace = true
+chrono.workspace = true
+serde.workspace = true
+diesel-derive-enum.workspace = true
