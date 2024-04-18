@@ -12,13 +12,13 @@ use chain::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::RunQueryDsl;
-use orm::schema::tx_crawler_state;
-use shared::{
-    block::{deserialize_transactions, Block},
-    checksums::Checksums,
-    crawler_state::CrawlerState,
+use diesel::{upsert::excluded, ExpressionMethods, RunQueryDsl};
+use orm::{
+    crawler_state::CrawlerStateInsertDb,
+    nam_balances::NamBalancesInsertDb,
+    schema::{nam_balances, tx_crawler_state},
 };
+use shared::{block::Block, checksums::Checksums, crawler_state::CrawlerState};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -116,8 +116,12 @@ async fn crawling_fn(
             .into_rpc_error()?;
 
     let block = Block::from(tm_block_response, checksums, epoch);
-
     tracing::info!("Deserialized {} txs...", block.transactions.len());
+
+    let transfer_addresses = block.get_transfer_addresses();
+    let balances = namada_service::query_balance(&client, transfer_addresses)
+        .await
+        .into_rpc_error()?;
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -126,10 +130,26 @@ async fn crawling_fn(
             .read_write()
             .run(|transaction_conn| {
                 diesel::insert_into(tx_crawler_state::table)
-                    .values(&crawler_state.to_crawler_state_db())
+                    .values::<&CrawlerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to update crawler state in db")?;
+
+                diesel::insert_into(nam_balances::table)
+                    .values::<&Vec<NamBalancesInsertDb>>(
+                        &balances
+                            .into_iter()
+                            .map(|b| b.into())
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict(nam_balances::columns::address)
+                    .do_update()
+                    .set(
+                        nam_balances::columns::amount
+                            .eq(excluded(nam_balances::columns::amount)),
+                    )
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
 
                 anyhow::Ok(())
             })

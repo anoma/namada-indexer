@@ -29,7 +29,6 @@ namada_governance.workspace = true
 namada_ibc.workspace = true
 namada_sdk.workspace = true
 namada_tx.workspace = true
-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 subtle-encoding.workspace = true

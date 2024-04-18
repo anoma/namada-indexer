@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, str::FromStr};
 
+use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_tx::data::TxType;
 use namada_tx::Tx;
@@ -284,5 +285,21 @@ impl Block {
             transactions,
             epoch,
         }
+    }
+
+    pub fn get_transfer_addresses(&self) -> Vec<Address> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::TransparentTransfer(data) => {
+                    let transfer_data =
+                        namada_core::token::Transfer::try_from_slice(data)
+                            .unwrap();
+                    Some(vec![transfer_data.source, transfer_data.target])
+                }
+                _ => None,
+            })
+            .flatten()
+            .collect()
     }
 }
