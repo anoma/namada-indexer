@@ -3,11 +3,11 @@ use namada_sdk::token::Amount as NamadaAmount;
 pub type Address = String;
 
 #[derive(Debug, Clone)]
-pub struct Amount(pub String);
+pub struct Amount(pub [u64; 4]);
 
 impl From<NamadaAmount> for Amount {
     fn from(amount: NamadaAmount) -> Amount {
-        Amount(amount.to_string())
+        Amount(amount.raw_amount().0)
     }
 }
 

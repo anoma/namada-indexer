@@ -7,7 +7,7 @@ use shared::crawler_state::CrawlerState;
 #[derive(Serialize, Queryable, Selectable, Clone)]
 #[diesel(table_name = block_crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct CrawlerStateDb {
+pub struct BlockCrawlerStateDb {
     pub id: i32,
     pub height: i32,
     pub epoch: i32,
@@ -16,12 +16,12 @@ pub struct CrawlerStateDb {
 #[derive(Serialize, Insertable, Clone)]
 #[diesel(table_name = block_crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct CrawlerStateInsertDb {
+pub struct BlockCrawlerStateInsertDb {
     pub height: i32,
     pub epoch: i32,
 }
 
-impl From<CrawlerState> for CrawlerStateInsertDb {
+impl From<CrawlerState> for BlockCrawlerStateInsertDb {
     fn from(crawler_state: CrawlerState) -> Self {
         Self {
             height: crawler_state.height as i32,

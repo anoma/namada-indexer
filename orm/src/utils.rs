@@ -3,6 +3,7 @@ use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::cast::ToPrimitive;
 use num_traits::Zero;
+use shared::balance::Amount;
 
 pub struct Base10000BigUint(Option<BigUint>);
 
@@ -12,17 +13,34 @@ impl From<Option<BigUint>> for Base10000BigUint {
     }
 }
 
+impl From<Amount> for Base10000BigUint {
+    fn from(value: Amount) -> Self {
+        let slice: Vec<u32> = value
+            .0
+            .iter()
+            .map(|v| {
+                let low: u32 = (v & 0xFFFFFFFF) as u32;
+                let high: u32 = (v >> 32) as u32;
+                vec![low, high]
+            })
+            .flatten()
+            .collect();
+        let big_uint = BigUint::from_slice(&slice);
+
+        Base10000BigUint::from(Some(big_uint))
+    }
+}
+
 impl Iterator for Base10000BigUint {
     type Item = i16;
 
-    /// Changes the base of a number to 10000.
     fn next(&mut self) -> Option<Self::Item> {
         self.0.take().map(|v| {
             let (div, rem) = v.div_rem(&BigUint::from(10_000u16));
             if !div.is_zero() {
                 self.0 = Some(div);
             }
-            rem.to_i16().expect("10000 always fits in an i16")
+            rem.to_i16().expect("remainder is at most 99_999")
         })
     }
 }

@@ -17,9 +17,9 @@ use deadpool_diesel::postgres::Object;
 use diesel::ExpressionMethods;
 use diesel::{upsert::excluded, RunQueryDsl};
 use orm::{
-    crawler_state::CrawlerStateInsertDb,
+    crawler_state::BlockCrawlerStateInsertDb,
     nam_balances::NamBalancesInsertDb,
-    schema::{nam_balances, block_crawler_state},
+    schema::{block_crawler_state, nam_balances},
 };
 use shared::{block::Block, checksums::Checksums, crawler_state::CrawlerState};
 use tendermint_rpc::HttpClient;
@@ -135,7 +135,7 @@ async fn crawling_fn(
 
                 //TODO: should we always override the db
                 diesel::insert_into(block_crawler_state::table)
-                    .values::<&CrawlerStateInsertDb>(&crawler_state.into())
+                    .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to update crawler state in db")?;
