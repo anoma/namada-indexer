@@ -3,7 +3,7 @@
 CREATE TABLE nam_balances (
   id SERIAL PRIMARY KEY,
   address VARCHAR NOT NULL,
-  amount VARCHAR NOT NULL
+  raw_amount NUMERIC(78) NOT NULL
 );
 
 ALTER TABLE nam_balances

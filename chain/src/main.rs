@@ -12,7 +12,8 @@ use chain::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::{upsert::excluded, ExpressionMethods, RunQueryDsl};
+use diesel::ExpressionMethods;
+use diesel::{upsert::excluded, RunQueryDsl};
 use orm::{
     crawler_state::CrawlerStateInsertDb,
     nam_balances::NamBalancesInsertDb,
@@ -145,8 +146,8 @@ async fn crawling_fn(
                     .on_conflict(nam_balances::columns::address)
                     .do_update()
                     .set(
-                        nam_balances::columns::amount
-                            .eq(excluded(nam_balances::columns::amount)),
+                        nam_balances::columns::raw_amount
+                            .eq(excluded(nam_balances::columns::raw_amount)),
                     )
                     .execute(transaction_conn)
                     .context("Failed to update balances in db")?;

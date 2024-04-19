@@ -1,6 +1,11 @@
+use std::str::FromStr;
+
+use diesel::data_types::PgNumeric;
 use diesel::Insertable;
+use num_bigint::BigUint;
 
 use crate::schema::nam_balances;
+use crate::utils::{Base10000BigUint, PgNumericInt};
 use shared::balance::Balance;
 
 #[derive(Insertable, Clone)]
@@ -9,14 +14,18 @@ use shared::balance::Balance;
 pub struct NamBalancesInsertDb {
     //TODO: change to owner
     pub address: String,
-    pub amount: String,
+    pub raw_amount: PgNumeric,
 }
 
 impl From<Balance> for NamBalancesInsertDb {
     fn from(value: Balance) -> Self {
+        let num =
+            Base10000BigUint::from(BigUint::from_str(&value.amount.0).ok());
+        let raw_amount = PgNumericInt::from(num);
+
         Self {
             address: value.owner.to_string(),
-            amount: value.amount.0,
+            raw_amount: raw_amount.into_inner(),
         }
     }
 }
