@@ -48,7 +48,7 @@ pub async fn get_epoch_at_block_height(
 
 pub async fn query_balance(
     client: &HttpClient,
-    owners: Vec<Address>,
+    owners: &Vec<Address>,
 ) -> anyhow::Result<Balances> {
     //TODO: query from node?
     let nam =

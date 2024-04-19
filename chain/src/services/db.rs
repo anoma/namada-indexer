@@ -1,7 +1,7 @@
 use anyhow::Context;
 use deadpool_diesel::postgres::Object;
 use diesel::{dsl::max, QueryDsl, RunQueryDsl};
-use orm::schema::tx_crawler_state;
+use orm::schema::block_crawler_state;
 
 use shared::block::BlockHeight;
 
@@ -12,8 +12,8 @@ pub async fn get_last_synched_block(
 ) -> anyhow::Result<BlockHeight> {
     let block_height = conn
         .interact(move |conn| {
-            tx_crawler_state::dsl::tx_crawler_state
-                .select(max(tx_crawler_state::dsl::height))
+            block_crawler_state::dsl::block_crawler_state
+                .select(max(block_crawler_state::dsl::height))
                 .first::<Option<i32>>(conn)
         })
         .await

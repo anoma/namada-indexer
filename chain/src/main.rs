@@ -5,9 +5,11 @@ use chain::{
     app_state::AppState,
     config::AppConfig,
     crawler::crawl,
-    db_service::get_last_synched_block,
     error::{AsDbError, AsRpcError, ContextDbInteractError, MainError},
-    namada_service, tendermint_service,
+    services::{
+        db as db_service, namada as namada_service,
+        tendermint as tendermint_service,
+    },
 };
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
@@ -17,7 +19,7 @@ use diesel::{upsert::excluded, RunQueryDsl};
 use orm::{
     crawler_state::CrawlerStateInsertDb,
     nam_balances::NamBalancesInsertDb,
-    schema::{nam_balances, tx_crawler_state},
+    schema::{nam_balances, block_crawler_state},
 };
 use shared::{block::Block, checksums::Checksums, crawler_state::CrawlerState};
 use tendermint_rpc::HttpClient;
@@ -27,13 +29,10 @@ use tracing_subscriber::FmtSubscriber;
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
-
-    tracing::info!(
-        "Initializing with checksums from {:?}",
-        config.checksums_filepath
-    );
     let file = File::open(config.checksums_filepath).unwrap();
     let reader = BufReader::new(file);
+
+    //TODO: run migrations
 
     let mut checksums: Checksums = serde_json::from_reader(reader).unwrap();
     checksums.init();
@@ -57,8 +56,9 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
-    let last_block_height =
-        get_last_synched_block(&conn).await.into_db_error()?;
+    let last_block_height = db_service::get_last_synched_block(&conn)
+        .await
+        .into_db_error()?;
 
     crawl(
         move |block_height| {
@@ -100,7 +100,7 @@ async fn crawling_fn(
         tm_block_response.block.data.len()
     );
 
-    // TODO: add later
+    // TODO: add later to filter out rejected txs
     // tracing::info!("Query block results...");
     // let _tm_block_results_response =
     //     tendermint_service::query_raw_block_results_at_height(
@@ -119,10 +119,11 @@ async fn crawling_fn(
     let block = Block::from(tm_block_response, checksums, epoch);
     tracing::info!("Deserialized {} txs...", block.transactions.len());
 
-    let transfer_addresses = block.get_transfer_addresses();
-    let balances = namada_service::query_balance(&client, transfer_addresses)
+    let addresses = block.addresses_with_balance_change();
+    let balances = namada_service::query_balance(&client, &addresses)
         .await
         .into_rpc_error()?;
+    tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -130,7 +131,10 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                diesel::insert_into(tx_crawler_state::table)
+                //TODO: move closure block to a function
+
+                //TODO: should we always override the db
+                diesel::insert_into(block_crawler_state::table)
                     .values::<&CrawlerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
@@ -143,7 +147,7 @@ async fn crawling_fn(
                             .map(|b| b.into())
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict(nam_balances::columns::address)
+                    .on_conflict(nam_balances::columns::owner)
                     .do_update()
                     .set(
                         nam_balances::columns::raw_amount
@@ -157,8 +161,7 @@ async fn crawling_fn(
     })
     .await
     .context_db_interact_error()
-    //TODO: fix later
-    .unwrap()
+    .into_db_error()?
     .context("Commit block db transaction error")
     .into_db_error()
 }

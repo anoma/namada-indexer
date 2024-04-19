@@ -13,7 +13,7 @@ use shared::balance::Balance;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NamBalancesInsertDb {
     //TODO: change to owner
-    pub address: String,
+    pub owner: String,
     pub raw_amount: PgNumeric,
 }
 
@@ -24,7 +24,7 @@ impl From<Balance> for NamBalancesInsertDb {
         let raw_amount = PgNumericInt::from(num);
 
         Self {
-            address: value.owner.to_string(),
+            owner: value.owner.to_string(),
             raw_amount: raw_amount.into_inner(),
         }
     }

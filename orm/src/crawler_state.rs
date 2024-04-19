@@ -1,11 +1,11 @@
 use diesel::{Insertable, Queryable, Selectable};
 use serde::Serialize;
 
-use crate::schema::tx_crawler_state;
+use crate::schema::block_crawler_state;
 use shared::crawler_state::CrawlerState;
 
 #[derive(Serialize, Queryable, Selectable, Clone)]
-#[diesel(table_name = tx_crawler_state)]
+#[diesel(table_name = block_crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CrawlerStateDb {
     pub id: i32,
@@ -14,7 +14,7 @@ pub struct CrawlerStateDb {
 }
 
 #[derive(Serialize, Insertable, Clone)]
-#[diesel(table_name = tx_crawler_state)]
+#[diesel(table_name = block_crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CrawlerStateInsertDb {
     pub height: i32,

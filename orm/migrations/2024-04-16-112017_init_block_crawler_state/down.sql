@@ -1,3 +1,3 @@
 -- This file should undo anything in `up.sql`
 
-DROP TABLE tx_crawler_state;
+DROP TABLE IF EXISTS block_crawler_state;

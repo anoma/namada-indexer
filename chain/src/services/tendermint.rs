@@ -5,6 +5,7 @@ use tendermint_rpc::{
     HttpClient,
 };
 
+//TODO: map return to our type
 pub async fn query_raw_block_at_height(
     client: &HttpClient,
     height: u32,
@@ -15,6 +16,7 @@ pub async fn query_raw_block_at_height(
         .context("Failed to query CometBFT's last committed height")
 }
 
+//TODO: map return to our type
 pub async fn query_raw_block_results_at_height(
     client: &HttpClient,
     height: u32,

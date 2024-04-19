@@ -15,8 +15,6 @@ pub type BlockHeight = u32;
 
 #[derive(Debug, Clone)]
 pub enum TransactionKind {
-    Wrapper,
-    Protocol,
     TransparentTransfer(Vec<u8>),
     ShieldedTransfer(Vec<u8>),
     Bond(Vec<u8>),
@@ -24,22 +22,6 @@ pub enum TransactionKind {
     Unbond(Vec<u8>),
     Withdraw(Vec<u8>),
     ClaimRewards(Vec<u8>),
-    ReactivateValidator(Vec<u8>),
-    DeactivateValidator(Vec<u8>),
-    IbcEnvelop(Vec<u8>),
-    IbcTransparentTransfer(Vec<u8>),
-    IbcShieldedTransfer(Vec<u8>),
-    ChangeConsensusKey(Vec<u8>),
-    ChangeCommission(Vec<u8>),
-    ChangeMetadata(Vec<u8>),
-    BecomeValidator(Vec<u8>),
-    InitAccount(Vec<u8>),
-    InitProposal(Vec<u8>),
-    ResignSteward(Vec<u8>),
-    RevealPublicKey(Vec<u8>),
-    UnjailValidator(Vec<u8>),
-    UpdateAccount(Vec<u8>),
-    UpdateStewardCommissions(Vec<u8>),
     ProposalVote(Vec<u8>),
     Unknown,
 }
@@ -131,42 +113,6 @@ impl TxAttributes {
         }
     }
 }
-
-// TODO: add later
-// #[derive(Debug, Clone, PartialEq, Eq)]
-// pub enum TransactionExitStatus {
-//     Accepted,
-//     Applied,
-//     Rejected,
-// }
-
-// impl Display for TransactionExitStatus {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             Self::Accepted => write!(f, "Accepted"),
-//             Self::Applied => write!(f, "Applied"),
-//             Self::Rejected => write!(f, "Rejected"),
-//         }
-//     }
-// }
-
-// impl TransactionExitStatus {
-//     pub fn from(
-//         tx_attributes: &TxAttributes,
-//         tx_kind: &TransactionKind,
-//     ) -> Self {
-//         match (tx_kind, tx_attributes.code) {
-//             (TransactionKind::Wrapper, TxEventStatusCode::Ok) => {
-//                 TransactionExitStatus::Accepted
-//             }
-//             (_, TxEventStatusCode::Ok) => TransactionExitStatus::Applied,
-//             (_, TxEventStatusCode::Fail) => TransactionExitStatus::Rejected,
-//         }
-//     }
-// }
-
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct RawMemo(pub Vec<u8>);
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
@@ -287,7 +233,8 @@ impl Block {
         }
     }
 
-    pub fn get_transfer_addresses(&self) -> Vec<Address> {
+    //TODO: this can be potentially optimized by removing duplicates
+    pub fn addresses_with_balance_change(&self) -> Vec<Address> {
         self.transactions
             .iter()
             .filter_map(|tx| match &tx.kind {
@@ -296,6 +243,36 @@ impl Block {
                         namada_core::token::Transfer::try_from_slice(data)
                             .unwrap();
                     Some(vec![transfer_data.source, transfer_data.target])
+                }
+                TransactionKind::Bond(data) => {
+                    let bond_data =
+                        namada_tx::data::pos::Bond::try_from_slice(data)
+                            .unwrap();
+                    let address =
+                        bond_data.source.unwrap_or(bond_data.validator);
+
+                    Some(vec![address])
+                }
+                TransactionKind::Withdraw(data) => {
+                    let withdraw_data =
+                        namada_tx::data::pos::Withdraw::try_from_slice(data)
+                            .unwrap();
+                    let address =
+                        withdraw_data.source.unwrap_or(withdraw_data.validator);
+
+                    Some(vec![address])
+                }
+                TransactionKind::ClaimRewards(data) => {
+                    let claim_rewards_data =
+                        namada_tx::data::pos::ClaimRewards::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+                    let address = claim_rewards_data
+                        .source
+                        .unwrap_or(claim_rewards_data.validator);
+
+                    Some(vec![address])
                 }
                 _ => None,
             })
