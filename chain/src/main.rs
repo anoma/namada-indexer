@@ -18,8 +18,8 @@ use diesel::ExpressionMethods;
 use diesel::{upsert::excluded, RunQueryDsl};
 use orm::{
     crawler_state::BlockCrawlerStateInsertDb,
-    nam_balances::NamBalancesInsertDb,
-    schema::{block_crawler_state, nam_balances},
+    nam_balances::BalancesInsertDb,
+    schema::{block_crawler_state, balances},
 };
 use shared::{block::Block, checksums::Checksums, crawler_state::CrawlerState};
 use tendermint_rpc::HttpClient;
@@ -140,18 +140,18 @@ async fn crawling_fn(
                     .execute(transaction_conn)
                     .context("Failed to update crawler state in db")?;
 
-                diesel::insert_into(nam_balances::table)
-                    .values::<&Vec<NamBalancesInsertDb>>(
+                diesel::insert_into(balances::table)
+                    .values::<&Vec<BalancesInsertDb>>(
                         &balances
                             .into_iter()
                             .map(|b| b.into())
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict(nam_balances::columns::owner)
+                    .on_conflict(balances::columns::owner)
                     .do_update()
                     .set(
-                        nam_balances::columns::raw_amount
-                            .eq(excluded(nam_balances::columns::raw_amount)),
+                        balances::columns::raw_amount
+                            .eq(excluded(balances::columns::raw_amount)),
                     )
                     .execute(transaction_conn)
                     .context("Failed to update balances in db")?;

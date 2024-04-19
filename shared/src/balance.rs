@@ -14,6 +14,7 @@ impl From<NamadaAmount> for Amount {
 #[derive(Debug, Clone)]
 pub struct Balance {
     pub owner: Address,
+    pub token: Address,
     pub amount: Amount,
 }
 

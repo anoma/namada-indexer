@@ -67,6 +67,7 @@ pub async fn query_balance(
 
         res.push(Balance {
             owner: owner.to_string(),
+            token: nam.to_string(),
             amount: Amount::from(amount),
         });
     }
