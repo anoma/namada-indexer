@@ -13,13 +13,19 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::RunQueryDsl;
+use namada_governance::cli;
 use orm::{
     balances::BalancesInsertDb,
     block_crawler_state::BlockCrawlerStateInsertDb,
     schema::{balances, block_crawler_state},
 };
 use shared::{
-    block::Block, block_result::BlockResult, checksums::Checksums, crawler::crawl, crawler_state::CrawlerState, error::{AsDbError, AsRpcError, ContextDbInteractError, MainError}
+    block::Block,
+    block_result::BlockResult,
+    checksums::Checksums,
+    crawler::crawl,
+    crawler_state::CrawlerState,
+    error::{AsDbError, AsRpcError, ContextDbInteractError, MainError},
 };
 use tendermint_rpc::HttpClient;
 use tracing::Level;
@@ -90,7 +96,7 @@ async fn crawling_fn(
     }
 
     tracing::info!("Query block...");
-    let tm_block_response = 
+    let tm_block_response =
         tendermint_service::query_raw_block_at_height(&client, block_height)
             .await
             .into_rpc_error()?;
@@ -116,10 +122,15 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
-    let block = Block::from(tm_block_response, &block_results, checksums, epoch);
+    let block =
+        Block::from(tm_block_response, &block_results, checksums, epoch);
     tracing::info!("Deserialized {} txs...", block.transactions.len());
 
-    let addresses = block.addresses_with_balance_change();
+    let native_token = namada_service::get_native_token(&client)
+        .await
+        .into_rpc_error()?;
+
+    let addresses = block.addresses_with_balance_change(native_token);
     let balances = namada_service::query_balance(&client, &addresses)
         .await
         .into_rpc_error()?;

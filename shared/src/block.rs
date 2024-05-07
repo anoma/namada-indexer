@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{collections::BTreeMap, str::FromStr};
 
 use namada_sdk::address::Address;
@@ -9,6 +10,7 @@ use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::transaction::{Transaction, TransactionKind};
+use crate::utils::BalanceChange;
 
 pub type Epoch = u32;
 pub type BlockHeight = u32;
@@ -138,8 +140,7 @@ impl Block {
         }
     }
 
-    //TODO: this can be potentially optimized by removing duplicates
-    pub fn addresses_with_balance_change(&self) -> Vec<Address> {
+    pub fn addresses_with_balance_change(&self, native_token: Id) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
             .filter_map(|tx| match &tx.kind {
@@ -147,7 +148,13 @@ impl Block {
                     let transfer_data =
                         namada_core::token::Transfer::try_from_slice(data)
                             .unwrap();
-                    Some(vec![transfer_data.source, transfer_data.target])
+                    let transfer_source = Id::from(transfer_data.source);
+                    let transfer_target = Id::from(transfer_data.target);
+                    let transfer_token = Id::from(transfer_data.token);
+                    Some(vec![
+                        BalanceChange::new(transfer_source, transfer_token.clone()), 
+                        BalanceChange::new(transfer_target, transfer_token)
+                    ])
                 }
                 TransactionKind::Bond(data) => {
                     let bond_data =
@@ -156,7 +163,11 @@ impl Block {
                     let address =
                         bond_data.source.unwrap_or(bond_data.validator);
 
-                    Some(vec![address])
+                    let source = Id::from(address);
+
+                    Some(vec![
+                        BalanceChange::new(source, native_token.clone()), 
+                    ])
                 }
                 TransactionKind::Withdraw(data) => {
                     let withdraw_data =
@@ -164,8 +175,11 @@ impl Block {
                             .unwrap();
                     let address =
                         withdraw_data.source.unwrap_or(withdraw_data.validator);
+                    let source = Id::from(address);
 
-                    Some(vec![address])
+                    Some(vec![
+                        BalanceChange::new(source, native_token.clone()), 
+                    ]) 
                 }
                 TransactionKind::ClaimRewards(data) => {
                     let claim_rewards_data =
@@ -176,8 +190,19 @@ impl Block {
                     let address = claim_rewards_data
                         .source
                         .unwrap_or(claim_rewards_data.validator);
+                    let source = Id::from(address);
 
-                    Some(vec![address])
+                    Some(vec![
+                        BalanceChange::new(source, native_token.clone()), 
+                    ]) 
+                }
+                TransactionKind::InitProposal(data) => {
+                    let init_proposal_data = namada_governance::InitProposalData::try_from_slice(data).unwrap();
+                    let author = Id::from(init_proposal_data.author);
+
+                    Some(vec![
+                        BalanceChange::new(author, native_token.clone()), 
+                    ])
                 }
                 _ => None,
             })
