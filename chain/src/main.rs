@@ -4,8 +4,6 @@ use anyhow::Context;
 use chain::{
     app_state::AppState,
     config::AppConfig,
-    crawler::crawl,
-    error::{AsDbError, AsRpcError, ContextDbInteractError, MainError},
     services::{
         db as db_service, namada as namada_service,
         tendermint as tendermint_service,
@@ -14,14 +12,19 @@ use chain::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::ExpressionMethods;
-use diesel::{upsert::excluded, RunQueryDsl};
+use diesel::RunQueryDsl;
 use orm::{
-    crawler_state::BlockCrawlerStateInsertDb,
-    nam_balances::BalancesInsertDb,
-    schema::{block_crawler_state, balances},
+    balances::BalancesInsertDb,
+    block_crawler_state::BlockCrawlerStateInsertDb,
+    schema::{balances, block_crawler_state},
 };
-use shared::{block::Block, checksums::Checksums, crawler_state::CrawlerState};
+use shared::{
+    block::Block,
+    checksums::Checksums,
+    crawler::crawl,
+    crawler_state::CrawlerState,
+    error::{AsDbError, AsRpcError, ContextDbInteractError, MainError},
+};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -82,7 +85,7 @@ async fn crawling_fn(
 ) -> Result<(), MainError> {
     tracing::info!("Attempting to process block: {}...", block_height);
 
-    if !namada_service::is_block_committed(&client.clone(), block_height)
+    if !namada_service::is_block_committed(&client, block_height)
         .await
         .into_rpc_error()?
     {
@@ -133,28 +136,25 @@ async fn crawling_fn(
             .run(|transaction_conn| {
                 //TODO: move closure block to a function
 
+                diesel::insert_into(balances::table)
+                    .values::<&Vec<BalancesInsertDb>>(
+                        &balances
+                            .into_iter()
+                            .map(|b| {
+                                BalancesInsertDb::from_balance(b, block_height)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
+
                 //TODO: should we always override the db
                 diesel::insert_into(block_crawler_state::table)
                     .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to update crawler state in db")?;
-
-                diesel::insert_into(balances::table)
-                    .values::<&Vec<BalancesInsertDb>>(
-                        &balances
-                            .into_iter()
-                            .map(|b| b.into())
-                            .collect::<Vec<_>>(),
-                    )
-                    .on_conflict(balances::columns::owner)
-                    .do_update()
-                    .set(
-                        balances::columns::raw_amount
-                            .eq(excluded(balances::columns::raw_amount)),
-                    )
-                    .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
 
                 anyhow::Ok(())
             })

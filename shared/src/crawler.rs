@@ -12,10 +12,9 @@ use tokio_retry::{
     RetryIf,
 };
 
-use shared::block::BlockHeight;
 use crate::error::MainError;
 
-fn block_heights(
+fn indexes(
     from_height: u32,
     to_height: Option<u32>,
 ) -> impl Stream<Item = u32> {
@@ -26,15 +25,12 @@ fn block_heights(
     }
 }
 
-pub async fn crawl<F, Fut>(
-    f: F,
-    last_block_height: BlockHeight,
-) -> Result<(), MainError>
+pub async fn crawl<F, Fut>(f: F, last_index: u32) -> Result<(), MainError>
 where
     F: Fn(u32) -> Fut,
     Fut: Future<Output = Result<(), MainError>>,
 {
-    let s = block_heights(last_block_height + 1, None);
+    let s = indexes(last_index + 1, None);
     pin_mut!(s);
     let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
     let must_exit = must_exit_handle();
