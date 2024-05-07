@@ -12,7 +12,6 @@ pub struct ValidatorSet {
 pub struct Validator {
     pub address: Id,
     pub voting_power: VotingPower,
-    pub tm_address: Id,
     pub max_commission: String,
     pub commission: String,
     pub email: String,

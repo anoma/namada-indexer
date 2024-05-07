@@ -1,8 +1,6 @@
 use anyhow::{anyhow, Context};
 use futures::{StreamExt, TryStreamExt};
-use namada_core::{
-    key::tm_consensus_key_raw_hash, storage::Epoch as NamadaSdkEpoch,
-};
+use namada_core::storage::Epoch as NamadaSdkEpoch;
 use namada_sdk::rpc;
 use shared::{
     block::Epoch,
@@ -34,23 +32,6 @@ pub async fn get_validator_set_at_epoch(
                     })
             };
 
-            let tm_address_fut = async {
-                rpc::query_validator_consensus_keys(client, &address)
-                .await
-                .with_context(|| {
-                    format!(
-                        "Failed to query the keys of validator {address} at epoch {namada_epoch}"
-                    )
-                })?
-                .as_ref()
-                .map(tm_consensus_key_raw_hash)
-                .ok_or_else(|| {
-                    anyhow!(
-                        "Consensus key not found for validator {address} at epoch {namada_epoch}"
-                    )
-                })
-            };
-
             let meta_and_comm_fut = async {
                 let (metadata, commission) = rpc::query_metadata(client, &address, Some(namada_epoch))
                     .await
@@ -69,18 +50,15 @@ pub async fn get_validator_set_at_epoch(
 
             let (
                 voting_power,
-                tm_address,
                 (metadata, commission),
             ) = futures::try_join!(
                 voting_power_fut,
-                tm_address_fut,
                 meta_and_comm_fut,
             )?;
 
             anyhow::Ok(Validator {
                 address: Id::Account(address.to_string()),
                 voting_power: voting_power.to_string_native(),
-                tm_address: Id::Account(tm_address),
                 max_commission: commission.max_commission_change_per_epoch.to_string(),
                 commission: commission.commission_rate.to_string(),
                 email: metadata.email,
