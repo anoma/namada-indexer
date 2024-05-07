@@ -44,6 +44,7 @@ namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.33.0" }
 namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.33.0" }
 namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.33.0" }
 namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.33.0" }
+namada_token = { git = "https://github.com/anoma/namada", tag = "v0.33.0" }
 tendermint = "0.34.0"
 tendermint-config = "0.34.0"
 tendermint-rpc = { version = "0.34.0", features = ["http-client"] }
@@ -77,3 +78,6 @@ axum-trace-id = "0.1.0"
 derive_builder = "0.12.0"
 clap-verbosity-flag = "2.1.1"
 duration-str = "0.7.1"
+num-bigint = "0.4.0"
+num-integer = "0.1.26"
+num-traits = "0.2.18"

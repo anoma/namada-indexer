@@ -24,6 +24,7 @@ thiserror.workspace = true
 namada_sdk.workspace = true
 namada_core.workspace = true
 namada_governance.workspace = true
+namada_token.workspace = true
 tendermint-config.workspace = true
 tendermint-rpc.workspace = true
 tendermint-proto.workspace = true
