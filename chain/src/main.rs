@@ -19,11 +19,7 @@ use orm::{
     schema::{balances, block_crawler_state},
 };
 use shared::{
-    block::Block,
-    checksums::Checksums,
-    crawler::crawl,
-    crawler_state::CrawlerState,
-    error::{AsDbError, AsRpcError, ContextDbInteractError, MainError},
+    block::Block, block_result::BlockResult, checksums::Checksums, crawler::crawl, crawler_state::CrawlerState, error::{AsDbError, AsRpcError, ContextDbInteractError, MainError}
 };
 use tendermint_rpc::HttpClient;
 use tracing::Level;
@@ -94,7 +90,7 @@ async fn crawling_fn(
     }
 
     tracing::info!("Query block...");
-    let tm_block_response =
+    let tm_block_response = 
         tendermint_service::query_raw_block_at_height(&client, block_height)
             .await
             .into_rpc_error()?;
@@ -104,14 +100,15 @@ async fn crawling_fn(
     );
 
     // TODO: add later to filter out rejected txs
-    // tracing::info!("Query block results...");
-    // let _tm_block_results_response =
-    //     tendermint_service::query_raw_block_results_at_height(
-    //         &client,
-    //         block_height,
-    //     )
-    //     .await
-    //     .into_rpc_error()?;
+    tracing::info!("Query block results...");
+    let tm_block_results_response =
+        tendermint_service::query_raw_block_results_at_height(
+            &client,
+            block_height,
+        )
+        .await
+        .into_rpc_error()?;
+    let block_results = BlockResult::from(tm_block_results_response);
 
     tracing::info!("Query epoch...");
     let epoch =
@@ -119,7 +116,7 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
-    let block = Block::from(tm_block_response, checksums, epoch);
+    let block = Block::from(tm_block_response, &block_results, checksums, epoch);
     tracing::info!("Deserialized {} txs...", block.transactions.len());
 
     let addresses = block.addresses_with_balance_change();

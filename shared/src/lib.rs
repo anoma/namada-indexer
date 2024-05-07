@@ -7,3 +7,5 @@ pub mod error;
 pub mod header;
 pub mod id;
 pub mod validator;
+pub mod block_result;
+pub mod transaction;
