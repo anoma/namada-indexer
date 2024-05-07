@@ -1,3 +1,3 @@
 -- This file should undo anything in `up.sql`
 
-DROP TABLE IF EXISTS balances;
+DROP TABLE IF EXISTS epoch_crawler_state;

@@ -1,6 +1,9 @@
+pub mod balance;
 pub mod block;
+pub mod checksums;
+pub mod crawler;
 pub mod crawler_state;
+pub mod error;
 pub mod header;
 pub mod id;
-pub mod checksums;
-pub mod balance;
+pub mod validator;
