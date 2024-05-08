@@ -1,5 +1,6 @@
+use std::env;
+use std::process::exit;
 use std::sync::{Arc, Mutex};
-use std::{env, process::exit};
 
 use chrono::offset::Utc;
 use deadpool_diesel::postgres::{Object, Pool as DbPool};

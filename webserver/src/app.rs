@@ -1,30 +1,25 @@
-use std::{
-    net::{Ipv4Addr, SocketAddr},
-    sync::Arc,
-    time::Duration,
-};
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
+use std::time::Duration;
 
-use axum::{
-    error_handling::HandleErrorLayer,
-    http::{HeaderValue, StatusCode},
-    response::IntoResponse,
-    routing::get,
-    BoxError, Json, Router,
-};
+use axum::error_handling::HandleErrorLayer;
+use axum::http::{HeaderValue, StatusCode};
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::{BoxError, Json, Router};
 use axum_trace_id::SetTraceIdLayer;
 use lazy_static::lazy_static;
-
 use serde_json::json;
-use tower::{buffer::BufferLayer, limit::RateLimitLayer, ServiceBuilder};
-use tower_http::{
-    cors::{Any, CorsLayer},
-    trace::TraceLayer,
-};
+use tower::buffer::BufferLayer;
+use tower::limit::RateLimitLayer;
+use tower::ServiceBuilder;
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
+use crate::appstate::AppState;
+use crate::config::AppConfig;
 use crate::handler::pos as pos_handlers;
-use crate::{
-    appstate::AppState, config::AppConfig, state::common::CommonState,
-};
+use crate::state::common::CommonState;
 
 lazy_static! {
     static ref HTTP_TIMEOUT: u64 = 60;

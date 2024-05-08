@@ -34,7 +34,8 @@ impl ApiErrorResponse {
 impl IntoResponse for ApiErrorResponse {
     fn into_response(self) -> Response {
         (
-            StatusCode::from_u16(self.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            StatusCode::from_u16(self.status)
+                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
             Json(self),
         )
             .into_response()

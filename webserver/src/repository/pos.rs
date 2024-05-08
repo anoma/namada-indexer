@@ -1,6 +1,7 @@
 use axum::async_trait;
 use diesel::{QueryDsl, RunQueryDsl, SelectableHelper};
-use orm::{schema::validators, validators::ValidatorDb};
+use orm::schema::validators;
+use orm::validators::ValidatorDb;
 
 use crate::appstate::AppState;
 

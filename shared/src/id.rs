@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
+use namada_core::address::Address as NamadaAddress;
 use namada_core::hash::Hash as NamadaHash;
 use serde::{Deserialize, Serialize};
-use tendermint::{
-    account::Id as TendermintAccountId, block::Id as TendermintBlockId,
-    AppHash as TendermintAppHash, Hash as TendermintHash,
-};
+use tendermint::account::Id as TendermintAccountId;
+use tendermint::block::Id as TendermintBlockId;
+use tendermint::{AppHash as TendermintAppHash, Hash as TendermintHash};
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Id {
     Account(String),
     Hash(String),
@@ -55,5 +55,11 @@ impl From<&TendermintAccountId> for Id {
 impl From<NamadaHash> for Id {
     fn from(value: NamadaHash) -> Self {
         Self::Hash(value.to_string().to_lowercase())
+    }
+}
+
+impl From<NamadaAddress> for Id {
+    fn from(value: NamadaAddress) -> Self {
+        Self::Account(value.to_string().to_lowercase())
     }
 }

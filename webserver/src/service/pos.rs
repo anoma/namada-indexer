@@ -1,9 +1,8 @@
-use shared::{id::Id, validator::Validator};
+use shared::id::Id;
+use shared::validator::Validator;
 
-use crate::{
-    appstate::AppState,
-    repository::pos::{PosRepository, PosRepositoryTrait},
-};
+use crate::appstate::AppState;
+use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 
 #[derive(Clone)]
 pub struct PosService {

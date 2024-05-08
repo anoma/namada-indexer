@@ -1,4 +1,5 @@
-use crate::{block::Epoch, id::Id};
+use crate::block::Epoch;
+use crate::id::Id;
 
 pub type VotingPower = String;
 

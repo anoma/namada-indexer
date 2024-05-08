@@ -17,11 +17,3 @@ services:
       timeout: 10s
       retries: 5
       start_period: 80s
-
-  dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly
-    command: --logtostderr --cache_mode=true --port 6379 -dbnum 1 --maxmemory=4gb
-    ulimits:
-      memlock: -1
-    ports:
-      - "6379:6379"

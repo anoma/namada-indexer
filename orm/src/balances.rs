@@ -1,10 +1,10 @@
 use diesel::data_types::PgNumeric;
 use diesel::Insertable;
+use shared::balance::Balance;
 use shared::block::BlockHeight;
 
 use crate::schema::balances;
 use crate::utils::{Base10000BigUint, PgNumericInt};
-use shared::balance::Balance;
 
 #[derive(Insertable, Clone)]
 #[diesel(table_name = balances)]

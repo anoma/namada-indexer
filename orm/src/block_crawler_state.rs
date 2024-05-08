@@ -1,8 +1,8 @@
 use diesel::{Insertable, Queryable, Selectable};
 use serde::Serialize;
+use shared::crawler_state::CrawlerState;
 
 use crate::schema::block_crawler_state;
-use shared::crawler_state::CrawlerState;
 
 #[derive(Serialize, Queryable, Selectable, Clone)]
 #[diesel(table_name = block_crawler_state)]

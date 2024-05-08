@@ -1,13 +1,13 @@
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 
 use namada_sdk::borsh::BorshDeserialize;
-use namada_tx::{data::TxType, Tx};
+use namada_tx::data::TxType;
+use namada_tx::{Section, Tx};
 
-use crate::{
-    block_result::{BlockResult, TxAttributes, TxEventStatusCode},
-    checksums::Checksums,
-    id::Id,
-};
+use crate::block_result::{BlockResult, TxAttributes, TxEventStatusCode};
+use crate::checksums::Checksums;
+use crate::id::Id;
 
 #[derive(Debug, Clone)]
 pub enum TransactionKind {
@@ -20,6 +20,7 @@ pub enum TransactionKind {
     Withdraw(Vec<u8>),
     ClaimRewards(Vec<u8>),
     ProposalVote(Vec<u8>),
+    InitProposal(Vec<u8>),
     Unknown,
 }
 
@@ -40,6 +41,7 @@ impl TransactionKind {
             "tx_withdraw" => TransactionKind::Withdraw(data.to_vec()),
             "tx_claim_rewards" => TransactionKind::ClaimRewards(data.to_vec()),
             "wrapper" => TransactionKind::Wrapper,
+            "tx_init_proposal" => TransactionKind::InitProposal(data.to_vec()),
             _ => TransactionKind::Unknown,
         }
     }
@@ -82,6 +84,7 @@ pub struct Transaction {
     pub hash: Id,
     pub inner_hash: Option<Id>,
     pub kind: TransactionKind,
+    pub extra_sections: HashMap<Id, Vec<u8>>,
     pub index: usize,
 }
 
@@ -118,7 +121,10 @@ impl Transaction {
                     &TransactionKind::Wrapper,
                 );
                 if tx_exit == TransactionExitStatus::Rejected {
-                    return Err(format!("Transaction {} was rejected", raw_hash));
+                    return Err(format!(
+                        "Transaction {} was rejected",
+                        raw_hash
+                    ));
                 };
 
                 let tx_code_id = transaction
@@ -128,6 +134,23 @@ impl Transaction {
                     .map(|bytes| {
                         String::from_utf8(subtle_encoding::hex::encode(bytes))
                             .unwrap()
+                    });
+
+                let extra_sections = transaction
+                    .sections
+                    .iter()
+                    .filter_map(|section| match section {
+                        Section::ExtraData(code) => match code.code.clone() {
+                            namada_tx::Commitment::Hash(_) => None,
+                            namada_tx::Commitment::Id(data) => {
+                                Some((Id::from(section.get_hash()), data))
+                            }
+                        },
+                        _ => None,
+                    })
+                    .fold(HashMap::new(), |mut acc, (id, data)| {
+                        acc.insert(id, data);
+                        acc
                     });
 
                 let tx_kind = if let Some(id) = tx_code_id {
@@ -145,6 +168,7 @@ impl Transaction {
                     hash: tx_id,
                     inner_hash: Some(raw_hash),
                     kind: tx_kind,
+                    extra_sections,
                     index,
                 };
 
@@ -157,5 +181,9 @@ impl Transaction {
                 Err("Protocol transaction are not supported.".to_string())
             }
         }
+    }
+
+    pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
+        self.extra_sections.get(&section_id).cloned()
     }
 }

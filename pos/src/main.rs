@@ -8,13 +8,12 @@ use diesel::RunQueryDsl;
 use orm::epoch_crawler_state::EpochCralwerStateInsertDb;
 use orm::schema::{epoch_crawler_state, validators};
 use orm::validators::ValidatorInsertDb;
+use pos::app_state::AppState;
+use pos::config::AppConfig;
 use pos::services::{db as db_service, namada as namada_service};
-use pos::{app_state::AppState, config::AppConfig};
+use shared::crawler;
 use shared::crawler_state::CrawlerState;
-use shared::{
-    crawler,
-    error::{AsDbError, AsRpcError, ContextDbInteractError, MainError},
-};
+use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -23,7 +22,7 @@ use tracing_subscriber::FmtSubscriber;
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
-    //TODO: run migrations
+    // TODO: run migrations
 
     let log_level = match config.verbosity.log_level_filter() {
         LevelFilter::Off => None,
@@ -82,14 +81,14 @@ async fn crawling_fn(
         epoch_to_process,
         validators_set.validators.len()
     );
-    //TODO: either add height to epoch crawler or add another state struct
+    // TODO: either add height to epoch crawler or add another state struct
     let crawler_state = CrawlerState::new(0, epoch_to_process);
 
     conn.interact(move |conn| {
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                //TODO: move closure block to a function
+                // TODO: move closure block to a function
 
                 let validators_dbo = &validators_set
                     .validators
@@ -105,7 +104,7 @@ async fn crawling_fn(
                     .execute(transaction_conn)
                     .context("Failed to update validators in db")?;
 
-                //TODO: should we always override the db?
+                // TODO: should we always override the db?
                 diesel::insert_into(epoch_crawler_state::table)
                     .values::<&EpochCralwerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()

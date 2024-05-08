@@ -1,14 +1,17 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::{BTreeMap, HashSet};
+use std::str::FromStr;
 
-use namada_sdk::address::Address;
-use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
 use crate::block_result::BlockResult;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
+use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::transaction::{Transaction, TransactionKind};
+use crate::utils::BalanceChange;
+use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
 pub type BlockHeight = u32;
@@ -101,29 +104,32 @@ impl Block {
             .iter()
             .enumerate()
             .filter_map(|(index, tx_raw_bytes)| {
-                Transaction::deserialize(tx_raw_bytes, index, checksums.clone(), block_results)
-                    .map_err(|reason| {
-                        tracing::info!(
-                            "Couldn't deserialize tx due to {}",
-                            reason
-                        );
-                    })
-                    .ok()
-                    .and_then(|(tx, _inner_hash)| {
-                        if matches!(&tx.kind, TransactionKind::Unknown) {
-                            return None;
-                        }
-                        // NB: skip tx if no memo is present
+                Transaction::deserialize(
+                    tx_raw_bytes,
+                    index,
+                    checksums.clone(),
+                    block_results,
+                )
+                .map_err(|reason| {
+                    tracing::info!("Couldn't deserialize tx due to {}", reason);
+                })
+                .ok()
+                .and_then(|(tx, _inner_hash)| {
+                    if matches!(&tx.kind, TransactionKind::Unknown) {
+                        return None;
+                    }
+                    // NB: skip tx if no memo is present
 
-                        Some(tx)
-                    })
+                    Some(tx)
+                })
             })
             .collect::<Vec<Transaction>>();
 
         Block {
             hash: Id::from(block_response.block_id.hash),
             header: BlockHeader {
-                height: block_response.block.header.height.value() as BlockHeight,
+                height: block_response.block.header.height.value()
+                    as BlockHeight,
                 proposer_address: block_response
                     .block
                     .header
@@ -138,8 +144,103 @@ impl Block {
         }
     }
 
-    //TODO: this can be potentially optimized by removing duplicates
-    pub fn addresses_with_balance_change(&self) -> Vec<Address> {
+    pub fn governance_proposal(
+        &self,
+        mut next_proposal_id: u64,
+    ) -> Vec<GovernanceProposal> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::InitProposal(data) => {
+                    let init_proposal_data =
+                        namada_governance::InitProposalData::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+
+                    let proposal_content_bytes = tx
+                        .get_section_data_by_id(Id::from(
+                            init_proposal_data.content,
+                        ))
+                        .unwrap_or_default();
+
+                    let proposal_content =
+                        BTreeMap::<String, String>::try_from_slice(
+                            &proposal_content_bytes,
+                        )
+                        .unwrap_or_default();
+
+                    let proposal_content_serialized =
+                        serde_json::to_string_pretty(&proposal_content)
+                            .unwrap_or_default();
+
+                    let proposal_data = match init_proposal_data.r#type.clone()
+                    {
+                        namada_governance::ProposalType::DefaultWithWasm(
+                            hash,
+                        ) => tx.get_section_data_by_id(Id::from(hash)),
+                        namada_governance::ProposalType::PGFSteward(data) => {
+                            Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                        }
+                        namada_governance::ProposalType::PGFPayment(data) => {
+                            Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                        }
+                        namada_governance::ProposalType::Default => None,
+                    };
+
+                    let current_id = next_proposal_id;
+                    next_proposal_id += 1;
+
+                    Some(GovernanceProposal {
+                        id: current_id,
+                        author: Id::from(init_proposal_data.author),
+                        r#type: GovernanceProposalKind::from(
+                            init_proposal_data.r#type,
+                        ),
+                        data: proposal_data,
+                        voting_start_epoch: Epoch::from(
+                            init_proposal_data.voting_start_epoch.0 as u32,
+                        ),
+                        voting_end_epoch: Epoch::from(
+                            init_proposal_data.voting_end_epoch.0 as u32,
+                        ),
+                        activation_epoch: Epoch::from(
+                            init_proposal_data.activation_epoch.0 as u32,
+                        ),
+                        content: proposal_content_serialized,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn governance_votes(&self) -> Vec<GovernanceVote> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::ProposalVote(data) => {
+                    let vote_proposal_data =
+                        namada_governance::VoteProposalData::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+
+                    Some(GovernanceVote {
+                        proposal_id: vote_proposal_data.id,
+                        vote: vote_proposal_data.vote.into(),
+                        address: Id::from(vote_proposal_data.voter),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn addresses_with_balance_change(
+        &self,
+        native_token: Id,
+    ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
             .filter_map(|tx| match &tx.kind {
@@ -147,7 +248,16 @@ impl Block {
                     let transfer_data =
                         namada_core::token::Transfer::try_from_slice(data)
                             .unwrap();
-                    Some(vec![transfer_data.source, transfer_data.target])
+                    let transfer_source = Id::from(transfer_data.source);
+                    let transfer_target = Id::from(transfer_data.target);
+                    let transfer_token = Id::from(transfer_data.token);
+                    Some(vec![
+                        BalanceChange::new(
+                            transfer_source,
+                            transfer_token.clone(),
+                        ),
+                        BalanceChange::new(transfer_target, transfer_token),
+                    ])
                 }
                 TransactionKind::Bond(data) => {
                     let bond_data =
@@ -156,7 +266,9 @@ impl Block {
                     let address =
                         bond_data.source.unwrap_or(bond_data.validator);
 
-                    Some(vec![address])
+                    let source = Id::from(address);
+
+                    Some(vec![BalanceChange::new(source, native_token.clone())])
                 }
                 TransactionKind::Withdraw(data) => {
                     let withdraw_data =
@@ -164,8 +276,9 @@ impl Block {
                             .unwrap();
                     let address =
                         withdraw_data.source.unwrap_or(withdraw_data.validator);
+                    let source = Id::from(address);
 
-                    Some(vec![address])
+                    Some(vec![BalanceChange::new(source, native_token.clone())])
                 }
                 TransactionKind::ClaimRewards(data) => {
                     let claim_rewards_data =
@@ -176,8 +289,19 @@ impl Block {
                     let address = claim_rewards_data
                         .source
                         .unwrap_or(claim_rewards_data.validator);
+                    let source = Id::from(address);
 
-                    Some(vec![address])
+                    Some(vec![BalanceChange::new(source, native_token.clone())])
+                }
+                TransactionKind::InitProposal(data) => {
+                    let init_proposal_data =
+                        namada_governance::InitProposalData::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+                    let author = Id::from(init_proposal_data.author);
+
+                    Some(vec![BalanceChange::new(author, native_token.clone())])
                 }
                 _ => None,
             })

@@ -1,16 +1,14 @@
+use std::sync::atomic::{self, AtomicBool};
+use std::sync::Arc;
+
 use async_stream::stream;
 use futures::pin_mut;
-use futures_core::{stream::Stream, Future};
+use futures_core::stream::Stream;
+use futures_core::Future;
 use futures_util::stream::StreamExt;
-use std::sync::{
-    atomic::{self, AtomicBool},
-    Arc,
-};
 use tokio::signal;
-use tokio_retry::{
-    strategy::{jitter, FixedInterval},
-    RetryIf,
-};
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::RetryIf;
 
 use crate::error::MainError;
 

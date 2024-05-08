@@ -1,12 +1,12 @@
 use axum::extract::State;
-use axum::{http::HeaderMap, Json};
+use axum::http::HeaderMap;
+use axum::Json;
 use axum_macros::debug_handler;
 use axum_trace_id::TraceId;
 
+use crate::error::api::ApiError;
 use crate::response::pos::ValidatorResponse;
 use crate::state::common::CommonState;
-
-use crate::error::api::ApiError;
 
 #[debug_handler]
 pub async fn get_validators(

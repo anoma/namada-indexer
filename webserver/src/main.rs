@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use clap::Parser;
-use webserver::{app::ApplicationServer, config::AppConfig};
+use webserver::app::ApplicationServer;
+use webserver::config::AppConfig;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

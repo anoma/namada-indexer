@@ -1,9 +1,10 @@
 use anyhow::Context;
 use deadpool_diesel::postgres::Object;
-use diesel::{dsl::max, QueryDsl, RunQueryDsl};
+use diesel::dsl::max;
+use diesel::{QueryDsl, RunQueryDsl};
 use orm::schema::block_crawler_state;
-
-use shared::{block::BlockHeight, error::ContextDbInteractError};
+use shared::block::BlockHeight;
+use shared::error::ContextDbInteractError;
 
 pub async fn get_last_synched_block(
     conn: &Object,

@@ -1,4 +1,6 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
+use std::str::FromStr;
+
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
 use crate::id::Id;
@@ -61,7 +63,10 @@ pub struct TxAttributes {
 }
 
 impl TxAttributes {
-    pub fn deserialize(event_kind: &EventKind, attributes: &BTreeMap<String, String>) -> Self {
+    pub fn deserialize(
+        event_kind: &EventKind,
+        attributes: &BTreeMap<String, String>,
+    ) -> Self {
         match event_kind {
             EventKind::Unknown => Self::default(),
             _ => Self {
@@ -99,15 +104,18 @@ impl From<TendermintBlockResultResponse> for BlockResult {
             .iter()
             .map(|event| {
                 let kind = EventKind::from(&event.kind);
-                let raw_attributes =
-                    event
-                        .attributes
-                        .iter()
-                        .fold(BTreeMap::default(), |mut acc, attribute| {
-                            acc.insert(attribute.key.clone(), attribute.value.clone());
-                            acc
-                        });
-                let attributes = TxAttributes::deserialize(&kind, &raw_attributes);
+                let raw_attributes = event.attributes.iter().fold(
+                    BTreeMap::default(),
+                    |mut acc, attribute| {
+                        acc.insert(
+                            attribute.key.clone(),
+                            attribute.value.clone(),
+                        );
+                        acc
+                    },
+                );
+                let attributes =
+                    TxAttributes::deserialize(&kind, &raw_attributes);
                 Event { kind, attributes }
             })
             .collect::<Vec<Event>>();
@@ -117,15 +125,18 @@ impl From<TendermintBlockResultResponse> for BlockResult {
             .iter()
             .map(|event| {
                 let kind = EventKind::from(&event.kind);
-                let raw_attributes =
-                    event
-                        .attributes
-                        .iter()
-                        .fold(BTreeMap::default(), |mut acc, attribute| {
-                            acc.insert(attribute.key.clone(), attribute.value.clone());
-                            acc
-                        });
-                let attributes = TxAttributes::deserialize(&kind, &raw_attributes);
+                let raw_attributes = event.attributes.iter().fold(
+                    BTreeMap::default(),
+                    |mut acc, attribute| {
+                        acc.insert(
+                            attribute.key.clone(),
+                            attribute.value.clone(),
+                        );
+                        acc
+                    },
+                );
+                let attributes =
+                    TxAttributes::deserialize(&kind, &raw_attributes);
                 Event { kind, attributes }
             })
             .collect::<Vec<Event>>();

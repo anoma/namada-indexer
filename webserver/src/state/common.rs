@@ -1,4 +1,5 @@
-use crate::{appstate::AppState, service::pos::PosService};
+use crate::appstate::AppState;
+use crate::service::pos::PosService;
 
 #[derive(Clone)]
 pub struct CommonState {

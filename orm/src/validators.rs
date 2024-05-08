@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use diesel::{Insertable, Queryable, Selectable};
 use serde::Serialize;
-use shared::{block::Epoch, validator::Validator};
-use std::str::FromStr;
+use shared::block::Epoch;
+use shared::validator::Validator;
 
 use crate::schema::validators;
 

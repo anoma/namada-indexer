@@ -1,26 +1,30 @@
-use std::{fs::File, io::BufReader, sync::Arc};
+use std::fs::File;
+use std::io::BufReader;
+use std::sync::Arc;
 
 use anyhow::Context;
-use chain::{
-    app_state::AppState,
-    config::AppConfig,
-    services::{
-        db as db_service, namada as namada_service,
-        tendermint as tendermint_service,
-    },
+use chain::app_state::AppState;
+use chain::config::AppConfig;
+use chain::services::{
+    db as db_service, namada as namada_service,
+    tendermint as tendermint_service,
 };
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::RunQueryDsl;
-use orm::{
-    balances::BalancesInsertDb,
-    block_crawler_state::BlockCrawlerStateInsertDb,
-    schema::{balances, block_crawler_state},
-};
-use shared::{
-    block::Block, block_result::BlockResult, checksums::Checksums, crawler::crawl, crawler_state::CrawlerState, error::{AsDbError, AsRpcError, ContextDbInteractError, MainError}
-};
+use namada_governance::cli;
+use orm::balances::BalancesInsertDb;
+use orm::block_crawler_state::BlockCrawlerStateInsertDb;
+use orm::governance_proposal::{self, GovernanceProposalInsertDb};
+use orm::governance_votes::GovernanceProposalVoteInsertDb;
+use orm::schema::{balances, block_crawler_state};
+use shared::block::Block;
+use shared::block_result::BlockResult;
+use shared::checksums::Checksums;
+use shared::crawler::crawl;
+use shared::crawler_state::CrawlerState;
+use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -31,7 +35,7 @@ async fn main() -> Result<(), MainError> {
     let file = File::open(config.checksums_filepath).unwrap();
     let reader = BufReader::new(file);
 
-    //TODO: run migrations
+    // TODO: run migrations
 
     let mut checksums: Checksums = serde_json::from_reader(reader).unwrap();
     checksums.init();
@@ -90,7 +94,7 @@ async fn crawling_fn(
     }
 
     tracing::info!("Query block...");
-    let tm_block_response = 
+    let tm_block_response =
         tendermint_service::query_raw_block_at_height(&client, block_height)
             .await
             .into_rpc_error()?;
@@ -116,14 +120,30 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
-    let block = Block::from(tm_block_response, &block_results, checksums, epoch);
+    let block =
+        Block::from(tm_block_response, &block_results, checksums, epoch);
     tracing::info!("Deserialized {} txs...", block.transactions.len());
 
-    let addresses = block.addresses_with_balance_change();
+    let native_token = namada_service::get_native_token(&client)
+        .await
+        .into_rpc_error()?;
+
+    let addresses = block.addresses_with_balance_change(native_token);
     let balances = namada_service::query_balance(&client, &addresses)
         .await
         .into_rpc_error()?;
     tracing::info!("Updating balance for {} addresses...", addresses.len());
+
+    let next_governance_proposal_id =
+        namada_service::query_next_governance_id(&client, block_height)
+            .await
+            .into_rpc_error()?;
+
+    let proposals = block.governance_proposal(next_governance_proposal_id);
+    tracing::info!("Creating {} governance proposals...", proposals.len());
+
+    let proposals_votes = block.governance_votes();
+    tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -132,13 +152,38 @@ async fn crawling_fn(
             .read_write()
             .run(|transaction_conn| {
                 //TODO: move closure block to a function
-
                 diesel::insert_into(balances::table)
                     .values::<&Vec<BalancesInsertDb>>(
                         &balances
                             .into_iter()
                             .map(|b| {
                                 BalancesInsertDb::from_balance(b, block_height)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
+
+                diesel::insert_into(orm::schema::governance_proposals::table)
+                    .values::<&Vec<GovernanceProposalInsertDb>>(
+                        &proposals
+                            .into_iter()
+                            .map(|proposal| {
+                                GovernanceProposalInsertDb::from_governance_proposal(proposal)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
+
+                    diesel::insert_into(orm::schema::governance_votes::table)
+                    .values::<&Vec<GovernanceProposalVoteInsertDb>>(
+                        &proposals_votes
+                            .into_iter()
+                            .map(|vote| {
+                                GovernanceProposalVoteInsertDb::from_governance_vote(vote)
                             })
                             .collect::<Vec<_>>(),
                     )

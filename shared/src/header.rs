@@ -1,6 +1,5 @@
-use crate::block::BlockHeight;
-
 use super::id::Id;
+use crate::block::BlockHeight;
 
 #[derive(Debug, Clone, Default)]
 pub struct BlockHeader {

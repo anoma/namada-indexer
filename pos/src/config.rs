@@ -1,6 +1,8 @@
-use clap_verbosity_flag::{InfoLevel, Verbosity};
 use core::fmt;
-use std::{fmt::Display, path::PathBuf};
+use std::fmt::Display;
+use std::path::PathBuf;
+
+use clap_verbosity_flag::{InfoLevel, Verbosity};
 
 #[derive(clap::ValueEnum, Clone, Debug, Copy)]
 pub enum CargoEnv {
@@ -14,7 +16,7 @@ impl Display for CargoEnv {
     }
 }
 
-//TODO: remove unused fields
+// TODO: remove unused fields
 #[derive(clap::Parser)]
 pub struct AppConfig {
     #[clap(long, env, value_enum)]
