@@ -86,16 +86,17 @@ pub async fn query_balance(
 
 pub async fn query_next_governance_id(
     client: &HttpClient,
-    block_height: u64,
+    block_height: BlockHeight,
 ) -> anyhow::Result<u64> {
     let proposal_counter_key =
         namada_sdk::governance::storage::keys::get_counter_key();
+    let block_height = to_block_height(block_height);
     let query_result = RPC
         .shell()
         .storage_value(
             client,
             None,
-            Some(block_height.into()),
+            Some(block_height),
             false,
             &proposal_counter_key,
         )

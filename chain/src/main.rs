@@ -17,6 +17,8 @@ use namada_governance::cli;
 use orm::{
     balances::BalancesInsertDb,
     block_crawler_state::BlockCrawlerStateInsertDb,
+    governance_proposal::{self, GovernanceProposalInsertDb},
+    governance_votes::GovernanceProposalVoteInsertDb,
     schema::{balances, block_crawler_state},
 };
 use shared::{
@@ -136,6 +138,17 @@ async fn crawling_fn(
         .into_rpc_error()?;
     tracing::info!("Updating balance for {} addresses...", addresses.len());
 
+    let next_governance_proposal_id =
+        namada_service::query_next_governance_id(&client, block_height)
+            .await
+            .into_rpc_error()?;
+
+    let proposals = block.governance_proposal(next_governance_proposal_id);
+    tracing::info!("Creating {} governance proposals...", proposals.len());
+
+    let proposals_votes = block.governance_votes();
+    tracing::info!("Creating {} governance votes...", proposals_votes.len());
+
     let crawler_state = CrawlerState::new(block_height, epoch);
 
     conn.interact(move |conn| {
@@ -143,13 +156,38 @@ async fn crawling_fn(
             .read_write()
             .run(|transaction_conn| {
                 //TODO: move closure block to a function
-
                 diesel::insert_into(balances::table)
                     .values::<&Vec<BalancesInsertDb>>(
                         &balances
                             .into_iter()
                             .map(|b| {
                                 BalancesInsertDb::from_balance(b, block_height)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
+
+                diesel::insert_into(orm::schema::governance_proposals::table)
+                    .values::<&Vec<GovernanceProposalInsertDb>>(
+                        &proposals
+                            .into_iter()
+                            .map(|proposal| {
+                                GovernanceProposalInsertDb::from_governance_proposal(proposal)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
+
+                    diesel::insert_into(orm::schema::governance_votes::table)
+                    .values::<&Vec<GovernanceProposalVoteInsertDb>>(
+                        &proposals_votes
+                            .into_iter()
+                            .map(|vote| {
+                                GovernanceProposalVoteInsertDb::from_governance_vote(vote)
                             })
                             .collect::<Vec<_>>(),
                     )

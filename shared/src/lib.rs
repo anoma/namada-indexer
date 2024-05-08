@@ -11,3 +11,4 @@ pub mod block_result;
 pub mod transaction;
 pub mod utils;
 pub mod proposal;
+pub mod vote;

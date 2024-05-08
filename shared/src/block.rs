@@ -1,17 +1,19 @@
 use std::collections::HashSet;
 use std::{collections::BTreeMap, str::FromStr};
 
-use namada_sdk::address::Address;
-use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
 use crate::block_result::BlockResult;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
-use crate::proposal::{GovernanceProposal, GovernanceVotes};
+use crate::proposal::{
+    GovernanceProposal, GovernanceProposalKind,
+};
 use crate::transaction::{Transaction, TransactionKind};
 use crate::utils::BalanceChange;
+use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
 pub type BlockHeight = u32;
@@ -174,13 +176,18 @@ impl Block {
                         serde_json::to_string_pretty(&proposal_content)
                             .unwrap_or_default();
 
-                    let proposal_code = match init_proposal_data.r#type {
+                    let proposal_data = match init_proposal_data.r#type.clone()
+                    {
                         namada_governance::ProposalType::DefaultWithWasm(
                             hash,
-                        ) => tx
-                            .get_section_data_by_id(Id::from(hash))
-                            .unwrap_or_default(),
-                        _ => vec![],
+                        ) => tx.get_section_data_by_id(Id::from(hash)),
+                        namada_governance::ProposalType::PGFSteward(data) => {
+                            Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                        }
+                        namada_governance::ProposalType::PGFPayment(data) => {
+                            Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                        }
+                        namada_governance::ProposalType::Default => None,
                     };
 
                     let current_id = next_proposal_id;
@@ -189,8 +196,10 @@ impl Block {
                     Some(GovernanceProposal {
                         id: current_id,
                         author: Id::from(init_proposal_data.author),
-                        r#type: init_proposal_data.r#type.to_string(),
-                        proposal_code,
+                        r#type: GovernanceProposalKind::from(
+                            init_proposal_data.r#type,
+                        ),
+                        data: proposal_data,
                         voting_start_epoch: Epoch::from(
                             init_proposal_data.voting_start_epoch.0 as u32,
                         ),
@@ -208,7 +217,7 @@ impl Block {
             .collect()
     }
 
-    pub fn governance_votes(&self) -> Vec<GovernanceVotes> {
+    pub fn governance_votes(&self) -> Vec<GovernanceVote> {
         self.transactions
             .iter()
             .filter_map(|tx| match &tx.kind {
@@ -219,9 +228,9 @@ impl Block {
                         )
                         .unwrap();
 
-                    Some(GovernanceVotes {
+                    Some(GovernanceVote {
                         proposal_id: vote_proposal_data.id,
-                        vote: vote_proposal_data.vote.to_string(),
+                        vote: vote_proposal_data.vote.into(),
                         address: Id::from(vote_proposal_data.voter),
                     })
                 }
