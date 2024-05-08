@@ -4,6 +4,7 @@ use std::str::FromStr;
 use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
+use crate::balance::Address;
 use crate::block_result::BlockResult;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
@@ -302,6 +303,30 @@ impl Block {
                     let author = Id::from(init_proposal_data.author);
 
                     Some(vec![BalanceChange::new(author, native_token.clone())])
+                }
+                _ => None,
+            })
+            .flatten()
+            .collect()
+    }
+
+    //TODO: change to some struct
+    pub fn addresses_that_bonded(&self) -> Vec<(Address, Address)> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::Bond(data) => {
+                    let bond_data =
+                        namada_tx::data::pos::Bond::try_from_slice(data)
+                            .unwrap();
+                    let source_address =
+                        bond_data.source.unwrap_or(bond_data.validator.clone());
+                    let target_address = bond_data.validator;
+
+                    Some(vec![(
+                        source_address.to_string(),
+                        target_address.to_string(),
+                    )])
                 }
                 _ => None,
             })

@@ -142,6 +142,11 @@ async fn crawling_fn(
 
     let proposals_votes = block.governance_votes();
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
+    let addresses = block.addresses_that_bonded();
+    let bonds = namada_service::query_bonds(&client, addresses)
+        .await
+        .into_rpc_error()?;
+    tracing::info!("Updating bonds {:?} ", bonds);
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 

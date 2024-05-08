@@ -1,5 +1,6 @@
 use namada_sdk::token::Amount as NamadaAmount;
 
+//TODO: replace with Id
 pub type Address = String;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

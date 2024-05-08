@@ -1,6 +1,7 @@
 pub mod balance;
 pub mod block;
 pub mod block_result;
+pub mod bond;
 pub mod checksums;
 pub mod crawler;
 pub mod crawler_state;

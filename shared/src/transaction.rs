@@ -115,7 +115,7 @@ impl Transaction {
                 };
 
                 let tx_status =
-                    block_results.find_tx_hash_result(&raw_hash).unwrap();
+                    block_results.find_tx_hash_result(&tx_id).unwrap();
                 let tx_exit = TransactionExitStatus::from(
                     &tx_status,
                     &TransactionKind::Wrapper,

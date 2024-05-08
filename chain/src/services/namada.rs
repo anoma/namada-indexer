@@ -2,15 +2,19 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
-use namada_core::storage::BlockHeight as NamadaSdkBlockHeight;
-use namada_sdk::address::Address;
+use namada_core::storage::{
+    BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
+};
+use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
-use shared::balance::{Amount, Balance, Balances};
+use shared::balance::{Address, Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::id::Id;
 use shared::utils::BalanceChange;
 use tendermint_rpc::HttpClient;
+
+use shared::bond::{Bond, Bonds};
 
 pub async fn is_block_committed(
     client: &HttpClient,
@@ -61,9 +65,11 @@ pub async fn query_balance(
 
     for balance_change in balance_changes {
         let owner =
-            Address::from_str(&balance_change.address.to_string()).unwrap();
+            NamadaSdkAddress::from_str(&balance_change.address.to_string())
+                .unwrap();
         let token =
-            Address::from_str(&balance_change.token.to_string()).unwrap();
+            NamadaSdkAddress::from_str(&balance_change.token.to_string())
+                .unwrap();
 
         let amount = rpc::get_token_balance(client, &token, &owner)
             .await
@@ -102,6 +108,36 @@ pub async fn query_next_governance_id(
         .context("Failed to deserialize proposal id")
 }
 
+pub async fn query_bonds(
+    client: &HttpClient,
+    addresses: Vec<(Address, Address)>,
+) -> anyhow::Result<Bonds> {
+    let mut bonds = vec![];
+
+    for (source, target) in addresses {
+        //TODO: unwrap
+        let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
+        let target = NamadaSdkAddress::from_str(&target.to_string()).unwrap();
+
+        let amount = rpc::query_bond(client, &source, &target, None)
+            .await
+            .context("Failed to query bond amount")?;
+
+        bonds.push(Bond {
+            source: source.to_string(),
+            target: target.to_string(),
+            amount: Amount::from(amount),
+        });
+    }
+
+    //TODO: remove epoch
+    anyhow::Ok(Bonds { epoch: 0, bonds })
+}
+
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
+}
+
+fn to_epoch(epoch: u32) -> NamadaSdkEpoch {
+    NamadaSdkEpoch::from(epoch as u64)
 }
