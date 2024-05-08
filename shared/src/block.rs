@@ -9,6 +9,7 @@ use crate::block_result::BlockResult;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
+use crate::proposal::GovernanceProposal;
 use crate::transaction::{Transaction, TransactionKind};
 use crate::utils::BalanceChange;
 
@@ -103,29 +104,32 @@ impl Block {
             .iter()
             .enumerate()
             .filter_map(|(index, tx_raw_bytes)| {
-                Transaction::deserialize(tx_raw_bytes, index, checksums.clone(), block_results)
-                    .map_err(|reason| {
-                        tracing::info!(
-                            "Couldn't deserialize tx due to {}",
-                            reason
-                        );
-                    })
-                    .ok()
-                    .and_then(|(tx, _inner_hash)| {
-                        if matches!(&tx.kind, TransactionKind::Unknown) {
-                            return None;
-                        }
-                        // NB: skip tx if no memo is present
+                Transaction::deserialize(
+                    tx_raw_bytes,
+                    index,
+                    checksums.clone(),
+                    block_results,
+                )
+                .map_err(|reason| {
+                    tracing::info!("Couldn't deserialize tx due to {}", reason);
+                })
+                .ok()
+                .and_then(|(tx, _inner_hash)| {
+                    if matches!(&tx.kind, TransactionKind::Unknown) {
+                        return None;
+                    }
+                    // NB: skip tx if no memo is present
 
-                        Some(tx)
-                    })
+                    Some(tx)
+                })
             })
             .collect::<Vec<Transaction>>();
 
         Block {
             hash: Id::from(block_response.block_id.hash),
             header: BlockHeader {
-                height: block_response.block.header.height.value() as BlockHeight,
+                height: block_response.block.header.height.value()
+                    as BlockHeight,
                 proposer_address: block_response
                     .block
                     .header
@@ -140,7 +144,71 @@ impl Block {
         }
     }
 
-    pub fn addresses_with_balance_change(&self, native_token: Id) -> HashSet<BalanceChange> {
+    pub fn governance_proposal(
+        &self,
+        mut next_proposal_id: u64,
+    ) -> Vec<GovernanceProposal> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::InitProposal(data) => {
+                    let init_proposal_data =
+                        namada_governance::InitProposalData::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+
+                    let proposal_content_bytes = tx
+                        .get_section_data_by_id(Id::from(
+                            init_proposal_data.content,
+                        ))
+                        .unwrap_or_default();
+
+                    let proposal_content = 
+                        BTreeMap::<String, String>::try_from_slice(&proposal_content_bytes)
+                            .unwrap_or_default();
+
+                    let proposal_content_serialized = serde_json::to_string_pretty(&proposal_content).unwrap_or_default();
+                    
+
+                    let proposal_code = match init_proposal_data.r#type {
+                        namada_governance::ProposalType::DefaultWithWasm(
+                            hash,
+                        ) => tx
+                            .get_section_data_by_id(Id::from(hash))
+                            .unwrap_or_default(),
+                        _ => vec![],
+                    };
+
+                    let current_id = next_proposal_id;
+                    next_proposal_id += 1;
+
+                    Some(GovernanceProposal {
+                        id: current_id,
+                        author: Id::from(init_proposal_data.author),
+                        r#type: init_proposal_data.r#type.to_string(),
+                        proposal_code,
+                        voting_start_epoch: Epoch::from(
+                            init_proposal_data.voting_start_epoch.0 as u32,
+                        ),
+                        voting_end_epoch: Epoch::from(
+                            init_proposal_data.voting_end_epoch.0 as u32,
+                        ),
+                        activation_epoch: Epoch::from(
+                            init_proposal_data.activation_epoch.0 as u32,
+                        ),
+                        content: proposal_content_serialized,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn addresses_with_balance_change(
+        &self,
+        native_token: Id,
+    ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
             .filter_map(|tx| match &tx.kind {
@@ -152,8 +220,11 @@ impl Block {
                     let transfer_target = Id::from(transfer_data.target);
                     let transfer_token = Id::from(transfer_data.token);
                     Some(vec![
-                        BalanceChange::new(transfer_source, transfer_token.clone()), 
-                        BalanceChange::new(transfer_target, transfer_token)
+                        BalanceChange::new(
+                            transfer_source,
+                            transfer_token.clone(),
+                        ),
+                        BalanceChange::new(transfer_target, transfer_token),
                     ])
                 }
                 TransactionKind::Bond(data) => {
@@ -165,9 +236,7 @@ impl Block {
 
                     let source = Id::from(address);
 
-                    Some(vec![
-                        BalanceChange::new(source, native_token.clone()), 
-                    ])
+                    Some(vec![BalanceChange::new(source, native_token.clone())])
                 }
                 TransactionKind::Withdraw(data) => {
                     let withdraw_data =
@@ -177,9 +246,7 @@ impl Block {
                         withdraw_data.source.unwrap_or(withdraw_data.validator);
                     let source = Id::from(address);
 
-                    Some(vec![
-                        BalanceChange::new(source, native_token.clone()), 
-                    ]) 
+                    Some(vec![BalanceChange::new(source, native_token.clone())])
                 }
                 TransactionKind::ClaimRewards(data) => {
                     let claim_rewards_data =
@@ -192,17 +259,17 @@ impl Block {
                         .unwrap_or(claim_rewards_data.validator);
                     let source = Id::from(address);
 
-                    Some(vec![
-                        BalanceChange::new(source, native_token.clone()), 
-                    ]) 
+                    Some(vec![BalanceChange::new(source, native_token.clone())])
                 }
                 TransactionKind::InitProposal(data) => {
-                    let init_proposal_data = namada_governance::InitProposalData::try_from_slice(data).unwrap();
+                    let init_proposal_data =
+                        namada_governance::InitProposalData::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
                     let author = Id::from(init_proposal_data.author);
 
-                    Some(vec![
-                        BalanceChange::new(author, native_token.clone()), 
-                    ])
+                    Some(vec![BalanceChange::new(author, native_token.clone())])
                 }
                 _ => None,
             })

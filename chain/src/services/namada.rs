@@ -57,6 +57,7 @@ pub async fn get_epoch_at_block_height(
     Ok(epoch.0 as Epoch)
 }
 
+// TODO: remove unwraps
 pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
@@ -69,7 +70,9 @@ pub async fn query_balance(
         let token =
             Address::from_str(&balance_change.token.to_string()).unwrap();
 
-        let amount = rpc::get_token_balance(client, &token, &owner).await.unwrap_or_default();
+        let amount = rpc::get_token_balance(client, &token, &owner)
+            .await
+            .unwrap_or_default();
 
         res.push(Balance {
             owner: owner.to_string(),
@@ -79,6 +82,27 @@ pub async fn query_balance(
     }
 
     anyhow::Ok(res)
+}
+
+pub async fn query_next_governance_id(
+    client: &HttpClient,
+    block_height: u64,
+) -> anyhow::Result<u64> {
+    let proposal_counter_key =
+        namada_sdk::governance::storage::keys::get_counter_key();
+    let query_result = RPC
+        .shell()
+        .storage_value(
+            client,
+            None,
+            Some(block_height.into()),
+            false,
+            &proposal_counter_key,
+        )
+        .await
+        .context("Failed to get the next proposal id")?;
+    namada_sdk::borsh::BorshDeserialize::try_from_slice(&query_result.data)
+        .context("Failed to deserialize proposal id")
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
