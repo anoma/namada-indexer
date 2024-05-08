@@ -9,7 +9,7 @@ use crate::block_result::BlockResult;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
-use crate::proposal::GovernanceProposal;
+use crate::proposal::{GovernanceProposal, GovernanceVotes};
 use crate::transaction::{Transaction, TransactionKind};
 use crate::utils::BalanceChange;
 
@@ -164,12 +164,15 @@ impl Block {
                         ))
                         .unwrap_or_default();
 
-                    let proposal_content = 
-                        BTreeMap::<String, String>::try_from_slice(&proposal_content_bytes)
-                            .unwrap_or_default();
+                    let proposal_content =
+                        BTreeMap::<String, String>::try_from_slice(
+                            &proposal_content_bytes,
+                        )
+                        .unwrap_or_default();
 
-                    let proposal_content_serialized = serde_json::to_string_pretty(&proposal_content).unwrap_or_default();
-                    
+                    let proposal_content_serialized =
+                        serde_json::to_string_pretty(&proposal_content)
+                            .unwrap_or_default();
 
                     let proposal_code = match init_proposal_data.r#type {
                         namada_governance::ProposalType::DefaultWithWasm(
@@ -198,6 +201,28 @@ impl Block {
                             init_proposal_data.activation_epoch.0 as u32,
                         ),
                         content: proposal_content_serialized,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn governance_votes(&self) -> Vec<GovernanceVotes> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::ProposalVote(data) => {
+                    let vote_proposal_data =
+                        namada_governance::VoteProposalData::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+
+                    Some(GovernanceVotes {
+                        proposal_id: vote_proposal_data.id,
+                        vote: vote_proposal_data.vote.to_string(),
+                        address: Id::from(vote_proposal_data.voter),
                     })
                 }
                 _ => None,

@@ -152,7 +152,6 @@ impl Transaction {
                             },
                             _ => None,
                         }
-                        // (section.get_hash(), sections
                     })
                     .fold(HashMap::new(), |mut acc, (id, data)| {
                         acc.insert(id, data);
