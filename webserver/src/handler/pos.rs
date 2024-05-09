@@ -31,5 +31,5 @@ pub async fn get_validators(
         })
         .collect();
 
-    return Ok(Json(response));
+    Ok(Json(response))
 }

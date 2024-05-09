@@ -1,18 +1,10 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use deadpool_diesel::postgres::Object;
 use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl};
-use namada_core::storage::BlockHeight as NamadaSdkBlockHeight;
-use namada_sdk::rpc;
-use orm::{
-    governance_proposal::GovernanceProposalResultDb,
-    schema::governance_proposals,
-};
-use shared::{
-    block::{BlockHeight, Epoch},
-    error::ContextDbInteractError,
-    utils::GovernanceProposalShort,
-};
-use tendermint_rpc::HttpClient;
+use orm::governance_proposal::GovernanceProposalResultDb;
+use orm::schema::governance_proposals;
+use shared::error::ContextDbInteractError;
+use shared::utils::GovernanceProposalShort;
 
 pub async fn get_all_running_proposals(
     conn: Object,

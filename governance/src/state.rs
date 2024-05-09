@@ -14,7 +14,10 @@ impl AppState {
             .unwrap_or_else(|_| 8.to_string())
             .parse::<usize>()
             .unwrap_or(8_usize);
-        let pool_manager = deadpool_diesel::Manager::new(db_url, deadpool_diesel::Runtime::Tokio1);
+        let pool_manager = deadpool_diesel::Manager::new(
+            db_url,
+            deadpool_diesel::Runtime::Tokio1,
+        );
         let pool = DbPool::builder(pool_manager)
             .max_size(max_pool_size)
             .build()

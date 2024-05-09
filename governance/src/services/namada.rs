@@ -1,25 +1,16 @@
-use anyhow::{anyhow, Context};
-use deadpool_diesel::postgres::Object;
-use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl};
+use anyhow::Context;
+use diesel::ExpressionMethods;
 use futures::StreamExt;
-use namada_core::storage::BlockHeight as NamadaSdkBlockHeight;
 use namada_sdk::rpc;
-use orm::{
-    governance_proposal::GovernanceProposalResultDb,
-    schema::governance_proposals,
-};
-use shared::{
-    block::{BlockHeight, Epoch},
-    error::ContextDbInteractError,
-    proposal::{GovernanceProposalResult, GovernanceProposalStatus},
-    utils::GovernanceProposalShort,
-};
+use shared::block::Epoch;
+use shared::proposal::{GovernanceProposalResult, GovernanceProposalStatus};
+use shared::utils::GovernanceProposalShort;
 use tendermint_rpc::HttpClient;
 
 pub async fn query_last_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
     let epoch = rpc::query_epoch(client)
         .await
-        .with_context(|| format!("Failed to query Namada's epoch epoch"))?;
+        .with_context(|| "Failed to query Namada's epoch epoch".to_string())?;
     Ok(epoch.0 as Epoch)
 }
 
