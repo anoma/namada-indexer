@@ -18,12 +18,11 @@ impl From<Amount> for Base10000BigUint {
         let slice: Vec<u32> = value
             .0
             .iter()
-            .map(|v| {
+            .flat_map(|v| {
                 let low: u32 = (v & 0xFFFFFFFF) as u32;
                 let high: u32 = (v >> 32) as u32;
                 vec![low, high]
             })
-            .flatten()
             .collect();
         let big_uint = BigUint::from_slice(&slice);
 

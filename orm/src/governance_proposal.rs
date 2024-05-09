@@ -1,7 +1,10 @@
 use diesel::query_builder::AsChangeset;
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use shared::proposal::{GovernanceProposal, GovernanceProposalKind, GovernanceProposalResult, GovernanceProposalStatus};
+use shared::proposal::{
+    GovernanceProposal, GovernanceProposalKind, GovernanceProposalResult,
+    GovernanceProposalStatus,
+};
 
 use crate::schema::governance_proposals;
 
@@ -115,8 +118,8 @@ impl From<GovernanceProposalStatus> for GovernanceProposalUpdateStatusDb {
 }
 
 // impl GovernanceProposalUpdateStatusDb {
-//     pub fn from_proposal_status(proposal_status: GovernanceProposalStatus) -> Self {
-//         Self {
+//     pub fn from_proposal_status(proposal_status: GovernanceProposalStatus) ->
+// Self {         Self {
 //             yay_votes: proposal_status.yay_votes,
 //             nay_votes: proposal_status.nay_votes,
 //             abstain_votes: proposal_status.abstain_votes,
