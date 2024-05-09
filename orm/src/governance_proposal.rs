@@ -1,7 +1,7 @@
 use diesel::query_builder::AsChangeset;
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use shared::proposal::{GovernanceProposal, GovernanceProposalKind};
+use shared::proposal::{GovernanceProposal, GovernanceProposalKind, GovernanceProposalResult, GovernanceProposalStatus};
 
 use crate::schema::governance_proposals;
 
@@ -33,6 +33,17 @@ pub enum GovernanceProposalResultDb {
     Pending,
     Unknown,
     VotingPeriod,
+}
+
+impl From<GovernanceProposalResult> for GovernanceProposalResultDb {
+    fn from(value: GovernanceProposalResult) -> Self {
+        match value {
+            GovernanceProposalResult::Passed => Self::Passed,
+            GovernanceProposalResult::Rejected => Self::Rejected,
+            GovernanceProposalResult::VotingPeriod => Self::VotingPeriod,
+            GovernanceProposalResult::Pending => Self::Pending,
+        }
+    }
 }
 
 #[derive(Serialize, Queryable, Selectable, Insertable, Clone)]
@@ -91,3 +102,25 @@ pub struct GovernanceProposalUpdateStatusDb {
     pub abstain_votes: String,
     pub result: GovernanceProposalResultDb,
 }
+
+impl From<GovernanceProposalStatus> for GovernanceProposalUpdateStatusDb {
+    fn from(value: GovernanceProposalStatus) -> Self {
+        Self {
+            yay_votes: value.yay_votes,
+            nay_votes: value.nay_votes,
+            abstain_votes: value.abstain_votes,
+            result: value.result.into(),
+        }
+    }
+}
+
+// impl GovernanceProposalUpdateStatusDb {
+//     pub fn from_proposal_status(proposal_status: GovernanceProposalStatus) -> Self {
+//         Self {
+//             yay_votes: proposal_status.yay_votes,
+//             nay_votes: proposal_status.nay_votes,
+//             abstain_votes: proposal_status.abstain_votes,
+//             result: proposal_status.result.into(),
+//         }
+//     }
+// }

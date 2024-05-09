@@ -22,6 +22,9 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub tendermint_url: String,
 
+    #[clap(long, env, default_value_t = 900)]
+    pub sleep_for: u64,
+
     #[clap(long, env)]
     pub database_url: String,
 

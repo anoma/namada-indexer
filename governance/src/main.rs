@@ -8,8 +8,11 @@ use std::{
 
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
+use diesel::QueryDsl;
+use diesel::RunQueryDsl;
 use governance::services::{db as db_service, namada as namada_service};
 use governance::{config::AppConfig, state::AppState};
+use orm::{governance_proposal::GovernanceProposalUpdateStatusDb, schema::governance_proposals};
 use shared::error::{AsDbError, AsRpcError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::{signal, time::sleep};
@@ -76,32 +79,32 @@ async fn main() -> anyhow::Result<()> {
                     running_governance_proposals.len()
                 );
 
-                let proposals_updates =
+                let proposals_statuses =
                     namada_service::get_governance_proposals_updates(&client, running_governance_proposals, epoch as u32)
                         .await
                         .map_err(|_| MainError::RpcError)?;
-                tracing::info!("Got {} proposal updates...", proposals_updates.len());
+                tracing::info!("Got {} proposals statuses updates...", proposals_statuses.len());
 
-                // let conn = app_state.get_db_connection().await.into_db_error()?;
-                // conn.interact(move |conn| {
-                //     conn.build_transaction().read_write().run(
-                //         |transaction_conn: &mut diesel::prelude::PgConnection| {
-                //             for (proposal_id, proposal_update) in proposals_updates {
-                //                 diesel::update(governance_proposals::table.find(proposal_id))
-                //                     .set(proposal_update)
-                //                     .execute(transaction_conn)?;
-                //             }
-                //             anyhow::Ok(())
-                //         },
-                //     )
-                // })
-                // .await
-                // .map_err(|_| MainError::Database)?
-                // .map_err(|_| MainError::Database)?;
+                let conn = app_state.get_db_connection().await.into_db_error()?;
+                conn.interact(move |conn| {
+                    conn.build_transaction().read_write().run(
+                        |transaction_conn: &mut diesel::prelude::PgConnection| {
+                            for proposal_status in proposals_statuses {
+                                diesel::update(governance_proposals::table.find(proposal_status.id as i32))
+                                    .set::<GovernanceProposalUpdateStatusDb>(proposal_status.into())
+                                    .execute(transaction_conn)?;
+                            }
+                            anyhow::Ok(())
+                        },
+                    )
+                })
+                .await
+                .map_err(|_| MainError::Database)?
+                .map_err(|_| MainError::Database)?;
 
                 tracing::info!("Done!");
 
-                sleep(Duration::from_secs(900)).await;
+                sleep(Duration::from_secs(config.sleep_for)).await;
 
                 Ok(())
             },
