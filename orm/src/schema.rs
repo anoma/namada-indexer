@@ -37,6 +37,7 @@ diesel::table! {
         id -> Int4,
         address -> Varchar,
         validator_id -> Int4,
+        raw_amount -> Numeric,
     }
 }
 
@@ -81,11 +82,12 @@ diesel::table! {
 }
 
 diesel::table! {
-    pos_rewards (id) {
+    unbonds (id) {
         id -> Int4,
-        owner -> Varchar,
-        epoch -> Int4,
+        address -> Varchar,
+        validator_id -> Int4,
         raw_amount -> Numeric,
+        withdraw_epoch -> Int4,
     }
 }
 
@@ -107,6 +109,7 @@ diesel::table! {
 
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balances,
@@ -115,6 +118,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     epoch_crawler_state,
     governance_proposals,
     governance_votes,
-    pos_rewards,
+    unbonds,
     validators,
 );

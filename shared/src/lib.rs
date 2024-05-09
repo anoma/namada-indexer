@@ -11,6 +11,7 @@ pub mod id;
 pub mod proposal;
 pub mod rewards;
 pub mod transaction;
+pub mod unbond;
 pub mod utils;
 pub mod validator;
 pub mod vote;

@@ -8,13 +8,14 @@ use namada_core::storage::{
 use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
-use shared::balance::{Address, Amount, Balance, Balances};
+use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::id::Id;
+use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use tendermint_rpc::HttpClient;
 
-use shared::bond::{Bond, Bonds};
+use shared::bond::{Bond, BondAddresses, Bonds};
 
 pub async fn is_block_committed(
     client: &HttpClient,
@@ -76,8 +77,8 @@ pub async fn query_balance(
             .unwrap_or_default();
 
         res.push(Balance {
-            owner: owner.to_string(),
-            token: token.to_string(),
+            owner: Id::from(owner),
+            token: Id::from(token),
             amount: Amount::from(amount),
         });
     }
@@ -110,28 +111,63 @@ pub async fn query_next_governance_id(
 
 pub async fn query_bonds(
     client: &HttpClient,
-    addresses: Vec<(Address, Address)>,
+    addresses: Vec<BondAddresses>,
+    epoch: Epoch,
 ) -> anyhow::Result<Bonds> {
     let mut bonds = vec![];
 
-    for (source, target) in addresses {
+    for BondAddresses { source, target } in addresses {
         //TODO: unwrap
         let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
         let target = NamadaSdkAddress::from_str(&target.to_string()).unwrap();
 
-        let amount = rpc::query_bond(client, &source, &target, None)
-            .await
-            .context("Failed to query bond amount")?;
+        //TODO: should we get bond with slashes
+        let amount =
+            rpc::query_bond(client, &source, &target, Some(to_epoch(epoch)))
+                .await
+                .context("Failed to query bond amount")?;
 
         bonds.push(Bond {
-            source: source.to_string(),
-            target: target.to_string(),
+            source: Id::from(source),
+            target: Id::from(target),
             amount: Amount::from(amount),
         });
     }
 
+    anyhow::Ok(Bonds {
+        epoch,
+        values: bonds,
+    })
+}
+
+pub async fn query_unbonds(
+    client: &HttpClient,
+    addresses: Vec<UnbondAddresses>,
+) -> anyhow::Result<Unbonds> {
+    let mut unbonds = vec![];
+
+    for UnbondAddresses { source, target } in addresses {
+        //TODO: unwrap
+        let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
+        let target = NamadaSdkAddress::from_str(&target.to_string()).unwrap();
+
+        let res = rpc::query_unbond_with_slashing(client, &source, &target)
+            .await
+            .context("Failed to query unbond amount")?;
+
+        let ((_, withdraw_epoch), amount) =
+            res.last().context("Unbonds are empty")?;
+
+        unbonds.push(Unbond {
+            source: Id::from(source),
+            target: Id::from(target),
+            amount: Amount::from(*amount),
+            withdraw_at: withdraw_epoch.0 as Epoch,
+        });
+    }
+
     //TODO: remove epoch
-    anyhow::Ok(Bonds { epoch: 0, bonds })
+    anyhow::Ok(unbonds)
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {

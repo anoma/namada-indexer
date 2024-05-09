@@ -44,6 +44,7 @@ impl Iterator for Base10000BigUint {
     }
 }
 
+#[derive(Clone)]
 pub struct PgNumericInt(PgNumeric);
 
 impl PgNumericInt {

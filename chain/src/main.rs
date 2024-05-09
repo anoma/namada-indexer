@@ -12,12 +12,17 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::RunQueryDsl;
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
+    SelectableHelper,
+};
 use orm::balances::BalancesInsertDb;
 use orm::block_crawler_state::BlockCrawlerStateInsertDb;
+use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
-use orm::schema::{balances, block_crawler_state};
+use orm::schema::{balances, block_crawler_state, validators};
+use orm::validators::ValidatorDb;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -142,11 +147,18 @@ async fn crawling_fn(
 
     let proposals_votes = block.governance_votes();
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
-    let addresses = block.addresses_that_bonded();
-    let bonds = namada_service::query_bonds(&client, addresses)
+
+    let addresses = block.bond_addresses();
+    let bonds = namada_service::query_bonds(&client, addresses, epoch)
         .await
         .into_rpc_error()?;
-    tracing::info!("Updating bonds {:?} ", bonds);
+    tracing::info!("Updating bonds for {} addresses", bonds.values.len());
+
+    let addresses = block.unbond_addresses();
+    let unbonds = namada_service::query_unbonds(&client, addresses)
+        .await
+        .into_rpc_error()?;
+    tracing::info!("Updating unbonds for {} addresses", unbonds.len());
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -193,6 +205,28 @@ async fn crawling_fn(
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to update balances in db")?;
+
+                    //TODO: should we move all those calls to the "repo"
+                    diesel::insert_into(orm::schema::bonds::table)
+                        .values::<&Vec<BondInsertDb>>(
+                            &bonds
+                            .values
+                            .into_iter()
+                            .map(|bond| {
+                                let validator: ValidatorDb = validators::table
+                                    .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
+                                    .select(ValidatorDb::as_select())
+                                    .first(transaction_conn)
+                                    //TODO: map error
+                                    .unwrap();
+
+                                BondInsertDb::from_bond(bond, validator.id)
+
+                            })
+                            .collect::<Vec<_>>())
+                        .on_conflict_do_nothing()
+                        .execute(transaction_conn)
+                        .context("Failed to update balances in db")?;
 
                 //TODO: should we always override the db
                 diesel::insert_into(block_crawler_state::table)

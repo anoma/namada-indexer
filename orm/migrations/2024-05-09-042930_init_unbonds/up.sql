@@ -1,11 +1,12 @@
 -- Your SQL goes here
 
-CREATE TABLE bonds (
+CREATE TABLE unbonds (
     id SERIAL PRIMARY KEY,
     address VARCHAR NOT NULL,
     validator_id SERIAL references validators(id),
-    raw_amount NUMERIC(78) NOT NULL
+    raw_amount NUMERIC(78) NOT NULL,
+    withdraw_epoch INT NOT NULL
 );
 
-ALTER TABLE bonds
+ALTER TABLE unbonds
 ADD UNIQUE (address, validator_id);
