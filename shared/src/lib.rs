@@ -12,3 +12,4 @@ pub mod transaction;
 pub mod utils;
 pub mod validator;
 pub mod vote;
+pub mod rewards;

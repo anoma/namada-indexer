@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::str::FromStr;
 
 use namada_core::address::Address as NamadaAddress;
 use namada_core::hash::Hash as NamadaHash;
@@ -61,5 +62,14 @@ impl From<NamadaHash> for Id {
 impl From<NamadaAddress> for Id {
     fn from(value: NamadaAddress) -> Self {
         Self::Account(value.to_string().to_lowercase())
+    }
+}
+
+impl From<Id> for NamadaAddress {
+    fn from(value: Id) -> Self {
+        match value {
+            Id::Account(account) => NamadaAddress::from_str(&account).unwrap(),
+            Id::Hash(_) => panic!(),
+        }
     }
 }
