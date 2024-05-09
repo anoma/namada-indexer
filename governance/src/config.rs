@@ -1,6 +1,7 @@
-use clap_verbosity_flag::{InfoLevel, Verbosity};
 use core::fmt;
 use std::fmt::Display;
+
+use clap_verbosity_flag::{InfoLevel, Verbosity};
 
 #[derive(clap::ValueEnum, Clone, Debug, Copy)]
 pub enum CargoEnv {

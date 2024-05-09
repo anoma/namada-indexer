@@ -1,15 +1,10 @@
-use std::{
-    sync::{
-        atomic::{self, AtomicBool},
-        Arc,
-    },
-    time::Duration,
-};
+use std::sync::atomic::{self, AtomicBool};
+use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::QueryDsl;
-use diesel::RunQueryDsl;
+use diesel::{QueryDsl, RunQueryDsl};
 use governance::services::{db as db_service, namada as namada_service};
 use governance::{config::AppConfig, state::AppState};
 use orm::{
@@ -18,11 +13,10 @@ use orm::{
 };
 use shared::error::{AsDbError, AsRpcError, MainError};
 use tendermint_rpc::HttpClient;
-use tokio::{signal, time::sleep};
-use tokio_retry::{
-    strategy::{jitter, FixedInterval},
-    RetryIf,
-};
+use tokio::signal;
+use tokio::time::sleep;
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::RetryIf;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
