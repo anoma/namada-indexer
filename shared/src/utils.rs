@@ -11,3 +11,10 @@ impl BalanceChange {
         Self { address, token }
     }
 }
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct GovernanceProposalShort {
+    pub id: u64,
+    pub voting_start_epoch: u64,
+    pub voting_end_epoch: u64,
+}

@@ -103,7 +103,6 @@ async fn crawling_fn(
         tm_block_response.block.data.len()
     );
 
-    // TODO: add later to filter out rejected txs
     tracing::info!("Query block results...");
     let tm_block_results_response =
         tendermint_service::query_raw_block_results_at_height(
