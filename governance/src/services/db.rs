@@ -8,7 +8,6 @@ use shared::utils::GovernanceProposalShort;
 
 pub async fn get_all_running_proposals(
     conn: Object,
-    current_epoch: i32,
 ) -> anyhow::Result<Vec<GovernanceProposalShort>> {
     use diesel::connection::DefaultLoadingMode;
 
@@ -20,15 +19,7 @@ pub async fn get_all_running_proposals(
                         .ne(GovernanceProposalResultDb::Passed)
                         .and(
                             governance_proposals::dsl::result
-                                .ne(GovernanceProposalResultDb::Rejected)
-                                .and(
-                                    governance_proposals::dsl::end_epoch
-                                        .ge(current_epoch),
-                                )
-                                .and(
-                                    governance_proposals::dsl::start_epoch
-                                        .le(current_epoch),
-                                ),
+                                .ne(GovernanceProposalResultDb::Rejected),
                         ),
                 )
                 .select((

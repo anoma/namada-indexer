@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
                     .into_rpc_error()?;
 
                 let running_governance_proposals =
-                    db_service::get_all_running_proposals(conn, epoch as i32)
+                    db_service::get_all_running_proposals(conn)
                         .await
                         .map_err(|_| MainError::Database)?;
                 tracing::info!(

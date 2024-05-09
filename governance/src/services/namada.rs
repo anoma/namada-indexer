@@ -1,5 +1,4 @@
 use anyhow::Context;
-use diesel::ExpressionMethods;
 use futures::StreamExt;
 use namada_sdk::rpc;
 use shared::block::Epoch;
