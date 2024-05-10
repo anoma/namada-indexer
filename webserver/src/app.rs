@@ -39,7 +39,7 @@ impl ApplicationServer {
             let common_state = CommonState::new(app_state.clone());
 
             Router::new()
-                .route("/chain/validators", get(pos_handlers::get_validators))
+                .route("/pos/validator", get(pos_handlers::get_validators))
                 .with_state(common_state)
         };
 

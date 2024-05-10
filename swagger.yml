@@ -1,0 +1,148 @@
+openapi: '3.0.2'
+info:
+  title: Namada Interface Indexer REST Api
+  version: '1.0'
+servers:
+  - url: http://localhost:5000/v1/api
+paths:
+  /health:
+    get:
+      responses:
+        '200':
+          description: Health check
+  /pos/validator:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /pos/reward/{account}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /pos/bond/{account}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /pos/unbonds/{account}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /pos/withdrawal/{account}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'    
+  /gov/proposal:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /gov/proposal/{id}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /gov/proposal/{id}/votes:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /gov/proposal/{id}/votes/{account}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+  /account/{account}:
+    get:
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorResponse'
+
+components:
+  schemas:
+    ValidatorResponse:
+      type: object
+      properties:
+        address:
+          type: string
+        name:
+          type: string
+        voting_power:
+          type: string
+        max_commission:
+          type: string
+        commission:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        description:
+          type: string
+        discord_handle:
+          type: string
+        avatar:
+          type: string
