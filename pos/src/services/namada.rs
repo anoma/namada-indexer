@@ -44,7 +44,7 @@ pub async fn get_validator_set_at_epoch(
                                  {address} at epoch {namada_epoch}"
                             )
                         })?;
-                metadata.zip(commission).ok_or_else(|| {
+                metadata.zip(Some(commission)).ok_or_else(|| {
                     anyhow!(
                         "Metadata and commission must be present for \
                          validator {address} at epoch {namada_epoch}"
@@ -53,15 +53,16 @@ pub async fn get_validator_set_at_epoch(
             };
 
             let (voting_power, (metadata, commission)) =
-                futures::try_join!(voting_power_fut, meta_and_comm_fut,)?;
+                futures::try_join!(voting_power_fut, meta_and_comm_fut)?;
 
             anyhow::Ok(Validator {
                 address: Id::Account(address.to_string()),
                 voting_power: voting_power.to_string_native(),
                 max_commission: commission
                     .max_commission_change_per_epoch
-                    .to_string(),
-                commission: commission.commission_rate.to_string(),
+                    .unwrap()
+                    .to_string(), // this should be safe
+                commission: commission.commission_rate.unwrap().to_string(), // this should be safe
                 email: metadata.email,
                 description: metadata.description,
                 website: metadata.website,
