@@ -22,5 +22,5 @@ pub struct GovernanceProposalShort {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct DelegationPair {
     pub validator_address: Id,
-    pub delegator_address: Id
+    pub delegator_address: Id,
 }

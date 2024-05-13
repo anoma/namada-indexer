@@ -4,10 +4,10 @@ use std::time::Duration;
 
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::{QueryDsl, RunQueryDsl};
+use diesel::RunQueryDsl;
 use orm::pos_rewards::PosRewardInsertDb;
 use rewards::config::AppConfig;
-use rewards::services::{db as db_service, namada as namada_service};
+use rewards::services::namada as namada_service;
 use rewards::state::AppState;
 use shared::error::{AsDbError, AsRpcError, MainError};
 use tendermint_rpc::HttpClient;
@@ -57,11 +57,8 @@ async fn main() -> anyhow::Result<()> {
             || async {
                 tracing::info!("Starting to update proposals...");
 
-                let conn =
-                    app_state.get_db_connection().await.into_db_error()?;
-
                 tracing::info!("Query epoch...");
-                let epoch = db_service::query_last_indexed_epoch(conn)
+                let epoch = namada_service::get_current_epoch(&client)
                     .await
                     .into_rpc_error()?;
 
@@ -71,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
                     return Ok(());
                 }
 
+                // TODO: change this by querying all the pairs in the database
                 let delegations_pairs =
                     namada_service::query_delegation_pairs(&client)
                         .await

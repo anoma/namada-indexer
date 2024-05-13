@@ -1,4 +1,5 @@
-use crate::{balance::Amount, utils::DelegationPair};
+use crate::balance::Amount;
+use crate::utils::DelegationPair;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Reward {

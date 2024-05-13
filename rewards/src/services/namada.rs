@@ -7,9 +7,8 @@ use namada_sdk::rpc;
 use shared::balance::Amount;
 use shared::block::Epoch;
 use shared::id::Id;
-use shared::proposal::{GovernanceProposalResult, GovernanceProposalStatus};
 use shared::rewards::Reward;
-use shared::utils::{DelegationPair, GovernanceProposalShort};
+use shared::utils::DelegationPair;
 use tendermint_rpc::HttpClient;
 
 pub async fn query_delegation_pairs(
@@ -71,4 +70,12 @@ pub async fn query_rewards(
         .buffer_unordered(20)
         .collect::<Vec<_>>()
         .await)
+}
+
+pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
+    let epoch = rpc::query_epoch(client)
+        .await
+        .context("Failed to query Namada's current epoch")?;
+
+    Ok(epoch.0 as Epoch)
 }

@@ -1,7 +1,6 @@
 use diesel::data_types::PgNumeric;
 use diesel::Insertable;
-use shared::balance::Balance;
-use shared::block::{BlockHeight, Epoch};
+use shared::block::Epoch;
 use shared::rewards::Reward;
 
 use crate::schema::pos_rewards;
