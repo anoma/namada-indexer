@@ -13,10 +13,9 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::RunQueryDsl;
-use namada_governance::cli;
 use orm::balances::BalancesInsertDb;
 use orm::block_crawler_state::BlockCrawlerStateInsertDb;
-use orm::governance_proposal::{self, GovernanceProposalInsertDb};
+use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::schema::{balances, block_crawler_state};
 use shared::block::Block;
@@ -103,7 +102,6 @@ async fn crawling_fn(
         tm_block_response.block.data.len()
     );
 
-    // TODO: add later to filter out rejected txs
     tracing::info!("Query block results...");
     let tm_block_results_response =
         tendermint_service::query_raw_block_results_at_height(
