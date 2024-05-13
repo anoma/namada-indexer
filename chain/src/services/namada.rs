@@ -121,11 +121,18 @@ pub async fn query_bonds(
         let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
         let target = NamadaSdkAddress::from_str(&target.to_string()).unwrap();
 
-        //TODO: should we get bond with slashes
-        let amount =
-            rpc::query_bond(client, &source, &target, Some(to_epoch(epoch)))
-                .await
-                .context("Failed to query bond amount")?;
+        let amount = RPC
+            .vp()
+            .pos()
+            .bond_with_slashing(
+                client,
+                &source,
+                &target,
+                //TODO: + 2 is hardcoded pipeline len
+                &Some(to_epoch(epoch + 2)),
+            )
+            .await
+            .context("Failed to query bond amount")?;
 
         bonds.push(Bond {
             source: Id::from(source),
@@ -143,31 +150,37 @@ pub async fn query_bonds(
 pub async fn query_unbonds(
     client: &HttpClient,
     addresses: Vec<UnbondAddresses>,
+    epoch: Epoch,
 ) -> anyhow::Result<Unbonds> {
     let mut unbonds = vec![];
 
-    for UnbondAddresses { source, target } in addresses {
+    for UnbondAddresses { source, validator } in addresses {
         //TODO: unwrap
         let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
-        let target = NamadaSdkAddress::from_str(&target.to_string()).unwrap();
+        let validator =
+            NamadaSdkAddress::from_str(&validator.to_string()).unwrap();
 
-        let res = rpc::query_unbond_with_slashing(client, &source, &target)
+        let res = rpc::query_unbond_with_slashing(client, &source, &validator)
             .await
             .context("Failed to query unbond amount")?;
+
+        tracing::info!("unbonds {:?}", res);
 
         let ((_, withdraw_epoch), amount) =
             res.last().context("Unbonds are empty")?;
 
         unbonds.push(Unbond {
             source: Id::from(source),
-            target: Id::from(target),
+            target: Id::from(validator),
             amount: Amount::from(*amount),
             withdraw_at: withdraw_epoch.0 as Epoch,
         });
     }
 
-    //TODO: remove epoch
-    anyhow::Ok(unbonds)
+    anyhow::Ok(Unbonds {
+        epoch,
+        values: unbonds,
+    })
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {

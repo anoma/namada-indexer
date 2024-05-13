@@ -4,7 +4,7 @@ use crate::{balance::Amount, block::Epoch, id::Id};
 #[derive(Debug, Clone)]
 pub struct UnbondAddresses {
     pub source: Id,
-    pub target: Id,
+    pub validator: Id,
 }
 
 #[derive(Debug, Clone)]
@@ -15,4 +15,8 @@ pub struct Unbond {
     pub withdraw_at: Epoch,
 }
 
-pub type Unbonds = Vec<Unbond>;
+#[derive(Debug, Clone)]
+pub struct Unbonds {
+    pub epoch: Epoch,
+    pub values: Vec<Unbond>,
+}

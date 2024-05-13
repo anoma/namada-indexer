@@ -12,6 +12,7 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
+use diesel::upsert::excluded;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
     SelectableHelper,
@@ -22,6 +23,7 @@ use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::schema::{balances, block_crawler_state, validators};
+use orm::unbond::UnbondInsertDb;
 use orm::validators::ValidatorDb;
 use shared::block::Block;
 use shared::block_result::BlockResult;
@@ -155,10 +157,10 @@ async fn crawling_fn(
     tracing::info!("Updating bonds for {} addresses", bonds.values.len());
 
     let addresses = block.unbond_addresses();
-    let unbonds = namada_service::query_unbonds(&client, addresses)
+    let unbonds = namada_service::query_unbonds(&client, addresses, epoch)
         .await
         .into_rpc_error()?;
-    tracing::info!("Updating unbonds for {} addresses", unbonds.len());
+    tracing::info!("Updating unbonds for {} addresses", unbonds.values.len());
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -214,6 +216,7 @@ async fn crawling_fn(
                             .into_iter()
                             .map(|bond| {
                                 let validator: ValidatorDb = validators::table
+                                    //TODO: maybe we do not need to have epoch in bonds?
                                     .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
                                     .select(ValidatorDb::as_select())
                                     .first(transaction_conn)
@@ -224,7 +227,38 @@ async fn crawling_fn(
 
                             })
                             .collect::<Vec<_>>())
-                        .on_conflict_do_nothing()
+                        .on_conflict((orm::schema::bonds::columns::validator_id, orm::schema::bonds::columns::address))
+                        .do_update()
+                        .set(orm::schema::bonds::columns::raw_amount
+                            .eq(excluded(orm::schema::bonds::columns::raw_amount)))
+                        .execute(transaction_conn)
+                        .context("Failed to update balances in db")?;
+
+                    //TODO: should we move all those calls to the "repo"
+                    diesel::insert_into(orm::schema::unbonds::table)
+                        .values::<&Vec<UnbondInsertDb>>(
+                            &unbonds
+                            .values
+                            .into_iter()
+                            .map(|unbond| {
+                                let validator: ValidatorDb = validators::table
+                                    //TODO: maybe we do not need to have epoch in unbonds?
+                                    .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
+                                    .select(ValidatorDb::as_select())
+                                    .first(transaction_conn)
+                                    //TODO: map error
+                                    .unwrap();
+
+                                UnbondInsertDb::from_unbond(unbond, validator.id)
+
+                            })
+                            .collect::<Vec<_>>())
+                        .on_conflict((orm::schema::unbonds::columns::validator_id, orm::schema::unbonds::columns::address))
+                        .do_update()
+                        .set((orm::schema::unbonds::columns::raw_amount
+                              .eq(excluded(orm::schema::unbonds::columns::raw_amount)),
+                              orm::schema::unbonds::columns::withdraw_epoch
+                              .eq(excluded(orm::schema::unbonds::columns::withdraw_epoch))))
                         .execute(transaction_conn)
                         .context("Failed to update balances in db")?;
 

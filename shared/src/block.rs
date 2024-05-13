@@ -329,6 +329,20 @@ impl Block {
                         target: Id::from(target_address),
                     })
                 }
+                TransactionKind::Unbond(data) => {
+                    let unbond_data =
+                        namada_tx::data::pos::Unbond::try_from_slice(data)
+                            .unwrap();
+                    let source_address = unbond_data
+                        .source
+                        .unwrap_or(unbond_data.validator.clone());
+                    let validator_address = unbond_data.validator;
+
+                    Some(BondAddresses {
+                        source: Id::from(source_address),
+                        target: Id::from(validator_address),
+                    })
+                }
                 _ => None,
             })
             .collect()
@@ -345,11 +359,11 @@ impl Block {
                     let source_address = unbond_data
                         .source
                         .unwrap_or(unbond_data.validator.clone());
-                    let target_address = unbond_data.validator;
+                    let validator_address = unbond_data.validator;
 
                     Some(UnbondAddresses {
                         source: Id::from(source_address),
-                        target: Id::from(target_address),
+                        validator: Id::from(validator_address),
                     })
                 }
                 _ => None,
