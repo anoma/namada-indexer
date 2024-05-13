@@ -18,3 +18,9 @@ pub struct GovernanceProposalShort {
     pub voting_start_epoch: u64,
     pub voting_end_epoch: u64,
 }
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct DelegationPair {
+    pub validator_address: Id,
+    pub delegator_address: Id,
+}

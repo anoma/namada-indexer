@@ -85,6 +85,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    pos_rewards (id) {
+        id -> Int4,
+        owner -> Varchar,
+        epoch -> Int4,
+        raw_amount -> Numeric,
+    }
+}
+
+diesel::table! {
     validators (id) {
         id -> Int4,
         namada_address -> Varchar,
@@ -108,5 +117,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     epoch_crawler_state,
     governance_proposals,
     governance_votes,
+    pos_rewards,
     validators,
 );

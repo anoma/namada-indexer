@@ -8,6 +8,7 @@ pub mod error;
 pub mod header;
 pub mod id;
 pub mod proposal;
+pub mod rewards;
 pub mod transaction;
 pub mod utils;
 pub mod validator;
