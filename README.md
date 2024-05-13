@@ -2,6 +2,8 @@
 
 A set of microservices that crawler data from a namada node, store them in a postgres database and serve them via a REST api.
 
+> 🔧 This is currently being worked on. Don't expect things to work! 🔧
+
 ## Architecture
 
 The indexer is composed of a set microservices and a webserver, each one of these lives in his own crate. Each microservice is responsible of indexing some data from the chain and store them in the postgres database. Right now, there are 4 microservices:
