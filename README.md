@@ -13,3 +13,12 @@ The indexer is composed of a set microservices and a webserver, each one of thes
 The `webserver` is responsible to serve the data via a REST api.
 
 ![Namada indexer architecture](docs/architecture.png "Architecture")
+
+## How to run
+
+- Get a Namada RPC url
+    - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
+    - Or use a Public RPC 
+- Change `CHAIN_ID` and `CHECKSUMS_FILE` env variable and file
+- Install [just](https://github.com/casey/just)
+- Run `just docker-run`

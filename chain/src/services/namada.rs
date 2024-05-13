@@ -86,6 +86,7 @@ pub async fn query_next_governance_id(
     let proposal_counter_key =
         namada_sdk::governance::storage::keys::get_counter_key();
     let block_height = to_block_height(block_height);
+
     let query_result = RPC
         .shell()
         .storage_value(

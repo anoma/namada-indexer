@@ -5,12 +5,11 @@ use std::time::Duration;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::{QueryDsl, RunQueryDsl};
+use governance::config::AppConfig;
 use governance::services::{db as db_service, namada as namada_service};
-use governance::{config::AppConfig, state::AppState};
-use orm::{
-    governance_proposal::GovernanceProposalUpdateStatusDb,
-    schema::governance_proposals,
-};
+use governance::state::AppState;
+use orm::governance_proposal::GovernanceProposalUpdateStatusDb;
+use orm::schema::governance_proposals;
 use shared::error::{AsDbError, AsRpcError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
