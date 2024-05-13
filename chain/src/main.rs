@@ -22,7 +22,7 @@ use orm::block_crawler_state::BlockCrawlerStateInsertDb;
 use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
-use orm::schema::{balances, block_crawler_state, validators};
+use orm::schema::{balances, block_crawler_state, bonds, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::ValidatorDb;
 use shared::block::Block;
@@ -69,6 +69,11 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
+    let next_block = match last_block_height {
+        Some(height) => height + 1,
+        None => 1,
+    };
+
     crawl(
         move |block_height| {
             crawling_fn(
@@ -78,7 +83,7 @@ async fn main() -> Result<(), MainError> {
                 checksums.clone(),
             )
         },
-        last_block_height,
+        next_block,
     )
     .await
 }
@@ -193,7 +198,7 @@ async fn crawling_fn(
                     )
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
+                    .context("Failed to update governance proposals in db")?;
 
                     diesel::insert_into(orm::schema::governance_votes::table)
                     .values::<&Vec<GovernanceProposalVoteInsertDb>>(
@@ -206,63 +211,58 @@ async fn crawling_fn(
                     )
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
+                    .context("Failed to update governance votes in db")?;
 
                     //TODO: should we move all those calls to the "repo"
-                    diesel::insert_into(orm::schema::bonds::table)
+                    diesel::insert_into(bonds::table)
                         .values::<&Vec<BondInsertDb>>(
                             &bonds
                             .values
                             .into_iter()
                             .map(|bond| {
                                 let validator: ValidatorDb = validators::table
-                                    //TODO: maybe we do not need to have epoch in bonds?
                                     .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
                                     .select(ValidatorDb::as_select())
                                     .first(transaction_conn)
                                     //TODO: map error
                                     .unwrap();
 
-                                BondInsertDb::from_bond(bond, validator.id)
+                                BondInsertDb::from_bond(bond, validator.id, bonds.epoch)
 
                             })
                             .collect::<Vec<_>>())
-                        .on_conflict((orm::schema::bonds::columns::validator_id, orm::schema::bonds::columns::address))
+                        .on_conflict((bonds::columns::validator_id, bonds::columns::address, bonds::columns::epoch))
                         .do_update()
                         .set(orm::schema::bonds::columns::raw_amount
                             .eq(excluded(orm::schema::bonds::columns::raw_amount)))
                         .execute(transaction_conn)
-                        .context("Failed to update balances in db")?;
+                        .context("Failed to update bonds in db")?;
 
                     //TODO: should we move all those calls to the "repo"
-                    diesel::insert_into(orm::schema::unbonds::table)
+                    diesel::insert_into(unbonds::table)
                         .values::<&Vec<UnbondInsertDb>>(
                             &unbonds
                             .values
                             .into_iter()
                             .map(|unbond| {
                                 let validator: ValidatorDb = validators::table
-                                    //TODO: maybe we do not need to have epoch in unbonds?
                                     .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
                                     .select(ValidatorDb::as_select())
                                     .first(transaction_conn)
                                     //TODO: map error
                                     .unwrap();
 
-                                UnbondInsertDb::from_unbond(unbond, validator.id)
+                                UnbondInsertDb::from_unbond(unbond, validator.id, unbonds.epoch)
 
                             })
                             .collect::<Vec<_>>())
-                        .on_conflict((orm::schema::unbonds::columns::validator_id, orm::schema::unbonds::columns::address))
+                        .on_conflict((unbonds::columns::validator_id, unbonds::columns::address, unbonds::columns::epoch))
                         .do_update()
-                        .set((orm::schema::unbonds::columns::raw_amount
-                              .eq(excluded(orm::schema::unbonds::columns::raw_amount)),
-                              orm::schema::unbonds::columns::withdraw_epoch
-                              .eq(excluded(orm::schema::unbonds::columns::withdraw_epoch))))
+                        .set((unbonds::columns::raw_amount.eq(excluded(unbonds::columns::raw_amount)),
+                              unbonds::columns::withdraw_epoch.eq(excluded(unbonds::columns::withdraw_epoch))))
                         .execute(transaction_conn)
-                        .context("Failed to update balances in db")?;
+                        .context("Failed to update unbonds in db")?;
 
-                //TODO: should we always override the db
                 diesel::insert_into(block_crawler_state::table)
                     .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()

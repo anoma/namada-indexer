@@ -23,12 +23,12 @@ fn indexes(
     }
 }
 
-pub async fn crawl<F, Fut>(f: F, last_index: u32) -> Result<(), MainError>
+pub async fn crawl<F, Fut>(f: F, next_index: u32) -> Result<(), MainError>
 where
     F: Fn(u32) -> Fut,
     Fut: Future<Output = Result<(), MainError>>,
 {
-    let s = indexes(last_index + 1, None);
+    let s = indexes(next_index, None);
     pin_mut!(s);
     let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
     let must_exit = must_exit_handle();

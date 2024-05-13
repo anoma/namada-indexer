@@ -8,7 +8,7 @@ use shared::error::ContextDbInteractError;
 
 pub async fn get_last_synched_block(
     conn: &Object,
-) -> anyhow::Result<BlockHeight> {
+) -> anyhow::Result<Option<BlockHeight>> {
     let block_height = conn
         .interact(move |conn| {
             block_crawler_state::dsl::block_crawler_state
@@ -19,7 +19,5 @@ pub async fn get_last_synched_block(
         .context_db_interact_error()?
         .context("Failed to read block max height in db")?;
 
-    Ok(block_height
-        .map(|h| h as BlockHeight)
-        .unwrap_or(0 as BlockHeight))
+    Ok(block_height.map(|h| h as BlockHeight))
 }

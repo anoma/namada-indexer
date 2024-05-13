@@ -5,8 +5,9 @@ CREATE TABLE unbonds (
     address VARCHAR NOT NULL,
     validator_id SERIAL references validators(id),
     raw_amount NUMERIC(78) NOT NULL,
+    epoch INT NOT NULL,
     withdraw_epoch INT NOT NULL
 );
 
 ALTER TABLE unbonds
-ADD UNIQUE (address, validator_id);
+ADD UNIQUE (address, validator_id, epoch);
