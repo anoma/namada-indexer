@@ -12,3 +12,6 @@ clippy:
 
 clippy-fix:
     cargo clippy --fix --allow-dirty --allow-staged
+
+docker-up:
+    docker compose up

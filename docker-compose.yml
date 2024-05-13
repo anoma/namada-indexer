@@ -1,0 +1,74 @@
+include:
+  - docker-compose-db.yml
+
+services:
+  chain:
+    restart: on-failure
+    depends_on: 
+      - postgres
+    image: namada/chain-indexer
+    build:
+      context: .
+      dockerfile: chain/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
+      TENDERMINT_URL: http://localhost:27657
+      CHAIN_ID: local.1321312131
+      CHECKSUMS_FILE: /app/checksums.json
+
+  governance:
+    restart: on-failure
+    depends_on: 
+      - postgres
+    image: namada/governance-indexer
+    build:
+      context: .
+      dockerfile: governance/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
+      TENDERMINT_URL: http://localhost:27657
+
+  pos:
+    image: namada/pos-indexer
+    restart: on-failure
+    depends_on: 
+      - postgres
+    build:
+      context: .
+      dockerfile: pos/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
+      TENDERMINT_URL: http://localhost:27657
+
+  rewards:
+    image: namada/rewards-indexer
+    restart: on-failure
+    depends_on: 
+      - postgres
+    build:
+      context: .
+      dockerfile: rewards/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
+      TENDERMINT_URL: http://localhost:27657
+
+  webserver:
+    image: namada/webserver-indexer
+    restart: on-failure
+    depends_on: 
+      - postgres
+      - dragonfly
+    build:
+      context: .
+      dockerfile: webserver/Dockerfile
+    ports:
+      - 5000:5000
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
+      CACHE_URL: redis://dragonfly:6379
+    healthcheck:
+        test: curl --fail http://localhost:5000/health || exit 1
+        interval: 15s
+        timeout: 10s
+        retries: 3
+        start_period: 10s

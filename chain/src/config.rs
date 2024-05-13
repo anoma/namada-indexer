@@ -19,9 +19,6 @@ impl Display for CargoEnv {
 // TODO: remove unused fields
 #[derive(clap::Parser)]
 pub struct AppConfig {
-    #[clap(long, env, value_enum)]
-    pub cargo_env: CargoEnv,
-
     #[clap(long, env)]
     pub tendermint_url: String,
 
