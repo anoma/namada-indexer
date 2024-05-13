@@ -1,10 +1,12 @@
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
+use rand::Rng;
 use seeder::config::AppConfig;
 use seeder::state::AppState;
 use shared::error::AsDbError;
 use shared::proposal::GovernanceProposal;
 use shared::validator::Validator;
+use shared::vote::GovernanceVote;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -40,6 +42,13 @@ async fn main() -> anyhow::Result<()> {
         .collect::<Vec<GovernanceProposal>>();
 
     println!("{:#?}", governance_proposals);
+
+    let governance_votes = (0..config.total_votes).map(|_| {
+        let proposal_id = rand::thread_rng().gen_range(0..config.total_proposals);
+        GovernanceVote::fake(proposal_id)
+    }).collect::<Vec<GovernanceVote>>();
+
+    println!("{:#?}", governance_votes);
 
     let _app_state = AppState::new(config.database_url).into_db_error()?;
 

@@ -56,7 +56,7 @@ pub struct GovernanceProposalStatus {
 impl GovernanceProposal {
     pub fn fake(proposal_id: u64) -> Self {
         let address =
-            namada_core::address::gen_deterministic_established_address("123");
+            namada_core::address::gen_established_address("123");
         let proposal_type: GovernanceProposalKind = rand::random();
         let proposal_data = vec![].to_vec();
         let voting_start_epoch = (1..1000).fake::<u32>();

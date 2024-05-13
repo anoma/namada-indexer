@@ -29,7 +29,7 @@ pub struct Validator {
 
 impl Validator {
     pub fn fake() -> Self {
-        let address = namada_core::address::gen_deterministic_established_address("123");
+        let address = namada_core::address::gen_established_address("123");
         let voting_power = (1000..10000000).fake::<u64>().to_string();
         let max_commission = ((0..100).fake::<u64>() as f64 / 100 as f64).to_string();
         let commission = ((0..100).fake::<u64>() as f64 / 100 as f64).to_string();
