@@ -24,7 +24,7 @@ diesel.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
 futures.workspace = true
-namada_core.workspace = true
+namada_core = { git = "https://github.com/anoma/namada", tag = "v0.35.1", features = ["testing"]}
 namada_governance.workspace = true
 namada_ibc.workspace = true
 namada_sdk.workspace = true
@@ -38,3 +38,5 @@ thiserror.workspace = true
 tokio-retry.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+fake.workspace = true
+rand.workspace = true
