@@ -1,20 +1,30 @@
 use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::RunQueryDsl;
+use diesel::upsert::excluded;
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
+    SelectableHelper,
+};
+use orm::balances::BalancesInsertDb;
+use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{
-    governance_proposals, governance_votes, pos_rewards, validators,
+    balances, bonds, governance_proposals, governance_votes, pos_rewards, unbonds, validators
 };
-use orm::validators::ValidatorInsertDb;
+use orm::unbond::UnbondInsertDb;
+use orm::validators::{ValidatorDb, ValidatorInsertDb};
 use rand::Rng;
 use seeder::config::AppConfig;
 use seeder::state::AppState;
+use shared::balance::Balance;
+use shared::bond::{Bond, Bonds};
 use shared::error::{AsDbError, ContextDbInteractError, MainError};
 use shared::proposal::GovernanceProposal;
 use shared::rewards::Reward;
+use shared::unbond::{Unbond, Unbonds};
 use shared::validator::Validator;
 use shared::vote::GovernanceVote;
 use tracing::Level;
@@ -57,9 +67,33 @@ async fn main() -> anyhow::Result<(), MainError> {
         })
         .collect::<Vec<GovernanceVote>>();
 
+    let bonds = (0..10)
+        .map(|_| {
+            let index =
+                rand::thread_rng().gen_range(0..config.total_bonds);
+            let validator = validators.get(index as usize).unwrap();
+            Bond::fake(validator.address.clone())
+        })
+        .collect::<Vec<Bond>>();
+    let bonds = Bonds::new(bonds, 1);
+
+    let unbonds = (0..10)
+        .map(|_| {
+            let index =
+                rand::thread_rng().gen_range(0..config.total_unbonds);
+            let validator = validators.get(index as usize).unwrap();
+            Unbond::fake(validator.address.clone())
+        })
+        .collect::<Vec<Unbond>>();
+    let unbonds = Unbonds::new(unbonds, 1);
+
     let rewards = (0..config.total_rewards)
         .map(|_| Reward::fake())
         .collect::<Vec<Reward>>();
+
+    let balances = (0..config.total_balances)
+        .map(|_| Balance::fake())
+        .collect::<Vec<Balance>>();
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = app_state.get_db_connection().await.into_db_error()?;
@@ -81,6 +115,18 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .context("Failed to remove all validators")?;
 
                 diesel::delete(pos_rewards::table)
+                    .execute(transaction_conn)
+                    .context("Failed to remove all validators")?;
+
+                diesel::delete(bonds::table)
+                    .execute(transaction_conn)
+                    .context("Failed to remove all validators")?;
+
+                diesel::delete(unbonds::table)
+                    .execute(transaction_conn)
+                    .context("Failed to remove all validators")?;
+
+                diesel::delete(balances::table)
                     .execute(transaction_conn)
                     .context("Failed to remove all validators")?;
 
@@ -135,6 +181,63 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert pos rewards in db")?;
+
+                diesel::insert_into(balances::table)
+                    .values::<&Vec<BalancesInsertDb>>(
+                        &balances
+                            .into_iter()
+                            .map(|balance| {
+                                BalancesInsertDb::from_balance(balance, 2)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to insert pos rewards in db")?;
+
+                diesel::insert_into(bonds::table)
+                .values::<&Vec<BondInsertDb>>(
+                    &bonds
+                    .values
+                    .into_iter()
+                    .map(|bond| {
+                        let validator: ValidatorDb = validators::table
+                            .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
+                            .select(ValidatorDb::as_select())
+                            .first(transaction_conn)
+                            .expect("Failed to get validator");
+
+                        BondInsertDb::from_bond(bond, validator.id, bonds.epoch)
+                    })
+                    .collect::<Vec<_>>())
+                .on_conflict((bonds::columns::validator_id, bonds::columns::address, bonds::columns::epoch))
+                .do_update()
+                .set(orm::schema::bonds::columns::raw_amount
+                    .eq(excluded(orm::schema::bonds::columns::raw_amount)))
+                .execute(transaction_conn)
+                .context("Failed to update bonds in db")?;
+
+                diesel::insert_into(unbonds::table)
+                .values::<&Vec<UnbondInsertDb>>(
+                    &unbonds
+                    .values
+                    .into_iter()
+                    .map(|unbond| {
+                        let validator: ValidatorDb = validators::table
+                            .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
+                            .select(ValidatorDb::as_select())
+                            .first(transaction_conn)
+                            .expect("Failed to get validator");
+
+                        UnbondInsertDb::from_unbond(unbond, validator.id, unbonds.epoch)
+                    })
+                    .collect::<Vec<_>>())
+                .on_conflict((unbonds::columns::validator_id, unbonds::columns::address, unbonds::columns::epoch))
+                .do_update()
+                .set((unbonds::columns::raw_amount.eq(excluded(unbonds::columns::raw_amount)),
+                      unbonds::columns::withdraw_epoch.eq(excluded(unbonds::columns::withdraw_epoch))))
+                .execute(transaction_conn)
+                .context("Failed to update unbonds in db")?;
 
                 anyhow::Ok(())
             })

@@ -15,7 +15,7 @@ use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
 use crate::vote::GovernanceVote;
 
-//TODO: in the DB those are i32
+// TODO: in the DB those are i32
 pub type Epoch = u32;
 pub type BlockHeight = u32;
 

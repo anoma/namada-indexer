@@ -10,12 +10,11 @@ use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
+use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use tendermint_rpc::HttpClient;
-
-use shared::bond::{Bond, BondAddresses, Bonds};
 
 pub async fn is_block_committed(
     client: &HttpClient,
@@ -129,7 +128,7 @@ pub async fn query_bonds(
                 client,
                 &source,
                 &target,
-                //TODO: + 2 is hardcoded pipeline len
+                // TODO: + 2 is hardcoded pipeline len
                 &Some(to_epoch(epoch + 2)),
             )
             .await

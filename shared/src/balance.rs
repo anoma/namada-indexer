@@ -30,3 +30,17 @@ pub struct Balance {
 }
 
 pub type Balances = Vec<Balance>;
+
+impl Balance {
+    pub fn fake() -> Self {
+        let address =
+            namada_core::address::gen_established_address("namada-indexer");
+        let token_address = namada_core::address::gen_established_address("namada-indexer");
+
+        Self {
+            owner: Id::Account(address.to_string()),
+            token: Id::Account(token_address.to_string()),
+            amount: Amount::fake(),
+        }
+    }
+}

@@ -32,6 +32,15 @@ pub struct AppConfig {
     #[clap(long, env, default_value_t = 10)]
     pub total_rewards: u64,
 
+    #[clap(long, env, default_value_t = 10)]
+    pub total_bonds: u64,
+
+    #[clap(long, env, default_value_t = 10)]
+    pub total_unbonds: u64,
+
+    #[clap(long, env, default_value_t = 10)]
+    pub total_balances: u64,
+
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
 }
