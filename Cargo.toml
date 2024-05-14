@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 
-members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver"]
+members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver", "seeder"]
 
 [workspace.package]
-authors = ["Gianmarco <gianmarco@heliax.dev>"]
+authors = ["Heliax <hello@heliax.dev>"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
@@ -81,3 +81,5 @@ duration-str = "0.7.1"
 num-bigint = "0.4.0"
 num-integer = "0.1.26"
 num-traits = "0.2.18"
+fake = { version = "2.9.2", features = ["derive"] }
+rand = "0.8.5"
