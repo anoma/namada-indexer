@@ -224,8 +224,7 @@ async fn crawling_fn(
                                     .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
                                     .select(ValidatorDb::as_select())
                                     .first(transaction_conn)
-                                    //TODO: map error
-                                    .unwrap();
+                                    .expect("Failed to get validator");
 
                                 BondInsertDb::from_bond(bond, validator.id, bonds.epoch)
 
@@ -249,8 +248,7 @@ async fn crawling_fn(
                                     .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
                                     .select(ValidatorDb::as_select())
                                     .first(transaction_conn)
-                                    //TODO: map error
-                                    .unwrap();
+                                    .expect("Failed to get validator");
 
                                 UnbondInsertDb::from_unbond(unbond, validator.id, unbonds.epoch)
 

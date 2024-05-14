@@ -67,10 +67,10 @@ pub async fn query_balance(
     for balance_change in balance_changes {
         let owner =
             NamadaSdkAddress::from_str(&balance_change.address.to_string())
-                .unwrap();
+                .context("Failed to parse owner address")?;
         let token =
             NamadaSdkAddress::from_str(&balance_change.token.to_string())
-                .unwrap();
+                .context("Failed to parse token address")?;
 
         let amount = rpc::get_token_balance(client, &token, &owner)
             .await
@@ -117,9 +117,10 @@ pub async fn query_bonds(
     let mut bonds = vec![];
 
     for BondAddresses { source, target } in addresses {
-        //TODO: unwrap
-        let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
-        let target = NamadaSdkAddress::from_str(&target.to_string()).unwrap();
+        let source = NamadaSdkAddress::from_str(&source.to_string())
+            .expect("Failed to parse source address");
+        let target = NamadaSdkAddress::from_str(&target.to_string())
+            .expect("Failed to parse target address");
 
         let amount = RPC
             .vp()
@@ -155,10 +156,10 @@ pub async fn query_unbonds(
     let mut unbonds = vec![];
 
     for UnbondAddresses { source, validator } in addresses {
-        //TODO: unwrap
-        let source = NamadaSdkAddress::from_str(&source.to_string()).unwrap();
-        let validator =
-            NamadaSdkAddress::from_str(&validator.to_string()).unwrap();
+        let source = NamadaSdkAddress::from_str(&source.to_string())
+            .context("Failed to parse source address")?;
+        let validator = NamadaSdkAddress::from_str(&validator.to_string())
+            .context("Failed to parse validator address")?;
 
         let res = rpc::query_unbond_with_slashing(client, &source, &validator)
             .await
