@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<(), MainError> {
     let bonds = (0..10)
         .map(|_| {
             let index =
-                rand::thread_rng().gen_range(0..config.total_bonds);
+                rand::thread_rng().gen_range(0..config.total_validators);
             let validator = validators.get(index as usize).unwrap();
             Bond::fake(validator.address.clone())
         })
@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<(), MainError> {
     let unbonds = (0..10)
         .map(|_| {
             let index =
-                rand::thread_rng().gen_range(0..config.total_unbonds);
+                rand::thread_rng().gen_range(0..config.total_validators);
             let validator = validators.get(index as usize).unwrap();
             Unbond::fake(validator.address.clone())
         })
@@ -101,16 +101,12 @@ async fn main() -> anyhow::Result<(), MainError> {
     conn.interact(move |conn| {
         conn.build_transaction()
             .read_write()
-            .run(|transaction_conn| {
-                diesel::delete(validators::table)
-                    .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
-                
-                diesel::delete(governance_proposals::table)
-                    .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
-
+            .run(|transaction_conn| {         
                 diesel::delete(governance_votes::table)
+                .execute(transaction_conn)
+                .context("Failed to remove all validators")?;
+
+                diesel::delete(governance_proposals::table)
                     .execute(transaction_conn)
                     .context("Failed to remove all validators")?;
 
@@ -127,6 +123,10 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .context("Failed to remove all validators")?;
 
                 diesel::delete(balances::table)
+                    .execute(transaction_conn)
+                    .context("Failed to remove all validators")?;
+
+                    diesel::delete(validators::table)
                     .execute(transaction_conn)
                     .context("Failed to remove all validators")?;
 

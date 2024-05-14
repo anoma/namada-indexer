@@ -12,7 +12,7 @@ impl Amount {
         let two = (u64::MIN..u64::MAX).fake::<u64>();
         let three = (u64::MIN..u64::MAX).fake::<u64>();
         let four = (u64::MIN..u64::MAX).fake::<u64>();
-        Self([one, two, three, four])
+        Self([four, 0, 0, 0])
     }
 }
 
