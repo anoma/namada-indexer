@@ -9,10 +9,7 @@ pub struct Amount(pub [u64; 4]);
 impl Amount {
     pub fn fake() -> Self {
         let one = (u64::MIN..u64::MAX).fake::<u64>();
-        let two = (u64::MIN..u64::MAX).fake::<u64>();
-        let three = (u64::MIN..u64::MAX).fake::<u64>();
-        let four = (u64::MIN..u64::MAX).fake::<u64>();
-        Self([four, 0, 0, 0])
+        Self([one, 0, 0, 0])
     }
 }
 
@@ -35,7 +32,8 @@ impl Balance {
     pub fn fake() -> Self {
         let address =
             namada_core::address::gen_established_address("namada-indexer");
-        let token_address = namada_core::address::gen_established_address("namada-indexer");
+        let token_address =
+            namada_core::address::gen_established_address("namada-indexer");
 
         Self {
             owner: Id::Account(address.to_string()),

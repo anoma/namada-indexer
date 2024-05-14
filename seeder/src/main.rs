@@ -12,7 +12,8 @@ use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{
-    balances, bonds, governance_proposals, governance_votes, pos_rewards, unbonds, validators
+    balances, bonds, governance_proposals, governance_votes, pos_rewards,
+    unbonds, validators,
 };
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorInsertDb};
@@ -56,7 +57,7 @@ async fn main() -> anyhow::Result<(), MainError> {
         .collect::<Vec<Validator>>();
 
     let governance_proposals = (0..config.total_proposals)
-        .map(|id| GovernanceProposal::fake(id))
+        .map(GovernanceProposal::fake)
         .collect::<Vec<GovernanceProposal>>();
 
     let governance_votes = (0..config.total_votes)
@@ -101,7 +102,7 @@ async fn main() -> anyhow::Result<(), MainError> {
     conn.interact(move |conn| {
         conn.build_transaction()
             .read_write()
-            .run(|transaction_conn| {         
+            .run(|transaction_conn| {
                 diesel::delete(governance_votes::table)
                 .execute(transaction_conn)
                 .context("Failed to remove all validators")?;
@@ -142,7 +143,7 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert validators in db")?;
-                
+
                 diesel::insert_into(governance_proposals::table)
                     .values::<&Vec<GovernanceProposalInsertDb>>(
                         &governance_proposals

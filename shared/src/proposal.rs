@@ -58,7 +58,7 @@ impl GovernanceProposal {
         let address =
             namada_core::address::gen_established_address("namada-indexer");
         let proposal_type: GovernanceProposalKind = rand::random();
-        let proposal_data = vec![].to_vec();
+        let proposal_data = [].to_vec();
         let voting_start_epoch = (1..1000).fake::<u32>();
         let voting_end_epoch =
             (voting_start_epoch..voting_start_epoch + 20).fake::<u32>();
