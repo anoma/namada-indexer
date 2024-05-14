@@ -47,9 +47,12 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
+    // If last processed epoch is not stored in db, start from the current epoch
     let next_epoch = match last_epoch {
         Some(height) => height + 1,
-        None => 0,
+        None => namada_service::get_current_epoch(&client.clone())
+            .await
+            .into_rpc_error()?,
     };
 
     crawler::crawl(

@@ -31,7 +31,6 @@ diesel::table! {
         id -> Int4,
         owner -> Varchar,
         token -> Varchar,
-        height -> Int4,
         raw_amount -> Numeric,
     }
 }

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use chain::app_state::AppState;
 use chain::config::AppConfig;
+use chain::services::namada::{query_all_balances, query_last_block_height};
 use chain::services::{
     db as db_service, namada as namada_service,
     tendermint as tendermint_service,
@@ -25,7 +26,7 @@ use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::schema::{balances, block_crawler_state, bonds, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::ValidatorDb;
-use shared::block::Block;
+use shared::block::{Block, BlockHeight};
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
@@ -71,7 +72,14 @@ async fn main() -> Result<(), MainError> {
 
     let next_block = match last_block_height {
         Some(height) => height + 1,
-        None => 1,
+        // If last processed block is not stored in db, query for initial state
+        None => {
+            // We get the height before we do initial query so we start from the correct block
+            let height =
+                query_last_block_height(&client).await.into_rpc_error()?;
+            initial_query(client.clone(), conn.clone()).await?;
+            height
+        }
     };
 
     crawl(
@@ -179,11 +187,14 @@ async fn crawling_fn(
                         &balances
                             .into_iter()
                             .map(|b| {
-                                BalancesInsertDb::from_balance(b, block_height)
+                                BalancesInsertDb::from_balance(b)
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict_do_nothing()
+                        .on_conflict((balances::columns::owner, balances::columns::token))
+                        .do_update()
+                        .set(balances::columns::raw_amount
+                            .eq(excluded(balances::columns::raw_amount)))
                     .execute(transaction_conn)
                     .context("Failed to update balances in db")?;
 
@@ -274,5 +285,39 @@ async fn crawling_fn(
     .context_db_interact_error()
     .into_db_error()?
     .context("Commit block db transaction error")
+    .into_db_error()
+}
+
+async fn initial_query(
+    client: Arc<HttpClient>,
+    conn: Arc<Object>,
+) -> Result<(), MainError> {
+    tracing::info!("Querying initial data...");
+    let balances = query_all_balances(&client).await.into_rpc_error()?;
+
+    tracing::info!("Inserting initial data... {:?}", balances);
+
+    conn.interact(move |conn| {
+        conn.build_transaction()
+            .read_write()
+            .run(|transaction_conn| {
+                diesel::insert_into(balances::table)
+                    .values::<&Vec<BalancesInsertDb>>(
+                        &balances
+                            .into_iter()
+                            .map(|b| BalancesInsertDb::from_balance(b))
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update balances in db")?;
+
+                anyhow::Ok(())
+            })
+    })
+    .await
+    .context_db_interact_error()
+    .into_db_error()?
+    .context("Commit initial db transaction error")
     .into_db_error()
 }

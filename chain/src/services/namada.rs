@@ -7,14 +7,17 @@ use namada_core::storage::{
 };
 use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::queries::RPC;
-use namada_sdk::rpc;
+use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
+use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use tendermint_rpc::HttpClient;
+
+use super::utils::query_storage_prefix;
 
 pub async fn is_block_committed(
     client: &HttpClient,
@@ -83,6 +86,59 @@ pub async fn query_balance(
     }
 
     anyhow::Ok(res)
+}
+
+pub async fn query_all_balances(
+    client: &HttpClient,
+) -> anyhow::Result<Balances> {
+    let token_addr = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+
+    let balance_prefix = namada_token::storage_key::balance_prefix(&token_addr);
+
+    let balances =
+        query_storage_prefix::<token::Amount>(client, &balance_prefix)
+            .await
+            //TODO: unwrap
+            .unwrap();
+
+    let mut all_balances: Balances = vec![];
+
+    if let Some(balances) = balances {
+        for (key, balance) in balances {
+            let (t, o, b) =
+                match namada_token::storage_key::is_any_token_balance_key(&key)
+                {
+                    Some([tok, owner]) => (tok.clone(), owner.clone(), balance),
+                    None => continue,
+                };
+
+            all_balances.push(Balance {
+                owner: Id::from(o),
+                token: Id::from(t),
+                amount: Amount::from(b),
+            });
+        }
+    }
+
+    anyhow::Ok(all_balances)
+}
+
+pub async fn query_last_block_height(
+    client: &HttpClient,
+) -> anyhow::Result<BlockHeight> {
+    let last_block = RPC
+        .shell()
+        .last_block(client)
+        .await
+        .context("Failed to query Namada's last committed block")?;
+
+    Ok(last_block
+        .map(|b| b.height.0 as BlockHeight)
+        .unwrap_or_default())
 }
 
 pub async fn query_next_governance_id(
