@@ -20,14 +20,17 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub database_url: String,
 
-    #[clap(long, env, default_value_t=5)]
+    #[clap(long, env, default_value_t = 5)]
     pub total_validators: u64,
 
-    #[clap(long, env, default_value_t=10)]
+    #[clap(long, env, default_value_t = 10)]
     pub total_proposals: u64,
 
-    #[clap(long, env, default_value_t=10)]
+    #[clap(long, env, default_value_t = 10)]
     pub total_votes: u64,
+
+    #[clap(long, env, default_value_t = 10)]
+    pub total_rewards: u64,
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,

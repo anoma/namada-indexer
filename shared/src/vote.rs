@@ -30,7 +30,8 @@ pub struct GovernanceVote {
 
 impl GovernanceVote {
     pub fn fake(proposal_id: u64) -> Self {
-        let address = namada_core::address::gen_established_address("123");
+        let address =
+            namada_core::address::gen_established_address("namada-indexer");
 
         let vote: ProposalVoteKind = rand::random();
         Self {

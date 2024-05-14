@@ -1,7 +1,6 @@
-use fake::faker::company::en::{CompanyName, CatchPhase};
+use fake::faker::company::en::{CatchPhase, CompanyName};
 use fake::faker::internet::en::{DomainSuffix, SafeEmail, Username};
 use fake::Fake;
-
 
 use crate::block::Epoch;
 use crate::id::Id;
@@ -29,13 +28,20 @@ pub struct Validator {
 
 impl Validator {
     pub fn fake() -> Self {
-        let address = namada_core::address::gen_established_address("123");
+        let address =
+            namada_core::address::gen_established_address("namada-indexer");
         let voting_power = (1000..10000000).fake::<u64>().to_string();
-        let max_commission = ((0..100).fake::<u64>() as f64 / 100 as f64).to_string();
-        let commission = ((0..100).fake::<u64>() as f64 / 100 as f64).to_string();
+        let max_commission =
+            ((0..100).fake::<u64>() as f64 / 100 as f64).to_string();
+        let commission =
+            ((0..100).fake::<u64>() as f64 / 100 as f64).to_string();
         let email: String = SafeEmail().fake();
         let description: Option<String> = CatchPhase().fake();
-        let website: Option<String> = Some(format!("{}.{}", CompanyName().fake::<String>(), DomainSuffix().fake::<String>()));
+        let website: Option<String> = Some(format!(
+            "{}.{}",
+            CompanyName().fake::<String>(),
+            DomainSuffix().fake::<String>()
+        ));
         let discord_handler: Option<String> = Username().fake();
 
         Self {
