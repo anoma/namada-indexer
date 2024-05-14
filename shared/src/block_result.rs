@@ -16,9 +16,9 @@ pub enum EventKind {
 impl From<&String> for EventKind {
     fn from(value: &String) -> Self {
         match value.as_str() {
-            "applied" => Self::Applied,
-            "accepted" => Self::Accepted,
-            "rejected" => Self::Rejected,
+            "tx/applied" => Self::Applied,
+            "tx/accepted" => Self::Accepted,
+            "tx/rejected" => Self::Rejected,
             _ => Self::Unknown,
         }
     }
