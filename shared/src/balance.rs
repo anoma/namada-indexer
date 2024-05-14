@@ -1,6 +1,6 @@
 use namada_sdk::token::Amount as NamadaAmount;
 
-pub type Address = String;
+use crate::id::Id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Amount(pub [u64; 4]);
@@ -13,8 +13,8 @@ impl From<NamadaAmount> for Amount {
 
 #[derive(Debug, Clone)]
 pub struct Balance {
-    pub owner: Address,
-    pub token: Address,
+    pub owner: Id,
+    pub token: Id,
     pub amount: Amount,
 }
 

@@ -1,6 +1,7 @@
 pub mod balance;
 pub mod block;
 pub mod block_result;
+pub mod bond;
 pub mod checksums;
 pub mod crawler;
 pub mod crawler_state;
@@ -10,6 +11,7 @@ pub mod id;
 pub mod proposal;
 pub mod rewards;
 pub mod transaction;
+pub mod unbond;
 pub mod utils;
 pub mod validator;
 pub mod vote;

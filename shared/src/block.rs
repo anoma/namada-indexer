@@ -5,14 +5,17 @@ use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
 use crate::block_result::BlockResult;
+use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::transaction::{Transaction, TransactionKind};
+use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
 use crate::vote::GovernanceVote;
 
+//TODO: in the DB those are i32
 pub type Epoch = u32;
 pub type BlockHeight = u32;
 
@@ -306,6 +309,65 @@ impl Block {
                 _ => None,
             })
             .flatten()
+            .collect()
+    }
+
+    pub fn bond_addresses(&self) -> Vec<BondAddresses> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::Bond(data) => {
+                    let bond_data =
+                        namada_tx::data::pos::Bond::try_from_slice(data)
+                            .unwrap();
+                    let source_address =
+                        bond_data.source.unwrap_or(bond_data.validator.clone());
+                    let target_address = bond_data.validator;
+
+                    Some(BondAddresses {
+                        source: Id::from(source_address),
+                        target: Id::from(target_address),
+                    })
+                }
+                TransactionKind::Unbond(data) => {
+                    let unbond_data =
+                        namada_tx::data::pos::Unbond::try_from_slice(data)
+                            .unwrap();
+                    let source_address = unbond_data
+                        .source
+                        .unwrap_or(unbond_data.validator.clone());
+                    let validator_address = unbond_data.validator;
+
+                    Some(BondAddresses {
+                        source: Id::from(source_address),
+                        target: Id::from(validator_address),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn unbond_addresses(&self) -> Vec<UnbondAddresses> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::Unbond(data) => {
+                    let unbond_data =
+                        namada_tx::data::pos::Unbond::try_from_slice(data)
+                            .unwrap();
+                    let source_address = unbond_data
+                        .source
+                        .unwrap_or(unbond_data.validator.clone());
+                    let validator_address = unbond_data.validator;
+
+                    Some(UnbondAddresses {
+                        source: Id::from(source_address),
+                        validator: Id::from(validator_address),
+                    })
+                }
+                _ => None,
+            })
             .collect()
     }
 }

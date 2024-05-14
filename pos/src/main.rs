@@ -47,9 +47,14 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
+    let next_epoch = match last_epoch {
+        Some(height) => height + 1,
+        None => 0,
+    };
+
     crawler::crawl(
         move |epoch| crawling_fn(epoch, conn.clone(), client.clone()),
-        last_epoch,
+        next_epoch,
     )
     .await
 }

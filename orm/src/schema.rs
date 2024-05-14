@@ -1,27 +1,15 @@
 // @generated automatically by Diesel CLI.
 
 pub mod sql_types {
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_kind"))]
     pub struct GovernanceKind;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_result"))]
     pub struct GovernanceResult;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
 }
@@ -40,6 +28,16 @@ diesel::table! {
     block_crawler_state (id) {
         id -> Int4,
         height -> Int4,
+        epoch -> Int4,
+    }
+}
+
+diesel::table! {
+    bonds (id) {
+        id -> Int4,
+        address -> Varchar,
+        validator_id -> Int4,
+        raw_amount -> Numeric,
         epoch -> Int4,
     }
 }
@@ -94,6 +92,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    unbonds (id) {
+        id -> Int4,
+        address -> Varchar,
+        validator_id -> Int4,
+        raw_amount -> Numeric,
+        epoch -> Int4,
+        withdraw_epoch -> Int4,
+    }
+}
+
+diesel::table! {
     validators (id) {
         id -> Int4,
         namada_address -> Varchar,
@@ -109,14 +118,18 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balances,
     block_crawler_state,
+    bonds,
     epoch_crawler_state,
     governance_proposals,
     governance_votes,
     pos_rewards,
+    unbonds,
     validators,
 );

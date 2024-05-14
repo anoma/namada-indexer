@@ -1,9 +1,11 @@
 pub mod balances;
 pub mod block_crawler_state;
+pub mod bond;
 pub mod epoch_crawler_state;
 pub mod governance_proposal;
 pub mod governance_votes;
 pub mod pos_rewards;
 pub mod schema;
+pub mod unbond;
 pub mod utils;
 pub mod validators;

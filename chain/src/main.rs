@@ -12,12 +12,19 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::RunQueryDsl;
+use diesel::upsert::excluded;
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
+    SelectableHelper,
+};
 use orm::balances::BalancesInsertDb;
 use orm::block_crawler_state::BlockCrawlerStateInsertDb;
+use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
-use orm::schema::{balances, block_crawler_state};
+use orm::schema::{balances, block_crawler_state, bonds, unbonds, validators};
+use orm::unbond::UnbondInsertDb;
+use orm::validators::ValidatorDb;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -62,6 +69,11 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
+    let next_block = match last_block_height {
+        Some(height) => height + 1,
+        None => 1,
+    };
+
     crawl(
         move |block_height| {
             crawling_fn(
@@ -71,7 +83,7 @@ async fn main() -> Result<(), MainError> {
                 checksums.clone(),
             )
         },
-        last_block_height,
+        next_block,
     )
     .await
 }
@@ -143,6 +155,18 @@ async fn crawling_fn(
     let proposals_votes = block.governance_votes();
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
+    let addresses = block.bond_addresses();
+    let bonds = namada_service::query_bonds(&client, addresses, epoch)
+        .await
+        .into_rpc_error()?;
+    tracing::info!("Updating bonds for {} addresses", bonds.values.len());
+
+    let addresses = block.unbond_addresses();
+    let unbonds = namada_service::query_unbonds(&client, addresses, epoch)
+        .await
+        .into_rpc_error()?;
+    tracing::info!("Updating unbonds for {} addresses", unbonds.values.len());
+
     let crawler_state = CrawlerState::new(block_height, epoch);
 
     conn.interact(move |conn| {
@@ -174,7 +198,7 @@ async fn crawling_fn(
                     )
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
+                    .context("Failed to update governance proposals in db")?;
 
                     diesel::insert_into(orm::schema::governance_votes::table)
                     .values::<&Vec<GovernanceProposalVoteInsertDb>>(
@@ -187,9 +211,56 @@ async fn crawling_fn(
                     )
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
+                    .context("Failed to update governance votes in db")?;
 
-                //TODO: should we always override the db
+                    //TODO: should we move all those calls to the "repo"
+                    diesel::insert_into(bonds::table)
+                        .values::<&Vec<BondInsertDb>>(
+                            &bonds
+                            .values
+                            .into_iter()
+                            .map(|bond| {
+                                let validator: ValidatorDb = validators::table
+                                    .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
+                                    .select(ValidatorDb::as_select())
+                                    .first(transaction_conn)
+                                    .expect("Failed to get validator");
+
+                                BondInsertDb::from_bond(bond, validator.id, bonds.epoch)
+
+                            })
+                            .collect::<Vec<_>>())
+                        .on_conflict((bonds::columns::validator_id, bonds::columns::address, bonds::columns::epoch))
+                        .do_update()
+                        .set(orm::schema::bonds::columns::raw_amount
+                            .eq(excluded(orm::schema::bonds::columns::raw_amount)))
+                        .execute(transaction_conn)
+                        .context("Failed to update bonds in db")?;
+
+                    //TODO: should we move all those calls to the "repo"
+                    diesel::insert_into(unbonds::table)
+                        .values::<&Vec<UnbondInsertDb>>(
+                            &unbonds
+                            .values
+                            .into_iter()
+                            .map(|unbond| {
+                                let validator: ValidatorDb = validators::table
+                                    .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
+                                    .select(ValidatorDb::as_select())
+                                    .first(transaction_conn)
+                                    .expect("Failed to get validator");
+
+                                UnbondInsertDb::from_unbond(unbond, validator.id, unbonds.epoch)
+
+                            })
+                            .collect::<Vec<_>>())
+                        .on_conflict((unbonds::columns::validator_id, unbonds::columns::address, unbonds::columns::epoch))
+                        .do_update()
+                        .set((unbonds::columns::raw_amount.eq(excluded(unbonds::columns::raw_amount)),
+                              unbonds::columns::withdraw_epoch.eq(excluded(unbonds::columns::withdraw_epoch))))
+                        .execute(transaction_conn)
+                        .context("Failed to update unbonds in db")?;
+
                 diesel::insert_into(block_crawler_state::table)
                     .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
                     .on_conflict_do_nothing()

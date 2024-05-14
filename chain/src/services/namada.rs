@@ -2,15 +2,20 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
-use namada_core::storage::BlockHeight as NamadaSdkBlockHeight;
-use namada_sdk::address::Address;
+use namada_core::storage::{
+    BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
+};
+use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::id::Id;
+use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use tendermint_rpc::HttpClient;
+
+use shared::bond::{Bond, BondAddresses, Bonds};
 
 pub async fn is_block_committed(
     client: &HttpClient,
@@ -61,17 +66,19 @@ pub async fn query_balance(
 
     for balance_change in balance_changes {
         let owner =
-            Address::from_str(&balance_change.address.to_string()).unwrap();
+            NamadaSdkAddress::from_str(&balance_change.address.to_string())
+                .context("Failed to parse owner address")?;
         let token =
-            Address::from_str(&balance_change.token.to_string()).unwrap();
+            NamadaSdkAddress::from_str(&balance_change.token.to_string())
+                .context("Failed to parse token address")?;
 
         let amount = rpc::get_token_balance(client, &token, &owner)
             .await
             .unwrap_or_default();
 
         res.push(Balance {
-            owner: owner.to_string(),
-            token: token.to_string(),
+            owner: Id::from(owner),
+            token: Id::from(token),
             amount: Amount::from(amount),
         });
     }
@@ -102,6 +109,85 @@ pub async fn query_next_governance_id(
         .context("Failed to deserialize proposal id")
 }
 
+pub async fn query_bonds(
+    client: &HttpClient,
+    addresses: Vec<BondAddresses>,
+    epoch: Epoch,
+) -> anyhow::Result<Bonds> {
+    let mut bonds = vec![];
+
+    for BondAddresses { source, target } in addresses {
+        let source = NamadaSdkAddress::from_str(&source.to_string())
+            .expect("Failed to parse source address");
+        let target = NamadaSdkAddress::from_str(&target.to_string())
+            .expect("Failed to parse target address");
+
+        let amount = RPC
+            .vp()
+            .pos()
+            .bond_with_slashing(
+                client,
+                &source,
+                &target,
+                //TODO: + 2 is hardcoded pipeline len
+                &Some(to_epoch(epoch + 2)),
+            )
+            .await
+            .context("Failed to query bond amount")?;
+
+        bonds.push(Bond {
+            source: Id::from(source),
+            target: Id::from(target),
+            amount: Amount::from(amount),
+        });
+    }
+
+    anyhow::Ok(Bonds {
+        epoch,
+        values: bonds,
+    })
+}
+
+pub async fn query_unbonds(
+    client: &HttpClient,
+    addresses: Vec<UnbondAddresses>,
+    epoch: Epoch,
+) -> anyhow::Result<Unbonds> {
+    let mut unbonds = vec![];
+
+    for UnbondAddresses { source, validator } in addresses {
+        let source = NamadaSdkAddress::from_str(&source.to_string())
+            .context("Failed to parse source address")?;
+        let validator = NamadaSdkAddress::from_str(&validator.to_string())
+            .context("Failed to parse validator address")?;
+
+        let res = rpc::query_unbond_with_slashing(client, &source, &validator)
+            .await
+            .context("Failed to query unbond amount")?;
+
+        tracing::info!("unbonds {:?}", res);
+
+        let ((_, withdraw_epoch), amount) =
+            res.last().context("Unbonds are empty")?;
+
+        unbonds.push(Unbond {
+            source: Id::from(source),
+            target: Id::from(validator),
+            amount: Amount::from(*amount),
+            withdraw_at: withdraw_epoch.0 as Epoch,
+        });
+    }
+
+    anyhow::Ok(Unbonds {
+        epoch,
+        values: unbonds,
+    })
+}
+
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
+}
+
+fn to_epoch(epoch: u32) -> NamadaSdkEpoch {
+    NamadaSdkEpoch::from(epoch as u64)
 }
