@@ -5,7 +5,11 @@ use std::sync::Arc;
 use anyhow::Context;
 use chain::app_state::AppState;
 use chain::config::AppConfig;
-use chain::services::namada::{query_all_balances, query_last_block_height};
+use chain::repository;
+use chain::services::namada::{
+    get_current_epoch, query_all_balances, query_all_bonds_and_unbonds,
+    query_last_block_height,
+};
 use chain::services::{
     db as db_service, namada as namada_service,
     tendermint as tendermint_service,
@@ -13,20 +17,12 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::upsert::excluded;
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
-    SelectableHelper,
-};
-use orm::balances::BalancesInsertDb;
+use diesel::RunQueryDsl;
 use orm::block_crawler_state::BlockCrawlerStateInsertDb;
-use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
-use orm::schema::{balances, block_crawler_state, bonds, unbonds, validators};
-use orm::unbond::UnbondInsertDb;
-use orm::validators::ValidatorDb;
-use shared::block::{Block, BlockHeight};
+use orm::schema::block_crawler_state;
+use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
@@ -75,6 +71,7 @@ async fn main() -> Result<(), MainError> {
         // If last processed block is not stored in db, query for initial state
         None => {
             // We get the height before we do initial query so we start from the correct block
+            // TODO: try first_block_height_of_current_epoch
             let height =
                 query_last_block_height(&client).await.into_rpc_error()?;
             initial_query(client.clone(), conn.clone()).await?;
@@ -181,22 +178,7 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                //TODO: move closure block to a function
-                diesel::insert_into(balances::table)
-                    .values::<&Vec<BalancesInsertDb>>(
-                        &balances
-                            .into_iter()
-                            .map(|b| {
-                                BalancesInsertDb::from_balance(b)
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                        .on_conflict((balances::columns::owner, balances::columns::token))
-                        .do_update()
-                        .set(balances::columns::raw_amount
-                            .eq(excluded(balances::columns::raw_amount)))
-                    .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
+                repository::balance::insert_balance(transaction_conn, balances)?;
 
                 diesel::insert_into(orm::schema::governance_proposals::table)
                     .values::<&Vec<GovernanceProposalInsertDb>>(
@@ -224,53 +206,8 @@ async fn crawling_fn(
                     .execute(transaction_conn)
                     .context("Failed to update governance votes in db")?;
 
-                    //TODO: should we move all those calls to the "repo"
-                    diesel::insert_into(bonds::table)
-                        .values::<&Vec<BondInsertDb>>(
-                            &bonds
-                            .values
-                            .into_iter()
-                            .map(|bond| {
-                                let validator: ValidatorDb = validators::table
-                                    .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
-                                    .select(ValidatorDb::as_select())
-                                    .first(transaction_conn)
-                                    .expect("Failed to get validator");
-
-                                BondInsertDb::from_bond(bond, validator.id, bonds.epoch)
-
-                            })
-                            .collect::<Vec<_>>())
-                        .on_conflict((bonds::columns::validator_id, bonds::columns::address, bonds::columns::epoch))
-                        .do_update()
-                        .set(orm::schema::bonds::columns::raw_amount
-                            .eq(excluded(orm::schema::bonds::columns::raw_amount)))
-                        .execute(transaction_conn)
-                        .context("Failed to update bonds in db")?;
-
-                    //TODO: should we move all those calls to the "repo"
-                    diesel::insert_into(unbonds::table)
-                        .values::<&Vec<UnbondInsertDb>>(
-                            &unbonds
-                            .values
-                            .into_iter()
-                            .map(|unbond| {
-                                let validator: ValidatorDb = validators::table
-                                    .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
-                                    .select(ValidatorDb::as_select())
-                                    .first(transaction_conn)
-                                    .expect("Failed to get validator");
-
-                                UnbondInsertDb::from_unbond(unbond, validator.id, unbonds.epoch)
-
-                            })
-                            .collect::<Vec<_>>())
-                        .on_conflict((unbonds::columns::validator_id, unbonds::columns::address, unbonds::columns::epoch))
-                        .do_update()
-                        .set((unbonds::columns::raw_amount.eq(excluded(unbonds::columns::raw_amount)),
-                              unbonds::columns::withdraw_epoch.eq(excluded(unbonds::columns::withdraw_epoch))))
-                        .execute(transaction_conn)
-                        .context("Failed to update unbonds in db")?;
+                    repository::pos::insert_bonds(transaction_conn, bonds)?;
+                    repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
                 diesel::insert_into(block_crawler_state::table)
                     .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
@@ -292,8 +229,16 @@ async fn initial_query(
     client: Arc<HttpClient>,
     conn: Arc<Object>,
 ) -> Result<(), MainError> {
+    tracing::info!("Querying current epoch...");
+    let epoch = get_current_epoch(&client.clone()).await.into_rpc_error()?;
+
     tracing::info!("Querying initial data...");
     let balances = query_all_balances(&client).await.into_rpc_error()?;
+
+    tracing::info!("Querying bonds and unbonds");
+    let (bonds, unbonds) = query_all_bonds_and_unbonds(&client, epoch)
+        .await
+        .into_rpc_error()?;
 
     tracing::info!("Inserting initial data... {:?}", balances);
 
@@ -301,16 +246,12 @@ async fn initial_query(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                diesel::insert_into(balances::table)
-                    .values::<&Vec<BalancesInsertDb>>(
-                        &balances
-                            .into_iter()
-                            .map(|b| BalancesInsertDb::from_balance(b))
-                            .collect::<Vec<_>>(),
-                    )
-                    .on_conflict_do_nothing()
-                    .execute(transaction_conn)
-                    .context("Failed to update balances in db")?;
+                repository::balance::insert_balance(
+                    transaction_conn,
+                    balances,
+                )?;
+                repository::pos::insert_bonds(transaction_conn, bonds)?;
+                repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
                 anyhow::Ok(())
             })

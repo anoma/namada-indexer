@@ -7,6 +7,7 @@ use namada_core::storage::{
 };
 use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::queries::RPC;
+use namada_sdk::rpc::bonds_and_unbonds;
 use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
@@ -141,6 +142,48 @@ pub async fn query_last_block_height(
         .unwrap_or_default())
 }
 
+pub async fn query_all_bonds_and_unbonds(
+    client: &HttpClient,
+    epoch: Epoch,
+) -> anyhow::Result<(Bonds, Unbonds)> {
+    let asd = bonds_and_unbonds(client, &None, &None)
+        .await
+        .context("Failed to query all bonds and unbonds")?;
+    let mut bonds = vec![];
+    let mut unbonds = vec![];
+
+    for (id, detials) in asd {
+        for bond_details in detials.bonds {
+            bonds.push(Bond {
+                source: Id::from(id.source.clone()),
+                target: Id::from(id.validator.clone()),
+                amount: Amount::from(bond_details.amount),
+            });
+        }
+
+        for unbond_details in detials.unbonds {
+            unbonds.push(Unbond {
+                source: Id::from(id.source.clone()),
+                target: Id::from(id.validator.clone()),
+                amount: Amount::from(unbond_details.amount),
+                withdraw_at: unbond_details.withdraw.0 as Epoch,
+            });
+        }
+    }
+
+    let bonds = Bonds {
+        epoch,
+        values: bonds,
+    };
+
+    let unbonds = Unbonds {
+        epoch,
+        values: unbonds,
+    };
+
+    Ok((bonds, unbonds))
+}
+
 pub async fn query_next_governance_id(
     client: &HttpClient,
     block_height: BlockHeight,
@@ -237,6 +280,14 @@ pub async fn query_unbonds(
         epoch,
         values: unbonds,
     })
+}
+
+pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
+    let epoch = rpc::query_epoch(client)
+        .await
+        .context("Failed to query Namada's current epoch")?;
+
+    Ok(epoch.0 as Epoch)
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
