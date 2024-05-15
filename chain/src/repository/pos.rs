@@ -15,6 +15,7 @@ pub fn insert_bonds(
     transaction_conn: &mut PgConnection,
     bonds: Bonds,
 ) -> anyhow::Result<()> {
+    tracing::info!("Updating bonds {:?}", bonds.values);
     diesel::insert_into(bonds::table)
         .values::<&Vec<BondInsertDb>>(
             &bonds

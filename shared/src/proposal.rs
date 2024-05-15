@@ -1,4 +1,5 @@
 use fake::Fake;
+use namada_governance::storage::proposal::StorageProposal;
 use namada_governance::ProposalType;
 use rand::distributions::{Distribution, Standard};
 
@@ -42,6 +43,24 @@ pub struct GovernanceProposal {
     pub voting_start_epoch: Epoch,
     pub voting_end_epoch: Epoch,
     pub activation_epoch: Epoch,
+}
+
+impl From<StorageProposal> for GovernanceProposal {
+    fn from(proposal: StorageProposal) -> Self {
+        let proposal_content_serialized =
+            serde_json::to_string_pretty(&proposal.content).unwrap_or_default();
+
+        Self {
+            id: proposal.id,
+            content: proposal_content_serialized,
+            author: Id::from(proposal.author),
+            r#type: proposal.r#type.into(),
+            data: None,
+            voting_start_epoch: proposal.voting_start_epoch.0 as Epoch,
+            voting_end_epoch: proposal.voting_end_epoch.0 as Epoch,
+            activation_epoch: proposal.activation_epoch.0 as Epoch,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

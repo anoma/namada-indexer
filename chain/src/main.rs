@@ -8,7 +8,7 @@ use chain::config::AppConfig;
 use chain::repository;
 use chain::services::namada::{
     get_current_epoch, query_all_balances, query_all_bonds_and_unbonds,
-    query_last_block_height,
+    query_all_proposals, query_last_block_height,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -19,8 +19,6 @@ use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::RunQueryDsl;
 use orm::block_crawler_state::BlockCrawlerStateInsertDb;
-use orm::governance_proposal::GovernanceProposalInsertDb;
-use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::schema::block_crawler_state;
 use shared::block::Block;
 use shared::block_result::BlockResult;
@@ -178,36 +176,19 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                repository::balance::insert_balance(transaction_conn, balances)?;
+                repository::balance::insert_balance(
+                    transaction_conn,
+                    balances,
+                )?;
 
-                diesel::insert_into(orm::schema::governance_proposals::table)
-                    .values::<&Vec<GovernanceProposalInsertDb>>(
-                        &proposals
-                            .into_iter()
-                            .map(|proposal| {
-                                GovernanceProposalInsertDb::from_governance_proposal(proposal)
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                    .on_conflict_do_nothing()
-                    .execute(transaction_conn)
-                    .context("Failed to update governance proposals in db")?;
+                repository::gov::insert_proposals(transaction_conn, proposals)?;
+                repository::gov::insert_votes(
+                    transaction_conn,
+                    proposals_votes,
+                )?;
 
-                    diesel::insert_into(orm::schema::governance_votes::table)
-                    .values::<&Vec<GovernanceProposalVoteInsertDb>>(
-                        &proposals_votes
-                            .into_iter()
-                            .map(|vote| {
-                                GovernanceProposalVoteInsertDb::from_governance_vote(vote)
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                    .on_conflict_do_nothing()
-                    .execute(transaction_conn)
-                    .context("Failed to update governance votes in db")?;
-
-                    repository::pos::insert_bonds(transaction_conn, bonds)?;
-                    repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+                repository::pos::insert_bonds(transaction_conn, bonds)?;
+                repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
                 diesel::insert_into(block_crawler_state::table)
                     .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
@@ -235,10 +216,13 @@ async fn initial_query(
     tracing::info!("Querying initial data...");
     let balances = query_all_balances(&client).await.into_rpc_error()?;
 
-    tracing::info!("Querying bonds and unbonds");
+    tracing::info!("Querying bonds and unbonds...");
     let (bonds, unbonds) = query_all_bonds_and_unbonds(&client, epoch)
         .await
         .into_rpc_error()?;
+
+    tracing::info!("Querying proposals...");
+    let proposals = query_all_proposals(&client).await.into_rpc_error()?;
 
     tracing::info!("Inserting initial data... {:?}", balances);
 
@@ -250,6 +234,9 @@ async fn initial_query(
                     transaction_conn,
                     balances,
                 )?;
+
+                repository::gov::insert_proposals(transaction_conn, proposals)?;
+
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 

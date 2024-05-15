@@ -6,14 +6,18 @@ use namada_core::storage::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
 use namada_sdk::address::Address as NamadaSdkAddress;
+use namada_sdk::borsh::BorshSerializeExt;
 use namada_sdk::queries::RPC;
-use namada_sdk::rpc::bonds_and_unbonds;
+use namada_sdk::rpc::{
+    bonds_and_unbonds, query_proposal_by_id, query_storage_value,
+};
 use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
+use shared::proposal::GovernanceProposal;
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use tendermint_rpc::HttpClient;
@@ -152,8 +156,8 @@ pub async fn query_all_bonds_and_unbonds(
     let mut bonds = vec![];
     let mut unbonds = vec![];
 
-    for (id, detials) in asd {
-        for bond_details in detials.bonds {
+    for (id, details) in asd {
+        for bond_details in details.bonds {
             bonds.push(Bond {
                 source: Id::from(id.source.clone()),
                 target: Id::from(id.validator.clone()),
@@ -161,7 +165,7 @@ pub async fn query_all_bonds_and_unbonds(
             });
         }
 
-        for unbond_details in detials.unbonds {
+        for unbond_details in details.unbonds {
             unbonds.push(Unbond {
                 source: Id::from(id.source.clone()),
                 target: Id::from(id.validator.clone()),
@@ -182,6 +186,64 @@ pub async fn query_all_bonds_and_unbonds(
     };
 
     Ok((bonds, unbonds))
+}
+
+pub async fn query_all_proposals(
+    client: &HttpClient,
+) -> anyhow::Result<Vec<GovernanceProposal>> {
+    let last_proposal_id_key =
+        namada_governance::storage::keys::get_counter_key();
+    let last_proposal_id: u64 =
+        query_storage_value(client, &last_proposal_id_key)
+            .await
+            .unwrap();
+
+    let mut proposals: Vec<GovernanceProposal> = vec![];
+
+    for id in 0..last_proposal_id {
+        let proposal = query_proposal_by_id(client, id)
+            .await
+            .unwrap()
+            .expect("Proposal should be written to storage.");
+        let proposal_type = proposal.r#type.clone();
+
+        // Create a governance proposal from the namada proposal, without the data
+        let mut governance_proposal = GovernanceProposal::from(proposal);
+
+        // Get the proposal data based on the proposal type
+        let proposal_data = match proposal_type {
+            namada_governance::ProposalType::DefaultWithWasm(_) => {
+                Some(query_proposal_code(client, id).await?)
+            }
+            namada_governance::ProposalType::PGFSteward(data) => {
+                Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+            }
+            namada_governance::ProposalType::PGFPayment(data) => {
+                Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+            }
+            namada_governance::ProposalType::Default => None,
+        };
+
+        // Add the proposal data to the governance proposal
+        governance_proposal.data = proposal_data;
+
+        proposals.push(governance_proposal);
+    }
+
+    anyhow::Ok(proposals)
+}
+
+pub async fn query_proposal_code(
+    client: &HttpClient,
+    proposal_id: u64,
+) -> anyhow::Result<Vec<u8>> {
+    let proposal_code_key =
+        namada_governance::storage::keys::get_proposal_code_key(proposal_id);
+    let proposal_code = query_storage_value(client, &proposal_code_key)
+        .await
+        .expect("Proposal code should be written to storage.");
+
+    anyhow::Ok(proposal_code)
 }
 
 pub async fn query_next_governance_id(
