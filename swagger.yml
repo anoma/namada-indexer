@@ -1,7 +1,11 @@
 openapi: '3.0.2'
 info:
   title: Namada Interface Indexer REST Api
-  version: '1.0'
+  version: '0.1'
+  description: "Set of API to interact with a namada indexer."
+  contact: 
+    email: hello@heliax.dev
+    url: https://github.com/anoma/namada-indexer
 servers:
   - url: http://localhost:5000/v1/api
 paths:
@@ -20,110 +24,193 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
-  /pos/reward/{account}:
+                  $ref: '#/components/schemas/Validator'
+  /pos/reward/{address}:
     get:
+      summary: Get all the rewards for address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
       responses:
         '200':
-          description: A list of validator.
+          description: A list of rewards.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
-  /pos/bond/{account}:
+                  $ref: '#/components/schemas/Reward'
+  /pos/bond/{address}:
     get:
+      summary: Get all the bonds for address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
       responses:
         '200':
-          description: A list of validator.
+          description: A list of bonds.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
-  /pos/unbonds/{account}:
+                  $ref: '#/components/schemas/Bond'
+  /pos/unbonds/{address}:
     get:
+      summary: Get all the unbonds for an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
       responses:
         '200':
-          description: A list of validator.
+          description: A list of bonds.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
-  /pos/withdrawal/{account}:
+                  $ref: '#/components/schemas/Unbond'
+  /pos/withdraw/{address}:
     get:
+      summary: Get all the withdraws for an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
       responses:
         '200':
-          description: A list of validator.
+          description: A list of possible withdraws.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'    
+                  $ref: '#/components/schemas/Withdraw'  
   /gov/proposal:
     get:
+      summary: Get a list of governance proposals
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter 
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, voting, ended]
+          description: The status of the proposal
       responses:
         '200':
-          description: A list of validator.
+          description: A list of governance proposal.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
+                  $ref: '#/components/schemas/Proposal'
   /gov/proposal/{id}:
     get:
+      summary: Get a governance proposal by proposal id
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 1
+          required: true
+          description: Proposal id
       responses:
         '200':
-          description: A list of validator.
+          description: A Governance proposal.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ValidatorResponse'
+                $ref: '#/components/schemas/Proposal'
   /gov/proposal/{id}/votes:
     get:
+      summary: Get all the votes for a governance proposal
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 1
+          required: true
+          description: Proposal id
       responses:
         '200':
-          description: A list of validator.
+          description: A list of votes for a govenance proposal.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
-  /gov/proposal/{id}/votes/{account}:
+                  $ref: '#/components/schemas/Vote'
+  /gov/proposal/{id}/votes/{address}:
     get:
+      summary: Get all the votes for a governance proposal from an address
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 1
+          required: true
+          description: Proposal id
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The voter address
       responses:
         '200':
-          description: A list of validator.
+          description: A list of votes.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ValidatorResponse'
-  /account/{account}:
+                  $ref: '#/components/schemas/Vote'
+  /account/{address}:
     get:
+      summary: Get the all the tokens balances of an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The address account
       responses:
         '200':
-          description: A list of validator.
+          description: A List of balances.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ValidatorResponse'
+                $ref: '#/components/schemas/Balance'
 
 components:
   schemas:
-    ValidatorResponse:
+    Validator:
       type: object
       properties:
         address:
@@ -146,3 +233,97 @@ components:
           type: string
         avatar:
           type: string
+    Proposal:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        type:
+          type: string
+        data:
+          type: string
+        author:
+          type: string
+        email:
+          type: string
+        startEpoch:
+          type: integer
+        endEpoch:
+          type: integer
+        activationEpoch:
+          type: integer
+        avatar:
+          type: string
+        status:
+          type: string
+          enum: [pending, voting, ended]
+        yayVotes:
+          type: integer
+        nayVotes:
+          type: integer
+        abstrainVotes:
+          type: integer
+    Vote:
+      type: object
+      properties:
+        id:
+          type: integer
+        vote:
+          type: string
+          enum: [yay, nay, abstrain]
+        address:
+          type: string
+    Reward:
+      type: object
+      properties:
+        delegator:
+          type: string
+        validator:
+          type: string
+        amount:
+          type: number
+          format: float
+    Bond:
+      type: object
+      properties:
+        delegator:
+          type: string
+        validator:
+          type: string
+        amount:
+          type: number
+          format: float
+    Unbond:
+      type: object
+      properties:
+        delegator:
+          type: string
+        validator:
+          type: string
+        amount:
+          type: number
+          format: float
+        withdrawEpoch: 
+          type: integer
+    Withdraw:
+      type: object
+      properties:
+        delegator:
+          type: string
+        validator:
+          type: string
+        amount:
+          type: number
+          format: float
+    Balance:
+      type: object
+      properties:
+        address:
+          type: string
+        token:
+          type: string
+        balance:
+          type: number
+          format: float
