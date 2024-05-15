@@ -1,4 +1,5 @@
 use crate::appstate::AppState;
+use crate::service::balance::BalanceService;
 use crate::service::governance::GovernanceService;
 use crate::service::pos::PosService;
 
@@ -6,6 +7,7 @@ use crate::service::pos::PosService;
 pub struct CommonState {
     pub pos_service: PosService,
     pub gov_service: GovernanceService,
+    pub balance_service: BalanceService,
 }
 
 impl CommonState {
@@ -13,6 +15,7 @@ impl CommonState {
         Self {
             pos_service: PosService::new(data.clone()),
             gov_service: GovernanceService::new(data.clone()),
+            balance_service: BalanceService::new(data.clone()),
         }
     }
 }

@@ -18,7 +18,10 @@ use tower_http::trace::TraceLayer;
 
 use crate::appstate::AppState;
 use crate::config::AppConfig;
-use crate::handler::{governance as gov_handlers, pos as pos_handlers};
+use crate::handler::{
+    balance as balance_handlers, governance as gov_handlers,
+    pos as pos_handlers,
+};
 use crate::state::common::CommonState;
 
 lazy_static! {
@@ -55,6 +58,10 @@ impl ApplicationServer {
                 .route(
                     "/gov/proposal/{id}/votes/{address}",
                     get(gov_handlers::get_governance_proposal_votes_by_address),
+                )
+                .route(
+                    "/account/{address}",
+                    get(balance_handlers::get_address_balance),
                 )
                 .with_state(common_state)
         };

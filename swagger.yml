@@ -356,8 +356,6 @@ components:
     Balance:
       type: object
       properties:
-        address:
-          type: string
         token:
           type: string
         balance:

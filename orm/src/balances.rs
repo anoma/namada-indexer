@@ -1,11 +1,11 @@
 use diesel::data_types::PgNumeric;
-use diesel::Insertable;
+use diesel::{Insertable, Queryable, Selectable};
 use shared::balance::Balance;
 
 use crate::schema::balances;
 use crate::utils::{Base10000BigUint, PgNumericInt};
 
-#[derive(Insertable, Clone)]
+#[derive(Insertable, Clone, Queryable, Selectable)]
 #[diesel(table_name = balances)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct BalancesInsertDb {
@@ -13,6 +13,8 @@ pub struct BalancesInsertDb {
     pub token: String,
     pub raw_amount: PgNumeric,
 }
+
+pub type BalanceDb = BalancesInsertDb;
 
 impl BalancesInsertDb {
     pub fn from_balance(balance: Balance) -> Self {

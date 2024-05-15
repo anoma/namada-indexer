@@ -2,11 +2,14 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 
+use super::balance::BalanceError;
 use super::governance::GovernanceError;
 use crate::response::api::ApiErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
+    #[error(transparent)]
+    BalanceError(#[from] BalanceError),
     #[error(transparent)]
     GovernanceError(#[from] GovernanceError),
     #[error("No chain parameters stored")]
@@ -24,6 +27,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
+            ApiError::BalanceError(error) => error.into_response(),
             ApiError::GovernanceError(error) => error.into_response(),
             ApiError::InvalidHeader => ApiErrorResponse::send(
                 StatusCode::BAD_REQUEST.as_u16(),
