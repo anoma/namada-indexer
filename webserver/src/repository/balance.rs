@@ -1,5 +1,7 @@
 use axum::async_trait;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalanceDb;
+use orm::schema::balances;
 
 use crate::appstate::AppState;
 
@@ -28,6 +30,16 @@ impl BalanceRepoTrait for BalanceRepo {
         &self,
         address: String,
     ) -> Result<Vec<BalanceDb>, String> {
-        todo!()
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            balances::table
+                .filter(balances::dsl::owner.eq(address))
+                .select(BalanceDb::as_select())
+                .get_results(conn)
+                .unwrap()
+        })
+        .await
+        .map_err(|e| e.to_string())
     }
 }

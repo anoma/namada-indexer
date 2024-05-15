@@ -1,8 +1,7 @@
-use shared::id::Id;
-use shared::validator::Validator;
-
 use crate::appstate::AppState;
+use crate::error::pos::PoSError;
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
+use crate::response::pos::Validator;
 
 #[derive(Clone)]
 pub struct PosService {
@@ -16,22 +15,19 @@ impl PosService {
         }
     }
 
-    pub async fn get_all_validators(&self) -> Vec<Validator> {
-        let validators = self.pos_repo.find_all_validators().await;
-        validators
-            .unwrap_or_default()
-            .into_iter()
-            .map(|v| Validator {
-                address: Id::Account(v.namada_address),
-                voting_power: v.voting_power.to_string(),
-                max_commission: v.max_commission,
-                commission: v.commission,
-                email: v.email,
-                description: v.description,
-                website: v.website,
-                discord_handler: v.discord_handle,
-                avatar: v.avatar,
-            })
-            .collect()
+    pub async fn get_all_validators(
+        &self,
+        page: u64,
+    ) -> Result<(Vec<Validator>, u64), PoSError> {
+        let (db_validators, total_items) = self
+            .pos_repo
+            .find_all_validators(page as i64)
+            .await
+            .map_err(PoSError::Database)?;
+
+        Ok((
+            db_validators.into_iter().map(Validator::from).collect(),
+            total_items as u64,
+        ))
     }
 }

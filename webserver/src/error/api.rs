@@ -4,10 +4,13 @@ use thiserror::Error;
 
 use super::balance::BalanceError;
 use super::governance::GovernanceError;
+use super::pos::PoSError;
 use crate::response::api::ApiErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
+    #[error(transparent)]
+    PoSError(#[from] PoSError),
     #[error(transparent)]
     BalanceError(#[from] BalanceError),
     #[error(transparent)]
@@ -27,6 +30,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
+            ApiError::PoSError(error) => error.into_response(),
             ApiError::BalanceError(error) => error.into_response(),
             ApiError::GovernanceError(error) => error.into_response(),
             ApiError::InvalidHeader => ApiErrorResponse::send(

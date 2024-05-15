@@ -1,3 +1,4 @@
+use orm::validators::ValidatorDb;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
@@ -12,4 +13,20 @@ pub struct Validator {
     pub description: Option<String>,
     pub discord_handle: Option<String>,
     pub avatar: Option<String>,
+}
+
+impl From<ValidatorDb> for Validator {
+    fn from(value: ValidatorDb) -> Self {
+        Self {
+            address: value.namada_address,
+            voting_power: value.voting_power.to_string(),
+            max_commission: value.max_commission,
+            commission: value.commission,
+            email: value.email,
+            website: value.website,
+            description: value.description,
+            discord_handle: value.discord_handle,
+            avatar: value.avatar,
+        }
+    }
 }
