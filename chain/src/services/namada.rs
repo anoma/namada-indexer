@@ -20,6 +20,7 @@ use shared::id::Id;
 use shared::proposal::GovernanceProposal;
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
+use shared::vote::{GovernanceVote, ProposalVoteKind};
 use tendermint_rpc::HttpClient;
 
 use super::utils::query_storage_prefix;
@@ -148,17 +149,17 @@ pub async fn query_last_block_height(
 
 pub async fn query_all_bonds_and_unbonds(
     client: &HttpClient,
-    epoch: Epoch,
 ) -> anyhow::Result<(Bonds, Unbonds)> {
-    let asd = bonds_and_unbonds(client, &None, &None)
+    let bonds_and_unbonds = bonds_and_unbonds(client, &None, &None)
         .await
         .context("Failed to query all bonds and unbonds")?;
     let mut bonds = vec![];
     let mut unbonds = vec![];
 
-    for (id, details) in asd {
+    for (id, details) in bonds_and_unbonds {
         for bond_details in details.bonds {
             bonds.push(Bond {
+                epoch: bond_details.start.0 as Epoch,
                 source: Id::from(id.source.clone()),
                 target: Id::from(id.validator.clone()),
                 amount: Amount::from(bond_details.amount),
@@ -167,6 +168,7 @@ pub async fn query_all_bonds_and_unbonds(
 
         for unbond_details in details.unbonds {
             unbonds.push(Unbond {
+                epoch: unbond_details.start.0 as Epoch,
                 source: Id::from(id.source.clone()),
                 target: Id::from(id.validator.clone()),
                 amount: Amount::from(unbond_details.amount),
@@ -175,17 +177,37 @@ pub async fn query_all_bonds_and_unbonds(
         }
     }
 
-    let bonds = Bonds {
-        epoch,
-        values: bonds,
-    };
-
-    let unbonds = Unbonds {
-        epoch,
-        values: unbonds,
-    };
-
     Ok((bonds, unbonds))
+}
+
+pub async fn query_all_votes(
+    client: &HttpClient,
+    proposal_ids: Vec<u64>,
+) -> anyhow::Result<Vec<GovernanceVote>> {
+    let mut res = vec![];
+    for proposal_id in proposal_ids {
+        let votes = namada_sdk::rpc::query_proposal_votes(client, proposal_id)
+            .await
+            .unwrap();
+
+        // TODO: maybe just use for
+        let votes = votes
+            .iter()
+            .cloned()
+            .map(|v| GovernanceVote {
+                proposal_id,
+                vote: ProposalVoteKind::from(v.data),
+                address: Id::from(v.delegator),
+            })
+            .collect::<Vec<GovernanceVote>>();
+
+        res.push(votes);
+    }
+
+    // TODO: not sure if this is optimal
+    let res = res.into_iter().flatten().collect();
+
+    anyhow::Ok(res)
 }
 
 pub async fn query_all_proposals(
@@ -296,16 +318,14 @@ pub async fn query_bonds(
             .context("Failed to query bond amount")?;
 
         bonds.push(Bond {
+            epoch,
             source: Id::from(source),
             target: Id::from(target),
             amount: Amount::from(amount),
         });
     }
 
-    anyhow::Ok(Bonds {
-        epoch,
-        values: bonds,
-    })
+    anyhow::Ok(bonds)
 }
 
 pub async fn query_unbonds(
@@ -331,6 +351,7 @@ pub async fn query_unbonds(
             res.last().context("Unbonds are empty")?;
 
         unbonds.push(Unbond {
+            epoch,
             source: Id::from(source),
             target: Id::from(validator),
             amount: Amount::from(*amount),
@@ -338,10 +359,7 @@ pub async fn query_unbonds(
         });
     }
 
-    anyhow::Ok(Unbonds {
-        epoch,
-        values: unbonds,
-    })
+    anyhow::Ok(unbonds)
 }
 
 pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {

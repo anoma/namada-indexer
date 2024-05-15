@@ -1,6 +1,5 @@
 use diesel::data_types::PgNumeric;
 use diesel::Insertable;
-use shared::block::Epoch;
 use shared::unbond::Unbond;
 
 use crate::schema::unbonds;
@@ -18,11 +17,7 @@ pub struct UnbondInsertDb {
 }
 
 impl UnbondInsertDb {
-    pub fn from_unbond(
-        unbond: Unbond,
-        validator_id: i32,
-        epoch: Epoch,
-    ) -> Self {
+    pub fn from_unbond(unbond: Unbond, validator_id: i32) -> Self {
         let num = Base10000BigUint::from(unbond.amount);
         let raw_amount = PgNumericInt::from(num);
 
@@ -30,7 +25,7 @@ impl UnbondInsertDb {
             address: unbond.source.to_string(),
             validator_id,
             raw_amount: raw_amount.into_inner(),
-            epoch: epoch as i32,
+            epoch: unbond.epoch as i32,
             withdraw_epoch: unbond.withdraw_at as i32,
         }
     }

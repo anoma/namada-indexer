@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use diesel::{Insertable, Queryable, Selectable};
 use serde::Serialize;
-use shared::block::Epoch;
 use shared::validator::Validator;
 
 use crate::schema::validators;
@@ -21,7 +20,6 @@ pub struct ValidatorDb {
     pub description: Option<String>,
     pub discord_handle: Option<String>,
     pub avatar: Option<String>,
-    pub epoch: i32,
 }
 
 #[derive(Serialize, Insertable, Clone)]
@@ -37,11 +35,10 @@ pub struct ValidatorInsertDb {
     pub description: Option<String>,
     pub discord_handle: Option<String>,
     pub avatar: Option<String>,
-    pub epoch: i32,
 }
 
 impl ValidatorInsertDb {
-    pub fn from_validator(validator: Validator, epoch: Epoch) -> Self {
+    pub fn from_validator(validator: Validator) -> Self {
         Self {
             namada_address: validator.address.to_string(),
             voting_power: f32::from_str(&validator.voting_power).unwrap()
@@ -53,7 +50,6 @@ impl ValidatorInsertDb {
             description: validator.description.clone(),
             discord_handle: validator.discord_handler.clone(),
             avatar: validator.avatar.clone(),
-            epoch: epoch as i32,
         }
     }
 }

@@ -1,3 +1,5 @@
+use fake::Fake;
+
 use crate::balance::Amount;
 use crate::block::Epoch;
 use crate::id::Id;
@@ -11,34 +13,24 @@ pub struct BondAddresses {
 
 #[derive(Debug, Clone)]
 pub struct Bond {
+    pub epoch: Epoch,
     pub source: Id,
     pub target: Id,
     pub amount: Amount,
-}
-
-#[derive(Debug, Clone)]
-pub struct Bonds {
-    pub epoch: Epoch,
-    pub values: Vec<Bond>,
 }
 
 impl Bond {
     pub fn fake(validator_address: Id) -> Self {
         let source_address =
             namada_core::address::gen_established_address("namada-indexer");
+
         Self {
             source: Id::Account(source_address.to_string()),
             target: validator_address,
             amount: Amount::fake(),
+            epoch: (1..3).fake::<u32>(),
         }
     }
 }
 
-impl Bonds {
-    pub fn new(bonds: Vec<Bond>, epoch: Epoch) -> Self {
-        Self {
-            epoch,
-            values: bonds,
-        }
-    }
-}
+pub type Bonds = Vec<Bond>;

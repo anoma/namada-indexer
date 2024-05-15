@@ -10,12 +10,8 @@ CREATE TABLE validators (
     website VARCHAR,
     description VARCHAR,
     discord_handle VARCHAR,
-    avatar VARCHAR,
-    epoch INT NOT NULL
+    avatar VARCHAR
 );
 
 ALTER TABLE validators
-ADD UNIQUE (namada_address, epoch);
-
-CREATE INDEX epoch_asc ON validators (epoch ASC);
-CREATE INDEX epoch_desc ON validators (epoch DESC);
+ADD UNIQUE (namada_address);

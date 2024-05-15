@@ -1,6 +1,5 @@
 use diesel::data_types::PgNumeric;
 use diesel::Insertable;
-use shared::block::Epoch;
 use shared::bond::Bond;
 
 use crate::schema::bonds;
@@ -17,7 +16,7 @@ pub struct BondInsertDb {
 }
 
 impl BondInsertDb {
-    pub fn from_bond(bond: Bond, validator_id: i32, epoch: Epoch) -> Self {
+    pub fn from_bond(bond: Bond, validator_id: i32) -> Self {
         let num = Base10000BigUint::from(bond.amount);
         let raw_amount = PgNumericInt::from(num);
 
@@ -25,7 +24,7 @@ impl BondInsertDb {
             address: bond.source.to_string(),
             validator_id,
             raw_amount: raw_amount.into_inner(),
-            epoch: epoch as i32,
+            epoch: bond.epoch as i32,
         }
     }
 }

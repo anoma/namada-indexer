@@ -125,7 +125,6 @@ diesel::table! {
         description -> Nullable<Varchar>,
         discord_handle -> Nullable<Varchar>,
         avatar -> Nullable<Varchar>,
-        epoch -> Int4,
     }
 }
 

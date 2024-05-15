@@ -7,8 +7,8 @@ use chain::app_state::AppState;
 use chain::config::AppConfig;
 use chain::repository;
 use chain::services::namada::{
-    get_current_epoch, query_all_balances, query_all_bonds_and_unbonds,
-    query_all_proposals, query_last_block_height,
+    query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
+    query_all_votes, query_last_block_height,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -162,13 +162,13 @@ async fn crawling_fn(
     let bonds = namada_service::query_bonds(&client, addresses, epoch)
         .await
         .into_rpc_error()?;
-    tracing::info!("Updating bonds for {} addresses", bonds.values.len());
+    tracing::info!("Updating bonds for {} addresses", bonds.len());
 
     let addresses = block.unbond_addresses();
     let unbonds = namada_service::query_unbonds(&client, addresses, epoch)
         .await
         .into_rpc_error()?;
-    tracing::info!("Updating unbonds for {} addresses", unbonds.values.len());
+    tracing::info!("Updating unbonds for {} addresses", unbonds.len());
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -210,19 +210,22 @@ async fn initial_query(
     client: Arc<HttpClient>,
     conn: Arc<Object>,
 ) -> Result<(), MainError> {
-    tracing::info!("Querying current epoch...");
-    let epoch = get_current_epoch(&client.clone()).await.into_rpc_error()?;
-
     tracing::info!("Querying initial data...");
     let balances = query_all_balances(&client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
-    let (bonds, unbonds) = query_all_bonds_and_unbonds(&client, epoch)
+    let (bonds, unbonds) = query_all_bonds_and_unbonds(&client)
         .await
         .into_rpc_error()?;
 
     tracing::info!("Querying proposals...");
     let proposals = query_all_proposals(&client).await.into_rpc_error()?;
+
+    tracing::info!("Query votes...");
+    let proposal_ids = proposals.iter().map(|p| p.id).collect();
+    let votes = query_all_votes(&client, proposal_ids)
+        .await
+        .into_rpc_error()?;
 
     tracing::info!("Inserting initial data... {:?}", balances);
 
@@ -236,6 +239,7 @@ async fn initial_query(
                 )?;
 
                 repository::gov::insert_proposals(transaction_conn, proposals)?;
+                repository::gov::insert_votes(transaction_conn, votes)?;
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
