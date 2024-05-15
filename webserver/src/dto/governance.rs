@@ -16,3 +16,9 @@ pub struct ProposalQueryParams {
     pub pagination: Option<Pagination>,
     pub status: Option<ProposalStatus>,
 }
+
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub struct ProposalVotesQueryparams {
+    #[serde(flatten)]
+    pub pagination: Option<Pagination>,
+}

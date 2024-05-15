@@ -3,6 +3,7 @@ use std::fmt::Display;
 use orm::governance_proposal::{
     GovernanceProposalDb, GovernanceProposalKindDb, GovernanceProposalResultDb,
 };
+use orm::governance_votes::{GovernanceProposalVoteDb, GovernanceVoteKindDb};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -108,6 +109,20 @@ impl From<GovernanceProposalDb> for Proposal {
                 .abstain_votes
                 .parse::<u64>()
                 .unwrap_or_default(),
+        }
+    }
+}
+
+impl From<GovernanceProposalVoteDb> for ProposalVote {
+    fn from(value: GovernanceProposalVoteDb) -> Self {
+        Self {
+            proposal_id: value.proposal_id as u64,
+            vote: match value.kind {
+                GovernanceVoteKindDb::Nay => VoteType::Nay,
+                GovernanceVoteKindDb::Yay => VoteType::Yay,
+                GovernanceVoteKindDb::Abstain => VoteType::Abstain,
+            },
+            voter_address: value.voter_address,
         }
     }
 }

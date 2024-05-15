@@ -44,6 +44,18 @@ impl ApplicationServer {
                     "/gov/proposal",
                     get(gov_handlers::get_governance_proposals),
                 )
+                .route(
+                    "/gov/proposal/{id}",
+                    get(gov_handlers::get_governance_proposal_by_id),
+                )
+                .route(
+                    "/gov/proposal/{id}/votes",
+                    get(gov_handlers::get_governance_proposal_votes),
+                )
+                .route(
+                    "/gov/proposal/{id}/votes/{address}",
+                    get(gov_handlers::get_governance_proposal_votes_by_address),
+                )
                 .with_state(common_state)
         };
 
