@@ -18,7 +18,7 @@ use tower_http::trace::TraceLayer;
 
 use crate::appstate::AppState;
 use crate::config::AppConfig;
-use crate::handler::pos as pos_handlers;
+use crate::handler::{governance as gov_handlers, pos as pos_handlers};
 use crate::state::common::CommonState;
 
 lazy_static! {
@@ -40,6 +40,10 @@ impl ApplicationServer {
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))
+                .route(
+                    "/gov/proposal",
+                    get(gov_handlers::get_governance_proposals),
+                )
                 .with_state(common_state)
         };
 
