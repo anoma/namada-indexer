@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
-pub struct ValidatorResponse {
+#[serde(rename_all = "camelCase")]
+pub struct Validator {
     pub address: String,
     pub voting_power: String,
     pub max_commission: String,

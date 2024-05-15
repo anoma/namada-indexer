@@ -246,16 +246,12 @@ components:
           type: string
         author:
           type: string
-        email:
-          type: string
         startEpoch:
           type: integer
         endEpoch:
           type: integer
         activationEpoch:
           type: integer
-        avatar:
-          type: string
         status:
           type: string
           enum: [pending, voting, ended]
@@ -268,12 +264,12 @@ components:
     Vote:
       type: object
       properties:
-        id:
+        proposal_id:
           type: integer
         vote:
           type: string
           enum: [yay, nay, abstrain]
-        address:
+        voter_address:
           type: string
     Reward:
       type: object
@@ -285,6 +281,7 @@ components:
         amount:
           type: number
           format: float
+          minimum: 0
     Bond:
       type: object
       properties:
@@ -295,6 +292,7 @@ components:
         amount:
           type: number
           format: float
+          minimum: 0
     Unbond:
       type: object
       properties:
@@ -305,6 +303,7 @@ components:
         amount:
           type: number
           format: float
+          minimum: 0
         withdrawEpoch: 
           type: integer
     Withdraw:
@@ -317,6 +316,7 @@ components:
         amount:
           type: number
           format: float
+          minimum: 0
     Balance:
       type: object
       properties:
@@ -327,3 +327,4 @@ components:
         balance:
           type: number
           format: float
+          minimum: 0
