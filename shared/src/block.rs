@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
 use namada_sdk::borsh::BorshDeserialize;
+use namada_tx::data::pos;
 use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
@@ -224,6 +225,25 @@ impl Block {
                         ),
                         content: proposal_content_serialized,
                     })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn pos_rewards(&self) -> HashSet<Id> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::ClaimRewards(data) => {
+                    let data = pos::Withdraw::try_from_slice(
+                        // seems wrong but its correct
+                        data,
+                    )
+                    .unwrap();
+                    let source = data.source.unwrap_or(data.validator);
+
+                    Some(Id::from(source))
                 }
                 _ => None,
             })

@@ -17,9 +17,9 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::RunQueryDsl;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use orm::block_crawler_state::BlockCrawlerStateInsertDb;
-use orm::schema::block_crawler_state;
+use orm::schema::{block_crawler_state, pos_rewards};
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -171,6 +171,8 @@ async fn crawling_fn(
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
 
+    let reward_claimers = block.pos_rewards();
+
     let crawler_state = CrawlerState::new(block_height, epoch);
 
     conn.interact(move |conn| {
@@ -196,6 +198,13 @@ async fn crawling_fn(
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to update crawler state in db")?;
+
+                diesel::delete(pos_rewards::table.filter(
+                    pos_rewards::dsl::owner.eq_any(
+                        reward_claimers.into_iter().map(|id| id.to_string()),
+                    ),
+                ))
+                .execute(transaction_conn)?;
 
                 anyhow::Ok(())
             })

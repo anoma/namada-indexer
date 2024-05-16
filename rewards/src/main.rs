@@ -87,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
                                     &rewards
                                         .into_iter()
                                         .map(|reward, | {
-                                            PosRewardInsertDb::from_reward(reward, epoch)
+                                            PosRewardInsertDb::from_reward(reward)
                                         })
                                         .collect::<Vec<_>>(),
                                 )
