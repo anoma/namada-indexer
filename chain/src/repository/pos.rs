@@ -1,15 +1,14 @@
 use anyhow::Context;
+use diesel::upsert::excluded;
 use diesel::{
-    upsert::excluded, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
-    SelectableHelper,
+    ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
 };
-use orm::{
-    bond::BondInsertDb,
-    schema::{bonds, unbonds, validators},
-    unbond::UnbondInsertDb,
-    validators::ValidatorDb,
-};
-use shared::{bond::Bonds, unbond::Unbonds};
+use orm::bond::BondInsertDb;
+use orm::schema::{bonds, unbonds, validators};
+use orm::unbond::UnbondInsertDb;
+use orm::validators::ValidatorDb;
+use shared::bond::Bonds;
+use shared::unbond::Unbonds;
 
 pub fn insert_bonds(
     transaction_conn: &mut PgConnection,

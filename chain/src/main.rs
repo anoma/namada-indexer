@@ -68,7 +68,8 @@ async fn main() -> Result<(), MainError> {
         Some(height) => height + 1,
         // If last processed block is not stored in db, query for initial state
         None => {
-            // We get the height before we do initial query so we start from the correct block
+            // We get the height before we do initial query so we start from the
+            // correct block
             // TODO: try first_block_height_of_current_epoch
             let height =
                 query_last_block_height(&client).await.into_rpc_error()?;

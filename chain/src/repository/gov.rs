@@ -1,10 +1,9 @@
 use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
-use orm::{
-    governance_proposal::GovernanceProposalInsertDb,
-    governance_votes::GovernanceProposalVoteInsertDb,
-};
-use shared::{proposal::GovernanceProposal, vote::GovernanceVote};
+use orm::governance_proposal::GovernanceProposalInsertDb;
+use orm::governance_votes::GovernanceProposalVoteInsertDb;
+use shared::proposal::GovernanceProposal;
+use shared::vote::GovernanceVote;
 
 pub fn insert_proposals(
     transaction_conn: &mut PgConnection,

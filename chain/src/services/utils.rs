@@ -1,8 +1,6 @@
-use namada_sdk::{
-    borsh::BorshDeserialize,
-    queries::RPC,
-    storage::{self, PrefixValue},
-};
+use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::queries::RPC;
+use namada_sdk::storage::{self, PrefixValue};
 use tendermint_rpc::HttpClient;
 
 /// Query a range of storage values with a matching prefix and decode them with
@@ -24,7 +22,7 @@ where
         |PrefixValue { key, value }: PrefixValue| match T::try_from_slice(
             &value[..],
         ) {
-            //TODO: do sth with err
+            // TODO: do sth with err
             Err(_err) => None,
             Ok(value) => Some((key, value)),
         };

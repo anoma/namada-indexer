@@ -48,7 +48,8 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
-    // If last processed epoch is not stored in the db, start from the current epoch
+    // If last processed epoch is not stored in the db, start from the current
+    // epoch
     let next_epoch = match last_epoch {
         Some(height) => height + 1,
         None => namada_service::get_current_epoch(&client.clone())
@@ -102,7 +103,7 @@ async fn crawling_fn(
                 let validators_dbo = &validators_set
                     .validators
                     .into_iter()
-                    .map(|v| ValidatorInsertDb::from_validator(v))
+                    .map(ValidatorInsertDb::from_validator)
                     .collect::<Vec<_>>();
 
                 diesel::insert_into(validators::table)
@@ -116,7 +117,7 @@ async fn crawling_fn(
                             .eq(excluded(validators::columns::max_commission)),
                         validators::columns::commission
                             .eq(excluded(validators::columns::commission)),
-                        //TODO: maybe metadata can change more often?
+                        // TODO: maybe metadata can change more often?
                         validators::columns::email
                             .eq(excluded(validators::columns::email)),
                         validators::columns::website

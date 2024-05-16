@@ -5,7 +5,9 @@ use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalancesInsertDb;
 use orm::bond::BondInsertDb;
-use orm::governance_proposal::{GovernanceProposalInsertDb, GovernanceProposalUpdateStatusDb};
+use orm::governance_proposal::{
+    GovernanceProposalInsertDb, GovernanceProposalUpdateStatusDb,
+};
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{
@@ -18,11 +20,11 @@ use rand::Rng;
 use seeder::config::AppConfig;
 use seeder::state::AppState;
 use shared::balance::Balance;
-use shared::bond::{Bond, Bonds};
+use shared::bond::Bond;
 use shared::error::{AsDbError, ContextDbInteractError, MainError};
 use shared::proposal::{GovernanceProposal, GovernanceProposalStatus};
 use shared::rewards::Reward;
-use shared::unbond::{Unbond, Unbonds};
+use shared::unbond::Unbond;
 use shared::validator::Validator;
 use shared::vote::GovernanceVote;
 use tracing::Level;

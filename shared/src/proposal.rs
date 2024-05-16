@@ -2,7 +2,8 @@ use std::collections::BTreeSet;
 
 use fake::Fake;
 use namada_governance::storage::proposal::{
-    AddRemove, PGFAction, PGFIbcTarget, PGFInternalTarget, PGFTarget, StorageProposal
+    AddRemove, PGFAction, PGFIbcTarget, PGFInternalTarget, PGFTarget,
+    StorageProposal,
 };
 use namada_governance::ProposalType;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
@@ -213,7 +214,7 @@ impl Distribution<GovernanceProposalResult> for Standard {
             0 => GovernanceProposalResult::Passed,
             1 => GovernanceProposalResult::Pending,
             2 => GovernanceProposalResult::VotingPeriod,
-            _ => GovernanceProposalResult::Rejected
+            _ => GovernanceProposalResult::Rejected,
         }
     }
 }
