@@ -42,6 +42,7 @@ impl TransactionKind {
             "tx_claim_rewards" => TransactionKind::ClaimRewards(data.to_vec()),
             "wrapper" => TransactionKind::Wrapper,
             "tx_init_proposal" => TransactionKind::InitProposal(data.to_vec()),
+            "tx_vote_proposal" => TransactionKind::ProposalVote(data.to_vec()),
             _ => TransactionKind::Unknown,
         }
     }

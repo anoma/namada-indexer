@@ -10,4 +10,4 @@ CREATE TABLE unbonds (
 );
 
 ALTER TABLE unbonds
-ADD UNIQUE (address, validator_id, epoch);
+ADD UNIQUE (address, validator_id, withdraw_epoch, epoch);

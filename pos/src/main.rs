@@ -4,7 +4,8 @@ use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::RunQueryDsl;
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, RunQueryDsl};
 use orm::epoch_crawler_state::EpochCralwerStateInsertDb;
 use orm::schema::{epoch_crawler_state, validators};
 use orm::validators::ValidatorInsertDb;
@@ -47,9 +48,12 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
+    // If last processed epoch is not stored in the db, start from the current epoch
     let next_epoch = match last_epoch {
         Some(height) => height + 1,
-        None => 0,
+        None => namada_service::get_current_epoch(&client.clone())
+            .await
+            .into_rpc_error()?,
     };
 
     crawler::crawl(
@@ -98,14 +102,32 @@ async fn crawling_fn(
                 let validators_dbo = &validators_set
                     .validators
                     .into_iter()
-                    .map(|v| {
-                        ValidatorInsertDb::from_validator(v, epoch_to_process)
-                    })
+                    .map(|v| ValidatorInsertDb::from_validator(v))
                     .collect::<Vec<_>>();
 
                 diesel::insert_into(validators::table)
                     .values::<&Vec<ValidatorInsertDb>>(validators_dbo)
-                    .on_conflict_do_nothing()
+                    .on_conflict(validators::columns::namada_address)
+                    .do_update()
+                    .set((
+                        validators::columns::voting_power
+                            .eq(excluded(validators::columns::voting_power)),
+                        validators::columns::max_commission
+                            .eq(excluded(validators::columns::max_commission)),
+                        validators::columns::commission
+                            .eq(excluded(validators::columns::commission)),
+                        //TODO: maybe metadata can change more often?
+                        validators::columns::email
+                            .eq(excluded(validators::columns::email)),
+                        validators::columns::website
+                            .eq(excluded(validators::columns::website)),
+                        validators::columns::description
+                            .eq(excluded(validators::columns::description)),
+                        validators::columns::discord_handle
+                            .eq(excluded(validators::columns::discord_handle)),
+                        validators::columns::avatar
+                            .eq(excluded(validators::columns::avatar)),
+                    ))
                     .execute(transaction_conn)
                     .context("Failed to update validators in db")?;
 
