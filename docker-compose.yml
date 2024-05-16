@@ -67,8 +67,9 @@ services:
       DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
       CACHE_URL: redis://dragonfly:6379
     healthcheck:
-        test: curl --fail http://localhost:5000/health || exit 1
-        interval: 15s
-        timeout: 10s
-        retries: 3
-        start_period: 10s
+      test: curl --fail http://localhost:5000/health || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+        

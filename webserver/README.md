@@ -1,1 +1,0 @@
-# Namada Indexer API
