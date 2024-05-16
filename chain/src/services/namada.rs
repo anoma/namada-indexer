@@ -8,7 +8,6 @@ use namada_core::storage::{
 use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::borsh::BorshSerializeExt;
 use namada_sdk::collections::HashMap;
-use namada_sdk::proof_of_stake::types::UnbondDetails;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
@@ -17,7 +16,6 @@ use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
-use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::proposal::GovernanceProposal;
