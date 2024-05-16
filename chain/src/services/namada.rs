@@ -20,7 +20,6 @@ use shared::id::Id;
 use shared::proposal::GovernanceProposal;
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
-use shared::vote::{GovernanceVote, ProposalVoteKind};
 use subtle_encoding::hex;
 use tendermint_rpc::HttpClient;
 
@@ -155,14 +154,13 @@ pub async fn query_all_bonds_and_unbonds(
 ) -> anyhow::Result<(Bonds, Unbonds)> {
     type Source = NamadaSdkAddress;
     type Validator = NamadaSdkAddress;
-    type StartEpoch = NamadaSdkEpoch;
     type WithdrawEpoch = NamadaSdkEpoch;
 
     type BondKey = (Source, Validator);
-    type BondsMap = HashMap<BondKey, (NamadaSdkAmount, StartEpoch)>;
+    type BondsMap = HashMap<BondKey, NamadaSdkAmount>;
 
     type UnbondKey = (Source, Validator, WithdrawEpoch);
-    type UnbondsMap = HashMap<UnbondKey, (NamadaSdkAmount, StartEpoch)>;
+    type UnbondsMap = HashMap<UnbondKey, NamadaSdkAmount>;
 
     let bonds_and_unbonds = bonds_and_unbonds(client, &None, &None)
         .await
@@ -180,9 +178,9 @@ pub async fn query_all_bonds_and_unbonds(
             let key = (id.source, id.validator);
 
             if let Some(record) = bonds.get_mut(&key) {
-                *record = (record.0.checked_add(bd.amount).unwrap(), record.1);
+                *record = record.checked_add(bd.amount).unwrap();
             } else {
-                bonds.insert(key, (bd.amount, bd.start));
+                bonds.insert(key, bd.amount);
             }
         }
 
@@ -191,9 +189,9 @@ pub async fn query_all_bonds_and_unbonds(
             let key = (id.source, id.validator, ud.withdraw);
 
             if let Some(record) = unbonds.get_mut(&key) {
-                *record = (record.0.checked_add(ud.amount).unwrap(), record.1);
+                *record = record.checked_add(ud.amount).unwrap();
             } else {
-                unbonds.insert(key, (ud.amount, ud.start));
+                unbonds.insert(key, ud.amount);
             }
         }
     }
@@ -201,8 +199,7 @@ pub async fn query_all_bonds_and_unbonds(
     // Map the types, mostly because we can't add indexer amounts
     let bonds = bonds
         .into_iter()
-        .map(|((source, target), (amount, epoch))| Bond {
-            epoch: epoch.0 as Epoch,
+        .map(|((source, target), amount)| Bond {
             source: Id::from(source),
             target: Id::from(target),
             amount: Amount::from(amount),
@@ -211,8 +208,7 @@ pub async fn query_all_bonds_and_unbonds(
 
     let unbonds = unbonds
         .into_iter()
-        .map(|((source, target, withdraw), (amount, epoch))| Unbond {
-            epoch: epoch.0 as Epoch,
+        .map(|((source, target, withdraw), amount)| Unbond {
             source: Id::from(source),
             target: Id::from(target),
             amount: Amount::from(amount),
@@ -220,40 +216,7 @@ pub async fn query_all_bonds_and_unbonds(
         })
         .collect();
 
-    tracing::info!("bonds {:?}", bonds);
-    tracing::info!("unbonds {:?}", unbonds);
-
     Ok((bonds, unbonds))
-}
-
-pub async fn query_all_votes(
-    client: &HttpClient,
-    proposal_ids: Vec<u64>,
-) -> anyhow::Result<Vec<GovernanceVote>> {
-    let mut res = vec![];
-    for proposal_id in proposal_ids {
-        let votes = namada_sdk::rpc::query_proposal_votes(client, proposal_id)
-            .await
-            .unwrap();
-
-        // TODO: maybe just use for
-        let votes = votes
-            .iter()
-            .cloned()
-            .map(|v| GovernanceVote {
-                proposal_id,
-                vote: ProposalVoteKind::from(v.data),
-                address: Id::from(v.delegator),
-            })
-            .collect::<Vec<GovernanceVote>>();
-
-        res.push(votes);
-    }
-
-    // TODO: not sure if this is optimal
-    let res = res.into_iter().flatten().collect();
-
-    anyhow::Ok(res)
 }
 
 pub async fn query_all_proposals(
@@ -368,7 +331,6 @@ pub async fn query_bonds(
             .context("Failed to query bond amount")?;
 
         bonds.push(Bond {
-            epoch,
             source: Id::from(source),
             target: Id::from(target),
             amount: Amount::from(amount),
@@ -381,7 +343,6 @@ pub async fn query_bonds(
 pub async fn query_unbonds(
     client: &HttpClient,
     addresses: Vec<UnbondAddresses>,
-    epoch: Epoch,
 ) -> anyhow::Result<Unbonds> {
     let mut unbonds = vec![];
 
@@ -395,13 +356,10 @@ pub async fn query_unbonds(
             .await
             .context("Failed to query unbond amount")?;
 
-        tracing::info!("unbonds {:?}", res);
-
         let ((_, withdraw_epoch), amount) =
             res.last().context("Unbonds are empty")?;
 
         unbonds.push(Unbond {
-            epoch,
             source: Id::from(source),
             target: Id::from(validator),
             amount: Amount::from(*amount),

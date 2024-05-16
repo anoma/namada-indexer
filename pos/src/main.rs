@@ -11,7 +11,7 @@ use orm::schema::{epoch_crawler_state, validators};
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
 use pos::config::AppConfig;
-use pos::services::{db as db_service, namada as namada_service};
+use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::CrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
@@ -44,18 +44,11 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
-    let last_epoch = db_service::get_last_synched_epoch(&conn)
-        .await
-        .into_db_error()?;
 
-    // If last processed epoch is not stored in the db, start from the current
-    // epoch
-    let next_epoch = match last_epoch {
-        Some(height) => height + 1,
-        None => namada_service::get_current_epoch(&client.clone())
-            .await
-            .into_rpc_error()?,
-    };
+    //We always start from the current epoch
+    let next_epoch = namada_service::get_current_epoch(&client.clone())
+        .await
+        .into_rpc_error()?;
 
     crawler::crawl(
         move |epoch| crawling_fn(epoch, conn.clone(), client.clone()),

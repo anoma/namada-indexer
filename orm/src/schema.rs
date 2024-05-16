@@ -49,7 +49,6 @@ diesel::table! {
         address -> Varchar,
         validator_id -> Int4,
         raw_amount -> Varchar,
-        epoch -> Int4,
     }
 }
 
@@ -108,7 +107,6 @@ diesel::table! {
         address -> Varchar,
         validator_id -> Int4,
         raw_amount -> Varchar,
-        epoch -> Int4,
         withdraw_epoch -> Int4,
     }
 }
