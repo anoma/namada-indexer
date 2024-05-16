@@ -9,4 +9,4 @@ CREATE TABLE bonds (
 );
 
 ALTER TABLE bonds
-ADD UNIQUE (address, validator_id, epoch);
+ADD UNIQUE (address, validator_id);

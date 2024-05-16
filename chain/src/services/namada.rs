@@ -7,10 +7,13 @@ use namada_core::storage::{
 };
 use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::borsh::BorshSerializeExt;
+use namada_sdk::collections::HashMap;
+use namada_sdk::proof_of_stake::types::UnbondDetails;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
 };
+use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
@@ -147,35 +150,78 @@ pub async fn query_last_block_height(
         .unwrap_or_default())
 }
 
+//TODO: this can be improved / optimized(bonds and unbonds can be processed in parallel)
 pub async fn query_all_bonds_and_unbonds(
     client: &HttpClient,
 ) -> anyhow::Result<(Bonds, Unbonds)> {
+    type Source = NamadaSdkAddress;
+    type Validator = NamadaSdkAddress;
+    type StartEpoch = NamadaSdkEpoch;
+    type WithdrawEpoch = NamadaSdkEpoch;
+
+    type BondKey = (Source, Validator);
+    type BondsMap = HashMap<BondKey, (NamadaSdkAmount, StartEpoch)>;
+
+    type UnbondKey = (Source, Validator, WithdrawEpoch);
+    type UnbondsMap = HashMap<UnbondKey, (NamadaSdkAmount, StartEpoch)>;
+
     let bonds_and_unbonds = bonds_and_unbonds(client, &None, &None)
         .await
         .context("Failed to query all bonds and unbonds")?;
-    let mut bonds = vec![];
-    let mut unbonds = vec![];
+    tracing::info!("bonds_and_unbonds {:?}", bonds_and_unbonds);
 
-    for (id, details) in bonds_and_unbonds {
-        for bond_details in details.bonds {
-            bonds.push(Bond {
-                epoch: bond_details.start.0 as Epoch,
-                source: Id::from(id.source.clone()),
-                target: Id::from(id.validator.clone()),
-                amount: Amount::from(bond_details.amount),
-            });
+    let mut bonds: BondsMap = HashMap::new();
+    let mut unbonds: UnbondsMap = HashMap::new();
+
+    // This is not super nice but it's fewer iteratirons that doing map and then reduce
+    for (bond_id, details) in bonds_and_unbonds {
+        for bd in details.bonds {
+            let id = bond_id.clone();
+            let key = (id.source, id.validator);
+
+            if let Some(record) = bonds.get_mut(&key) {
+                *record = (record.0.checked_add(bd.amount).unwrap(), record.1);
+            } else {
+                bonds.insert(key, (bd.amount, bd.start));
+            }
         }
 
-        for unbond_details in details.unbonds {
-            unbonds.push(Unbond {
-                epoch: unbond_details.start.0 as Epoch,
-                source: Id::from(id.source.clone()),
-                target: Id::from(id.validator.clone()),
-                amount: Amount::from(unbond_details.amount),
-                withdraw_at: unbond_details.withdraw.0 as Epoch,
-            });
+        for ud in details.unbonds {
+            let id = bond_id.clone();
+            let key = (id.source, id.validator, ud.withdraw);
+
+            if let Some(record) = unbonds.get_mut(&key) {
+                *record = (record.0.checked_add(ud.amount).unwrap(), record.1);
+            } else {
+                unbonds.insert(key, (ud.amount, ud.start));
+            }
         }
     }
+
+    // Map the types, mostly because we can't add indexer amounts
+    let bonds = bonds
+        .into_iter()
+        .map(|((source, target), (amount, epoch))| Bond {
+            epoch: epoch.0 as Epoch,
+            source: Id::from(source),
+            target: Id::from(target),
+            amount: Amount::from(amount),
+        })
+        .collect();
+
+    let unbonds = unbonds
+        .into_iter()
+        .map(|((source, target, withdraw), (amount, epoch))| Unbond {
+            epoch: epoch.0 as Epoch,
+            source: Id::from(source),
+            target: Id::from(target),
+            amount: Amount::from(amount),
+            withdraw_at: withdraw.0 as Epoch,
+        })
+        .collect();
+
+    tracing::info!("bonds {:?}", bonds);
+    tracing::info!("unbonds {:?}", unbonds);
 
     Ok((bonds, unbonds))
 }
