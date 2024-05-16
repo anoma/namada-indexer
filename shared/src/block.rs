@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
-use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
+use namada_sdk::borsh::BorshDeserialize;
+use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
 use crate::block_result::BlockResult;
@@ -181,12 +182,23 @@ impl Block {
                     {
                         namada_governance::ProposalType::DefaultWithWasm(
                             hash,
-                        ) => tx.get_section_data_by_id(Id::from(hash)),
+                        ) => {
+                            let wasm_code =
+                                tx.get_section_data_by_id(Id::from(hash));
+                            if let Some(wasm_code) = wasm_code {
+                                let hex_encoded =
+                                    String::from_utf8(hex::encode(wasm_code))
+                                        .unwrap_or_default();
+                                Some(hex_encoded)
+                            } else {
+                                None
+                            }
+                        }
                         namada_governance::ProposalType::PGFSteward(data) => {
-                            Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                            Some(serde_json::to_string(&data).unwrap())
                         }
                         namada_governance::ProposalType::PGFPayment(data) => {
-                            Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                            Some(serde_json::to_string(&data).unwrap())
                         }
                         namada_governance::ProposalType::Default => None,
                     };

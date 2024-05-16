@@ -2,10 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
-    SelectableHelper,
-};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalancesInsertDb;
 use orm::bond::BondInsertDb;
 use orm::governance_proposal::GovernanceProposalInsertDb;
@@ -76,7 +73,6 @@ async fn main() -> anyhow::Result<(), MainError> {
             Bond::fake(validator.address.clone())
         })
         .collect::<Vec<Bond>>();
-    let bonds = Bonds::new(bonds, 1);
 
     let unbonds = (0..10)
         .map(|_| {
@@ -86,7 +82,6 @@ async fn main() -> anyhow::Result<(), MainError> {
             Unbond::fake(validator.address.clone())
         })
         .collect::<Vec<Unbond>>();
-    let unbonds = Unbonds::new(unbonds, 1);
 
     let rewards = (0..config.total_rewards)
         .map(|_| Reward::fake())
@@ -136,7 +131,7 @@ async fn main() -> anyhow::Result<(), MainError> {
                         &validators
                             .into_iter()
                             .map(|validator| {
-                                ValidatorInsertDb::from_validator(validator, 1)
+                                ValidatorInsertDb::from_validator(validator)
                             })
                             .collect::<Vec<_>>(),
                     )
@@ -188,7 +183,7 @@ async fn main() -> anyhow::Result<(), MainError> {
                         &balances
                             .into_iter()
                             .map(|balance| {
-                                BalancesInsertDb::from_balance(balance, 2)
+                                BalancesInsertDb::from_balance(balance)
                             })
                             .collect::<Vec<_>>(),
                     )
@@ -199,16 +194,15 @@ async fn main() -> anyhow::Result<(), MainError> {
                 diesel::insert_into(bonds::table)
                 .values::<&Vec<BondInsertDb>>(
                     &bonds
-                    .values
                     .into_iter()
                     .map(|bond| {
                         let validator: ValidatorDb = validators::table
-                            .filter(validators::namada_address.eq(&bond.target.to_string()).and(validators::epoch.eq(bonds.epoch as i32)))
+                            .filter(validators::namada_address.eq(&bond.target.to_string()))
                             .select(ValidatorDb::as_select())
                             .first(transaction_conn)
                             .expect("Failed to get validator");
 
-                        BondInsertDb::from_bond(bond, validator.id, bonds.epoch)
+                        BondInsertDb::from_bond(bond, validator.id)
                     })
                     .collect::<Vec<_>>())
                 .on_conflict((bonds::columns::validator_id, bonds::columns::address, bonds::columns::epoch))
@@ -221,16 +215,15 @@ async fn main() -> anyhow::Result<(), MainError> {
                 diesel::insert_into(unbonds::table)
                 .values::<&Vec<UnbondInsertDb>>(
                     &unbonds
-                    .values
                     .into_iter()
                     .map(|unbond| {
                         let validator: ValidatorDb = validators::table
-                            .filter(validators::namada_address.eq(&unbond.target.to_string()).and(validators::epoch.eq(unbonds.epoch as i32)))
+                            .filter(validators::namada_address.eq(&unbond.target.to_string()))
                             .select(ValidatorDb::as_select())
                             .first(transaction_conn)
                             .expect("Failed to get validator");
 
-                        UnbondInsertDb::from_unbond(unbond, validator.id, unbonds.epoch)
+                        UnbondInsertDb::from_unbond(unbond, validator.id)
                     })
                     .collect::<Vec<_>>())
                 .on_conflict((unbonds::columns::validator_id, unbonds::columns::address, unbonds::columns::epoch))

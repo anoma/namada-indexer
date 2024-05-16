@@ -56,7 +56,7 @@ diesel::table! {
     governance_proposals (id) {
         id -> Int4,
         content -> Varchar,
-        data -> Nullable<Bytea>,
+        data -> Nullable<Varchar>,
         kind -> GovernanceKind,
         author -> Varchar,
         start_epoch -> Int4,

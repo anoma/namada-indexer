@@ -4,7 +4,7 @@ CREATE TYPE GOVERNANCE_RESULT AS ENUM ('passed', 'rejected', 'pending', 'unknown
 CREATE TABLE governance_proposals (
   id INT PRIMARY KEY,
   content VARCHAR NOT NULL,
-  data BYTEA,
+  data VARCHAR,
   kind GOVERNANCE_KIND NOT NULL,
   author VARCHAR NOT NULL,
   start_epoch INT NOT NULL,

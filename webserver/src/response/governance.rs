@@ -51,7 +51,7 @@ pub struct Proposal {
     pub id: u64,
     pub content: String,
     pub r#type: ProposalType,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<String>,
     pub author: String,
     pub start_epoch: u64,
     pub end_epoch: u64,
