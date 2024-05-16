@@ -178,6 +178,18 @@ impl GovernanceProposal {
     }
 }
 
+impl GovernanceProposalStatus {
+    pub fn fake(proposal_id: u64) -> Self {
+        Self {
+            id: proposal_id,
+            result: rand::random(),
+            yay_votes: (0..10000).fake::<u64>().to_string(),
+            nay_votes: (0..10000).fake::<u64>().to_string(),
+            abstain_votes: (0..10000).fake::<u64>().to_string(),
+        }
+    }
+}
+
 impl Distribution<GovernanceProposalKind> for Standard {
     fn sample<R: rand::prelude::Rng + ?Sized>(
         &self,
@@ -188,6 +200,20 @@ impl Distribution<GovernanceProposalKind> for Standard {
             1 => GovernanceProposalKind::PgfSteward,
             2 => GovernanceProposalKind::PgfFunding,
             _ => GovernanceProposalKind::Default,
+        }
+    }
+}
+
+impl Distribution<GovernanceProposalResult> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+    ) -> GovernanceProposalResult {
+        match rng.gen_range(0..=3) {
+            0 => GovernanceProposalResult::Passed,
+            1 => GovernanceProposalResult::Pending,
+            2 => GovernanceProposalResult::VotingPeriod,
+            _ => GovernanceProposalResult::Rejected
         }
     }
 }

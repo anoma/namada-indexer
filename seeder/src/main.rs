@@ -5,7 +5,7 @@ use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalancesInsertDb;
 use orm::bond::BondInsertDb;
-use orm::governance_proposal::GovernanceProposalInsertDb;
+use orm::governance_proposal::{GovernanceProposalInsertDb, GovernanceProposalUpdateStatusDb};
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{
@@ -20,7 +20,7 @@ use seeder::state::AppState;
 use shared::balance::Balance;
 use shared::bond::{Bond, Bonds};
 use shared::error::{AsDbError, ContextDbInteractError, MainError};
-use shared::proposal::GovernanceProposal;
+use shared::proposal::{GovernanceProposal, GovernanceProposalStatus};
 use shared::rewards::Reward;
 use shared::unbond::{Unbond, Unbonds};
 use shared::validator::Validator;
@@ -56,6 +56,10 @@ async fn main() -> anyhow::Result<(), MainError> {
     let governance_proposals = (0..config.total_proposals)
         .map(GovernanceProposal::fake)
         .collect::<Vec<GovernanceProposal>>();
+
+    let governance_proposals_status = (0..config.total_proposals)
+        .map(GovernanceProposalStatus::fake)
+        .collect::<Vec<GovernanceProposalStatus>>();
 
     let governance_votes = (0..config.total_votes)
         .map(|_| {
@@ -151,6 +155,12 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert proposals in db")?;
+
+                for proposal_status in governance_proposals_status {
+                    diesel::update(governance_proposals::table.find(proposal_status.id as i32))
+                        .set::<GovernanceProposalUpdateStatusDb>(proposal_status.into())
+                        .execute(transaction_conn)?;
+                }
 
                 diesel::insert_into(governance_votes::table)
                     .values::<&Vec<GovernanceProposalVoteInsertDb>>(
