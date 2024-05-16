@@ -31,7 +31,7 @@ diesel::table! {
         id -> Int4,
         owner -> Varchar,
         token -> Varchar,
-        raw_amount -> Numeric,
+        raw_amount -> Varchar,
     }
 }
 
@@ -48,7 +48,7 @@ diesel::table! {
         id -> Int4,
         address -> Varchar,
         validator_id -> Int4,
-        raw_amount -> Numeric,
+        raw_amount -> Varchar,
         epoch -> Int4,
     }
 }
@@ -98,7 +98,7 @@ diesel::table! {
         id -> Int4,
         owner -> Varchar,
         epoch -> Int4,
-        raw_amount -> Numeric,
+        raw_amount -> Varchar,
     }
 }
 
@@ -107,7 +107,7 @@ diesel::table! {
         id -> Int4,
         address -> Varchar,
         validator_id -> Int4,
-        raw_amount -> Numeric,
+        raw_amount -> Varchar,
         epoch -> Int4,
         withdraw_epoch -> Int4,
     }

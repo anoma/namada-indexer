@@ -20,14 +20,14 @@ pub struct Validator {
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Bond {
-    pub amount: u64,
+    pub amount: String,
     pub validator: ValidatorWithId,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Unbond {
-    pub amount: u64,
+    pub amount: String,
     pub validator: ValidatorWithId,
     pub withdraw_epoch: u64,
 }
@@ -35,7 +35,7 @@ pub struct Unbond {
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Withdraw {
-    pub amount: u64,
+    pub amount: String,
     pub validator: ValidatorWithId,
     pub withdraw_epoch: u64,
 }
@@ -76,7 +76,7 @@ impl ValidatorWithId {
 impl Bond {
     pub fn from(db_bond: BondDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: 10, // db_bond.raw_amount,
+            amount: db_bond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
         }
     }
@@ -85,7 +85,7 @@ impl Bond {
 impl Unbond {
     pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: 10, // db_bond.raw_amount,
+            amount: db_unbond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: db_unbond.withdraw_epoch as u64,
         }
@@ -95,7 +95,7 @@ impl Unbond {
 impl Withdraw {
     pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: 10, // db_bond.raw_amount,
+            amount: db_unbond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: db_unbond.withdraw_epoch as u64,
         }
