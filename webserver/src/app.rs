@@ -43,6 +43,12 @@ impl ApplicationServer {
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))
+                .route("/pos/bonds/{address}", get(pos_handlers::get_bonds))
+                .route("/pos/unbonds/{address}", get(pos_handlers::get_unbonds))
+                .route(
+                    "/pos/bonds/{address}/{epoch}",
+                    get(pos_handlers::get_withdraws),
+                )
                 .route(
                     "/gov/proposal",
                     get(gov_handlers::get_governance_proposals),

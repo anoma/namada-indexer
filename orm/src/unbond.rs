@@ -1,11 +1,11 @@
 use diesel::data_types::PgNumeric;
-use diesel::Insertable;
+use diesel::{Insertable, Queryable, Selectable};
 use shared::unbond::Unbond;
 
 use crate::schema::unbonds;
 use crate::utils::{Base10000BigUint, PgNumericInt};
 
-#[derive(Insertable, Clone)]
+#[derive(Insertable, Clone, Queryable, Selectable)]
 #[diesel(table_name = unbonds)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UnbondInsertDb {
@@ -15,6 +15,8 @@ pub struct UnbondInsertDb {
     pub epoch: i32,
     pub withdraw_epoch: i32,
 }
+
+pub type UnbondDb = UnbondInsertDb;
 
 impl UnbondInsertDb {
     pub fn from_unbond(unbond: Unbond, validator_id: i32) -> Self {

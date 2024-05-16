@@ -12,7 +12,7 @@ use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
 };
 use namada_sdk::token::Amount as NamadaSdkAmount;
-use namada_sdk::{rpc, token};
+use namada_sdk::{borsh, rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
@@ -337,7 +337,7 @@ pub async fn query_next_governance_id(
         )
         .await
         .context("Failed to get the next proposal id")?;
-    namada_sdk::borsh::BorshDeserialize::try_from_slice(&query_result.data)
+    borsh::BorshDeserialize::try_from_slice(&query_result.data)
         .context("Failed to deserialize proposal id")
 }
 

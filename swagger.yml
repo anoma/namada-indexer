@@ -45,7 +45,7 @@ paths:
                         minimum: 0
   /pos/reward/{address}:
     get:
-      summary: Get all the rewards for address
+      summary: Get all the rewards for an address
       parameters:
         - in: path
           name: address
@@ -64,7 +64,7 @@ paths:
                   $ref: '#/components/schemas/Reward'
   /pos/bond/{address}:
     get:
-      summary: Get all the bonds for address
+      summary: Get all the bonds for an address
       parameters:
         - in: path
           name: address
@@ -83,7 +83,7 @@ paths:
                   $ref: '#/components/schemas/Bond'
   /pos/unbonds/{address}:
     get:
-      summary: Get all the unbonds for an address
+      summary: Get all the unbonds for an an address
       parameters:
         - in: path
           name: address
@@ -100,9 +100,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Unbond'
-  /pos/withdraw/{address}:
+  /pos/withdraw/{address}/{epoch}:
     get:
-      summary: Get all the withdraws for an address
+      summary: Get all the withdraws for an address at a specific epoch
       parameters:
         - in: path
           name: address
@@ -110,9 +110,15 @@ paths:
             type: string
           required: true
           description: The delegator address
+        - in: path
+          name: epoch
+          schema:
+            type: integer
+          required: true
+          description: The epoch
       responses:
         '200':
-          description: A list of possible withdraws.
+          description: A list of withdraws.
           content:
             application/json:
               schema:
@@ -267,6 +273,8 @@ components:
     Validator:
       type: object
       properties:
+        id:
+          type: integer
         address:
           type: string
         name:
@@ -323,15 +331,14 @@ components:
         vote:
           type: string
           enum: [yay, nay, abstrain]
-        voter_address:
+        voterAddress:
           type: string
     Reward:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
@@ -339,10 +346,9 @@ components:
     Bond:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
@@ -350,10 +356,9 @@ components:
     Unbond:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
@@ -363,14 +368,15 @@ components:
     Withdraw:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
           minimum: 0
+        withdrawEpoch: 
+          type: integer
     Balance:
       type: object
       properties:

@@ -1,3 +1,5 @@
+use orm::bond::BondDb;
+use orm::unbond::UnbondDb;
 use orm::validators::ValidatorDb;
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +17,29 @@ pub struct Validator {
     pub avatar: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Bond {
+    pub amount: u64,
+    pub validator: ValidatorWithId,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Unbond {
+    pub amount: u64,
+    pub validator: ValidatorWithId,
+    pub withdraw_epoch: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Withdraw {
+    pub amount: u64,
+    pub validator: ValidatorWithId,
+    pub withdraw_epoch: u64,
+}
+
 impl From<ValidatorDb> for Validator {
     fn from(value: ValidatorDb) -> Self {
         Self {
@@ -27,6 +52,52 @@ impl From<ValidatorDb> for Validator {
             description: value.description,
             discord_handle: value.discord_handle,
             avatar: value.avatar,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorWithId {
+    #[serde(flatten)]
+    pub validator: Validator,
+    pub validator_id: u64,
+}
+
+impl ValidatorWithId {
+    pub fn from(db_validator: ValidatorDb) -> Self {
+        Self {
+            validator_id: db_validator.id as u64,
+            validator: Validator::from(db_validator),
+        }
+    }
+}
+
+impl Bond {
+    pub fn from(db_bond: BondDb, db_validator: ValidatorDb) -> Self {
+        Self {
+            amount: 10, // db_bond.raw_amount,
+            validator: ValidatorWithId::from(db_validator),
+        }
+    }
+}
+
+impl Unbond {
+    pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
+        Self {
+            amount: 10, // db_bond.raw_amount,
+            validator: ValidatorWithId::from(db_validator),
+            withdraw_epoch: db_unbond.withdraw_epoch as u64,
+        }
+    }
+}
+
+impl Withdraw {
+    pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
+        Self {
+            amount: 10, // db_bond.raw_amount,
+            validator: ValidatorWithId::from(db_validator),
+            withdraw_epoch: db_unbond.withdraw_epoch as u64,
         }
     }
 }
