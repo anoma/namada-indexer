@@ -1,7 +1,6 @@
 use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalancesInsertDb;
 use orm::bond::BondInsertDb;
@@ -141,7 +140,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert validators in db")?;
 
@@ -154,7 +152,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert proposals in db")?;
 
@@ -173,7 +170,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert goveranance votes in db")?;
 
@@ -186,7 +182,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert pos rewards in db")?;
 
@@ -199,7 +194,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to insert pos rewards in db")?;
 
@@ -217,10 +211,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                         BondInsertDb::from_bond(bond, validator.id)
                     })
                     .collect::<Vec<_>>())
-                .on_conflict((bonds::columns::validator_id, bonds::columns::address, bonds::columns::epoch))
-                .do_update()
-                .set(orm::schema::bonds::columns::raw_amount
-                    .eq(excluded(orm::schema::bonds::columns::raw_amount)))
                 .execute(transaction_conn)
                 .context("Failed to update bonds in db")?;
 
@@ -238,10 +228,6 @@ async fn main() -> anyhow::Result<(), MainError> {
                         UnbondInsertDb::from_unbond(unbond, validator.id)
                     })
                     .collect::<Vec<_>>())
-                .on_conflict((unbonds::columns::validator_id, unbonds::columns::address, unbonds::columns::epoch))
-                .do_update()
-                .set((unbonds::columns::raw_amount.eq(excluded(unbonds::columns::raw_amount)),
-                      unbonds::columns::withdraw_epoch.eq(excluded(unbonds::columns::withdraw_epoch))))
                 .execute(transaction_conn)
                 .context("Failed to update unbonds in db")?;
 
