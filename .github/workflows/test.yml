@@ -60,7 +60,7 @@ jobs:
           cache: true
       - run: just build
 
-  docker-build:
+  docker:
     name: Docker
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'merge_group' || github.ref == 'refs/heads/main' }}
