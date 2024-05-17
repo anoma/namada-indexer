@@ -62,3 +62,11 @@ jobs:
           cache: true
           cache-workspaces: true
       - run: just build
+  
+  dependencies:
+    name: Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Machete
+        uses: bnjbvr/cargo-machete@main
