@@ -64,7 +64,10 @@ jobs:
     name: Docker
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'merge_group' || github.ref == 'refs/heads/main' }}
-    
+    env:
+      GIT_LFS_SKIP_SMUDGE: 1
+      REGISTRY_URL: ghcr.io
+      
     strategy:
       fail-fast: true
       matrix:
