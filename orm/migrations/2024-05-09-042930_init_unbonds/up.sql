@@ -5,7 +5,6 @@ CREATE TABLE unbonds (
     address VARCHAR NOT NULL,
     validator_id INT NOT NULL,
     raw_amount VARCHAR NOT NULL,
-    epoch INT NOT NULL,
     withdraw_epoch INT NOT NULL,
     CONSTRAINT fk_validator_id FOREIGN KEY(validator_id) REFERENCES validators(id) ON DELETE CASCADE
 );

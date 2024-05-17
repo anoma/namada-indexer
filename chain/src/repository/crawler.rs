@@ -1,8 +1,7 @@
 use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
-use orm::{
-    block_crawler_state::BlockCrawlerStateInsertDb, schema::block_crawler_state,
-};
+use orm::block_crawler_state::BlockCrawlerStateInsertDb;
+use orm::schema::block_crawler_state;
 use shared::crawler_state::CrawlerState;
 
 pub fn insert_crawler_state(
