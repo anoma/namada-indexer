@@ -22,12 +22,30 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Validator'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Validator'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        minimum: 0
+                      per_page:
+                        type: integer
+                        minimum: 0
+                      total_pages:
+                        type: integer
+                        minimum: 0
+                      total_items:
+                        type: integer
+                        minimum: 0
   /pos/reward/{address}:
     get:
-      summary: Get all the rewards for address
+      summary: Get all the rewards for an address
       parameters:
         - in: path
           name: address
@@ -46,7 +64,7 @@ paths:
                   $ref: '#/components/schemas/Reward'
   /pos/bond/{address}:
     get:
-      summary: Get all the bonds for address
+      summary: Get all the bonds for an address
       parameters:
         - in: path
           name: address
@@ -65,7 +83,7 @@ paths:
                   $ref: '#/components/schemas/Bond'
   /pos/unbonds/{address}:
     get:
-      summary: Get all the unbonds for an address
+      summary: Get all the unbonds for an an address
       parameters:
         - in: path
           name: address
@@ -82,9 +100,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Unbond'
-  /pos/withdraw/{address}:
+  /pos/withdraw/{address}/{epoch}:
     get:
-      summary: Get all the withdraws for an address
+      summary: Get all the withdraws for an address at a specific epoch
       parameters:
         - in: path
           name: address
@@ -92,9 +110,15 @@ paths:
             type: string
           required: true
           description: The delegator address
+        - in: path
+          name: epoch
+          schema:
+            type: integer
+          required: true
+          description: The epoch
       responses:
         '200':
-          description: A list of possible withdraws.
+          description: A list of withdraws.
           content:
             application/json:
               schema:
@@ -123,9 +147,27 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Proposal'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Proposal'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        minimum: 0
+                      per_page:
+                        type: integer
+                        minimum: 0
+                      total_pages:
+                        type: integer
+                        minimum: 0
+                      total_items:
+                        type: integer
+                        minimum: 0
   /gov/proposal/{id}:
     get:
       summary: Get a governance proposal by proposal id
@@ -161,9 +203,27 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Vote'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vote'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        minimum: 0
+                      per_page:
+                        type: integer
+                        minimum: 0
+                      total_pages:
+                        type: integer
+                        minimum: 0
+                      total_items:
+                        type: integer
+                        minimum: 0
   /gov/proposal/{id}/votes/{address}:
     get:
       summary: Get all the votes for a governance proposal from an address
@@ -213,6 +273,8 @@ components:
     Validator:
       type: object
       properties:
+        id:
+          type: integer
         address:
           type: string
         name:
@@ -246,16 +308,12 @@ components:
           type: string
         author:
           type: string
-        email:
-          type: string
         startEpoch:
           type: integer
         endEpoch:
           type: integer
         activationEpoch:
           type: integer
-        avatar:
-          type: string
         status:
           type: string
           enum: [pending, voting, ended]
@@ -268,62 +326,63 @@ components:
     Vote:
       type: object
       properties:
-        id:
+        proposal_id:
           type: integer
         vote:
           type: string
           enum: [yay, nay, abstrain]
-        address:
+        voterAddress:
           type: string
     Reward:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
+          minimum: 0
     Bond:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
+          minimum: 0
     Unbond:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
+          minimum: 0
         withdrawEpoch: 
           type: integer
     Withdraw:
       type: object
       properties:
-        delegator:
-          type: string
         validator:
-          type: string
+          type: object
+          $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
+          minimum: 0
+        withdrawEpoch: 
+          type: integer
     Balance:
       type: object
       properties:
-        address:
-          type: string
         token:
           type: string
         balance:
           type: number
           format: float
+          minimum: 0

@@ -1,7 +1,15 @@
+use std::collections::BTreeSet;
+
 use fake::Fake;
-use namada_governance::storage::proposal::StorageProposal;
+use namada_governance::storage::proposal::{
+    AddRemove, PGFAction, PGFIbcTarget, PGFInternalTarget, PGFTarget,
+    StorageProposal,
+};
 use namada_governance::ProposalType;
+use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
+use namada_sdk::token::Amount;
 use rand::distributions::{Distribution, Standard};
+use subtle_encoding::hex;
 
 use crate::block::Epoch;
 use crate::id::Id;
@@ -38,7 +46,7 @@ pub struct GovernanceProposal {
     pub id: u64,
     pub content: String,
     pub r#type: GovernanceProposalKind,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<String>,
     pub author: Id,
     pub voting_start_epoch: Epoch,
     pub voting_end_epoch: Epoch,
@@ -77,7 +85,51 @@ impl GovernanceProposal {
         let address =
             namada_core::address::gen_established_address("namada-indexer");
         let proposal_type: GovernanceProposalKind = rand::random();
-        let proposal_data = [].to_vec();
+        let proposal_data = match proposal_type {
+            GovernanceProposalKind::PgfSteward => {
+                let address_add = namada_core::address::gen_established_address(
+                    "namada-indexer",
+                );
+                let address_remove =
+                    namada_core::address::gen_established_address(
+                        "namada-indexer",
+                    );
+                let mut data = BTreeSet::new();
+                data.insert(AddRemove::Add(address_add));
+                data.insert(AddRemove::Remove(address_remove));
+                Some(serde_json::to_string(&data).unwrap())
+            }
+            GovernanceProposalKind::PgfFunding => {
+                let address_retro =
+                    namada_core::address::gen_established_address(
+                        "namada-indexer",
+                    );
+
+                let mut data = BTreeSet::new();
+                data.insert(PGFAction::Continuous(AddRemove::Add(
+                    PGFTarget::Ibc(PGFIbcTarget {
+                        target: (15..16).fake::<String>(),
+                        amount: Amount::from_u64((0..1000).fake::<u64>()),
+                        port_id: PortId::new((5..6).fake::<String>()).unwrap(),
+                        channel_id: ChannelId::new((5..6).fake::<u64>()),
+                    }),
+                )));
+                data.insert(PGFAction::Retro(PGFTarget::Internal(
+                    PGFInternalTarget {
+                        target: address_retro,
+                        amount: Amount::from_u64((0..1000).fake::<u64>()),
+                    },
+                )));
+                Some(serde_json::to_string(&data).unwrap())
+            }
+            GovernanceProposalKind::Default => None,
+            GovernanceProposalKind::DefaultWithWasm => {
+                let data = fake::vec![u8; 100..1000];
+                let hex_encoded =
+                    String::from_utf8_lossy(&hex::encode(data)).to_string();
+                Some(hex_encoded)
+            }
+        };
         let voting_start_epoch = (1..1000).fake::<u32>();
         let voting_end_epoch =
             (voting_start_epoch..voting_start_epoch + 20).fake::<u32>();
@@ -86,7 +138,7 @@ impl GovernanceProposal {
         Self {
             id: proposal_id,
             r#type: proposal_type,
-            data: Some(proposal_data),
+            data: proposal_data,
             author: Id::Account(address.to_string()),
             voting_start_epoch,
             voting_end_epoch,
@@ -127,6 +179,18 @@ impl GovernanceProposal {
     }
 }
 
+impl GovernanceProposalStatus {
+    pub fn fake(proposal_id: u64) -> Self {
+        Self {
+            id: proposal_id,
+            result: rand::random(),
+            yay_votes: (0..10000).fake::<u64>().to_string(),
+            nay_votes: (0..10000).fake::<u64>().to_string(),
+            abstain_votes: (0..10000).fake::<u64>().to_string(),
+        }
+    }
+}
+
 impl Distribution<GovernanceProposalKind> for Standard {
     fn sample<R: rand::prelude::Rng + ?Sized>(
         &self,
@@ -137,6 +201,20 @@ impl Distribution<GovernanceProposalKind> for Standard {
             1 => GovernanceProposalKind::PgfSteward,
             2 => GovernanceProposalKind::PgfFunding,
             _ => GovernanceProposalKind::Default,
+        }
+    }
+}
+
+impl Distribution<GovernanceProposalResult> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+    ) -> GovernanceProposalResult {
+        match rng.gen_range(0..=3) {
+            0 => GovernanceProposalResult::Passed,
+            1 => GovernanceProposalResult::Pending,
+            2 => GovernanceProposalResult::VotingPeriod,
+            _ => GovernanceProposalResult::Rejected,
         }
     }
 }

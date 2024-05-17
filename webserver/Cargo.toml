@@ -24,9 +24,7 @@ axum.workspace = true
 tokio.workspace = true 
 tower.workspace = true 
 tower-http.workspace = true 
-tower-layer.workspace = true
 tracing.workspace = true
-namada_core.workspace = true
 tracing-subscriber.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -40,15 +38,8 @@ axum-trace-id.workspace = true
 axum-macros.workspace = true
 orm.workspace = true
 diesel.workspace = true
-derive_builder.workspace = true
-shared.workspace = true
-chrono.workspace = true
-reqwest.workspace = true
-subtle-encoding.workspace = true
-futures.workspace = true
+# shared.workspace = true
 deadpool-redis = "0.13.0"
-redis = { version = "0.23.3", features = ["aio"] }
-async-trait.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

@@ -6,14 +6,13 @@ use namada_core::storage::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
 use namada_sdk::address::Address as NamadaSdkAddress;
-use namada_sdk::borsh::BorshSerializeExt;
 use namada_sdk::collections::HashMap;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
 };
 use namada_sdk::token::Amount as NamadaSdkAmount;
-use namada_sdk::{rpc, token};
+use namada_sdk::{borsh, rpc, token};
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
@@ -22,6 +21,7 @@ use shared::proposal::GovernanceProposal;
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use shared::vote::{GovernanceVote, ProposalVoteKind};
+use subtle_encoding::hex;
 use tendermint_rpc::HttpClient;
 
 use super::utils::query_storage_prefix;
@@ -109,7 +109,7 @@ pub async fn query_all_balances(
     let balances =
         query_storage_prefix::<token::Amount>(client, &balance_prefix)
             .await
-            //TODO: unwrap
+            // TODO: unwrap
             .unwrap();
 
     let mut all_balances: Balances = vec![];
@@ -148,7 +148,8 @@ pub async fn query_last_block_height(
         .unwrap_or_default())
 }
 
-//TODO: this can be improved / optimized(bonds and unbonds can be processed in parallel)
+// TODO: this can be improved / optimized(bonds and unbonds can be processed in
+// parallel)
 pub async fn query_all_bonds_and_unbonds(
     client: &HttpClient,
 ) -> anyhow::Result<(Bonds, Unbonds)> {
@@ -171,7 +172,8 @@ pub async fn query_all_bonds_and_unbonds(
     let mut bonds: BondsMap = HashMap::new();
     let mut unbonds: UnbondsMap = HashMap::new();
 
-    // This is not super nice but it's fewer iteratirons that doing map and then reduce
+    // This is not super nice but it's fewer iteratirons that doing map and then
+    // reduce
     for (bond_id, details) in bonds_and_unbonds {
         for bd in details.bonds {
             let id = bond_id.clone();
@@ -273,19 +275,23 @@ pub async fn query_all_proposals(
             .expect("Proposal should be written to storage.");
         let proposal_type = proposal.r#type.clone();
 
-        // Create a governance proposal from the namada proposal, without the data
+        // Create a governance proposal from the namada proposal, without the
+        // data
         let mut governance_proposal = GovernanceProposal::from(proposal);
 
         // Get the proposal data based on the proposal type
         let proposal_data = match proposal_type {
             namada_governance::ProposalType::DefaultWithWasm(_) => {
-                Some(query_proposal_code(client, id).await?)
+                let wasm_code = query_proposal_code(client, id).await?;
+                let hex_encoded = String::from_utf8(hex::encode(wasm_code))
+                    .unwrap_or_default();
+                Some(hex_encoded)
             }
             namada_governance::ProposalType::PGFSteward(data) => {
-                Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                Some(serde_json::to_string(&data).unwrap())
             }
             namada_governance::ProposalType::PGFPayment(data) => {
-                Some(data.serialize_to_vec()) // maybe change to json or some other encoding ?
+                Some(serde_json::to_string(&data).unwrap())
             }
             namada_governance::ProposalType::Default => None,
         };
@@ -331,7 +337,7 @@ pub async fn query_next_governance_id(
         )
         .await
         .context("Failed to get the next proposal id")?;
-    namada_sdk::borsh::BorshDeserialize::try_from_slice(&query_result.data)
+    borsh::BorshDeserialize::try_from_slice(&query_result.data)
         .context("Failed to deserialize proposal id")
 }
 

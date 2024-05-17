@@ -1,21 +1,28 @@
+use std::fmt::Display;
+
 use fake::Fake;
 use namada_sdk::token::Amount as NamadaAmount;
 
 use crate::id::Id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Amount(pub [u64; 4]);
+pub struct Amount(String);
 
 impl Amount {
     pub fn fake() -> Self {
-        let one = (u64::MIN..u64::MAX).fake::<u64>();
-        Self([one, 0, 0, 0])
+        Self((0..10000000).fake::<u64>().to_string())
+    }
+}
+
+impl Display for Amount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
 impl From<NamadaAmount> for Amount {
     fn from(amount: NamadaAmount) -> Amount {
-        Amount(amount.raw_amount().0)
+        Amount(amount.to_string())
     }
 }
 

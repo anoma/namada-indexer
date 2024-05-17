@@ -4,8 +4,9 @@ use std::time::Duration;
 
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::RunQueryDsl;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::pos_rewards::PosRewardInsertDb;
+use orm::validators::ValidatorDb;
 use rewards::config::AppConfig;
 use rewards::services::namada as namada_service;
 use rewards::state::AppState;
@@ -87,7 +88,15 @@ async fn main() -> anyhow::Result<()> {
                                     &rewards
                                         .into_iter()
                                         .map(|reward, | {
-                                            PosRewardInsertDb::from_reward(reward, epoch)
+                                            let validator: ValidatorDb = orm::schema::validators::table
+                                                .filter(
+                                                    orm::schema::validators::dsl::namada_address
+                                                        .eq(&reward.delegation_pair.validator_address.to_string()),
+                                                )
+                                                .select(ValidatorDb::as_select())
+                                                .first(transaction_conn)
+                                                .expect("Failed to get validator");                    
+                                            PosRewardInsertDb::from_reward(reward, validator.id)
                                         })
                                         .collect::<Vec<_>>(),
                                 )

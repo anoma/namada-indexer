@@ -1,8 +1,6 @@
 use std::env;
 use std::process::exit;
-use std::sync::{Arc, Mutex};
 
-use chrono::offset::Utc;
 use deadpool_diesel::postgres::{Object, Pool as DbPool};
 use deadpool_redis::{Config, Connection, Pool as CachePool};
 
@@ -10,7 +8,6 @@ use deadpool_redis::{Config, Connection, Pool as CachePool};
 pub struct AppState {
     db: DbPool,
     cache: CachePool,
-    next_cache_timestamp: Arc<Mutex<u64>>,
 }
 
 impl AppState {
@@ -51,26 +48,7 @@ impl AppState {
         Self {
             db: pool,
             cache: cache_pool,
-            next_cache_timestamp: Arc::new(Mutex::new(0)),
         }
-    }
-
-    pub fn next_cache_timestamp(&self) -> u64 {
-        const FIVE_MINUTES_IN_SECONDS: u64 = 5 * 60;
-
-        let current_ts: u64 = Utc::now()
-            .naive_utc()
-            .and_utc()
-            .timestamp()
-            .try_into()
-            .expect("Failed to convert Unix timestamp from i64 to u64");
-        let mut stored_ts = self.next_cache_timestamp.lock().unwrap();
-
-        if current_ts.saturating_sub(*stored_ts) > FIVE_MINUTES_IN_SECONDS {
-            *stored_ts = current_ts + FIVE_MINUTES_IN_SECONDS;
-        }
-
-        *stored_ts
     }
 
     pub async fn get_db_connection(&self) -> Object {

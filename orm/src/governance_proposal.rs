@@ -55,7 +55,7 @@ impl From<GovernanceProposalResult> for GovernanceProposalResultDb {
 pub struct GovernanceProposalDb {
     pub id: i32,
     pub content: String,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<String>,
     pub kind: GovernanceProposalKindDb,
     pub author: String,
     pub start_epoch: i32,
@@ -73,7 +73,7 @@ pub struct GovernanceProposalDb {
 pub struct GovernanceProposalInsertDb {
     pub id: i32,
     pub content: String,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<String>,
     pub kind: GovernanceProposalKindDb,
     pub author: String,
     pub start_epoch: i32,
@@ -116,14 +116,3 @@ impl From<GovernanceProposalStatus> for GovernanceProposalUpdateStatusDb {
         }
     }
 }
-
-// impl GovernanceProposalUpdateStatusDb {
-//     pub fn from_proposal_status(proposal_status: GovernanceProposalStatus) ->
-// Self {         Self {
-//             yay_votes: proposal_status.yay_votes,
-//             nay_votes: proposal_status.nay_votes,
-//             abstain_votes: proposal_status.abstain_votes,
-//             result: proposal_status.result.into(),
-//         }
-//     }
-// }

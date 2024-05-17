@@ -1,6 +1,8 @@
 use anyhow::Context;
-use diesel::{upsert::excluded, ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::{balances::BalancesInsertDb, schema::balances};
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use orm::balances::BalancesInsertDb;
+use orm::schema::balances;
 use shared::balance::Balances;
 
 pub fn insert_balance(
@@ -11,7 +13,7 @@ pub fn insert_balance(
         .values::<&Vec<BalancesInsertDb>>(
             &balances
                 .into_iter()
-                .map(|b| BalancesInsertDb::from_balance(b))
+                .map(BalancesInsertDb::from_balance)
                 .collect::<Vec<_>>(),
         )
         .on_conflict((balances::columns::owner, balances::columns::token))
