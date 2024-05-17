@@ -59,7 +59,7 @@ async fn main() -> Result<(), MainError> {
     .context_db_interact_error()
     .into_db_error()??;
 
-    //We always start from the current epoch
+    // We always start from the current epoch
     let next_epoch = namada_service::get_current_epoch(&client.clone())
         .await
         .into_rpc_error()?;
