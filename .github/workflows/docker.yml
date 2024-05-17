@@ -13,16 +13,15 @@ env:
   GIT_LFS_SKIP_SMUDGE: 1
   REGISTRY_URL: ghcr.io
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build-docker:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-
+    
     strategy:
       fail-fast: true
       matrix:
