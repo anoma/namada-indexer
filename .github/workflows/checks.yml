@@ -16,8 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - name: Install Protoc
-        uses: heliaxdev/setup-protoc@v2
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,8 +32,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - name: Install Protoc
-        uses: heliaxdev/setup-protoc@v2
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -50,8 +50,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - name: Install Protoc
-        uses: heliaxdev/setup-protoc@v2
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
