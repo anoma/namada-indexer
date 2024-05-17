@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+  merge_group:
 
 concurrency:
   group: ${{ github.ref }}
@@ -16,15 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - name: Install Protoc
-        uses: heliaxdev/setup-protoc@v2
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: true
-          cache-workspaces: true
       - run: just clippy
   
   format:
@@ -33,8 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - name: Install Protoc
-        uses: heliaxdev/setup-protoc@v2
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -43,24 +43,23 @@ jobs:
           toolchain: nightly
           components: rustfmt
           cache: true
-          cache-workspaces: true
       - run: just fmt
 
   build:
+    if: ${{ github.event_name == 'pull_request' }}
     name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - name: Install Protoc
-        uses: heliaxdev/setup-protoc@v2
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: true
-          cache-workspaces: true
       - run: just build
   
   dependencies:

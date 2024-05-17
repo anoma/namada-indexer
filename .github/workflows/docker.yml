@@ -7,22 +7,24 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
   merge_group:
+  pull_request:
 
 
 env:
   GIT_LFS_SKIP_SMUDGE: 1
   REGISTRY_URL: ghcr.io
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build-docker:
+  build:
+    name: Build
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-
+    if: ${{ github.event_name == 'merge_group' }}
+    
     strategy:
       fail-fast: true
       matrix:
