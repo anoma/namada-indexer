@@ -97,7 +97,7 @@ diesel::table! {
     pos_rewards (id) {
         id -> Int4,
         owner -> Varchar,
-        epoch -> Int4,
+        validator_id -> Int4,
         raw_amount -> Varchar,
     }
 }
@@ -130,6 +130,7 @@ diesel::table! {
 
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(

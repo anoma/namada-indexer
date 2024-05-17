@@ -89,7 +89,11 @@ async fn main() -> anyhow::Result<(), MainError> {
         .collect::<Vec<Unbond>>();
 
     let rewards = (0..config.total_rewards)
-        .map(|_| Reward::fake())
+        .map(|_| {
+            let index =
+                rand::thread_rng().gen_range(0..config.total_validators);
+            Reward::fake(index)
+        })
         .collect::<Vec<Reward>>();
 
     let balances = (0..config.total_balances)
@@ -178,7 +182,8 @@ async fn main() -> anyhow::Result<(), MainError> {
                         &rewards
                             .into_iter()
                             .map(|reward| {
-                                PosRewardInsertDb::from_reward(reward)
+                                let validator_id = reward.delegation_pair.validator_address.to_string().parse::<i32>().unwrap();
+                                PosRewardInsertDb::from_reward(reward, validator_id)
                             })
                             .collect::<Vec<_>>(),
                     )

@@ -1,4 +1,5 @@
 use orm::bond::BondDb;
+use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
 use orm::validators::ValidatorDb;
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,13 @@ pub struct Withdraw {
     pub amount: String,
     pub validator: ValidatorWithId,
     pub withdraw_epoch: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Reward {
+    pub amount: String,
+    pub validator: ValidatorWithId,
 }
 
 impl From<ValidatorDb> for Validator {
@@ -98,6 +106,15 @@ impl Withdraw {
             amount: db_unbond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: db_unbond.withdraw_epoch as u64,
+        }
+    }
+}
+
+impl Reward {
+    pub fn from(db_reward: PoSRewardDb, db_validator: ValidatorDb) -> Self {
+        Self {
+            amount: db_reward.raw_amount,
+            validator: ValidatorWithId::from(db_validator),
         }
     }
 }

@@ -4,7 +4,8 @@ use diesel::{
     SelectableHelper,
 };
 use orm::bond::BondDb;
-use orm::schema::{bonds, unbonds, validators};
+use orm::pos_rewards::PoSRewardDb;
+use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
 use orm::validators::ValidatorDb;
 
@@ -45,6 +46,11 @@ pub trait PosRepositoryTrait {
         address: String,
         current_epoch: i32,
     ) -> Result<Vec<UnbondDb>, String>;
+
+    async fn find_rewards_by_address(
+        &self,
+        address: String,
+    ) -> Result<Vec<PoSRewardDb>, String>;
 }
 
 #[async_trait]
@@ -136,6 +142,23 @@ impl PosRepositoryTrait for PosRepository {
                         .and(unbonds::dsl::withdraw_epoch.ge(current_epoch)),
                 )
                 .select(UnbondDb::as_select())
+                .get_results(conn)
+                .unwrap()
+        })
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_rewards_by_address(
+        &self,
+        address: String,
+    ) -> Result<Vec<PoSRewardDb>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            pos_rewards::table
+                .filter(pos_rewards::dsl::owner.eq(address))
+                .select(PoSRewardDb::as_select())
                 .get_results(conn)
                 .unwrap()
         })

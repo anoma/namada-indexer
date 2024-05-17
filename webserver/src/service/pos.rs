@@ -1,7 +1,7 @@
 use crate::appstate::AppState;
 use crate::error::pos::PoSError;
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
-use crate::response::pos::{Bond, Unbond, ValidatorWithId, Withdraw};
+use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
 
 #[derive(Clone)]
 pub struct PosService {
@@ -117,5 +117,33 @@ impl PosService {
             }
         }
         Ok(unbonds)
+    }
+
+    pub async fn get_rewards_by_address(
+        &self,
+        address: String,
+    ) -> Result<Vec<Reward>, PoSError> {
+        let db_rewards = self
+            .pos_repo
+            .find_rewards_by_address(address)
+            .await
+            .map_err(PoSError::Database)?;
+
+        let mut rewards = vec![];
+        for db_reward in db_rewards {
+            let db_validator = self
+                .pos_repo
+                .find_validator_by_id(db_reward.validator_id)
+                .await;
+            if let Ok(Some(db_validator)) = db_validator {
+                rewards.push(Reward::from(db_reward.clone(), db_validator));
+            } else {
+                tracing::error!(
+                    "Couldn't find validator with id {} in bond query",
+                    db_reward.validator_id
+                );
+            }
+        }
+        Ok(rewards)
     }
 }

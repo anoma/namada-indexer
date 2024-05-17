@@ -5,7 +5,7 @@ use axum_macros::debug_handler;
 use axum_trace_id::TraceId;
 
 use crate::error::api::ApiError;
-use crate::response::pos::{Bond, Unbond, ValidatorWithId, Withdraw};
+use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
 use crate::response::utils::PaginatedResponse;
 use crate::state::common::CommonState;
 
@@ -57,4 +57,15 @@ pub async fn get_withdraws(
         .get_withdraws_by_address(address, epoch)
         .await?;
     Ok(Json(withdraws))
+}
+
+#[debug_handler]
+pub async fn get_rewards(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    Path(address): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<Vec<Reward>>, ApiError> {
+    let rewards = state.pos_service.get_rewards_by_address(address).await?;
+    Ok(Json(rewards))
 }
