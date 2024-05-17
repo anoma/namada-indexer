@@ -20,7 +20,8 @@ permissions:
   id-token: write
 
 jobs:
-  build-docker:
+  build:
+    name: Build
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'merge_group' }}
     
