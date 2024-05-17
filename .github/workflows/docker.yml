@@ -41,17 +41,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Log in to the Container registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ secrets.REGISTRY_URL }}/${{ matrix.docker.image }}
+          images: ${{ env.REGISTRY_URL }}/${{ matrix.docker.image }}
           tags: |
             type=schedule
             type=ref,event=branch
@@ -75,6 +75,6 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ secrets.REGISTRY_URL }}/${{ matrix.docker.image }}
+          subject-name: ${{ env.REGISTRY_URL }}/${{ matrix.docker.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
