@@ -15,3 +15,5 @@ CREATE TABLE validators (
 
 ALTER TABLE validators
 ADD UNIQUE (namada_address);
+
+CREATE INDEX index_validators_namada_address ON validators USING HASH (namada_address);

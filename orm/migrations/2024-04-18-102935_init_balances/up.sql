@@ -7,5 +7,6 @@ CREATE TABLE balances (
   raw_amount VARCHAR NOT NULL
 );
 
-ALTER TABLE balances
-ADD UNIQUE (owner, token);
+ALTER TABLE balances ADD UNIQUE (owner, token);
+
+CREATE INDEX index_balances_owner ON balances (owner, token);
