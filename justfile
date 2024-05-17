@@ -15,3 +15,6 @@ clippy-fix:
 
 docker-up:
     docker compose up
+
+clean:
+    cargo clean
