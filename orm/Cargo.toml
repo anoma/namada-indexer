@@ -13,12 +13,7 @@ name = "orm"
 path = "src/lib.rs"
 
 [dependencies]
-chrono.workspace = true
 diesel-derive-enum.workspace = true
 diesel.workspace = true
-diesel_migrations.workspace = true
 serde.workspace = true
 shared.workspace = true
-num-bigint.workspace = true
-num-integer.workspace = true
-num-traits.workspace = true
