@@ -28,6 +28,7 @@ impl Checksums {
     }
 
     pub fn add(&mut self, key: String, value: String) {
+        let key = key.strip_suffix(".wasm").unwrap().to_owned();
         self.0.insert(key, value);
     }
 
