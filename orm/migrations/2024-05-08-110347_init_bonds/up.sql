@@ -5,7 +5,6 @@ CREATE TABLE bonds (
     address VARCHAR NOT NULL,
     validator_id SERIAL references validators(id),
     raw_amount VARCHAR NOT NULL,
-    epoch INT NOT NULL
 );
 
 ALTER TABLE bonds

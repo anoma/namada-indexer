@@ -10,7 +10,6 @@ pub struct UnbondInsertDb {
     pub address: String,
     pub validator_id: i32,
     pub raw_amount: String,
-    pub epoch: i32,
     pub withdraw_epoch: i32,
 }
 
@@ -22,7 +21,6 @@ impl UnbondInsertDb {
             address: unbond.source.to_string(),
             validator_id,
             raw_amount: unbond.amount.to_string(),
-            epoch: unbond.epoch as i32,
             withdraw_epoch: unbond.withdraw_at as i32,
         }
     }

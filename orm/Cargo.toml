@@ -13,7 +13,9 @@ name = "orm"
 path = "src/lib.rs"
 
 [dependencies]
+deadpool-diesel.workspace = true
 diesel-derive-enum.workspace = true
 diesel.workspace = true
+diesel_migrations.workspace = true
 serde.workspace = true
 shared.workspace = true

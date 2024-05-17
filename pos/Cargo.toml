@@ -25,6 +25,7 @@ shared.workspace = true
 futures.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
+diesel_migrations.workspace = true
 orm.workspace = true
 clap-verbosity-flag.workspace = true
 

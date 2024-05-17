@@ -1,14 +1,16 @@
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 use chain::app_state::AppState;
 use chain::config::AppConfig;
 use chain::repository;
+use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_all_votes, query_last_block_height,
+    query_last_block_height,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -18,8 +20,7 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-use orm::block_crawler_state::BlockCrawlerStateInsertDb;
-use orm::schema::{block_crawler_state, pos_rewards};
+use orm::schema::pos_rewards;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -27,6 +28,7 @@ use shared::crawler::crawl;
 use shared::crawler_state::CrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
+use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -35,8 +37,6 @@ async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
     let file = File::open(config.checksums_filepath).unwrap();
     let reader = BufReader::new(file);
-
-    // TODO: run migrations
 
     let mut checksums: Checksums = serde_json::from_reader(reader).unwrap();
     checksums.init();
@@ -60,23 +60,15 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+
+    initial_query(&client, &conn).await?;
+
     let last_block_height = db_service::get_last_synched_block(&conn)
         .await
         .into_db_error()?;
 
-    let next_block = match last_block_height {
-        Some(height) => height + 1,
-        // If last processed block is not stored in db, query for initial state
-        None => {
-            // We get the height before we do initial query so we start from the
-            // correct block
-            // TODO: try first_block_height_of_current_epoch
-            let height =
-                query_last_block_height(&client).await.into_rpc_error()?;
-            initial_query(client.clone(), conn.clone()).await?;
-            height
-        }
-    };
+    let next_block =
+        last_block_height.expect("Last block height has to be set!");
 
     crawl(
         move |block_height| {
@@ -166,7 +158,7 @@ async fn crawling_fn(
     tracing::info!("Updating bonds for {} addresses", bonds.len());
 
     let addresses = block.unbond_addresses();
-    let unbonds = namada_service::query_unbonds(&client, addresses, epoch)
+    let unbonds = namada_service::query_unbonds(&client, addresses)
         .await
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
@@ -193,11 +185,10 @@ async fn crawling_fn(
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
-                diesel::insert_into(block_crawler_state::table)
-                    .values::<&BlockCrawlerStateInsertDb>(&crawler_state.into())
-                    .on_conflict_do_nothing()
-                    .execute(transaction_conn)
-                    .context("Failed to update crawler state in db")?;
+                repository::crawler::insert_crawler_state(
+                    transaction_conn,
+                    crawler_state,
+                )?;
 
                 diesel::delete(pos_rewards::table.filter(
                     pos_rewards::dsl::owner.eq_any(
@@ -217,25 +208,42 @@ async fn crawling_fn(
 }
 
 async fn initial_query(
-    client: Arc<HttpClient>,
-    conn: Arc<Object>,
+    client: &HttpClient,
+    conn: &Object,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
-    let balances = query_all_balances(&client).await.into_rpc_error()?;
+    let block_height =
+        query_last_block_height(client).await.into_rpc_error()?;
+    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
+        .await
+        .into_rpc_error()?;
+
+    loop {
+        let pos_crawler_epoch =
+            get_pos_crawler_state(conn).await.into_db_error();
+
+        match pos_crawler_epoch {
+            Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {
+                break;
+            }
+            _ => {}
+        }
+
+        tracing::info!("Waiting for PoS service update...");
+
+        sleep(Duration::from_secs(5)).await;
+    }
+
+    let balances = query_all_balances(client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
-    let (bonds, unbonds) = query_all_bonds_and_unbonds(&client)
-        .await
-        .into_rpc_error()?;
+    let (bonds, unbonds) =
+        query_all_bonds_and_unbonds(client).await.into_rpc_error()?;
 
     tracing::info!("Querying proposals...");
-    let proposals = query_all_proposals(&client).await.into_rpc_error()?;
+    let proposals = query_all_proposals(client).await.into_rpc_error()?;
 
-    tracing::info!("Query votes...");
-    let proposal_ids = proposals.iter().map(|p| p.id).collect();
-    let votes = query_all_votes(&client, proposal_ids)
-        .await
-        .into_rpc_error()?;
+    let crawler_state = CrawlerState::new(block_height, epoch);
 
     tracing::info!("Inserting initial data... {:?}", balances);
 
@@ -249,10 +257,14 @@ async fn initial_query(
                 )?;
 
                 repository::gov::insert_proposals(transaction_conn, proposals)?;
-                repository::gov::insert_votes(transaction_conn, votes)?;
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+
+                repository::crawler::insert_crawler_state(
+                    transaction_conn,
+                    crawler_state,
+                )?;
 
                 anyhow::Ok(())
             })

@@ -13,7 +13,6 @@ pub struct UnbondAddresses {
 
 #[derive(Debug, Clone)]
 pub struct Unbond {
-    pub epoch: Epoch,
     pub source: Id,
     pub target: Id,
     pub amount: Amount,
@@ -29,7 +28,6 @@ impl Unbond {
             source: Id::Account(source_address.to_string()),
             target: validator_address,
             amount: Amount::fake(),
-            epoch: (1..3).fake::<u32>(),
             withdraw_at: (3..10).fake::<u32>(),
         }
     }

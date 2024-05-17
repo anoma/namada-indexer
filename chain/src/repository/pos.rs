@@ -37,7 +37,6 @@ pub fn insert_bonds(
         .do_update()
         .set((
             bonds::columns::raw_amount.eq(excluded(bonds::columns::raw_amount)),
-            bonds::columns::epoch.eq(excluded(bonds::columns::epoch)),
         ))
         .execute(transaction_conn)
         .context("Failed to update bonds in db")?;
@@ -70,14 +69,12 @@ pub fn insert_unbonds(
         .on_conflict((
             unbonds::columns::validator_id,
             unbonds::columns::address,
-            unbonds::columns::epoch,
             unbonds::columns::withdraw_epoch,
         ))
         .do_update()
         .set((
             unbonds::columns::raw_amount
                 .eq(excluded(unbonds::columns::raw_amount)),
-            unbonds::columns::epoch.eq(excluded(unbonds::columns::epoch)),
             unbonds::columns::withdraw_epoch
                 .eq(excluded(unbonds::columns::withdraw_epoch)),
         ))
