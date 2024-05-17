@@ -7,10 +7,12 @@ use deadpool_diesel::postgres::Object;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, RunQueryDsl};
 use orm::epoch_crawler_state::EpochCralwerStateInsertDb;
+use orm::migrations::run_migrations;
 use orm::schema::{epoch_crawler_state, validators};
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
 use pos::config::AppConfig;
+use pos::repository::clear_db;
 use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::CrawlerState;
@@ -22,8 +24,6 @@ use tracing_subscriber::FmtSubscriber;
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
-
-    // TODO: run migrations
 
     let log_level = match config.verbosity.log_level_filter() {
         LevelFilter::Off => None,
@@ -44,6 +44,20 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+
+    // Run migrations
+    run_migrations(&conn)
+        .await
+        .context_db_interact_error()
+        .into_db_error()?;
+
+    // Clear db
+    conn.interact(|transaction_conn| {
+        clear_db(transaction_conn).into_db_error()
+    })
+    .await
+    .context_db_interact_error()
+    .into_db_error()??;
 
     //We always start from the current epoch
     let next_epoch = namada_service::get_current_epoch(&client.clone())
@@ -79,6 +93,7 @@ async fn crawling_fn(
         namada_service::get_validator_set_at_epoch(&client, epoch_to_process)
             .await
             .into_rpc_error()?;
+
     tracing::info!(
         "Processing epoch {} with {} validators...",
         epoch_to_process,

@@ -38,8 +38,6 @@ async fn main() -> Result<(), MainError> {
     let file = File::open(config.checksums_filepath).unwrap();
     let reader = BufReader::new(file);
 
-    // TODO: run migrations
-
     let mut checksums: Checksums = serde_json::from_reader(reader).unwrap();
     checksums.init();
 
@@ -63,7 +61,7 @@ async fn main() -> Result<(), MainError> {
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
-    initial_query(client.clone(), conn.clone()).await?;
+    initial_query(&client, &conn).await?;
 
     let last_block_height = db_service::get_last_synched_block(&conn)
         .await
@@ -210,23 +208,22 @@ async fn crawling_fn(
 }
 
 async fn initial_query(
-    client: Arc<HttpClient>,
-    conn: Arc<Object>,
+    client: &HttpClient,
+    conn: &Object,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
     let block_height =
-        query_last_block_height(&client).await.into_rpc_error()?;
-    let epoch =
-        namada_service::get_epoch_at_block_height(&client, block_height)
-            .await
-            .into_rpc_error()?;
+        query_last_block_height(client).await.into_rpc_error()?;
+    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
+        .await
+        .into_rpc_error()?;
 
     loop {
         let pos_crawler_epoch =
-            get_pos_crawler_state(&conn).await.into_db_error().ok();
+            get_pos_crawler_state(conn).await.into_db_error();
 
         match pos_crawler_epoch {
-            Some(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {
+            Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {
                 break;
             }
             _ => {}
@@ -237,15 +234,14 @@ async fn initial_query(
         sleep(Duration::from_secs(5)).await;
     }
 
-    let balances = query_all_balances(&client).await.into_rpc_error()?;
+    let balances = query_all_balances(client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
-    let (bonds, unbonds) = query_all_bonds_and_unbonds(&client)
-        .await
-        .into_rpc_error()?;
+    let (bonds, unbonds) =
+        query_all_bonds_and_unbonds(client).await.into_rpc_error()?;
 
     tracing::info!("Querying proposals...");
-    let proposals = query_all_proposals(&client).await.into_rpc_error()?;
+    let proposals = query_all_proposals(client).await.into_rpc_error()?;
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
