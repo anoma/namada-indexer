@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::BufReader;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -35,11 +33,19 @@ use tracing_subscriber::FmtSubscriber;
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
-    let file = File::open(config.checksums_filepath).unwrap();
-    let reader = BufReader::new(file);
 
-    let mut checksums: Checksums = serde_json::from_reader(reader).unwrap();
-    checksums.init();
+    // TODO: run migrations
+    let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
+
+    let mut checksums = Checksums::default();
+    for code_path in Checksums::code_paths() {
+        let code = namada_service::query_tx_code_hash(&client, &code_path)
+            .await
+            .unwrap_or_else(|| {
+                panic!("{} must be defined in namada storage.", code_path)
+            });
+        checksums.add(code_path, code);
+    }
 
     let log_level = match config.verbosity.log_level_filter() {
         LevelFilter::Off => None,
@@ -55,8 +61,7 @@ async fn main() -> Result<(), MainError> {
         tracing::subscriber::set_global_default(subscriber).unwrap();
     }
 
-    let client =
-        Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
+    let client = Arc::new(client);
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
