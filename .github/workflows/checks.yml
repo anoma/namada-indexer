@@ -24,7 +24,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: true
-          cache-workspaces: true
       - run: just clippy
   
   format:
@@ -43,7 +42,6 @@ jobs:
           toolchain: nightly
           components: rustfmt
           cache: true
-          cache-workspaces: true
       - run: just fmt
 
   build:
@@ -60,7 +58,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: true
-          cache-workspaces: true
       - run: just build
   
   dependencies:
