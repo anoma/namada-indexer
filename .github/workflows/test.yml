@@ -1,0 +1,158 @@
+name: Testing
+
+on:
+    merge_group:
+    pull_request:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
+        with:
+          version: "25.0"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: true
+      - run: just clippy
+  
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
+        with:
+          version: "25.0"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt
+          cache: true
+      - run: just fmt
+
+  build:
+    if: ${{ github.event_name == 'pull_request' }}
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
+        with:
+          version: "25.0"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: true
+      - run: just build
+
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'merge_group' || github.ref == 'refs/heads/main' }}
+    env:
+      GIT_LFS_SKIP_SMUDGE: 1
+      REGISTRY_URL: ghcr.io
+      
+    strategy:
+      fail-fast: true
+      matrix:
+        docker:
+          [
+            { image: namada-indexer-chain, context: chain },
+            { image: namada-indexer-governance, context: governance },
+            { image: namada-indexer-pos, context: pos },
+            { image: namada-indexer-rewards, context: rewards },
+            { image: namada-indexer-seeder, context: seeder },
+            { image: namada-indexer-webserver, context: webserver },
+          ]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ matrix.docker.image }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - name: Build and Push
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.docker.context }}/Dockerfile
+          push: false # ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Generate artifact attestation
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY_URL }}/${{ matrix.docker.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+  can_enqueue:
+    needs: [Clippy, Format, Build]
+    if: always() && github.event_name != 'merge_group'
+    permissions:
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+    - env:
+        NEEDS_JSON: "${{toJSON(needs)}}"
+      name: Transform outcomes
+      run: |
+        echo "ALL_SUCCESS=$(echo "$NEEDS_JSON" | jq '. | to_entries | map([.value.result == "success", .value.result == "skipped"] | any) | all')" >> $GITHUB_ENV        
+    - name: check outcomes
+      run: "[ $ALL_SUCCESS == true ]"
+
+  can_merge:
+    needs: [Clippy, Format, Docker]
+    if: always() && github.event_name == 'merge_group'
+    permissions:
+      contents: read
+      pages: write
+      actions: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+    - env:
+        NEEDS_JSON: "${{toJSON(needs)}}"
+      name: Transform outcomes
+      run: |
+        echo "ALL_SUCCESS=$(echo "$NEEDS_JSON" | jq '. | to_entries | map([.value.result == "success", .value.result == "skipped"] | any) | all')" >> $GITHUB_ENV        
+    - name: check outcomes
+      run: "[ $ALL_SUCCESS == true ]"
