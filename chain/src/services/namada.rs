@@ -7,10 +7,12 @@ use namada_core::storage::{
 };
 use namada_sdk::address::Address as NamadaSdkAddress;
 use namada_sdk::collections::HashMap;
+use namada_sdk::hash::Hash;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
 };
+use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{borsh, rpc, token};
 use shared::balance::{Amount, Balance, Balances};
@@ -376,6 +378,24 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
         .context("Failed to query Namada's current epoch")?;
 
     Ok(epoch.0 as Epoch)
+}
+
+pub async fn query_tx_code_hash(
+    client: &HttpClient,
+    tx_code_path: &str,
+) -> Option<String> {
+    let hash_key = Key::wasm_hash(tx_code_path);
+    let (tx_code_res, _) =
+        rpc::query_storage_value_bytes(client, &hash_key, None, false)
+            .await
+            .ok()?;
+    if let Some(tx_code_bytes) = tx_code_res {
+        let tx_code =
+            Hash::try_from(&tx_code_bytes[..]).expect("Invalid code hash");
+        Some(tx_code.to_string())
+    } else {
+        None
+    }
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {

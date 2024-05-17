@@ -1,6 +1,5 @@
 use core::fmt;
 use std::fmt::Display;
-use std::path::PathBuf;
 
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 
@@ -27,9 +26,6 @@ pub struct AppConfig {
 
     #[clap(long, env)]
     pub chain_id: String,
-
-    #[clap(long, env)]
-    pub checksums_filepath: PathBuf,
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
