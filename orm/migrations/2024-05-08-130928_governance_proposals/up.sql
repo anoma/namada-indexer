@@ -16,4 +16,5 @@ CREATE TABLE governance_proposals (
   abstain_votes VARCHAR NOT NULL DEFAULT '0'
 );
 
-CREATE INDEX governance_proposal_kind ON governance_proposals (kind);
+CREATE INDEX index_governance_proposals_kind ON governance_proposals USING HASH  (kind);
+CREATE INDEX index_governance_proposals_result ON governance_proposals USING HASH  (result);

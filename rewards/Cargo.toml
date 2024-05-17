@@ -22,7 +22,6 @@ namada_sdk.workspace = true
 shared.workspace = true
 futures.workspace = true
 tokio-retry.workspace = true
-diesel_migrations.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
