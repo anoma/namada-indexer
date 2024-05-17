@@ -3,6 +3,9 @@ name: Testing
 on:
     merge_group:
     pull_request:
+    push:
+      branches:
+        - main
 
 concurrency:
   group: ${{ github.ref }}
