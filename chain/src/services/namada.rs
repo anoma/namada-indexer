@@ -68,7 +68,6 @@ pub async fn get_epoch_at_block_height(
     Ok(epoch.0 as Epoch)
 }
 
-// TODO: remove unwraps
 pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
