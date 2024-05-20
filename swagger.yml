@@ -7,14 +7,14 @@ info:
     email: hello@heliax.dev
     url: https://github.com/anoma/namada-indexer
 servers:
-  - url: http://localhost:5000/v1/api
+  - url: http://localhost:5000
 paths:
   /health:
     get:
       responses:
         '200':
           description: Health check
-  /pos/validator:
+  /api/v1/pos/validator:
     get:
       responses:
         '200':
@@ -43,7 +43,7 @@ paths:
                       total_items:
                         type: integer
                         minimum: 0
-  /pos/reward/{address}:
+  /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
       parameters:
@@ -62,7 +62,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Reward'
-  /pos/bond/{address}:
+  /api/v1/pos/bond/{address}:
     get:
       summary: Get all the bonds for an address
       parameters:
@@ -81,7 +81,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Bond'
-  /pos/unbonds/{address}:
+  /api/v1/pos/unbond/{address}:
     get:
       summary: Get all the unbonds for an an address
       parameters:
@@ -100,7 +100,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Unbond'
-  /pos/withdraw/{address}/{epoch}:
+  /api/v1/pos/withdraw/{address}/{epoch}:
     get:
       summary: Get all the withdraws for an address at a specific epoch
       parameters:
@@ -125,7 +125,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Withdraw'  
-  /gov/proposal:
+  /api/v1/gov/proposal:
     get:
       summary: Get a list of governance proposals
       parameters:
@@ -168,7 +168,7 @@ paths:
                       total_items:
                         type: integer
                         minimum: 0
-  /gov/search/{text}:
+  /api/v1/gov/search/{text}:
     get:
       summary: Get a list of governance proposals matching a text in the title
       parameters:
@@ -212,7 +212,7 @@ paths:
                       total_items:
                         type: integer
                         minimum: 0
-  /gov/proposal/{id}:
+  /api/v1/gov/proposal/{id}:
     get:
       summary: Get a governance proposal by proposal id
       parameters:
@@ -230,7 +230,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Proposal'
-  /gov/proposal/{id}/votes:
+  /api/v1/gov/proposal/{id}/votes:
     get:
       summary: Get all the votes for a governance proposal
       parameters:
@@ -268,7 +268,7 @@ paths:
                       total_items:
                         type: integer
                         minimum: 0
-  /gov/proposal/{id}/votes/{address}:
+  /api/v1/gov/proposal/{id}/votes/{address}:
     get:
       summary: Get all the votes for a governance proposal from an address
       parameters:
@@ -294,7 +294,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Vote'
-  /account/{address}:
+  /api/v1/account/{address}:
     get:
       summary: Get the all the tokens balances of an address
       parameters:

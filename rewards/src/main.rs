@@ -5,12 +5,13 @@ use std::time::Duration;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use orm::migrations::run_migrations;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::validators::ValidatorDb;
 use rewards::config::AppConfig;
 use rewards::services::namada as namada_service;
 use rewards::state::AppState;
-use shared::error::{AsDbError, AsRpcError, MainError};
+use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
 use tokio::time::sleep;
@@ -44,6 +45,13 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
+    
+    let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+    // Run migrations
+    run_migrations(&conn)
+        .await
+        .context_db_interact_error()
+        .into_db_error()?;
 
     let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
     let exit_handle = must_exit_handle();

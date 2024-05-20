@@ -18,6 +18,7 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
+use orm::migrations::run_migrations;
 use orm::schema::pos_rewards;
 use shared::block::Block;
 use shared::block_result::BlockResult;
@@ -44,7 +45,7 @@ async fn main() -> Result<(), MainError> {
             .unwrap_or_else(|| {
                 panic!("{} must be defined in namada storage.", code_path)
             });
-        checksums.add(code_path, code);
+        checksums.add(code_path, code.to_lowercase());
     }
 
     let log_level = match config.verbosity.log_level_filter() {
@@ -65,6 +66,12 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+    
+    // Run migrations
+    run_migrations(&conn)
+        .await
+        .context_db_interact_error()
+        .into_db_error()?;
 
     initial_query(&client, &conn).await?;
 
@@ -227,6 +234,8 @@ async fn initial_query(
         let pos_crawler_epoch =
             get_pos_crawler_state(conn).await.into_db_error();
 
+        println!("{:?}, {:?}", epoch, pos_crawler_epoch);
+
         match pos_crawler_epoch {
             Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {
                 break;
@@ -236,7 +245,7 @@ async fn initial_query(
 
         tracing::info!("Waiting for PoS service update...");
 
-        sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_secs(1)).await;
     }
 
     let balances = query_all_balances(client).await.into_rpc_error()?;

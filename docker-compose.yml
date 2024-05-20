@@ -13,8 +13,7 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
       TENDERMINT_URL: http://localhost:27657
-      CHAIN_ID: local.1321312131
-      CHECKSUMS_FILE: /app/checksums.json
+      CHAIN_ID: local.988b6b47aadd23b12b8a9a03
 
   governance:
     restart: on-failure

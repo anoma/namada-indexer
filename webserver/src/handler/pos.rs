@@ -4,6 +4,7 @@ use axum::Json;
 use axum_macros::debug_handler;
 use axum_trace_id::TraceId;
 
+use crate::dto::pos::PoSQueryParams;
 use crate::error::api::ApiError;
 use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
 use crate::response::utils::PaginatedResponse;
@@ -13,9 +14,10 @@ use crate::state::common::CommonState;
 pub async fn get_validators(
     _trace_id: TraceId<String>,
     _headers: HeaderMap,
-    Query(page): Query<u64>,
+    Query(query): Query<PoSQueryParams>,
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
+    let page = query.pagination.map(|p| p.page).unwrap_or(1);
     let (validators, total_validators) =
         state.pos_service.get_all_validators(page).await?;
 

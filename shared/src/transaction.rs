@@ -26,6 +26,7 @@ pub enum TransactionKind {
 
 impl TransactionKind {
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
+        println!("tx kind: {}", tx_kind_name);
         match tx_kind_name {
             "tx_transfer" => {
                 let transfer_data =
@@ -159,6 +160,7 @@ impl Transaction {
                         let tx_data = transaction.data().unwrap_or_default();
                         TransactionKind::from(&tx_kind_name, &tx_data)
                     } else {
+                        println!("UNKNOWN: {}", id);
                         TransactionKind::Unknown
                     }
                 } else {

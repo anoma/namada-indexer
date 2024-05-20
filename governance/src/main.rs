@@ -9,8 +9,9 @@ use governance::config::AppConfig;
 use governance::services::{db as db_service, namada as namada_service};
 use governance::state::AppState;
 use orm::governance_proposal::GovernanceProposalUpdateStatusDb;
+use orm::migrations::run_migrations;
 use orm::schema::governance_proposals;
-use shared::error::{AsDbError, AsRpcError, MainError};
+use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
 use tokio::time::sleep;
@@ -44,6 +45,13 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
+
+    let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+    // Run migrations
+    run_migrations(&conn)
+        .await
+        .context_db_interact_error()
+        .into_db_error()?;
 
     let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
     let exit_handle = must_exit_handle();

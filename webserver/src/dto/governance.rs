@@ -22,3 +22,5 @@ pub struct ProposalVotesQueryparams {
     #[serde(flatten)]
     pub pagination: Option<Pagination>,
 }
+
+pub type ProposalSearchQueryParams = ProposalVotesQueryparams;
