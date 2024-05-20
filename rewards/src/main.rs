@@ -4,9 +4,10 @@ use std::time::Duration;
 
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
+use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::migrations::run_migrations;
-use orm::pos_rewards::PosRewardInsertDb;
+use orm::pos_rewards::{self, PosRewardInsertDb};
 use orm::validators::ValidatorDb;
 use rewards::config::AppConfig;
 use rewards::services::namada as namada_service;
@@ -45,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
-    
+
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
     // Run migrations
     run_migrations(&conn)
@@ -108,7 +109,11 @@ async fn main() -> anyhow::Result<()> {
                                         })
                                         .collect::<Vec<_>>(),
                                 )
-                                .on_conflict_do_nothing()
+                                .on_conflict((orm::schema::pos_rewards::columns::owner, orm::schema::pos_rewards::columns::validator_id))
+                                .do_update()
+                                .set(
+                                    orm::schema::pos_rewards::columns::raw_amount.eq(excluded(orm::schema::pos_rewards::columns::raw_amount))
+                                )
                                 .execute(transaction_conn)
                         }
                     )
