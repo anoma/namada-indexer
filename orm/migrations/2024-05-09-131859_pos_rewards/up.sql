@@ -8,4 +8,6 @@ CREATE TABLE pos_rewards (
   CONSTRAINT fk_validator_id FOREIGN KEY(validator_id) REFERENCES validators(id) ON DELETE CASCADE
 );
 
+ALTER TABLE pos_rewards ADD UNIQUE (owner, validator_id);
+
 CREATE INDEX index_pos_rewards_owner ON pos_rewards USING HASH  (owner);

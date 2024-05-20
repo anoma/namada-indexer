@@ -43,30 +43,35 @@ impl ApplicationServer {
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))
-                .route("/pos/bonds/{address}", get(pos_handlers::get_bonds))
-                .route("/pos/unbonds/{address}", get(pos_handlers::get_unbonds))
+                .route("/pos/bond/:address", get(pos_handlers::get_bonds))
+                .route("/pos/unbond/:address", get(pos_handlers::get_unbonds))
                 .route(
-                    "/pos/reward/{address}",
+                    "/pos/withdraw/:address/:epoch",
                     get(pos_handlers::get_withdraws),
                 )
+                .route("/pos/reward/:address", get(pos_handlers::get_rewards))
                 .route(
                     "/gov/proposal",
                     get(gov_handlers::get_governance_proposals),
                 )
                 .route(
-                    "/gov/proposal/{id}",
+                    "/gov/search/:text",
+                    get(gov_handlers::search_governance_proposals_by_pattern),
+                )
+                .route(
+                    "/gov/proposal/:id",
                     get(gov_handlers::get_governance_proposal_by_id),
                 )
                 .route(
-                    "/gov/proposal/{id}/votes",
+                    "/gov/proposal/:id/votes",
                     get(gov_handlers::get_governance_proposal_votes),
                 )
                 .route(
-                    "/gov/proposal/{id}/votes/{address}",
+                    "/gov/proposal/:id/votes/:address",
                     get(gov_handlers::get_governance_proposal_votes_by_address),
                 )
                 .route(
-                    "/account/{address}",
+                    "/account/:address",
                     get(balance_handlers::get_address_balance),
                 )
                 .with_state(common_state)

@@ -13,11 +13,11 @@ name = "chain"
 path = "src/main.rs"
 
 [dependencies]
-tokio.workspace = true 
+tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 serde_json.workspace = true
-clap.workspace = true 
+clap.workspace = true
 anyhow.workspace = true
 namada_sdk.workspace = true
 namada_core.workspace = true
@@ -30,6 +30,7 @@ deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
 clap-verbosity-flag.workspace = true
+futures.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

@@ -1,7 +1,7 @@
 use axum::async_trait;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
-    SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, PgTextExpressionMethods,
+    QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::governance_proposal::{
     GovernanceProposalDb, GovernanceProposalResultDb,
@@ -31,6 +31,12 @@ pub trait GovernanceRepoTrait {
         &self,
         proposal_id: i32,
     ) -> Result<Option<GovernanceProposalDb>, String>;
+
+    async fn search_governance_proposals_by_pattern(
+        &self,
+        pattern: String,
+        page: i64,
+    ) -> Result<(Vec<GovernanceProposalDb>, i64), String>;
 
     async fn find_governance_proposal_votes(
         &self,
@@ -82,6 +88,28 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 .select(GovernanceProposalDb::as_select())
                 .first(conn)
                 .ok()
+        })
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    async fn search_governance_proposals_by_pattern(
+        &self,
+        pattern: String,
+        page: i64,
+    ) -> Result<(Vec<GovernanceProposalDb>, i64), String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            governance_proposals::table
+                .filter(
+                    governance_proposals::dsl::content
+                        .ilike(format!("%{}%", pattern)),
+                )
+                .select(GovernanceProposalDb::as_select())
+                .paginate(page)
+                .load_and_count_pages(conn)
+                .unwrap()
         })
         .await
         .map_err(|e| e.to_string())

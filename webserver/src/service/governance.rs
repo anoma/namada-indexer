@@ -70,11 +70,42 @@ impl GovernanceService {
         Ok(db_proposal.map(Proposal::from))
     }
 
+    pub async fn search_governance_proposals_by_pattern(
+        &self,
+        pattern: String,
+        page: u64,
+    ) -> Result<(Vec<Proposal>, u64), GovernanceError> {
+        if pattern.len() < 3 {
+            return Err(GovernanceError::TooShortPattern(pattern.len()));
+        }
+
+        let (db_proposals, total_items) = self
+            .governance_repo
+            .search_governance_proposals_by_pattern(pattern, page as i64)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok((
+            db_proposals.into_iter().map(Proposal::from).collect(),
+            total_items as u64,
+        ))
+    }
+
     pub async fn find_governance_proposal_votes(
         &self,
         proposal_id: u64,
         page: u64,
     ) -> Result<(Vec<ProposalVote>, u64), GovernanceError> {
+        let db_proposal = self
+            .governance_repo
+            .find_governance_proposals_by_id(proposal_id as i32)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        if db_proposal.is_none() {
+            return Err(GovernanceError::NotFound(proposal_id));
+        }
+
         let (db_proposal_votes, total_items) = self
             .governance_repo
             .find_governance_proposal_votes(proposal_id as i32, page as i64)
@@ -95,6 +126,16 @@ impl GovernanceService {
         proposal_id: u64,
         voter_address: String,
     ) -> Result<Vec<ProposalVote>, GovernanceError> {
+        let db_proposal = self
+            .governance_repo
+            .find_governance_proposals_by_id(proposal_id as i32)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        if db_proposal.is_none() {
+            return Err(GovernanceError::NotFound(proposal_id));
+        }
+
         let db_proposal_votes = self
             .governance_repo
             .find_governance_proposal_votes_by_address(
