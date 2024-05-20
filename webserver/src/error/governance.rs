@@ -6,6 +6,8 @@ use crate::response::api::ApiErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum GovernanceError {
+    #[error("Too Short pattern, minimum character 3, got {0}")]
+    TooShortPattern(usize),
     #[error("Proposal {0} not found")]
     NotFound(u64),
     #[error("Database error: {0}")]
@@ -17,6 +19,7 @@ pub enum GovernanceError {
 impl IntoResponse for GovernanceError {
     fn into_response(self) -> Response {
         let status_code = match self {
+            GovernanceError::TooShortPattern(_) => StatusCode::BAD_REQUEST,
             GovernanceError::NotFound(_) => StatusCode::NOT_FOUND,
             GovernanceError::Unknown(_) | GovernanceError::Database(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR

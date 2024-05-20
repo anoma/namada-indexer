@@ -139,11 +139,55 @@ paths:
           name: status
           schema:
             type: string
-            enum: [pending, voting, ended]
+            enum: [pending, voting, passed, rejected]
           description: The status of the proposal
       responses:
         '200':
           description: A list of governance proposal.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Proposal'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        minimum: 0
+                      per_page:
+                        type: integer
+                        minimum: 0
+                      total_pages:
+                        type: integer
+                        minimum: 0
+                      total_items:
+                        type: integer
+                        minimum: 0
+  /gov/search/{text}:
+    get:
+      summary: Get a list of governance proposals matching a text in the title
+      parameters:
+        - in: query
+          name: page
+          schema: 
+            type: integer
+            minimum: 0
+            description: Pagination parameter
+        - in: path
+          name: text
+          schema:
+            type: string
+            minimum: 3
+          required: true
+          description: The text to match against the proposal title
+      responses:
+        '200':
+          description: A list of governance proposal matching the text.
           content:
             application/json:
               schema:
@@ -316,7 +360,7 @@ components:
           type: integer
         status:
           type: string
-          enum: [pending, voting, ended]
+          enum: [pending, voting, passed, rejected]
         yayVotes:
           type: integer
         nayVotes:

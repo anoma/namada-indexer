@@ -48,6 +48,25 @@ pub async fn get_governance_proposal_by_id(
 }
 
 #[debug_handler]
+pub async fn search_governance_proposals_by_pattern(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    Path(pattern): Path<String>,
+    State(state): State<CommonState>,
+    Query(page): Query<Option<u64>>,
+) -> Result<Json<PaginatedResponse<Vec<Proposal>>>, ApiError> {
+    let page = page.unwrap_or(0);
+
+    let (proposals, total_proposals) = state
+        .gov_service
+        .search_governance_proposals_by_pattern(pattern, page)
+        .await?;
+
+    let response = PaginatedResponse::new(proposals, page, total_proposals);
+    Ok(Json(response))
+}
+
+#[debug_handler]
 pub async fn get_governance_proposal_votes(
     _trace_id: TraceId<String>,
     _headers: HeaderMap,

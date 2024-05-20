@@ -70,6 +70,27 @@ impl GovernanceService {
         Ok(db_proposal.map(Proposal::from))
     }
 
+    pub async fn search_governance_proposals_by_pattern(
+        &self,
+        pattern: String,
+        page: u64,
+    ) -> Result<(Vec<Proposal>, u64), GovernanceError> {
+        if pattern.len() < 3 {
+            return Err(GovernanceError::TooShortPattern(pattern.len()));
+        }
+
+        let (db_proposals, total_items) = self
+            .governance_repo
+            .search_governance_proposals_by_pattern(pattern, page as i64)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok((
+            db_proposals.into_iter().map(Proposal::from).collect(),
+            total_items as u64,
+        ))
+    }
+
     pub async fn find_governance_proposal_votes(
         &self,
         proposal_id: u64,
