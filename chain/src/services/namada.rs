@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
+use futures::StreamExt;
 use namada_core::storage::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
@@ -72,28 +73,36 @@ pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
 ) -> anyhow::Result<Balances> {
-    let mut res: Balances = vec![];
+    Ok(futures::stream::iter(balance_changes)
+        .filter_map(|balance_change| async move {
+            tracing::info!(
+                "Fetching balance change for {} ...",
+                balance_change.address
+            );
 
-    for balance_change in balance_changes {
-        let owner =
-            NamadaSdkAddress::from_str(&balance_change.address.to_string())
-                .context("Failed to parse owner address")?;
-        let token =
-            NamadaSdkAddress::from_str(&balance_change.token.to_string())
-                .context("Failed to parse token address")?;
+            let owner =
+                NamadaSdkAddress::from_str(&balance_change.address.to_string())
+                    .context("Failed to parse owner address")
+                    .ok()?;
+            let token =
+                NamadaSdkAddress::from_str(&balance_change.token.to_string())
+                    .context("Failed to parse token address")
+                    .ok()?;
 
-        let amount = rpc::get_token_balance(client, &token, &owner)
-            .await
-            .unwrap_or_default();
+            let amount = rpc::get_token_balance(client, &token, &owner)
+                .await
+                .unwrap_or_default();
 
-        res.push(Balance {
-            owner: Id::from(owner),
-            token: Id::from(token),
-            amount: Amount::from(amount),
-        });
-    }
-
-    anyhow::Ok(res)
+            Some(Balance {
+                owner: Id::from(owner),
+                token: Id::from(token),
+                amount: Amount::from(amount),
+            })
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await)
 }
 
 pub async fn query_all_balances(
