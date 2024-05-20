@@ -7,7 +7,7 @@ use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::migrations::run_migrations;
-use orm::pos_rewards::{self, PosRewardInsertDb};
+use orm::pos_rewards::PosRewardInsertDb;
 use orm::validators::ValidatorDb;
 use rewards::config::AppConfig;
 use rewards::services::namada as namada_service;

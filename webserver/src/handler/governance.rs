@@ -4,7 +4,9 @@ use axum::Json;
 use axum_macros::debug_handler;
 use axum_trace_id::TraceId;
 
-use crate::dto::governance::{ProposalQueryParams, ProposalSearchQueryParams, ProposalVotesQueryparams};
+use crate::dto::governance::{
+    ProposalQueryParams, ProposalSearchQueryParams, ProposalVotesQueryparams,
+};
 use crate::error::api::ApiError;
 use crate::error::governance::GovernanceError;
 use crate::response::governance::{Proposal, ProposalVote};

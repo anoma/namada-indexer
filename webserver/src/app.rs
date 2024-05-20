@@ -45,11 +45,11 @@ impl ApplicationServer {
                 .route("/pos/validator", get(pos_handlers::get_validators))
                 .route("/pos/bond/:address", get(pos_handlers::get_bonds))
                 .route("/pos/unbond/:address", get(pos_handlers::get_unbonds))
-                .route("/pos/withdraw/:address/:epoch", get(pos_handlers::get_withdraws))
                 .route(
-                    "/pos/reward/:address",
-                    get(pos_handlers::get_rewards),
+                    "/pos/withdraw/:address/:epoch",
+                    get(pos_handlers::get_withdraws),
                 )
+                .route("/pos/reward/:address", get(pos_handlers::get_rewards))
                 .route(
                     "/gov/proposal",
                     get(gov_handlers::get_governance_proposals),

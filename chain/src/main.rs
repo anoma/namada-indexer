@@ -66,7 +66,7 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
-    
+
     // Run migrations
     run_migrations(&conn)
         .await
