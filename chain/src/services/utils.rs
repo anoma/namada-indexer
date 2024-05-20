@@ -18,14 +18,10 @@ where
         .storage_prefix(client, None, None, false, key)
         .await?;
 
-    let decode =
-        |PrefixValue { key, value }: PrefixValue| match T::try_from_slice(
-            &value[..],
-        ) {
-            // TODO: do sth with err
-            Err(_err) => None,
-            Ok(value) => Some((key, value)),
-        };
+    let decode = |PrefixValue { key, value }: PrefixValue| {
+        T::try_from_slice(&value[..]).map(|value| (key, value)).ok()
+    };
+
     Ok(if values.data.is_empty() {
         None
     } else {

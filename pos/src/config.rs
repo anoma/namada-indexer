@@ -15,7 +15,6 @@ impl Display for CargoEnv {
     }
 }
 
-// TODO: remove unused fields
 #[derive(clap::Parser)]
 pub struct AppConfig {
     #[clap(long, env)]

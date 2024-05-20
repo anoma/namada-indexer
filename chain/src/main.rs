@@ -35,7 +35,6 @@ use tracing_subscriber::FmtSubscriber;
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
-    // TODO: run migrations
     let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
 
     let mut checksums = Checksums::default();

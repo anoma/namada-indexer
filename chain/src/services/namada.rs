@@ -118,8 +118,7 @@ pub async fn query_all_balances(
     let balances =
         query_storage_prefix::<token::Amount>(client, &balance_prefix)
             .await
-            // TODO: unwrap
-            .unwrap();
+            .context("Failed to query all balances")?;
 
     let mut all_balances: Balances = vec![];
 
