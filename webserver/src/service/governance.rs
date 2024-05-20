@@ -96,6 +96,16 @@ impl GovernanceService {
         proposal_id: u64,
         page: u64,
     ) -> Result<(Vec<ProposalVote>, u64), GovernanceError> {
+        let db_proposal = self
+            .governance_repo
+            .find_governance_proposals_by_id(proposal_id as i32)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        if db_proposal.is_none() {
+            return Err(GovernanceError::NotFound(proposal_id));
+        }
+
         let (db_proposal_votes, total_items) = self
             .governance_repo
             .find_governance_proposal_votes(proposal_id as i32, page as i64)
@@ -116,6 +126,16 @@ impl GovernanceService {
         proposal_id: u64,
         voter_address: String,
     ) -> Result<Vec<ProposalVote>, GovernanceError> {
+        let db_proposal = self
+            .governance_repo
+            .find_governance_proposals_by_id(proposal_id as i32)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        if db_proposal.is_none() {
+            return Err(GovernanceError::NotFound(proposal_id));
+        }
+
         let db_proposal_votes = self
             .governance_repo
             .find_governance_proposal_votes_by_address(
