@@ -23,6 +23,7 @@ pub enum TransactionKind {
     ProposalVote(Vec<u8>),
     InitProposal(Vec<u8>),
     MetadataChange(Vec<u8>),
+    CommissionChange(Vec<u8>),
     Unknown,
 }
 
@@ -31,11 +32,19 @@ impl TransactionKind {
         println!("tx kind: {}", tx_kind_name);
         match tx_kind_name {
             "tx_transfer" => {
-                let transfer_data =
-                    namada_core::token::Transfer::try_from_slice(data).unwrap();
-                match transfer_data.shielded {
-                    Some(_) => TransactionKind::ShieldedTransfer(data.to_vec()),
-                    None => TransactionKind::TransparentTransfer(data.to_vec()),
+                if let Ok(transfer_data) =
+                    namada_core::token::Transfer::try_from_slice(data)
+                {
+                    match transfer_data.shielded {
+                        Some(_) => {
+                            TransactionKind::ShieldedTransfer(data.to_vec())
+                        }
+                        None => {
+                            TransactionKind::TransparentTransfer(data.to_vec())
+                        }
+                    }
+                } else {
+                    TransactionKind::Unknown
                 }
             }
             "tx_bond" => TransactionKind::Bond(data.to_vec()),
@@ -48,6 +57,9 @@ impl TransactionKind {
             "tx_vote_proposal" => TransactionKind::ProposalVote(data.to_vec()),
             "tx_metadata_change" => {
                 TransactionKind::MetadataChange(data.to_vec())
+            }
+            "tx_commission_change" => {
+                TransactionKind::CommissionChange(data.to_vec())
             }
             _ => TransactionKind::Unknown,
         }

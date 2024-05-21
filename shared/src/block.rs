@@ -458,6 +458,27 @@ impl Block {
                         avatar: metadata_change_data.avatar,
                     })
                 }
+                TransactionKind::CommissionChange(data) => {
+                    let commission_change =
+                        namada_tx::data::pos::CommissionChange::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+
+                    let source_address = commission_change.validator;
+
+                    Some(ValidatorMetadataChange {
+                        address: Id::from(source_address),
+                        commission: Some(
+                            commission_change.new_rate.to_string(),
+                        ),
+                        email: None,
+                        description: None,
+                        website: None,
+                        discord_handler: None,
+                        avatar: None,
+                    })
+                }
                 _ => None,
             })
             .collect()
