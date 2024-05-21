@@ -278,7 +278,7 @@ impl Block {
     ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
-            .filter_map(|tx| match &tx.kind {
+            .flat_map(|tx| match &tx.kind {
                 TransactionKind::TransparentTransfer(data) => {
                     let transfer_data =
                         namada_core::token::Transfer::try_from_slice(data)
@@ -286,13 +286,17 @@ impl Block {
                     let transfer_source = Id::from(transfer_data.source);
                     let transfer_target = Id::from(transfer_data.target);
                     let transfer_token = Id::from(transfer_data.token);
-                    Some(vec![
+                    vec![
                         BalanceChange::new(
                             transfer_source,
                             transfer_token.clone(),
                         ),
                         BalanceChange::new(transfer_target, transfer_token),
-                    ])
+                        BalanceChange::new(
+                            tx.fee.gas_payer.clone(),
+                            tx.fee.gas_token.clone(),
+                        ),
+                    ]
                 }
                 TransactionKind::Bond(data) => {
                     let bond_data =
@@ -303,7 +307,13 @@ impl Block {
 
                     let source = Id::from(address);
 
-                    Some(vec![BalanceChange::new(source, native_token.clone())])
+                    vec![
+                        BalanceChange::new(source, native_token.clone()),
+                        BalanceChange::new(
+                            tx.fee.gas_payer.clone(),
+                            tx.fee.gas_token.clone(),
+                        ),
+                    ]
                 }
                 TransactionKind::Withdraw(data) => {
                     let withdraw_data =
@@ -313,7 +323,13 @@ impl Block {
                         withdraw_data.source.unwrap_or(withdraw_data.validator);
                     let source = Id::from(address);
 
-                    Some(vec![BalanceChange::new(source, native_token.clone())])
+                    vec![
+                        BalanceChange::new(source, native_token.clone()),
+                        BalanceChange::new(
+                            tx.fee.gas_payer.clone(),
+                            tx.fee.gas_token.clone(),
+                        ),
+                    ]
                 }
                 TransactionKind::ClaimRewards(data) => {
                     let claim_rewards_data =
@@ -326,7 +342,13 @@ impl Block {
                         .unwrap_or(claim_rewards_data.validator);
                     let source = Id::from(address);
 
-                    Some(vec![BalanceChange::new(source, native_token.clone())])
+                    vec![
+                        BalanceChange::new(source, native_token.clone()),
+                        BalanceChange::new(
+                            tx.fee.gas_payer.clone(),
+                            tx.fee.gas_token.clone(),
+                        ),
+                    ]
                 }
                 TransactionKind::InitProposal(data) => {
                     let init_proposal_data =
@@ -336,11 +358,19 @@ impl Block {
                         .unwrap();
                     let author = Id::from(init_proposal_data.author);
 
-                    Some(vec![BalanceChange::new(author, native_token.clone())])
+                    vec![
+                        BalanceChange::new(author, native_token.clone()),
+                        BalanceChange::new(
+                            tx.fee.gas_payer.clone(),
+                            tx.fee.gas_token.clone(),
+                        ),
+                    ]
                 }
-                _ => None,
+                _ => vec![BalanceChange::new(
+                    tx.fee.gas_payer.clone(),
+                    tx.fee.gas_token.clone(),
+                )],
             })
-            .flatten()
             .collect()
     }
 

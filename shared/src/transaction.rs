@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::uint::Uint;
 use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
 
@@ -88,6 +89,15 @@ pub struct Transaction {
     pub kind: TransactionKind,
     pub extra_sections: HashMap<Id, Vec<u8>>,
     pub index: usize,
+    pub memo: Option<Vec<u8>>,
+    pub fee: Fee,
+}
+
+#[derive(Debug, Clone)]
+pub struct Fee {
+    pub gas: String,
+    pub gas_payer: Id,
+    pub gas_token: Id,
 }
 
 impl Transaction {
@@ -101,12 +111,18 @@ impl Transaction {
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
 
         match transaction.header().tx_type {
-            TxType::Wrapper(_) => {
+            TxType::Wrapper(wrapper) => {
                 let tx_id = Id::from(transaction.header_hash());
                 let raw_hash = Id::from(transaction.raw_header_hash());
                 let raw_hash_str = raw_hash.to_string();
                 let wrapper_tx_status =
                     block_results.find_tx_hash_result(&tx_id).unwrap();
+                let memo = transaction.memo();
+                let fee = Fee {
+                    gas: Uint::from(wrapper.gas_limit).to_string(),
+                    gas_payer: Id::from(wrapper.pk),
+                    gas_token: Id::from(wrapper.fee.token),
+                };
 
                 let wrapper_tx_exit = TransactionExitStatus::from(
                     &wrapper_tx_status,
@@ -173,6 +189,8 @@ impl Transaction {
                     kind: tx_kind,
                     extra_sections,
                     index,
+                    memo,
+                    fee,
                 };
 
                 Ok((transaction, raw_hash_str))
