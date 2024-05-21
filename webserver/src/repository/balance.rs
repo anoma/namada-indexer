@@ -37,9 +37,9 @@ impl BalanceRepoTrait for BalanceRepo {
                 .filter(balances::dsl::owner.eq(address))
                 .select(BalanceDb::as_select())
                 .get_results(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 }

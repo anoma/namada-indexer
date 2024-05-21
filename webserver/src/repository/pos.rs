@@ -1,4 +1,5 @@
 use axum::async_trait;
+use diesel::dsl::sum;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
     SelectableHelper,
@@ -51,6 +52,8 @@ pub trait PosRepositoryTrait {
         &self,
         address: String,
     ) -> Result<Vec<PoSRewardDb>, String>;
+
+    async fn get_total_voting_power(&self) -> Result<Option<i64>, String>;
 }
 
 #[async_trait]
@@ -70,9 +73,9 @@ impl PosRepositoryTrait for PosRepository {
                 .select(ValidatorDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -104,9 +107,9 @@ impl PosRepositoryTrait for PosRepository {
                 .filter(bonds::dsl::address.eq(address))
                 .select(BondDb::as_select())
                 .get_results(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -121,9 +124,9 @@ impl PosRepositoryTrait for PosRepository {
                 .filter(unbonds::dsl::address.eq(address))
                 .select(UnbondDb::as_select())
                 .get_results(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -143,9 +146,9 @@ impl PosRepositoryTrait for PosRepository {
                 )
                 .select(UnbondDb::as_select())
                 .get_results(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -160,9 +163,22 @@ impl PosRepositoryTrait for PosRepository {
                 .filter(pos_rewards::dsl::owner.eq(address))
                 .select(PoSRewardDb::as_select())
                 .get_results(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn get_total_voting_power(&self) -> Result<Option<i64>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            validators::table
+                .select(sum(validators::dsl::voting_power))
+                .first(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 }

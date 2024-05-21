@@ -48,6 +48,12 @@ pub struct Reward {
     pub validator: ValidatorWithId,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TotalVotingPower {
+    pub total_voting_power: u64,
+}
+
 impl From<ValidatorDb> for Validator {
     fn from(value: ValidatorDb) -> Self {
         Self {

@@ -1,4 +1,5 @@
 use axum::async_trait;
+use diesel::dsl::sum;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, PgTextExpressionMethods,
     QueryDsl, RunQueryDsl, SelectableHelper,
@@ -70,9 +71,9 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 .select(GovernanceProposalDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -109,9 +110,9 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 .select(GovernanceProposalDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -128,9 +129,9 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 .select(GovernanceProposalVoteDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
@@ -148,9 +149,9 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 ))
                 .select(GovernanceProposalVoteDb::as_select())
                 .get_results(conn)
-                .unwrap()
         })
         .await
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 }

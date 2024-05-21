@@ -6,7 +6,9 @@ use axum_trace_id::TraceId;
 
 use crate::dto::pos::PoSQueryParams;
 use crate::error::api::ApiError;
-use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
+use crate::response::pos::{
+    Bond, Reward, TotalVotingPower, Unbond, ValidatorWithId, Withdraw,
+};
 use crate::response::utils::PaginatedResponse;
 use crate::state::common::CommonState;
 
@@ -70,4 +72,14 @@ pub async fn get_rewards(
 ) -> Result<Json<Vec<Reward>>, ApiError> {
     let rewards = state.pos_service.get_rewards_by_address(address).await?;
     Ok(Json(rewards))
+}
+
+#[debug_handler]
+pub async fn get_total_voting_power(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    State(state): State<CommonState>,
+) -> Result<Json<TotalVotingPower>, ApiError> {
+    let total_voting_power = state.pos_service.get_total_voting_power().await?;
+    Ok(Json(TotalVotingPower { total_voting_power }))
 }

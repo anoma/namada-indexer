@@ -125,6 +125,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Withdraw'  
+  /api/v1/pos/voting-power:
+    get:
+      summary: Get the total voting power
+      responses:
+        '200':
+          description: The total voting power.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VotingPower'  
   /api/v1/gov/proposal:
     get:
       summary: Get a list of governance proposals
@@ -420,6 +432,11 @@ components:
           format: float
           minimum: 0
         withdrawEpoch: 
+          type: integer
+    VotingPower:
+      type: object
+      properties:
+        votingPower:
           type: integer
     Balance:
       type: object

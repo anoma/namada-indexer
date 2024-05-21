@@ -19,8 +19,8 @@ use tower_http::trace::TraceLayer;
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, governance as gov_handlers,
-    pos as pos_handlers,
+    balance as balance_handlers, chain as chain_handlers,
+    governance as gov_handlers, pos as pos_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -50,6 +50,7 @@ impl ApplicationServer {
                     get(pos_handlers::get_withdraws),
                 )
                 .route("/pos/reward/:address", get(pos_handlers::get_rewards))
+                .route("/pos/voting-power", get(pos_handlers::get_total_voting_power))
                 .route(
                     "/gov/proposal",
                     get(gov_handlers::get_governance_proposals),
@@ -74,6 +75,7 @@ impl ApplicationServer {
                     "/account/:address",
                     get(balance_handlers::get_address_balance),
                 )
+                .route("/chain/sync", get(chain_handlers::sync_height))
                 .with_state(common_state)
         };
 
