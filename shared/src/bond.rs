@@ -1,7 +1,6 @@
 use crate::balance::Amount;
 use crate::id::Id;
 
-// TODO: maybe reuse bond with Option<Amount> instead of Amount
 #[derive(Debug, Clone)]
 pub struct BondAddresses {
     pub source: Id,

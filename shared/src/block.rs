@@ -17,7 +17,6 @@ use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
 use crate::vote::GovernanceVote;
 
-// TODO: in the DB those are i32
 pub type Epoch = u32;
 pub type BlockHeight = u32;
 
@@ -356,10 +355,10 @@ impl Block {
                         bond_data.source.unwrap_or(bond_data.validator.clone());
                     let target_address = bond_data.validator;
 
-                    Some(BondAddresses {
+                    Some(vec![BondAddresses {
                         source: Id::from(source_address),
                         target: Id::from(target_address),
-                    })
+                    }])
                 }
                 TransactionKind::Unbond(data) => {
                     let unbond_data =
@@ -370,13 +369,36 @@ impl Block {
                         .unwrap_or(unbond_data.validator.clone());
                     let validator_address = unbond_data.validator;
 
-                    Some(BondAddresses {
+                    Some(vec![BondAddresses {
                         source: Id::from(source_address),
                         target: Id::from(validator_address),
-                    })
+                    }])
+                }
+                TransactionKind::Redelegation(data) => {
+                    let redelegation_data =
+                        namada_tx::data::pos::Redelegation::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+                    let owner = redelegation_data.owner;
+                    let source_validator = redelegation_data.src_validator;
+                    let destination_validator =
+                        redelegation_data.dest_validator;
+
+                    Some(vec![
+                        BondAddresses {
+                            source: Id::from(owner.clone()),
+                            target: Id::from(source_validator),
+                        },
+                        BondAddresses {
+                            source: Id::from(owner),
+                            target: Id::from(destination_validator),
+                        },
+                    ])
                 }
                 _ => None,
             })
+            .flatten()
             .collect()
     }
 

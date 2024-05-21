@@ -99,15 +99,12 @@ async fn crawling_fn(
         epoch_to_process,
         validators_set.validators.len()
     );
-    // TODO: either add height to epoch crawler or add another state struct
     let crawler_state = CrawlerState::new(0, epoch_to_process);
 
     conn.interact(move |conn| {
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                // TODO: move closure block to a function
-
                 let validators_dbo = &validators_set
                     .validators
                     .into_iter()

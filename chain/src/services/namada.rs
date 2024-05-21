@@ -118,8 +118,7 @@ pub async fn query_all_balances(
     let balances =
         query_storage_prefix::<token::Amount>(client, &balance_prefix)
             .await
-            // TODO: unwrap
-            .unwrap();
+            .context("Failed to query all balances")?;
 
     let mut all_balances: Balances = vec![];
 
@@ -319,33 +318,37 @@ pub async fn query_bonds(
     addresses: Vec<BondAddresses>,
     epoch: Epoch,
 ) -> anyhow::Result<Bonds> {
-    let mut bonds = vec![];
+    let bonds = futures::stream::iter(addresses)
+        .filter_map(|BondAddresses { source, target }| async move {
+            let source = NamadaSdkAddress::from_str(&source.to_string())
+                .expect("Failed to parse source address");
+            let target = NamadaSdkAddress::from_str(&target.to_string())
+                .expect("Failed to parse target address");
 
-    for BondAddresses { source, target } in addresses {
-        let source = NamadaSdkAddress::from_str(&source.to_string())
-            .expect("Failed to parse source address");
-        let target = NamadaSdkAddress::from_str(&target.to_string())
-            .expect("Failed to parse target address");
+            let amount = RPC
+                .vp()
+                .pos()
+                .bond_with_slashing(
+                    client,
+                    &source,
+                    &target,
+                    // TODO: + 2 is hardcoded pipeline len
+                    &Some(to_epoch(epoch + 2)),
+                )
+                .await
+                .context("Failed to query bond amount")
+                .ok()?;
 
-        let amount = RPC
-            .vp()
-            .pos()
-            .bond_with_slashing(
-                client,
-                &source,
-                &target,
-                // TODO: + 2 is hardcoded pipeline len
-                &Some(to_epoch(epoch + 2)),
-            )
-            .await
-            .context("Failed to query bond amount")?;
-
-        bonds.push(Bond {
-            source: Id::from(source),
-            target: Id::from(target),
-            amount: Amount::from(amount),
-        });
-    }
+            Some(Bond {
+                source: Id::from(source),
+                target: Id::from(target),
+                amount: Amount::from(amount),
+            })
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
 
     anyhow::Ok(bonds)
 }
@@ -354,28 +357,35 @@ pub async fn query_unbonds(
     client: &HttpClient,
     addresses: Vec<UnbondAddresses>,
 ) -> anyhow::Result<Unbonds> {
-    let mut unbonds = vec![];
+    let unbonds = futures::stream::iter(addresses)
+        .filter_map(|UnbondAddresses { source, validator }| async move {
+            let source = NamadaSdkAddress::from_str(&source.to_string())
+                .expect("Failed to parse source address");
+            let validator = NamadaSdkAddress::from_str(&validator.to_string())
+                .expect("Failed to parse validator address");
 
-    for UnbondAddresses { source, validator } in addresses {
-        let source = NamadaSdkAddress::from_str(&source.to_string())
-            .context("Failed to parse source address")?;
-        let validator = NamadaSdkAddress::from_str(&validator.to_string())
-            .context("Failed to parse validator address")?;
+            let res = RPC
+                .vp()
+                .pos()
+                .unbond_with_slashing(client, &source, &validator)
+                .await
+                .context("Failed to query unbond amount")
+                .ok()?;
 
-        let res = rpc::query_unbond_with_slashing(client, &source, &validator)
-            .await
-            .context("Failed to query unbond amount")?;
+            let ((_, withdraw_epoch), amount) =
+                res.last().expect("Unbonds are empty");
 
-        let ((_, withdraw_epoch), amount) =
-            res.last().context("Unbonds are empty")?;
-
-        unbonds.push(Unbond {
-            source: Id::from(source),
-            target: Id::from(validator),
-            amount: Amount::from(*amount),
-            withdraw_at: withdraw_epoch.0 as Epoch,
-        });
-    }
+            Some(Unbond {
+                source: Id::from(source),
+                target: Id::from(validator),
+                amount: Amount::from(*amount),
+                withdraw_at: withdraw_epoch.0 as Epoch,
+            })
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
 
     anyhow::Ok(unbonds)
 }
