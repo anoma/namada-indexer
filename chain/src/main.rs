@@ -237,8 +237,6 @@ async fn initial_query(
         let pos_crawler_epoch =
             get_pos_crawler_state(conn).await.into_db_error();
 
-        println!("{:?}, {:?}", epoch, pos_crawler_epoch);
-
         match pos_crawler_epoch {
             Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {
                 break;
