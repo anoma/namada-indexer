@@ -279,98 +279,77 @@ impl Block {
     ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
-            .flat_map(|tx| match &tx.kind {
-                TransactionKind::TransparentTransfer(data) => {
-                    let transfer_data =
-                        namada_core::token::Transfer::try_from_slice(data)
+            .flat_map(|tx| {
+                let mut balance_changes = match &tx.kind {
+                    TransactionKind::TransparentTransfer(data) => {
+                        let transfer_data =
+                            namada_core::token::Transfer::try_from_slice(data)
+                                .unwrap();
+                        let transfer_source = Id::from(transfer_data.source);
+                        let transfer_target = Id::from(transfer_data.target);
+                        let transfer_token = Id::from(transfer_data.token);
+                        vec![
+                            BalanceChange::new(
+                                transfer_source,
+                                transfer_token.clone(),
+                            ),
+                            BalanceChange::new(transfer_target, transfer_token),
+                        ]
+                    }
+                    TransactionKind::Bond(data) => {
+                        let bond_data =
+                            namada_tx::data::pos::Bond::try_from_slice(data)
+                                .unwrap();
+                        let address =
+                            bond_data.source.unwrap_or(bond_data.validator);
+
+                        let source = Id::from(address);
+
+                        vec![BalanceChange::new(source, native_token.clone())]
+                    }
+                    TransactionKind::Withdraw(data) => {
+                        let withdraw_data =
+                            namada_tx::data::pos::Withdraw::try_from_slice(
+                                data,
+                            )
                             .unwrap();
-                    let transfer_source = Id::from(transfer_data.source);
-                    let transfer_target = Id::from(transfer_data.target);
-                    let transfer_token = Id::from(transfer_data.token);
-                    vec![
-                        BalanceChange::new(
-                            transfer_source,
-                            transfer_token.clone(),
-                        ),
-                        BalanceChange::new(transfer_target, transfer_token),
-                        BalanceChange::new(
-                            tx.fee.gas_payer.clone(),
-                            tx.fee.gas_token.clone(),
-                        ),
-                    ]
-                }
-                TransactionKind::Bond(data) => {
-                    let bond_data =
-                        namada_tx::data::pos::Bond::try_from_slice(data)
+                        let address = withdraw_data
+                            .source
+                            .unwrap_or(withdraw_data.validator);
+                        let source = Id::from(address);
+
+                        vec![BalanceChange::new(source, native_token.clone())]
+                    }
+                    TransactionKind::ClaimRewards(data) => {
+                        let claim_rewards_data =
+                            namada_tx::data::pos::ClaimRewards::try_from_slice(
+                                data,
+                            )
                             .unwrap();
-                    let address =
-                        bond_data.source.unwrap_or(bond_data.validator);
+                        let address = claim_rewards_data
+                            .source
+                            .unwrap_or(claim_rewards_data.validator);
+                        let source = Id::from(address);
 
-                    let source = Id::from(address);
-
-                    vec![
-                        BalanceChange::new(source, native_token.clone()),
-                        BalanceChange::new(
-                            tx.fee.gas_payer.clone(),
-                            tx.fee.gas_token.clone(),
-                        ),
-                    ]
-                }
-                TransactionKind::Withdraw(data) => {
-                    let withdraw_data =
-                        namada_tx::data::pos::Withdraw::try_from_slice(data)
-                            .unwrap();
-                    let address =
-                        withdraw_data.source.unwrap_or(withdraw_data.validator);
-                    let source = Id::from(address);
-
-                    vec![
-                        BalanceChange::new(source, native_token.clone()),
-                        BalanceChange::new(
-                            tx.fee.gas_payer.clone(),
-                            tx.fee.gas_token.clone(),
-                        ),
-                    ]
-                }
-                TransactionKind::ClaimRewards(data) => {
-                    let claim_rewards_data =
-                        namada_tx::data::pos::ClaimRewards::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
-                    let address = claim_rewards_data
-                        .source
-                        .unwrap_or(claim_rewards_data.validator);
-                    let source = Id::from(address);
-
-                    vec![
-                        BalanceChange::new(source, native_token.clone()),
-                        BalanceChange::new(
-                            tx.fee.gas_payer.clone(),
-                            tx.fee.gas_token.clone(),
-                        ),
-                    ]
-                }
-                TransactionKind::InitProposal(data) => {
-                    let init_proposal_data =
+                        vec![BalanceChange::new(source, native_token.clone())]
+                    }
+                    TransactionKind::InitProposal(data) => {
+                        let init_proposal_data =
                         namada_governance::InitProposalData::try_from_slice(
                             data,
                         )
                         .unwrap();
-                    let author = Id::from(init_proposal_data.author);
+                        let author = Id::from(init_proposal_data.author);
 
-                    vec![
-                        BalanceChange::new(author, native_token.clone()),
-                        BalanceChange::new(
-                            tx.fee.gas_payer.clone(),
-                            tx.fee.gas_token.clone(),
-                        ),
-                    ]
-                }
-                _ => vec![BalanceChange::new(
+                        vec![BalanceChange::new(author, native_token.clone())]
+                    }
+                    _ => vec![],
+                };
+                balance_changes.push(BalanceChange::new(
                     tx.fee.gas_payer.clone(),
                     tx.fee.gas_token.clone(),
-                )],
+                ));
+                balance_changes
             })
             .collect()
     }
