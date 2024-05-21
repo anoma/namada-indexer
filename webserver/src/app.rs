@@ -149,7 +149,7 @@ impl ApplicationServer {
         tokio::signal::ctrl_c()
             .await
             .expect("expect tokio signal ctrl-c");
-        println!("signal shutdown");
+        tracing::warn!("signal shutdown");
     }
 
     async fn handle_404() -> impl IntoResponse {

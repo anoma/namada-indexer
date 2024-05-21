@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use diesel::{Insertable, Queryable, Selectable};
+use diesel::{AsChangeset, Insertable, Queryable, Selectable};
 use serde::Serialize;
 use shared::validator::Validator;
 
@@ -31,6 +31,18 @@ pub struct ValidatorInsertDb {
     pub max_commission: String,
     pub commission: String,
     pub email: String,
+    pub website: Option<String>,
+    pub description: Option<String>,
+    pub discord_handle: Option<String>,
+    pub avatar: Option<String>,
+}
+
+#[derive(Serialize, AsChangeset, Clone)]
+#[diesel(table_name = validators)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ValidatorUpdateMetadataDb {
+    pub commission: Option<String>,
+    pub email: Option<String>,
     pub website: Option<String>,
     pub description: Option<String>,
     pub discord_handle: Option<String>,

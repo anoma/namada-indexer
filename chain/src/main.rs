@@ -17,9 +17,7 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use orm::migrations::run_migrations;
-use orm::schema::pos_rewards;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -174,6 +172,8 @@ async fn crawling_fn(
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
 
+    let metadata_change = block.validator_metadata();
+
     let reward_claimers = block.pos_rewards();
 
     let crawler_state = CrawlerState::new(block_height, epoch);
@@ -201,12 +201,15 @@ async fn crawling_fn(
                     crawler_state,
                 )?;
 
-                diesel::delete(pos_rewards::table.filter(
-                    pos_rewards::dsl::owner.eq_any(
-                        reward_claimers.into_iter().map(|id| id.to_string()),
-                    ),
-                ))
-                .execute(transaction_conn)?;
+                repository::pos::delete_claimed_rewards(
+                    transaction_conn,
+                    reward_claimers,
+                )?;
+
+                repository::pos::update_validator_metadata(
+                    transaction_conn,
+                    metadata_change,
+                )?;
 
                 anyhow::Ok(())
             })
@@ -232,8 +235,6 @@ async fn initial_query(
     loop {
         let pos_crawler_epoch =
             get_pos_crawler_state(conn).await.into_db_error();
-
-        println!("{:?}, {:?}", epoch, pos_crawler_epoch);
 
         match pos_crawler_epoch {
             Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {

@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use namada_core::address::Address as NamadaAddress;
 use namada_core::hash::Hash as NamadaHash;
+use namada_sdk::key::common;
 use serde::{Deserialize, Serialize};
 use tendermint::account::Id as TendermintAccountId;
 use tendermint::block::Id as TendermintBlockId;
@@ -71,5 +72,11 @@ impl From<Id> for NamadaAddress {
             Id::Account(account) => NamadaAddress::from_str(&account).unwrap(),
             Id::Hash(_) => panic!(),
         }
+    }
+}
+
+impl From<common::PublicKey> for Id {
+    fn from(value: common::PublicKey) -> Self {
+        Id::Account(value.to_string())
     }
 }

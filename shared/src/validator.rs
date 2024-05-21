@@ -26,6 +26,17 @@ pub struct Validator {
     pub avatar: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ValidatorMetadataChange {
+    pub address: Id,
+    pub commission: Option<String>,
+    pub email: Option<String>,
+    pub description: Option<String>,
+    pub website: Option<String>,
+    pub discord_handler: Option<String>,
+    pub avatar: Option<String>,
+}
+
 impl Validator {
     pub fn fake() -> Self {
         let address =

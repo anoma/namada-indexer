@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::uint::Uint;
 use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
 
@@ -21,6 +22,8 @@ pub enum TransactionKind {
     ClaimRewards(Vec<u8>),
     ProposalVote(Vec<u8>),
     InitProposal(Vec<u8>),
+    MetadataChange(Vec<u8>),
+    CommissionChange(Vec<u8>),
     Unknown,
 }
 
@@ -28,11 +31,19 @@ impl TransactionKind {
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
             "tx_transfer" => {
-                let transfer_data =
-                    namada_core::token::Transfer::try_from_slice(data).unwrap();
-                match transfer_data.shielded {
-                    Some(_) => TransactionKind::ShieldedTransfer(data.to_vec()),
-                    None => TransactionKind::TransparentTransfer(data.to_vec()),
+                if let Ok(transfer_data) =
+                    namada_core::token::Transfer::try_from_slice(data)
+                {
+                    match transfer_data.shielded {
+                        Some(_) => {
+                            TransactionKind::ShieldedTransfer(data.to_vec())
+                        }
+                        None => {
+                            TransactionKind::TransparentTransfer(data.to_vec())
+                        }
+                    }
+                } else {
+                    TransactionKind::Unknown
                 }
             }
             "tx_bond" => TransactionKind::Bond(data.to_vec()),
@@ -43,6 +54,12 @@ impl TransactionKind {
             "wrapper" => TransactionKind::Wrapper,
             "tx_init_proposal" => TransactionKind::InitProposal(data.to_vec()),
             "tx_vote_proposal" => TransactionKind::ProposalVote(data.to_vec()),
+            "tx_metadata_change" => {
+                TransactionKind::MetadataChange(data.to_vec())
+            }
+            "tx_commission_change" => {
+                TransactionKind::CommissionChange(data.to_vec())
+            }
             _ => TransactionKind::Unknown,
         }
     }
@@ -87,6 +104,15 @@ pub struct Transaction {
     pub kind: TransactionKind,
     pub extra_sections: HashMap<Id, Vec<u8>>,
     pub index: usize,
+    pub memo: Option<Vec<u8>>,
+    pub fee: Fee,
+}
+
+#[derive(Debug, Clone)]
+pub struct Fee {
+    pub gas: String,
+    pub gas_payer: Id,
+    pub gas_token: Id,
 }
 
 impl Transaction {
@@ -100,12 +126,18 @@ impl Transaction {
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
 
         match transaction.header().tx_type {
-            TxType::Wrapper(_) => {
+            TxType::Wrapper(wrapper) => {
                 let tx_id = Id::from(transaction.header_hash());
                 let raw_hash = Id::from(transaction.raw_header_hash());
                 let raw_hash_str = raw_hash.to_string();
                 let wrapper_tx_status =
                     block_results.find_tx_hash_result(&tx_id).unwrap();
+                let memo = transaction.memo();
+                let fee = Fee {
+                    gas: Uint::from(wrapper.gas_limit).to_string(),
+                    gas_payer: Id::from(wrapper.pk),
+                    gas_token: Id::from(wrapper.fee.token),
+                };
 
                 let wrapper_tx_exit = TransactionExitStatus::from(
                     &wrapper_tx_status,
@@ -159,7 +191,6 @@ impl Transaction {
                         let tx_data = transaction.data().unwrap_or_default();
                         TransactionKind::from(&tx_kind_name, &tx_data)
                     } else {
-                        println!("UNKNOWN: {}", id);
                         TransactionKind::Unknown
                     }
                 } else {
@@ -172,6 +203,8 @@ impl Transaction {
                     kind: tx_kind,
                     extra_sections,
                     index,
+                    memo,
+                    fee,
                 };
 
                 Ok((transaction, raw_hash_str))

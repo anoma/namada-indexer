@@ -15,6 +15,7 @@ use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::transaction::{Transaction, TransactionKind};
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
+use crate::validator::ValidatorMetadataChange;
 use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
@@ -277,69 +278,78 @@ impl Block {
     ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::TransparentTransfer(data) => {
-                    let transfer_data =
-                        namada_core::token::Transfer::try_from_slice(data)
+            .flat_map(|tx| {
+                let mut balance_changes = match &tx.kind {
+                    TransactionKind::TransparentTransfer(data) => {
+                        let transfer_data =
+                            namada_core::token::Transfer::try_from_slice(data)
+                                .unwrap();
+                        let transfer_source = Id::from(transfer_data.source);
+                        let transfer_target = Id::from(transfer_data.target);
+                        let transfer_token = Id::from(transfer_data.token);
+                        vec![
+                            BalanceChange::new(
+                                transfer_source,
+                                transfer_token.clone(),
+                            ),
+                            BalanceChange::new(transfer_target, transfer_token),
+                        ]
+                    }
+                    TransactionKind::Bond(data) => {
+                        let bond_data =
+                            namada_tx::data::pos::Bond::try_from_slice(data)
+                                .unwrap();
+                        let address =
+                            bond_data.source.unwrap_or(bond_data.validator);
+
+                        let source = Id::from(address);
+
+                        vec![BalanceChange::new(source, native_token.clone())]
+                    }
+                    TransactionKind::Withdraw(data) => {
+                        let withdraw_data =
+                            namada_tx::data::pos::Withdraw::try_from_slice(
+                                data,
+                            )
                             .unwrap();
-                    let transfer_source = Id::from(transfer_data.source);
-                    let transfer_target = Id::from(transfer_data.target);
-                    let transfer_token = Id::from(transfer_data.token);
-                    Some(vec![
-                        BalanceChange::new(
-                            transfer_source,
-                            transfer_token.clone(),
-                        ),
-                        BalanceChange::new(transfer_target, transfer_token),
-                    ])
-                }
-                TransactionKind::Bond(data) => {
-                    let bond_data =
-                        namada_tx::data::pos::Bond::try_from_slice(data)
+                        let address = withdraw_data
+                            .source
+                            .unwrap_or(withdraw_data.validator);
+                        let source = Id::from(address);
+
+                        vec![BalanceChange::new(source, native_token.clone())]
+                    }
+                    TransactionKind::ClaimRewards(data) => {
+                        let claim_rewards_data =
+                            namada_tx::data::pos::ClaimRewards::try_from_slice(
+                                data,
+                            )
                             .unwrap();
-                    let address =
-                        bond_data.source.unwrap_or(bond_data.validator);
+                        let address = claim_rewards_data
+                            .source
+                            .unwrap_or(claim_rewards_data.validator);
+                        let source = Id::from(address);
 
-                    let source = Id::from(address);
-
-                    Some(vec![BalanceChange::new(source, native_token.clone())])
-                }
-                TransactionKind::Withdraw(data) => {
-                    let withdraw_data =
-                        namada_tx::data::pos::Withdraw::try_from_slice(data)
-                            .unwrap();
-                    let address =
-                        withdraw_data.source.unwrap_or(withdraw_data.validator);
-                    let source = Id::from(address);
-
-                    Some(vec![BalanceChange::new(source, native_token.clone())])
-                }
-                TransactionKind::ClaimRewards(data) => {
-                    let claim_rewards_data =
-                        namada_tx::data::pos::ClaimRewards::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
-                    let address = claim_rewards_data
-                        .source
-                        .unwrap_or(claim_rewards_data.validator);
-                    let source = Id::from(address);
-
-                    Some(vec![BalanceChange::new(source, native_token.clone())])
-                }
-                TransactionKind::InitProposal(data) => {
-                    let init_proposal_data =
+                        vec![BalanceChange::new(source, native_token.clone())]
+                    }
+                    TransactionKind::InitProposal(data) => {
+                        let init_proposal_data =
                         namada_governance::InitProposalData::try_from_slice(
                             data,
                         )
                         .unwrap();
-                    let author = Id::from(init_proposal_data.author);
+                        let author = Id::from(init_proposal_data.author);
 
-                    Some(vec![BalanceChange::new(author, native_token.clone())])
-                }
-                _ => None,
+                        vec![BalanceChange::new(author, native_token.clone())]
+                    }
+                    _ => vec![],
+                };
+                balance_changes.push(BalanceChange::new(
+                    tx.fee.gas_payer.clone(),
+                    tx.fee.gas_token.clone(),
+                ));
+                balance_changes
             })
-            .flatten()
             .collect()
     }
 
@@ -418,6 +428,56 @@ impl Block {
                     Some(UnbondAddresses {
                         source: Id::from(source_address),
                         validator: Id::from(validator_address),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn validator_metadata(&self) -> Vec<ValidatorMetadataChange> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::MetadataChange(data) => {
+                    let metadata_change_data =
+                        namada_tx::data::pos::MetaDataChange::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+                    let source_address = metadata_change_data.validator;
+
+                    Some(ValidatorMetadataChange {
+                        address: Id::from(source_address),
+                        commission: metadata_change_data
+                            .commission_rate
+                            .map(|c| c.to_string()),
+                        email: metadata_change_data.email,
+                        description: metadata_change_data.description,
+                        website: metadata_change_data.website,
+                        discord_handler: metadata_change_data.discord_handle,
+                        avatar: metadata_change_data.avatar,
+                    })
+                }
+                TransactionKind::CommissionChange(data) => {
+                    let commission_change =
+                        namada_tx::data::pos::CommissionChange::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+
+                    let source_address = commission_change.validator;
+
+                    Some(ValidatorMetadataChange {
+                        address: Id::from(source_address),
+                        commission: Some(
+                            commission_change.new_rate.to_string(),
+                        ),
+                        email: None,
+                        description: None,
+                        website: None,
+                        discord_handler: None,
+                        avatar: None,
                     })
                 }
                 _ => None,

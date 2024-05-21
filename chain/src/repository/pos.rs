@@ -1,14 +1,18 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use diesel::upsert::excluded;
 use diesel::{
     ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondInsertDb;
-use orm::schema::{bonds, unbonds, validators};
+use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
-use orm::validators::ValidatorDb;
+use orm::validators::{ValidatorDb, ValidatorUpdateMetadataDb};
 use shared::bond::Bonds;
+use shared::id::Id;
 use shared::unbond::Unbonds;
+use shared::validator::ValidatorMetadataChange;
 
 pub fn insert_bonds(
     transaction_conn: &mut PgConnection,
@@ -80,5 +84,43 @@ pub fn insert_unbonds(
         ))
         .execute(transaction_conn)
         .context("Failed to update unbonds in db")?;
+    anyhow::Ok(())
+}
+
+pub fn delete_claimed_rewards(
+    transaction_conn: &mut PgConnection,
+    reward_claimers: HashSet<Id>,
+) -> anyhow::Result<()> {
+    diesel::delete(
+        pos_rewards::table.filter(
+            pos_rewards::dsl::owner
+                .eq_any(reward_claimers.into_iter().map(|id| id.to_string())),
+        ),
+    )
+    .execute(transaction_conn)
+    .context("Failed to update reawrds in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn update_validator_metadata(
+    transaction_conn: &mut PgConnection,
+    metadata_change: Vec<ValidatorMetadataChange>,
+) -> anyhow::Result<()> {
+    for metadata in metadata_change {
+        let metadata_change_db = ValidatorUpdateMetadataDb {
+            commission: metadata.commission,
+            email: metadata.email,
+            website: metadata.website,
+            description: metadata.description,
+            discord_handle: metadata.discord_handler,
+            avatar: metadata.avatar,
+        };
+        diesel::update(validators::table)
+            .set(metadata_change_db)
+            .filter(validators::namada_address.eq(metadata.address.to_string()))
+            .execute(transaction_conn)
+            .context("Failed to update unbonds in db")?;
+    }
     anyhow::Ok(())
 }
