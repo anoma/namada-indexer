@@ -15,6 +15,7 @@ use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::transaction::{Transaction, TransactionKind};
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
+use crate::validator::ValidatorMetadataChange;
 use crate::vote::GovernanceVote;
 
 // TODO: in the DB those are i32
@@ -426,6 +427,35 @@ impl Block {
                     Some(UnbondAddresses {
                         source: Id::from(source_address),
                         validator: Id::from(validator_address),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn validator_metadata(&self) -> Vec<ValidatorMetadataChange> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::MetadataChange(data) => {
+                    let metadata_change_data =
+                        namada_tx::data::pos::MetaDataChange::try_from_slice(
+                            data,
+                        )
+                        .unwrap();
+                    let source_address = metadata_change_data.validator;
+
+                    Some(ValidatorMetadataChange {
+                        address: Id::from(source_address),
+                        commission: metadata_change_data
+                            .commission_rate
+                            .map(|c| c.to_string()),
+                        email: metadata_change_data.email,
+                        description: metadata_change_data.description,
+                        website: metadata_change_data.website,
+                        discord_handler: metadata_change_data.discord_handle,
+                        avatar: metadata_change_data.avatar,
                     })
                 }
                 _ => None,

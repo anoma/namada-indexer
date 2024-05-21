@@ -22,6 +22,7 @@ pub enum TransactionKind {
     ClaimRewards(Vec<u8>),
     ProposalVote(Vec<u8>),
     InitProposal(Vec<u8>),
+    MetadataChange(Vec<u8>),
     Unknown,
 }
 
@@ -45,6 +46,9 @@ impl TransactionKind {
             "wrapper" => TransactionKind::Wrapper,
             "tx_init_proposal" => TransactionKind::InitProposal(data.to_vec()),
             "tx_vote_proposal" => TransactionKind::ProposalVote(data.to_vec()),
+            "tx_metadata_change" => {
+                TransactionKind::MetadataChange(data.to_vec())
+            }
             _ => TransactionKind::Unknown,
         }
     }
