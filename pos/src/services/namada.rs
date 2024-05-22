@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use futures::{StreamExt, TryStreamExt};
 use namada_core::storage::Epoch as NamadaSdkEpoch;
 use namada_sdk::rpc;
@@ -36,40 +36,38 @@ pub async fn get_validator_set_at_epoch(
                     })
             };
 
-            let meta_and_comm_fut = async {
-                let (metadata, commission) =
-                    rpc::query_metadata(client, &address, Some(namada_epoch))
-                        .await
-                        .with_context(|| {
-                            format!(
-                                "Failed to query metadata of validator \
-                                 {address} at epoch {namada_epoch}"
-                            )
-                        })?;
-                metadata.zip(Some(commission)).ok_or_else(|| {
-                    anyhow!(
-                        "Metadata and commission must be present for \
-                         validator {address} at epoch {namada_epoch}"
+            let commission_fut = async {
+                rpc::query_commission_rate(client, &address, Some(namada_epoch))
+                    .await
+                    .with_context(|| {
+                        format!(
+                        "Failed to query commission of validator {address} \
+                             at epoch {namada_epoch}"
                     )
-                })
+                    })
             };
 
-            let (voting_power, (metadata, commission)) =
-                futures::try_join!(voting_power_fut, meta_and_comm_fut)?;
+            let (voting_power, commission_pair) =
+                futures::try_join!(voting_power_fut, commission_fut)?;
+            let commission = commission_pair
+                .commission_rate
+                .expect("Commission rate has to exist")
+                .to_string();
+            let max_commission = commission_pair
+                .max_commission_change_per_epoch
+                .expect("Max commission rate change has to exist")
+                .to_string();
 
             anyhow::Ok(Validator {
                 address: Id::Account(address.to_string()),
                 voting_power: voting_power.to_string_native(),
-                max_commission: commission
-                    .max_commission_change_per_epoch
-                    .unwrap()
-                    .to_string(), // this should be safe
-                commission: commission.commission_rate.unwrap().to_string(), // this should be safe
-                email: metadata.email,
-                description: metadata.description,
-                website: metadata.website,
-                discord_handler: metadata.discord_handle,
-                avatar: metadata.avatar,
+                max_commission,
+                commission,
+                email: None,
+                description: None,
+                website: None,
+                discord_handler: None,
+                avatar: None,
             })
         })
         .buffer_unordered(100)

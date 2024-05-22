@@ -15,7 +15,7 @@ pub struct ValidatorDb {
     pub voting_power: i32,
     pub max_commission: String,
     pub commission: String,
-    pub email: String,
+    pub email: Option<String>,
     pub website: Option<String>,
     pub description: Option<String>,
     pub discord_handle: Option<String>,
@@ -30,11 +30,6 @@ pub struct ValidatorInsertDb {
     pub voting_power: i32,
     pub max_commission: String,
     pub commission: String,
-    pub email: String,
-    pub website: Option<String>,
-    pub description: Option<String>,
-    pub discord_handle: Option<String>,
-    pub avatar: Option<String>,
 }
 
 #[derive(Serialize, AsChangeset, Clone)]
@@ -57,11 +52,6 @@ impl ValidatorInsertDb {
                 as i32,
             max_commission: validator.max_commission.clone(),
             commission: validator.commission.clone(),
-            email: validator.email.clone(),
-            website: validator.website.clone(),
-            description: validator.description.clone(),
-            discord_handle: validator.discord_handler.clone(),
-            avatar: validator.avatar.clone(),
         }
     }
 }

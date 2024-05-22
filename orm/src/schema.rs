@@ -1,27 +1,15 @@
 // @generated automatically by Diesel CLI.
 
 pub mod sql_types {
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_kind"))]
     pub struct GovernanceKind;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_result"))]
     pub struct GovernanceResult;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
 }
@@ -49,7 +37,6 @@ diesel::table! {
         address -> Varchar,
         validator_id -> Int4,
         raw_amount -> Varchar,
-        epoch -> Int4,
     }
 }
 
@@ -108,7 +95,6 @@ diesel::table! {
         address -> Varchar,
         validator_id -> Int4,
         raw_amount -> Varchar,
-        epoch -> Int4,
         withdraw_epoch -> Int4,
     }
 }
@@ -120,7 +106,7 @@ diesel::table! {
         voting_power -> Int4,
         max_commission -> Varchar,
         commission -> Varchar,
-        email -> Varchar,
+        email -> Nullable<Varchar>,
         website -> Nullable<Varchar>,
         description -> Nullable<Varchar>,
         discord_handle -> Nullable<Varchar>,
