@@ -316,6 +316,7 @@ components:
   schemas:
     Validator:
       type: object
+      required: [id, address, name, voting_power, max_commission, commission]
       properties:
         id:
           type: integer

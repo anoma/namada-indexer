@@ -24,7 +24,7 @@ pub struct AppConfig {
     pub database_url: String,
 
     #[clap(long, env)]
-    pub chain_id: String,
+    pub initial_query_retry_time: u64,
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,

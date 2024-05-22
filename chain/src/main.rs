@@ -70,7 +70,7 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(&client, &conn).await?;
+    initial_query(&client, &conn, config.initial_query_retry_time).await?;
 
     let last_block_height = db_service::get_last_synched_block(&conn)
         .await
@@ -224,20 +224,25 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
+    initial_query_retry_time: u64,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
     let block_height =
         query_last_block_height(client).await.into_rpc_error()?;
-    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
-        .await
-        .into_rpc_error()?;
+    let mut epoch =
+        namada_service::get_epoch_at_block_height(client, block_height)
+            .await
+            .into_rpc_error()?;
 
     loop {
         let pos_crawler_epoch =
             get_pos_crawler_state(conn).await.into_db_error();
 
         match pos_crawler_epoch {
-            Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch == epoch => {
+            // >= in case epochs are really short
+            Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch >= epoch => {
+                // We assign pos crawler epoch as epoch to process
+                epoch = pos_crawler_epoch.epoch;
                 break;
             }
             _ => {}
@@ -245,7 +250,7 @@ async fn initial_query(
 
         tracing::info!("Waiting for PoS service update...");
 
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(initial_query_retry_time)).await;
     }
 
     let balances = query_all_balances(client).await.into_rpc_error()?;

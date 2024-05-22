@@ -11,7 +11,7 @@ pub struct Validator {
     pub voting_power: String,
     pub max_commission: String,
     pub commission: String,
-    pub email: String,
+    pub email: Option<String>,
     pub website: Option<String>,
     pub description: Option<String>,
     pub discord_handle: Option<String>,

@@ -19,7 +19,7 @@ pub struct Validator {
     pub voting_power: VotingPower,
     pub max_commission: String,
     pub commission: String,
-    pub email: String,
+    pub email: Option<String>,
     pub description: Option<String>,
     pub website: Option<String>,
     pub discord_handler: Option<String>,
@@ -45,7 +45,7 @@ impl Validator {
         let max_commission =
             ((0..100).fake::<u64>() as f64 / 100_f64).to_string();
         let commission = ((0..100).fake::<u64>() as f64 / 100_f64).to_string();
-        let email: String = SafeEmail().fake();
+        let email = Some(SafeEmail().fake());
         let description: Option<String> = CatchPhase().fake();
         let website: Option<String> = Some(format!(
             "{}.{}",
