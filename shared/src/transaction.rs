@@ -132,7 +132,11 @@ impl Transaction {
                 let raw_hash_str = raw_hash.to_string();
                 let wrapper_tx_status =
                     block_results.find_tx_hash_result(&tx_id).unwrap();
-                let memo = transaction.memo();
+
+                let commitments =
+                    transaction.first_commitments().unwrap().to_owned();
+
+                let memo = transaction.memo(&commitments);
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
                     gas_payer: Id::from(wrapper.pk),
@@ -161,7 +165,7 @@ impl Transaction {
                 };
 
                 let tx_code_id = transaction
-                    .get_section(transaction.code_sechash())
+                    .get_section(commitments.code_sechash())
                     .and_then(|s| s.code_sec())
                     .map(|s| s.code.hash().0)
                     .map(|bytes| {
@@ -188,7 +192,8 @@ impl Transaction {
 
                 let tx_kind = if let Some(id) = tx_code_id {
                     if let Some(tx_kind_name) = checksums.get_name_by_id(&id) {
-                        let tx_data = transaction.data().unwrap_or_default();
+                        let tx_data =
+                            transaction.data(&commitments).unwrap_or_default();
                         TransactionKind::from(&tx_kind_name, &tx_data)
                     } else {
                         TransactionKind::Unknown

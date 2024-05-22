@@ -108,8 +108,8 @@ impl From<TendermintBlockResultResponse> for BlockResult {
                     BTreeMap::default(),
                     |mut acc, attribute| {
                         acc.insert(
-                            attribute.key.clone(),
-                            attribute.value.clone(),
+                            String::from(attribute.key_str().unwrap()),
+                            String::from(attribute.value_str().unwrap()),
                         );
                         acc
                     },
@@ -129,8 +129,8 @@ impl From<TendermintBlockResultResponse> for BlockResult {
                     BTreeMap::default(),
                     |mut acc, attribute| {
                         acc.insert(
-                            attribute.key.clone(),
-                            attribute.value.clone(),
+                            String::from(attribute.key_str().unwrap()),
+                            String::from(attribute.value_str().unwrap()),
                         );
                         acc
                     },
