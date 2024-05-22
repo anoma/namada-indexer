@@ -38,6 +38,8 @@ axum-trace-id.workspace = true
 axum-macros.workspace = true
 orm.workspace = true
 diesel.workspace = true
+futures.workspace = true
+tokio-stream.workspace = true
 # shared.workspace = true
 deadpool-redis = "0.13.0"
 

@@ -146,4 +146,14 @@ impl PosService {
         }
         Ok(rewards)
     }
+
+    pub async fn get_total_voting_power(&self) -> Result<u64, PoSError> {
+        let total_voting_power_db = self
+            .pos_repo
+            .get_total_voting_power()
+            .await
+            .map_err(PoSError::Database)?;
+
+        Ok(total_voting_power_db.unwrap_or_default() as u64)
+    }
 }
