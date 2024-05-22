@@ -1,5 +1,4 @@
 use axum::async_trait;
-use diesel::dsl::sum;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, PgTextExpressionMethods,
     QueryDsl, RunQueryDsl, SelectableHelper,

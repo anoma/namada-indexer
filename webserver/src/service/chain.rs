@@ -1,4 +1,5 @@
-use crate::{appstate::AppState, repository::chain::{ChainRepository, ChainRepositoryTrait}};
+use crate::appstate::AppState;
+use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 
 #[derive(Clone)]
 pub struct ChainService {

@@ -9,7 +9,7 @@ pub struct CommonState {
     pub pos_service: PosService,
     pub gov_service: GovernanceService,
     pub balance_service: BalanceService,
-    pub chain_service: ChainService
+    pub chain_service: ChainService,
 }
 
 impl CommonState {

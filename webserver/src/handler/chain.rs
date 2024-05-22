@@ -1,12 +1,9 @@
-use std::{convert::Infallible, time::Duration};
+use std::convert::Infallible;
+use std::time::Duration;
 
-use axum::{
-    extract::State,
-    response::{
-        sse::{Event, KeepAlive},
-        Sse,
-    },
-};
+use axum::extract::State;
+use axum::response::sse::{Event, KeepAlive};
+use axum::response::Sse;
 use futures::Stream;
 use tokio_stream::StreamExt;
 

@@ -1,5 +1,6 @@
 use axum::async_trait;
-use diesel::{dsl::max, QueryDsl, RunQueryDsl};
+use diesel::dsl::max;
+use diesel::{QueryDsl, RunQueryDsl};
 use orm::schema::block_crawler_state;
 
 use crate::appstate::AppState;
@@ -13,9 +14,7 @@ pub struct ChainRepository {
 pub trait ChainRepositoryTrait {
     fn new(app_state: AppState) -> Self;
 
-    async fn find_latest_height(
-        &self,
-    ) -> Result<Option<i32>, String>;
+    async fn find_latest_height(&self) -> Result<Option<i32>, String>;
 }
 
 #[async_trait]
@@ -24,9 +23,7 @@ impl ChainRepositoryTrait for ChainRepository {
         Self { app_state }
     }
 
-    async fn find_latest_height(
-        &self,
-    ) -> Result<Option<i32>, String> {
+    async fn find_latest_height(&self) -> Result<Option<i32>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {

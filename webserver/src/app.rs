@@ -50,7 +50,10 @@ impl ApplicationServer {
                     get(pos_handlers::get_withdraws),
                 )
                 .route("/pos/reward/:address", get(pos_handlers::get_rewards))
-                .route("/pos/voting-power", get(pos_handlers::get_total_voting_power))
+                .route(
+                    "/pos/voting-power",
+                    get(pos_handlers::get_total_voting_power),
+                )
                 .route(
                     "/gov/proposal",
                     get(gov_handlers::get_governance_proposals),
