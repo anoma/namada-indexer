@@ -19,7 +19,7 @@ bimap.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
 futures.workspace = true
-namada_core = { git = "https://github.com/anoma/namada", tag = "v0.35.1", features = ["testing"]}
+namada_core = { git = "https://github.com/anoma/namada", tag = "v0.36.0", features = ["testing"]}
 namada_governance.workspace = true
 namada_ibc.workspace = true
 namada_sdk.workspace = true

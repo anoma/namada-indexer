@@ -39,16 +39,16 @@ axum-macros = "0.3.8"
 chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
-namada_core = { git = "https://github.com/anoma/namada", tag = "v0.35.1" }
-namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.35.1" }
-namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.35.1" }
-namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.35.1" }
-namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.35.1" }
-namada_token = { git = "https://github.com/anoma/namada", tag = "v0.35.1" }
-tendermint = "0.35.0"
-tendermint-config = "0.35.0"
-tendermint-rpc = { version = "0.35.0", features = ["http-client"] }
-tendermint-proto = "0.35.0"
+namada_core = { git = "https://github.com/anoma/namada", tag = "v0.36.0" }
+namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.36.0" }
+namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.36.0" }
+namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.36.0" }
+namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.36.0" }
+namada_token = { git = "https://github.com/anoma/namada", tag = "v0.36.0" }
+tendermint = "0.36.0"
+tendermint-config = "0.36.0"
+tendermint-rpc = { version = "0.36.0", features = ["http-client"] }
+tendermint-proto = "0.36.0"
 subtle-encoding = "0.5.1"
 bimap = { version = "0.6.3", features = ["serde"] }
 async-stream = "0.3.5"
