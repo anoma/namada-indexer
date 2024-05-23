@@ -34,6 +34,26 @@ impl PosService {
         ))
     }
 
+    pub async fn get_validators_by_delegator(
+        &self,
+        address: String,
+        page: u64,
+    ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
+        let (db_validators, total_items) = self
+            .pos_repo
+            .find_validators_by_delegator(address, page as i64)
+            .await
+            .map_err(PoSError::Database)?;
+
+        Ok((
+            db_validators
+                .into_iter()
+                .map(ValidatorWithId::from)
+                .collect(),
+            total_items as u64,
+        ))
+    }
+
     pub async fn get_bonds_by_address(
         &self,
         address: String,

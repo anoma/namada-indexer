@@ -1,3 +1,5 @@
+use namada_core::token::Amount;
+
 use crate::appstate::AppState;
 use crate::error::balance::BalanceError;
 use crate::repository::balance::{BalanceRepo, BalanceRepoTrait};
@@ -25,6 +27,18 @@ impl BalanceService {
             .await
             .map_err(BalanceError::Database)?;
 
-        Ok(balances.into_iter().map(AddressBalance::from).collect())
+        // TODO: temporary solution as we only store NAM balances
+        let denominated_balances: Vec<AddressBalance> = balances
+            .iter()
+            .cloned()
+            .map(|balance| AddressBalance {
+                token_address: balance.token,
+                balance: Amount::from_str(balance.raw_amount, 0)
+                    .unwrap()
+                    .to_string_native(),
+            })
+            .collect();
+
+        Ok(denominated_balances)
     }
 }

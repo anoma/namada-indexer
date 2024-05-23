@@ -40,7 +40,7 @@ orm.workspace = true
 diesel.workspace = true
 futures.workspace = true
 tokio-stream.workspace = true
-# shared.workspace = true
+namada_core.workspace = true
 deadpool-redis = "0.13.0"
 
 [build-dependencies]

@@ -118,6 +118,7 @@ diesel::table! {
         voting_power -> Int4,
         max_commission -> Varchar,
         commission -> Varchar,
+        name -> Nullable<Varchar>,
         email -> Nullable<Varchar>,
         website -> Nullable<Varchar>,
         description -> Nullable<Varchar>,

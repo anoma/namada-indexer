@@ -27,6 +27,12 @@ pub trait PosRepositoryTrait {
         page: i64,
     ) -> Result<(Vec<ValidatorDb>, i64), String>;
 
+    async fn find_validators_by_delegator(
+        &self,
+        address: String,
+        page: i64,
+    ) -> Result<(Vec<ValidatorDb>, i64), String>;
+
     async fn find_validator_by_id(
         &self,
         id: i32,
@@ -71,6 +77,29 @@ impl PosRepositoryTrait for PosRepository {
         conn.interact(move |conn| {
             validators::table
                 .select(ValidatorDb::as_select())
+                .paginate(page)
+                .load_and_count_pages(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_validators_by_delegator(
+        &self,
+        address: String,
+        page: i64,
+    ) -> Result<(Vec<ValidatorDb>, i64), String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            let validator_ids = bonds::table
+                .filter(bonds::dsl::address.eq(address))
+                .select(bonds::dsl::validator_id);
+
+            validators::table
+                .select(ValidatorDb::as_select())
+                .filter(validators::dsl::id.eq_any(validator_ids))
                 .paginate(page)
                 .load_and_count_pages(conn)
         })

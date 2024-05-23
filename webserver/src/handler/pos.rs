@@ -19,9 +19,26 @@ pub async fn get_validators(
     Query(query): Query<PoSQueryParams>,
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
-    let page = query.pagination.map(|p| p.page).unwrap_or(1);
+    let page = query.page.unwrap_or(1);
     let (validators, total_validators) =
         state.pos_service.get_all_validators(page).await?;
+
+    let response = PaginatedResponse::new(validators, page, total_validators);
+    Ok(Json(response))
+}
+#[debug_handler]
+pub async fn get_validators_by_delegator(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    Query(query): Query<PoSQueryParams>,
+    Path(address): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
+    let page = query.page.unwrap_or(1);
+    let (validators, total_validators) = state
+        .pos_service
+        .get_validators_by_delegator(address, page)
+        .await?;
 
     let response = PaginatedResponse::new(validators, page, total_validators);
     Ok(Json(response))

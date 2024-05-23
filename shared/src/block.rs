@@ -452,6 +452,7 @@ impl Block {
                         commission: metadata_change_data
                             .commission_rate
                             .map(|c| c.to_string()),
+                        name: metadata_change_data.name,
                         email: metadata_change_data.email,
                         description: metadata_change_data.description,
                         website: metadata_change_data.website,
@@ -473,6 +474,7 @@ impl Block {
                         commission: Some(
                             commission_change.new_rate.to_string(),
                         ),
+                        name: None,
                         email: None,
                         description: None,
                         website: None,

@@ -63,6 +63,7 @@ pub async fn get_validator_set_at_epoch(
                 voting_power: voting_power.to_string_native(),
                 max_commission,
                 commission,
+                name: None,
                 email: None,
                 description: None,
                 website: None,

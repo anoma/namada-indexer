@@ -16,6 +16,13 @@ paths:
           description: Health check
   /api/v1/pos/validator:
     get:
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
           description: A list of validator.
@@ -29,20 +36,36 @@ paths:
                     items:
                       $ref: '#/components/schemas/Validator'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/validator/{address}:
+    get:
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: Delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Validator'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
@@ -322,7 +345,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Balance'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
 
 components:
   schemas:
@@ -334,13 +359,13 @@ components:
           type: integer
         address:
           type: string
-        name:
-          type: string
         voting_power:
           type: string
         max_commission:
           type: string
         commission:
+          type: string
+        name:
           type: string
         email:
           type: string
@@ -441,10 +466,25 @@ components:
           type: integer
     Balance:
       type: object
+      required: [token, balance]
       properties:
-        token:
+        tokenAddress:
           type: string
         balance:
-          type: number
-          format: float
+          type: string
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
           minimum: 0
+        per_page:
+          type: integer
+          minimum: 0
+        total_pages:
+          type: integer
+          minimum: 0
+        total_items:
+          type: integer
+          minimum: 0
+

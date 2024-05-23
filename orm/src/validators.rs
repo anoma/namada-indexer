@@ -15,6 +15,7 @@ pub struct ValidatorDb {
     pub voting_power: i32,
     pub max_commission: String,
     pub commission: String,
+    pub name: Option<String>,
     pub email: Option<String>,
     pub website: Option<String>,
     pub description: Option<String>,
@@ -37,6 +38,7 @@ pub struct ValidatorInsertDb {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ValidatorUpdateMetadataDb {
     pub commission: Option<String>,
+    pub name: Option<String>,
     pub email: Option<String>,
     pub website: Option<String>,
     pub description: Option<String>,
