@@ -15,6 +15,17 @@ pub enum ProposalType {
     PgfFunding,
 }
 
+impl Display for ProposalType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProposalType::Default => write!(f, "default"),
+            ProposalType::DefaultWithWasm => write!(f, "default_with_wasm"),
+            ProposalType::PgfSteward => write!(f, "pgf_steward"),
+            ProposalType::PgfFunding => write!(f, "pgf_funding"),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum VoteType {
@@ -59,7 +70,7 @@ pub struct Proposal {
     pub status: ProposalStatus,
     pub yay_votes: u64,
     pub nay_votes: u64,
-    pub abstrain_votes: u64,
+    pub abstain_votes: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -105,7 +116,7 @@ impl From<GovernanceProposalDb> for Proposal {
             },
             yay_votes: value.yay_votes.parse::<u64>().unwrap_or_default(),
             nay_votes: value.nay_votes.parse::<u64>().unwrap_or_default(),
-            abstrain_votes: value
+            abstain_votes: value
                 .abstain_votes
                 .parse::<u64>()
                 .unwrap_or_default(),

@@ -79,6 +79,10 @@ impl ApplicationServer {
                     get(gov_handlers::get_governance_proposal_votes_by_address),
                 )
                 .route(
+                    "/gov/voter/:address/votes",
+                    get(gov_handlers::get_governance_proposal_votes_by_voter),
+                )
+                .route(
                     "/account/:address",
                     get(balance_handlers::get_address_balance),
                 )

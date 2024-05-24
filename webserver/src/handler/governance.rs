@@ -102,3 +102,18 @@ pub async fn get_governance_proposal_votes_by_address(
 
     Ok(Json(proposal_votes))
 }
+
+#[debug_handler]
+pub async fn get_governance_proposal_votes_by_voter(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    Path(address): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<Vec<ProposalVote>>, ApiError> {
+    let proposal_votes = state
+        .gov_service
+        .find_governance_proposal_votes_by_voter(address)
+        .await?;
+
+    Ok(Json(proposal_votes))
+}

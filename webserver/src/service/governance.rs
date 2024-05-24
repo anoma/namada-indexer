@@ -150,4 +150,20 @@ impl GovernanceService {
             .map(ProposalVote::from)
             .collect())
     }
+
+    pub async fn find_governance_proposal_votes_by_voter(
+        &self,
+        voter_address: String,
+    ) -> Result<Vec<ProposalVote>, GovernanceError> {
+        let db_proposal_votes = self
+            .governance_repo
+            .find_governance_proposal_votes_by_voter(voter_address)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok(db_proposal_votes
+            .into_iter()
+            .map(ProposalVote::from)
+            .collect())
+    }
 }

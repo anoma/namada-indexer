@@ -329,6 +329,25 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Vote'
+  /api/v1/gov/voter/{address}/votes:
+    get:
+      summary: Get all the votes from a voter
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The voter address
+      responses:
+        '200':
+          description: A list of votes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vote'
   /api/v1/account/{address}:
     get:
       summary: Get the all the tokens balances of an address
@@ -379,6 +398,7 @@ components:
           type: string
     Proposal:
       type: object
+      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, status, yayVotes, nayVotes, abstainVotes]
       properties:
         id:
           type: integer
@@ -386,6 +406,7 @@ components:
           type: string
         type:
           type: string
+          enum: [default, default_with_wasm, pgf_steward, pgf_funding]
         data:
           type: string
         author:
@@ -403,16 +424,17 @@ components:
           type: integer
         nayVotes:
           type: integer
-        abstrainVotes:
+        abstainVotes:
           type: integer
     Vote:
       type: object
+      required: [proposal_id, vote, voterAddress]
       properties:
         proposal_id:
           type: integer
         vote:
           type: string
-          enum: [yay, nay, abstrain]
+          enum: [yay, nay, abstain]
         voterAddress:
           type: string
     Reward:
@@ -427,6 +449,7 @@ components:
           minimum: 0
     Bond:
       type: object
+      required: [validator, amount]
       properties:
         validator:
           type: object

@@ -1,12 +1,12 @@
 use std::str::FromStr;
 
-use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
 use serde::Serialize;
 use shared::validator::Validator;
 
 use crate::schema::validators;
 
-#[derive(Serialize, Queryable, Selectable, Clone)]
+#[derive(Identifiable, Serialize, Queryable, Selectable, Clone, Debug)]
 #[diesel(table_name = validators)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ValidatorDb {
