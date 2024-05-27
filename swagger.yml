@@ -30,6 +30,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
@@ -59,6 +60,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
@@ -183,26 +185,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Proposal'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/gov/search/{text}:
     get:
       summary: Get a list of governance proposals matching a text in the title
@@ -227,26 +217,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Proposal'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/gov/proposal/{id}:
     get:
       summary: Get a governance proposal by proposal id
@@ -283,26 +261,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Vote'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/gov/proposal/{id}/votes/{address}:
     get:
       summary: Get all the votes for a governance proposal from an address
