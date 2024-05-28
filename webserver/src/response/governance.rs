@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use namada_core::time::DateTimeUtc;
 use orm::governance_proposal::{
     GovernanceProposalDb, GovernanceProposalKindDb, GovernanceProposalResultDb,
 };
@@ -67,6 +68,9 @@ pub struct Proposal {
     pub start_epoch: u64,
     pub end_epoch: u64,
     pub activation_epoch: u64,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub current_time: i64,
     pub status: ProposalStatus,
     pub yay_votes: u64,
     pub nay_votes: u64,
@@ -81,8 +85,26 @@ pub struct ProposalVote {
     pub voter_address: String,
 }
 
-impl From<GovernanceProposalDb> for Proposal {
-    fn from(value: GovernanceProposalDb) -> Self {
+// TODO: read it from storage later
+const CONSENSUS_TIME_IN_SEC: i64 = 10;
+const MIN_NUMBER_OF_BLOCKS: i64 = 4;
+
+impl Proposal {
+    pub fn from_proposal_db(
+        value: GovernanceProposalDb,
+        current_epoch: i32,
+        current_block: i32,
+    ) -> Self {
+        let seconds_since_beginning =
+            i64::from(current_block) * CONSENSUS_TIME_IN_SEC;
+        let seconds_until_end = i64::from(value.end_epoch - current_epoch)
+            * MIN_NUMBER_OF_BLOCKS
+            * CONSENSUS_TIME_IN_SEC;
+
+        let time_now = DateTimeUtc::now().0.timestamp();
+        let start_time = time_now - seconds_since_beginning;
+        let end_time = time_now + seconds_until_end;
+
         Self {
             id: value.id as u64,
             content: value.content,
@@ -103,6 +125,11 @@ impl From<GovernanceProposalDb> for Proposal {
             start_epoch: value.start_epoch as u64,
             end_epoch: value.end_epoch as u64,
             activation_epoch: value.activation_epoch as u64,
+
+            start_time,
+            end_time,
+            current_time: time_now,
+
             status: match value.result {
                 GovernanceProposalResultDb::Passed => ProposalStatus::Passed,
                 GovernanceProposalResultDb::Rejected => {

@@ -364,7 +364,7 @@ components:
           type: string
     Proposal:
       type: object
-      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, status, yayVotes, nayVotes, abstainVotes]
+      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes]
       properties:
         id:
           type: integer
@@ -382,6 +382,12 @@ components:
         endEpoch:
           type: integer
         activationEpoch:
+          type: integer
+        startTime:
+          type: integer
+        endTime:
+          type: integer
+        currentTime:
           type: integer
         status:
           type: string
