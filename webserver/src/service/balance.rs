@@ -1,9 +1,9 @@
-use namada_core::token::Amount;
-
 use crate::appstate::AppState;
 use crate::error::balance::BalanceError;
 use crate::repository::balance::{BalanceRepo, BalanceRepoTrait};
 use crate::response::balance::AddressBalance;
+
+use super::utils::raw_amount_to_nam;
 
 #[derive(Clone)]
 pub struct BalanceService {
@@ -33,9 +33,7 @@ impl BalanceService {
             .cloned()
             .map(|balance| AddressBalance {
                 token_address: balance.token,
-                balance: Amount::from_str(balance.raw_amount, 0)
-                    .unwrap()
-                    .to_string_native(),
+                balance: raw_amount_to_nam(balance.raw_amount),
             })
             .collect();
 

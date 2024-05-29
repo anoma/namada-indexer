@@ -218,3 +218,43 @@ impl Distribution<GovernanceProposalResult> for Standard {
         }
     }
 }
+
+pub enum TallyType {
+    TwoThirds,
+    OneHalfOverOneThird,
+    LessOneHalfOverOneThirdNay,
+}
+
+// TODO: copied from namada for time being
+impl TallyType {
+    pub fn from(
+        proposal_type: &GovernanceProposalKind,
+        is_steward: bool,
+    ) -> Self {
+        match (proposal_type, is_steward) {
+            (GovernanceProposalKind::Default, _) => TallyType::TwoThirds,
+            (GovernanceProposalKind::DefaultWithWasm, _) => {
+                TallyType::TwoThirds
+            }
+            (GovernanceProposalKind::PgfSteward, _) => {
+                TallyType::OneHalfOverOneThird
+            }
+            (GovernanceProposalKind::PgfFunding, true) => {
+                TallyType::LessOneHalfOverOneThirdNay
+            }
+            (GovernanceProposalKind::PgfFunding, false) => {
+                TallyType::OneHalfOverOneThird
+            }
+        }
+    }
+}
+
+impl Distribution<TallyType> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> TallyType {
+        match rng.gen_range(0..=2) {
+            0 => TallyType::TwoThirds,
+            1 => TallyType::OneHalfOverOneThird,
+            _ => TallyType::LessOneHalfOverOneThirdNay,
+        }
+    }
+}

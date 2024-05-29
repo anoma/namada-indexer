@@ -3,7 +3,7 @@ use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::proposal::{
     GovernanceProposal, GovernanceProposalKind, GovernanceProposalResult,
-    GovernanceProposalStatus,
+    GovernanceProposalStatus, TallyType,
 };
 
 use crate::schema::governance_proposals;
@@ -24,6 +24,26 @@ impl From<GovernanceProposalKind> for GovernanceProposalKindDb {
             GovernanceProposalKind::PgfFunding => Self::PgfFunding,
             GovernanceProposalKind::Default => Self::Default,
             GovernanceProposalKind::DefaultWithWasm => Self::DefaultWithWasm,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::GovernanceTallyType"]
+pub enum GovernanceProposalTallyTypeDb {
+    TwoThirds,
+    OneHalfOverOneThird,
+    LessOneHalfOverOneThirdNay,
+}
+
+impl From<TallyType> for GovernanceProposalTallyTypeDb {
+    fn from(value: TallyType) -> Self {
+        match value {
+            TallyType::TwoThirds => Self::TwoThirds,
+            TallyType::OneHalfOverOneThird => Self::OneHalfOverOneThird,
+            TallyType::LessOneHalfOverOneThirdNay => {
+                Self::LessOneHalfOverOneThirdNay
+            }
         }
     }
 }
@@ -57,6 +77,7 @@ pub struct GovernanceProposalDb {
     pub content: String,
     pub data: Option<String>,
     pub kind: GovernanceProposalKindDb,
+    pub tally_type: GovernanceProposalTallyTypeDb,
     pub author: String,
     pub start_epoch: i32,
     pub end_epoch: i32,
@@ -75,6 +96,7 @@ pub struct GovernanceProposalInsertDb {
     pub content: String,
     pub data: Option<String>,
     pub kind: GovernanceProposalKindDb,
+    pub tally_type: GovernanceProposalTallyTypeDb,
     pub author: String,
     pub start_epoch: i32,
     pub end_epoch: i32,
@@ -82,12 +104,16 @@ pub struct GovernanceProposalInsertDb {
 }
 
 impl GovernanceProposalInsertDb {
-    pub fn from_governance_proposal(proposal: GovernanceProposal) -> Self {
+    pub fn from_governance_proposal(
+        proposal: GovernanceProposal,
+        tally_type: TallyType,
+    ) -> Self {
         Self {
             id: proposal.id as i32,
             content: proposal.content,
             data: proposal.data,
             kind: proposal.r#type.into(),
+            tally_type: tally_type.into(),
             author: proposal.author.to_string(),
             start_epoch: proposal.voting_start_epoch as i32,
             end_epoch: proposal.voting_end_epoch as i32,

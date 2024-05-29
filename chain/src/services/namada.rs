@@ -20,9 +20,10 @@ use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
-use shared::proposal::GovernanceProposal;
+use shared::proposal::{GovernanceProposal, TallyType};
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
+use shared::vote::{GovernanceVote, ProposalVoteKind};
 use subtle_encoding::hex;
 use tendermint_rpc::HttpClient;
 
@@ -414,6 +415,67 @@ pub async fn query_tx_code_hash(
     } else {
         None
     }
+}
+
+pub async fn is_steward(
+    client: &HttpClient,
+    address: &Id,
+) -> anyhow::Result<bool> {
+    let address = NamadaSdkAddress::from_str(&address.to_string())
+        .context("Failed to parse address")?;
+
+    let is_steward = rpc::is_steward(client, &address).await;
+
+    Ok(is_steward)
+}
+
+pub async fn query_tallies(
+    client: &HttpClient,
+    proposals: Vec<GovernanceProposal>,
+) -> anyhow::Result<Vec<(GovernanceProposal, TallyType)>> {
+    let proposals = futures::stream::iter(proposals)
+        .filter_map(|proposal| async move {
+            let is_steward =
+                is_steward(&client, &proposal.author).await.ok()?;
+
+            let tally_type = TallyType::from(&proposal.r#type, is_steward);
+
+            Some((proposal, tally_type))
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
+
+    anyhow::Ok(proposals)
+}
+
+pub async fn query_all_votes(
+    client: &HttpClient,
+    proposals_ids: Vec<u64>,
+) -> anyhow::Result<Vec<GovernanceVote>> {
+    let votes = futures::stream::iter(proposals_ids)
+        .filter_map(|proposal_id| async move {
+            let votes =
+                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
+
+            let votes = votes
+                .into_iter()
+                .map(|vote| GovernanceVote {
+                    proposal_id,
+                    vote: ProposalVoteKind::from(vote.data),
+                    address: Id::from(vote.delegator),
+                })
+                .collect::<Vec<_>>();
+
+            Some(votes)
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
+
+    anyhow::Ok(votes.iter().cloned().flatten().collect())
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {

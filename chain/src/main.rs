@@ -157,6 +157,11 @@ async fn crawling_fn(
     let proposals = block.governance_proposal(next_governance_proposal_id);
     tracing::info!("Creating {} governance proposals...", proposals.len());
 
+    let proposals_with_tally =
+        namada_service::query_tallies(&client, proposals)
+            .await
+            .into_rpc_error()?;
+
     let proposals_votes = block.governance_votes();
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
@@ -187,7 +192,10 @@ async fn crawling_fn(
                     balances,
                 )?;
 
-                repository::gov::insert_proposals(transaction_conn, proposals)?;
+                repository::gov::insert_proposals(
+                    transaction_conn,
+                    proposals_with_tally,
+                )?;
                 repository::gov::insert_votes(
                     transaction_conn,
                     proposals_votes,
@@ -261,6 +269,17 @@ async fn initial_query(
 
     tracing::info!("Querying proposals...");
     let proposals = query_all_proposals(client).await.into_rpc_error()?;
+    let proposals_with_tally =
+        namada_service::query_tallies(&client, proposals.clone())
+            .await
+            .into_rpc_error()?;
+
+    let proposals_votes = namada_service::query_all_votes(
+        &client,
+        proposals.iter().map(|p| p.id).collect(),
+    )
+    .await
+    .into_rpc_error()?;
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -275,7 +294,15 @@ async fn initial_query(
                     balances,
                 )?;
 
-                repository::gov::insert_proposals(transaction_conn, proposals)?;
+                repository::gov::insert_proposals(
+                    transaction_conn,
+                    proposals_with_tally,
+                )?;
+
+                repository::gov::insert_votes(
+                    transaction_conn,
+                    proposals_votes,
+                )?;
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;

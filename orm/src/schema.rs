@@ -21,6 +21,17 @@ pub mod sql_types {
         diesel::query_builder::QueryId,
         std::fmt::Debug,
         diesel::sql_types::SqlType,
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "governance_tally_type"))]
+    pub struct GovernanceTallyType;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
     )]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
@@ -62,6 +73,7 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::GovernanceKind;
+    use super::sql_types::GovernanceTallyType;
     use super::sql_types::GovernanceResult;
 
     governance_proposals (id) {
@@ -69,6 +81,7 @@ diesel::table! {
         content -> Varchar,
         data -> Nullable<Varchar>,
         kind -> GovernanceKind,
+        tally_type -> GovernanceTallyType,
         author -> Varchar,
         start_epoch -> Int4,
         end_epoch -> Int4,

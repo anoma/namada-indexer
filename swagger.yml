@@ -38,36 +38,6 @@ paths:
                       $ref: '#/components/schemas/Validator'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-  /api/v1/pos/validator/{address}:
-    get:
-      parameters:
-        - in: path
-          name: address
-          schema:
-            type: string
-          required: true
-          description: Delegator address
-        - in: query
-          name: page
-          schema:
-            type: integer
-            minimum: 1
-          description: Pagination parameter
-      responses:
-        '200':
-          description: A list of validator.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data, pagination]
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Validator'
-                  pagination:
-                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
@@ -159,9 +129,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/VotingPower'  
+                $ref: '#/components/schemas/VotingPower'
   /api/v1/gov/proposal:
     get:
       summary: Get a list of governance proposals
@@ -338,15 +306,15 @@ components:
   schemas:
     Validator:
       type: object
-      required: [id, address, name, voting_power, max_commission, commission]
+      required: [validatorId, address, name, votingPower, maxCommission, commission]
       properties:
-        id:
+        validatorId:
           type: integer
         address:
           type: string
-        voting_power:
+        votingPower:
           type: string
-        max_commission:
+        maxCommission:
           type: string
         commission:
           type: string
@@ -358,13 +326,13 @@ components:
           type: string
         description:
           type: string
-        discord_handle:
+        discordHandle:
           type: string
         avatar:
           type: string
     Proposal:
       type: object
-      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes]
+      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
       properties:
         id:
           type: integer
@@ -372,7 +340,10 @@ components:
           type: string
         type:
           type: string
-          enum: [default, default_with_wasm, pgf_steward, pgf_funding]
+          enum: [default, defaultWithWasm, pgfSteward, pgfFunding]
+        tallyType:
+          type: string
+          enum: [twoThirds, oneHalfOverOneThird, lessOneHalfOverOneThirdNay]
         data:
           type: string
         author:
@@ -393,11 +364,11 @@ components:
           type: string
           enum: [pending, voting, passed, rejected]
         yayVotes:
-          type: integer
+          type: string
         nayVotes:
-          type: integer
+          type: string
         abstainVotes:
-          type: integer
+          type: string
     Vote:
       type: object
       required: [proposal_id, vote, voterAddress]
@@ -424,7 +395,6 @@ components:
       required: [validator, amount]
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
@@ -432,36 +402,37 @@ components:
           minimum: 0
     Unbond:
       type: object
+      required: [validator, amount, withdrawEpoch]
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
           minimum: 0
-        withdrawEpoch: 
-          type: integer
+        withdrawEpoch:
+          type: number
     Withdraw:
       type: object
+      required: [amount, withdrawEpoch]
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
           minimum: 0
-        withdrawEpoch: 
-          type: integer
+        withdrawEpoch:
+          type: number
     VotingPower:
       type: object
+      required: [totalVotingPower]
       properties:
-        votingPower:
+        totalVotingPower:
           type: integer
     Balance:
       type: object
-      required: [token, balance]
+      required: [tokenAddress, balance]
       properties:
         tokenAddress:
           type: string

@@ -2,20 +2,20 @@ use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
 use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
-use shared::proposal::GovernanceProposal;
+use shared::proposal::{GovernanceProposal, TallyType};
 use shared::vote::GovernanceVote;
 
 pub fn insert_proposals(
     transaction_conn: &mut PgConnection,
-    proposals: Vec<GovernanceProposal>,
+    proposals: Vec<(GovernanceProposal, TallyType)>,
 ) -> anyhow::Result<()> {
     diesel::insert_into(orm::schema::governance_proposals::table)
         .values::<&Vec<GovernanceProposalInsertDb>>(
             &proposals
                 .into_iter()
-                .map(|proposal| {
+                .map(|(proposal, tally_type)| {
                     GovernanceProposalInsertDb::from_governance_proposal(
-                        proposal,
+                        proposal, tally_type,
                     )
                 })
                 .collect::<Vec<_>>(),
