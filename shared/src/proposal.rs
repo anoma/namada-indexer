@@ -1,5 +1,4 @@
 use std::collections::BTreeSet;
-use std::str::FromStr;
 
 use fake::Fake;
 use namada_governance::storage::proposal::{
@@ -117,7 +116,7 @@ impl GovernanceProposal {
                 )));
                 data.insert(PGFAction::Retro(PGFTarget::Internal(
                     PGFInternalTarget {
-                        target: namada_sdk::address::Address::from_str(&address_retro.to_string()).unwrap(),
+                        target: address_retro,
                         amount: Amount::from_u64((0..1000).fake::<u64>()),
                     },
                 )));

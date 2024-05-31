@@ -41,9 +41,9 @@ pub async fn get_validator_set_at_epoch(
                     .await
                     .with_context(|| {
                         format!(
-                        "Failed to query commission of validator {address} \
-                             at epoch {namada_epoch}"
-                    )
+                            "Failed to query commission of validator \
+                             {address} at epoch {namada_epoch}"
+                        )
                     })
             };
 
