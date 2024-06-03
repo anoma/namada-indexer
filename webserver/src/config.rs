@@ -17,4 +17,7 @@ pub struct AppConfig {
 
     #[clap(long, env)]
     pub rps: Option<u64>,
+
+    #[clap(long, env)]
+    pub tendermint_url: String,
 }

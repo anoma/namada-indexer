@@ -177,6 +177,12 @@ async fn crawling_fn(
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
 
+    let revealed_pks = block.revealed_pks();
+    tracing::info!(
+        "Updating revealed pks for {} addresses",
+        revealed_pks.len()
+    );
+
     let metadata_change = block.validator_metadata();
 
     let reward_claimers = block.pos_rewards();
@@ -204,11 +210,6 @@ async fn crawling_fn(
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
-                repository::crawler::insert_crawler_state(
-                    transaction_conn,
-                    crawler_state,
-                )?;
-
                 repository::pos::delete_claimed_rewards(
                     transaction_conn,
                     reward_claimers,
@@ -217,6 +218,16 @@ async fn crawling_fn(
                 repository::pos::update_validator_metadata(
                     transaction_conn,
                     metadata_change,
+                )?;
+
+                repository::revealed_pk::insert_revealed_pks(
+                    transaction_conn,
+                    revealed_pks,
+                )?;
+
+                repository::crawler::insert_crawler_state(
+                    transaction_conn,
+                    crawler_state,
                 )?;
 
                 anyhow::Ok(())

@@ -5,6 +5,7 @@ use thiserror::Error;
 use super::balance::BalanceError;
 use super::governance::GovernanceError;
 use super::pos::PoSError;
+use super::revealed_pk::RevealedPkError;
 use crate::response::api::ApiErrorResponse;
 
 #[derive(Error, Debug)]
@@ -15,6 +16,8 @@ pub enum ApiError {
     BalanceError(#[from] BalanceError),
     #[error(transparent)]
     GovernanceError(#[from] GovernanceError),
+    #[error(transparent)]
+    RevealedPkError(#[from] RevealedPkError),
     #[error("No chain parameters stored")]
     NoChainParameters,
     #[error("Invalid request header")]
@@ -33,6 +36,7 @@ impl IntoResponse for ApiError {
             ApiError::PoSError(error) => error.into_response(),
             ApiError::BalanceError(error) => error.into_response(),
             ApiError::GovernanceError(error) => error.into_response(),
+            ApiError::RevealedPkError(error) => error.into_response(),
             ApiError::InvalidHeader => ApiErrorResponse::send(
                 StatusCode::BAD_REQUEST.as_u16(),
                 Some("Invalid Header".to_string()),

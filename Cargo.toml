@@ -40,7 +40,7 @@ chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
 namada_core = { git = "https://github.com/anoma/namada", tag = "v0.38.1" }
-namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.38.1" }
+namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.38.1", default-features = false, features = ["tendermint-rpc", "std", "async-send", "download-params", "rand"] }
 namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.38.1" }
 namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.38.1" }
 namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.38.1" }

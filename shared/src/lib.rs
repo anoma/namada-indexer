@@ -9,6 +9,7 @@ pub mod error;
 pub mod header;
 pub mod id;
 pub mod proposal;
+pub mod public_key;
 pub mod rewards;
 pub mod transaction;
 pub mod unbond;

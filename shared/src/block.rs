@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
 use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::key::common::PublicKey as NamadaPublicKey;
 use namada_tx::data::pos;
 use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
@@ -12,6 +13,7 @@ use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
+use crate::public_key::PublicKey;
 use crate::transaction::{Transaction, TransactionKind};
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
@@ -481,6 +483,24 @@ impl Block {
                         discord_handler: None,
                         avatar: None,
                     })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn revealed_pks(&self) -> Vec<(PublicKey, Id)> {
+        self.transactions
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::RevealPk(data) => {
+                    let namada_public_key =
+                        NamadaPublicKey::try_from_slice(data).unwrap();
+
+                    Some((
+                        PublicKey::from(namada_public_key.clone()),
+                        Id::from(namada_public_key),
+                    ))
                 }
                 _ => None,
             })
