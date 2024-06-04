@@ -95,7 +95,6 @@ jobs:
             { image: namada-indexer-rewards, context: rewards },
             { image: namada-indexer-seeder, context: seeder },
             { image: namada-indexer-webserver, context: webserver },
-            { image: namada-indexer-parameters, context: parameters },
           ]
 
     steps:
