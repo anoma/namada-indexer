@@ -4,7 +4,9 @@ use axum::Json;
 use axum_macros::debug_handler;
 use axum_trace_id::TraceId;
 
-use crate::dto::pos::PoSQueryParams;
+use crate::dto::pos::{
+    MyValidatorQueryParams, PoSQueryParams, ValidatorStateDto,
+};
 use crate::error::api::ApiError;
 use crate::response::pos::{
     Bond, Reward, TotalVotingPower, Unbond, ValidatorWithId, Withdraw,
@@ -20,8 +22,28 @@ pub async fn get_validators(
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
     let page = query.page.unwrap_or(1);
+    let states = query.state.unwrap_or_else(ValidatorStateDto::all);
     let (validators, total_validators) =
-        state.pos_service.get_all_validators(page).await?;
+        state.pos_service.get_all_validators(page, states).await?;
+
+    let response = PaginatedResponse::new(validators, page, total_validators);
+    Ok(Json(response))
+}
+
+#[debug_handler]
+pub async fn get_my_validators(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    Query(query): Query<MyValidatorQueryParams>,
+    State(state): State<CommonState>,
+) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
+    // TODO: validate that query.address contains valid bech32m  encoded
+    // addresses
+    let page = query.pagination.map(|p| p.page).unwrap_or(1);
+    let (validators, total_validators) = state
+        .pos_service
+        .get_my_validators(page, query.addresses)
+        .await?;
 
     let response = PaginatedResponse::new(validators, page, total_validators);
     Ok(Json(response))
