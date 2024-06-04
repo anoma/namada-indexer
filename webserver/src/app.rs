@@ -20,7 +20,7 @@ use tower_http::trace::TraceLayer;
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, chain as chain_handlers,
+    balance as balance_handlers, chain as chain_handlers, gas as gas_handlers,
     governance as gov_handlers, pk as pk_handlers, pos as pos_handlers,
 };
 use crate::state::common::CommonState;
@@ -88,6 +88,8 @@ impl ApplicationServer {
                     "/revealed_public_key/:address",
                     get(pk_handlers::get_revealed_pk),
                 )
+                // TODO: this is a temporary endpoint, we should get gas cost per tx type
+                .route("/gas_table", get(gas_handlers::get_gas_table))
                 .route("/chain/sync", get(chain_handlers::sync_height))
                 .with_state(common_state)
         };

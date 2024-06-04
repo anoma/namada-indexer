@@ -25,7 +25,6 @@ tokio.workspace = true
 tower.workspace = true 
 tower-http.workspace = true 
 tracing.workspace = true
-namada_sdk.workspace = true
 tracing-subscriber.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -42,6 +41,8 @@ diesel.workspace = true
 futures.workspace = true
 tokio-stream.workspace = true
 namada_core.workspace = true
+namada_sdk.workspace = true
+namada_parameters.workspace = true
 deadpool-redis = "0.13.0"
 
 [build-dependencies]

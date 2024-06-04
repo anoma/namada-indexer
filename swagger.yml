@@ -320,6 +320,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/RevealedPk'
 
+  /api/v1/gas_table:
+    get:
+      summary: Get the gas table
+      responses:
+        '200':
+          description: Gas table
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+
 components:
   schemas:
     Validator:
@@ -474,5 +487,12 @@ components:
       type: object
       properties:
         publicKey:
+          type: string
+    GasCost:
+      type: object
+      properties:
+        tokenAddress:
+          type: string
+        amount:
           type: string
 
