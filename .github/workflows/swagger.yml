@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  publish-swagger-ui:
+  swagger-ui:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Swagger UI
