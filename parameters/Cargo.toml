@@ -9,7 +9,7 @@ readme.workspace = true
 version.workspace = true
 
 [[bin]]
-name = "pos"
+name = "parameters"
 path = "src/main.rs"
 
 [dependencies]
