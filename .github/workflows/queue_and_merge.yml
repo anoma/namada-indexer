@@ -28,6 +28,17 @@ jobs:
         with:
           cache: true
       - run: just clippy
+    
+  validate-swagger:
+    runs-on: ubuntu-latest
+    name: Validate Swagger
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate OpenAPI definition
+        uses: char0n/swagger-editor-validate@v1.3.2
+        with:
+          definition-file: swagger.yml
   
   format:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
@@ -123,7 +134,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   can_enqueue:
-    needs: [Clippy, Format, Build]
+    needs: [clippy, format, build, validate-swagger]
     if: always() && github.event_name != 'merge_group'
     permissions:
       actions: read
@@ -138,7 +149,7 @@ jobs:
       run: "[ $ALL_SUCCESS == true ]"
 
   can_merge:
-    needs: [Clippy, Format, Docker]
+    needs: [clippy, format, docker, validate-swagger]
     if: always() && github.event_name == 'merge_group'
     permissions:
       contents: read
