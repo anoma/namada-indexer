@@ -12,6 +12,9 @@ pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_tally_type"))]
     pub struct GovernanceTallyType;
+    
+    #[diesel(postgres_type(name = "validator_state"))]
+    pub struct ValidatorState;
 
     #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "vote_kind"))]
@@ -41,6 +44,14 @@ diesel::table! {
         address -> Varchar,
         validator_id -> Int4,
         raw_amount -> Varchar,
+    }
+}
+
+diesel::table! {
+    chain_parameters (epoch) {
+        epoch -> Int4,
+        unbonding_length -> Int4,
+        pipeline_length -> Int4,
     }
 }
 
@@ -114,6 +125,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ValidatorState;
+
     validators (id) {
         id -> Int4,
         namada_address -> Varchar,
@@ -126,6 +140,7 @@ diesel::table! {
         description -> Nullable<Varchar>,
         discord_handle -> Nullable<Varchar>,
         avatar -> Nullable<Varchar>,
+        state -> ValidatorState,
     }
 }
 
@@ -138,6 +153,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     balances,
     block_crawler_state,
     bonds,
+    chain_parameters,
     epoch_crawler_state,
     governance_proposals,
     governance_votes,
