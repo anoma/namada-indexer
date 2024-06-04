@@ -83,3 +83,9 @@ jobs:
     steps:
       - id: get_version
         uses: battila7/get-version-action@v2
+      - name: Authenticate with private NPM package
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - name: Update package.json
+        run: python3 .github/workflows/scripts/update-package.py code/package.json ${{ steps.get_version.outputs.version-without-v }}
+      - name: Publish package
+        run: npm publish --access public --verbose
