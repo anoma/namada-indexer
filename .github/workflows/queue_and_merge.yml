@@ -1,4 +1,4 @@
-name: Testing
+name: Check Stuff 👨‍🔧
 
 on:
     merge_group:
@@ -127,7 +127,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.docker.context }}/Dockerfile
-          push: false # ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
