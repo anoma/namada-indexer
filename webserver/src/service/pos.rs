@@ -1,6 +1,6 @@
-use super::utils::raw_amount_to_nam;
 use orm::validators::ValidatorStateDb;
 
+use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
 use crate::dto::pos::ValidatorStateDto;
 use crate::error::pos::PoSError;

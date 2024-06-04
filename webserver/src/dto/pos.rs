@@ -28,11 +28,13 @@ impl ValidatorStateDto {
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct PoSQueryParams {
     #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
     pub state: Option<Vec<ValidatorStateDto>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct MyValidatorQueryParams {
+    #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
     #[validate(length(
         min = 1,

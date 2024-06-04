@@ -39,7 +39,7 @@ pub async fn get_my_validators(
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
     // TODO: validate that query.address contains valid bech32m  encoded
     // addresses
-    let page = query.pagination.map(|p| p.page).unwrap_or(1);
+    let page = query.page.unwrap_or(1);
     let (validators, total_validators) = state
         .pos_service
         .get_my_validators(page, query.addresses)
