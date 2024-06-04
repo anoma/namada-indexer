@@ -88,8 +88,10 @@ impl ApplicationServer {
                     "/revealed_public_key/:address",
                     get(pk_handlers::get_revealed_pk),
                 )
-                // TODO: this is a temporary endpoint, we should get gas cost per tx type
-                .route("/gas_table", get(gas_handlers::get_gas_table))
+                // TODO: this is a temporary endpoint, we should get gas cost
+                // per tx type
+                .route("/gas-table", get(gas_handlers::get_gas_table))
+                .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/sync", get(chain_handlers::sync_height))
                 .with_state(common_state)
         };

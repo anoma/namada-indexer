@@ -20,6 +20,7 @@ clap.workspace = true
 anyhow.workspace = true
 namada_sdk.workspace = true
 namada_core.workspace = true
+namada_parameters.workspace = true
 tendermint-rpc.workspace = true
 shared.workspace = true
 futures.workspace = true

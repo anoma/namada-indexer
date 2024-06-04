@@ -1,80 +1,32 @@
 use anyhow::Context;
-use futures::{StreamExt, TryStreamExt};
-use namada_core::storage::Epoch as NamadaSdkEpoch;
 use namada_sdk::rpc;
 use shared::block::Epoch;
-use shared::id::Id;
-use shared::validator::{Validator, ValidatorSet};
+use shared::parameters::Parameters;
 use tendermint_rpc::HttpClient;
 
-pub async fn get_validator_set_at_epoch(
+pub async fn get_parameters(
     client: &HttpClient,
     epoch: Epoch,
-) -> anyhow::Result<ValidatorSet> {
-    let namada_epoch = to_epoch(epoch);
-    let validator_set = rpc::get_all_validators(client, namada_epoch)
+) -> anyhow::Result<Parameters> {
+    let pos_parameters = rpc::get_pos_params(client)
         .await
-        .with_context(|| {
-            format!(
-                "Failed to query Namada's consensus validators at epoch \
-                 {epoch}"
-            )
-        })?;
+        .with_context(|| "Failed to query pos parameters".to_string())?;
 
-    tracing::info!("validator_set {:?} at {}", validator_set, epoch);
+    let epochs_per_year_key =
+        namada_parameters::storage::get_epochs_per_year_key();
+    let epochs_per_year: u64 =
+        rpc::query_storage_value(client, &epochs_per_year_key)
+            .await
+            .with_context(|| {
+                "Failed to query epochs_per_year parameter".to_string()
+            })?;
 
-    let validators = futures::stream::iter(validator_set)
-        .map(|address| async move {
-            let voting_power_fut = async {
-                rpc::get_validator_stake(client, namada_epoch, &address)
-                    .await
-                    .with_context(|| {
-                        format!(
-                            "Failed to query the stake of validator {address} \
-                             at epoch {namada_epoch}"
-                        )
-                    })
-            };
-
-            let commission_fut = async {
-                rpc::query_commission_rate(client, &address, Some(namada_epoch))
-                    .await
-                    .with_context(|| {
-                        format!(
-                        "Failed to query commission of validator {address} \
-                             at epoch {namada_epoch}"
-                    )
-                    })
-            };
-
-            let (voting_power, commission_pair) =
-                futures::try_join!(voting_power_fut, commission_fut)?;
-            let commission = commission_pair
-                .commission_rate
-                .expect("Commission rate has to exist")
-                .to_string();
-            let max_commission = commission_pair
-                .max_commission_change_per_epoch
-                .expect("Max commission rate change has to exist")
-                .to_string();
-
-            anyhow::Ok(Validator {
-                address: Id::Account(address.to_string()),
-                voting_power: voting_power.to_string_native(),
-                max_commission,
-                commission,
-                email: None,
-                description: None,
-                website: None,
-                discord_handler: None,
-                avatar: None,
-            })
-        })
-        .buffer_unordered(100)
-        .try_collect::<Vec<_>>()
-        .await?;
-
-    Ok(ValidatorSet { validators, epoch })
+    Ok(Parameters {
+        epoch,
+        unbonding_length: pos_parameters.unbonding_len,
+        pipeline_length: pos_parameters.pipeline_len,
+        epochs_per_year,
+    })
 }
 
 pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
@@ -83,8 +35,4 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
         .context("Failed to query Namada's current epoch")?;
 
     Ok(epoch.0 as Epoch)
-}
-
-fn to_epoch(epoch: u32) -> NamadaSdkEpoch {
-    NamadaSdkEpoch::from(epoch as u64)
 }

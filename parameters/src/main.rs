@@ -4,18 +4,14 @@ use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, RunQueryDsl};
-use orm::epoch_crawler_state::EpochCralwerStateInsertDb;
+use diesel::RunQueryDsl;
 use orm::migrations::run_migrations;
-use orm::schema::{epoch_crawler_state, validators};
-use orm::validators::ValidatorInsertDb;
+use orm::parameters::ParametersInsertDb;
+use orm::schema::chain_parameters;
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
-use parameters::repository::clear_db;
 use parameters::services::namada as namada_service;
 use shared::crawler;
-use shared::crawler_state::CrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
@@ -70,10 +66,19 @@ async fn crawling_fn(
 ) -> Result<(), MainError> {
     tracing::info!("Attempting to process epoch: {}...", epoch_to_process);
 
+    let parameters = namada_service::get_parameters(&client, epoch_to_process)
+        .await
+        .into_rpc_error()?;
+
     conn.interact(move |conn| {
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                diesel::insert_into(chain_parameters::table)
+                    .values::<&ParametersInsertDb>(&parameters.into())
+                    .on_conflict_do_nothing()
+                    .execute(transaction_conn)
+                    .context("Failed to update crawler state in db")?;
 
                 anyhow::Ok(())
             })

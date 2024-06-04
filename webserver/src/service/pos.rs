@@ -1,9 +1,8 @@
+use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
 use crate::error::pos::PoSError;
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
-
-use super::utils::raw_amount_to_nam;
 
 #[derive(Clone)]
 pub struct PosService {

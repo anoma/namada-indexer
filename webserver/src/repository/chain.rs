@@ -1,7 +1,8 @@
 use axum::async_trait;
 use diesel::dsl::max;
-use diesel::{QueryDsl, RunQueryDsl};
-use orm::schema::block_crawler_state;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use orm::parameters::ParametersDb;
+use orm::schema::{block_crawler_state, chain_parameters};
 
 use crate::appstate::AppState;
 
@@ -17,6 +18,11 @@ pub trait ChainRepositoryTrait {
     async fn find_latest_height(&self) -> Result<Option<i32>, String>;
 
     async fn find_latest_epoch(&self) -> Result<Option<i32>, String>;
+
+    async fn find_chain_parameters(
+        &self,
+        epoch: i32,
+    ) -> Result<ParametersDb, String>;
 }
 
 #[async_trait]
@@ -45,6 +51,23 @@ impl ChainRepositoryTrait for ChainRepository {
             block_crawler_state::dsl::block_crawler_state
                 .select(max(block_crawler_state::dsl::epoch))
                 .first::<Option<i32>>(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_chain_parameters(
+        &self,
+        epoch: i32,
+    ) -> Result<ParametersDb, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            chain_parameters::table
+                .filter(chain_parameters::dsl::epoch.eq(epoch))
+                .select(ParametersDb::as_select())
+                .first(conn)
         })
         .await
         .map_err(|e| e.to_string())?

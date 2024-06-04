@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
-use crate::appstate::AppState;
-use crate::error::revealed_pk::RevealedPkError;
-use crate::repository::revealed_pk::{PkRepoTrait, RevealedPkRepo};
-use crate::response::revealed_pk::RevealedPk;
-
 use namada_sdk::address::Address as NamadaAddress;
 use namada_sdk::rpc;
 use namada_sdk::tendermint_rpc::HttpClient;
 use orm::revealed_pk::RevealedPkInsertDb;
+
+use crate::appstate::AppState;
+use crate::error::revealed_pk::RevealedPkError;
+use crate::repository::revealed_pk::{PkRepoTrait, RevealedPkRepo};
+use crate::response::revealed_pk::RevealedPk;
 
 #[derive(Clone)]
 pub struct RevealedPkService {
@@ -37,8 +37,8 @@ impl RevealedPkService {
         match revealed_pk_db {
             // If we find a revealed public key in the database, we return it
             Some(revealed_pk_db) => Ok(RevealedPk::from(revealed_pk_db)),
-            // If we don't find a revealed public key in the database, we look for it in the
-            // storage
+            // If we don't find a revealed public key in the database, we look
+            // for it in the storage
             None => {
                 let address =
                     NamadaAddress::from_str(&address).expect("Invalid address");
@@ -47,7 +47,8 @@ impl RevealedPkService {
                     .await
                     .map_err(|e| RevealedPkError::Rpc(e.to_string()))?;
 
-                // If we find a public key in the storage, we insert it in the database
+                // If we find a public key in the storage, we insert it in the
+                // database
                 if let Some(public_key) = public_key.clone() {
                     // TODO: maybe better to create it using strcuts from shared
                     let revealed_pk_db = RevealedPkInsertDb {

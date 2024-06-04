@@ -320,7 +320,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RevealedPk'
 
-  /api/v1/gas_table:
+  /api/v1/gas-table:
     get:
       summary: Get the gas table
       responses:
@@ -332,6 +332,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Balance'
+  /api/v1/parameters:
+    get:
+      summary: Get chain parameters
+      responses:
+        '200':
+          description: Chain parameters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Parameters'
 
 components:
   schemas:
@@ -495,4 +507,13 @@ components:
           type: string
         amount:
           type: string
+    Parameters:
+      type: object
+      properties:
+        unbondingLength:
+          type: integer
+        pipelineLength:
+          type: integer
+        epochsPerYear:
+          type: integer
 

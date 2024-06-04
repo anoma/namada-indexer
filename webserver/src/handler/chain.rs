@@ -2,11 +2,16 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
+use axum::Json;
+use axum_trace_id::TraceId;
 use futures::Stream;
 use tokio_stream::StreamExt;
 
+use crate::error::api::ApiError;
+use crate::response::parameters::Parameters;
 use crate::state::common::CommonState;
 
 pub async fn sync_height(
@@ -25,4 +30,14 @@ pub async fn sync_height(
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
+}
+
+pub async fn get_parameters(
+    _trace_id: TraceId<String>,
+    _headers: HeaderMap,
+    State(state): State<CommonState>,
+) -> Result<Json<Parameters>, ApiError> {
+    let parameters = state.chain_service.find_latest_parameters().await?;
+
+    Ok(Json(parameters))
 }

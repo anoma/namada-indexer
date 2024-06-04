@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
 use namada_parameters::storage as parameter_storage;
-use namada_sdk::{
-    address::Address, rpc::query_storage_value, tendermint_rpc::HttpClient,
-    token,
-};
+use namada_sdk::address::Address;
+use namada_sdk::rpc::query_storage_value;
+use namada_sdk::tendermint_rpc::HttpClient;
+use namada_sdk::token;
 
-use crate::{appstate::AppState, response::gas::GasCost};
+use crate::appstate::AppState;
+use crate::response::gas::GasCost;
 
 #[derive(Clone)]
 pub struct GasService {}
