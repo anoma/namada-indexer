@@ -1,7 +1,9 @@
-use orm::governance_proposal::GovernanceProposalResultDb;
+use orm::governance_proposal::{
+    GovernanceProposalKindDb, GovernanceProposalResultDb,
+};
 
 use crate::appstate::AppState;
-use crate::dto::governance::ProposalStatus;
+use crate::dto::governance::{ProposalKind, ProposalStatus};
 use crate::error::governance::GovernanceError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::governance::{GovernanceRepo, GovernanceRepoTrait};
@@ -24,6 +26,8 @@ impl GovernanceService {
     pub async fn find_governance_proposals(
         &self,
         status: Option<ProposalStatus>,
+        kind: Option<ProposalKind>,
+        pattern: Option<String>,
         page: u64,
     ) -> Result<(Vec<Proposal>, u64), GovernanceError> {
         let status = status
@@ -34,10 +38,12 @@ impl GovernanceService {
                 ProposalStatus::VotingPeriod => {
                     vec![GovernanceProposalResultDb::VotingPeriod]
                 }
-                ProposalStatus::Ended => vec![
-                    GovernanceProposalResultDb::Passed,
-                    GovernanceProposalResultDb::Rejected,
-                ],
+                ProposalStatus::Passed => {
+                    vec![GovernanceProposalResultDb::Passed]
+                }
+                ProposalStatus::Rejected => {
+                    vec![GovernanceProposalResultDb::Rejected]
+                }
             })
             .unwrap_or_else(|| {
                 vec![
@@ -48,9 +54,18 @@ impl GovernanceService {
                 ]
             });
 
+        let kind = kind.map(|t| match t {
+            ProposalKind::Default => GovernanceProposalKindDb::Default,
+            ProposalKind::DefaultWithWasm => {
+                GovernanceProposalKindDb::DefaultWithWasm
+            }
+            ProposalKind::PgfSteward => GovernanceProposalKindDb::PgfSteward,
+            ProposalKind::PgfFunding => GovernanceProposalKindDb::PgfFunding,
+        });
+
         let (db_proposals, total_items) = self
             .governance_repo
-            .find_governance_proposals(status, page as i64)
+            .find_governance_proposals(status, kind, pattern, page as i64)
             .await
             .map_err(GovernanceError::Database)?;
 
@@ -105,46 +120,6 @@ impl GovernanceService {
 
         Ok(db_proposal
             .map(|p| Proposal::from_proposal_db(p, latest_epoch, latest_block)))
-    }
-
-    pub async fn search_governance_proposals_by_pattern(
-        &self,
-        pattern: String,
-        page: u64,
-    ) -> Result<(Vec<Proposal>, u64), GovernanceError> {
-        if pattern.len() < 3 {
-            return Err(GovernanceError::TooShortPattern(pattern.len()));
-        }
-
-        let (db_proposals, total_items) = self
-            .governance_repo
-            .search_governance_proposals_by_pattern(pattern, page as i64)
-            .await
-            .map_err(GovernanceError::Database)?;
-
-        let latest_epoch = self
-            .chain_repo
-            .find_latest_epoch()
-            .await
-            .map_err(GovernanceError::Database)?
-            .expect("latest epoch not found");
-
-        let latest_block = self
-            .chain_repo
-            .find_latest_height()
-            .await
-            .map_err(GovernanceError::Database)?
-            .expect("latest block not found");
-
-        Ok((
-            db_proposals
-                .into_iter()
-                .map(|p| {
-                    Proposal::from_proposal_db(p, latest_epoch, latest_block)
-                })
-                .collect(),
-            total_items as u64,
-        ))
     }
 
     pub async fn find_governance_proposal_votes(

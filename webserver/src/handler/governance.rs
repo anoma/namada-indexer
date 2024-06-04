@@ -4,9 +4,7 @@ use axum::Json;
 use axum_macros::debug_handler;
 use axum_trace_id::TraceId;
 
-use crate::dto::governance::{
-    ProposalQueryParams, ProposalSearchQueryParams, ProposalVotesQueryparams,
-};
+use crate::dto::governance::{ProposalQueryParams, ProposalVotesQueryparams};
 use crate::error::api::ApiError;
 use crate::error::governance::GovernanceError;
 use crate::response::governance::{Proposal, ProposalVote};
@@ -23,7 +21,12 @@ pub async fn get_governance_proposals(
     let page = query.pagination.map(|p| p.page).unwrap_or(1);
     let (proposals, total_proposals) = state
         .gov_service
-        .find_governance_proposals(query.status, page)
+        .find_governance_proposals(
+            query.status,
+            query.kind,
+            query.pattern,
+            page,
+        )
         .await?;
 
     let response = PaginatedResponse::new(proposals, page, total_proposals);
@@ -47,24 +50,6 @@ pub async fn get_governance_proposal_by_id(
     } else {
         Err(GovernanceError::NotFound(proposal_id).into())
     }
-}
-
-#[debug_handler]
-pub async fn search_governance_proposals_by_pattern(
-    _trace_id: TraceId<String>,
-    _headers: HeaderMap,
-    Path(pattern): Path<String>,
-    State(state): State<CommonState>,
-    Query(query): Query<ProposalSearchQueryParams>,
-) -> Result<Json<PaginatedResponse<Vec<Proposal>>>, ApiError> {
-    let page = query.pagination.map(|p| p.page).unwrap_or(1);
-    let (proposals, total_proposals) = state
-        .gov_service
-        .search_governance_proposals_by_pattern(pattern, page)
-        .await?;
-
-    let response = PaginatedResponse::new(proposals, page, total_proposals);
-    Ok(Json(response))
 }
 
 #[debug_handler]
