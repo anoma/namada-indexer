@@ -24,6 +24,7 @@ pub enum TransactionKind {
     InitProposal(Vec<u8>),
     MetadataChange(Vec<u8>),
     CommissionChange(Vec<u8>),
+    RevealPk(Vec<u8>),
     Unknown,
 }
 
@@ -60,6 +61,7 @@ impl TransactionKind {
             "tx_commission_change" => {
                 TransactionKind::CommissionChange(data.to_vec())
             }
+            "tx_reveal_pk" => TransactionKind::RevealPk(data.to_vec()),
             _ => TransactionKind::Unknown,
         }
     }

@@ -3,18 +3,21 @@ use orm::governance_proposal::GovernanceProposalResultDb;
 use crate::appstate::AppState;
 use crate::dto::governance::ProposalStatus;
 use crate::error::governance::GovernanceError;
+use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::governance::{GovernanceRepo, GovernanceRepoTrait};
 use crate::response::governance::{Proposal, ProposalVote};
 
 #[derive(Clone)]
 pub struct GovernanceService {
     governance_repo: GovernanceRepo,
+    chain_repo: ChainRepository,
 }
 
 impl GovernanceService {
     pub fn new(app_state: AppState) -> Self {
         Self {
-            governance_repo: GovernanceRepo::new(app_state),
+            governance_repo: GovernanceRepo::new(app_state.clone()),
+            chain_repo: ChainRepository::new(app_state),
         }
     }
 
@@ -51,8 +54,27 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
+        let latest_epoch = self
+            .chain_repo
+            .find_latest_epoch()
+            .await
+            .map_err(GovernanceError::Database)?
+            .expect("latest epoch not found");
+
+        let latest_block = self
+            .chain_repo
+            .find_latest_height()
+            .await
+            .map_err(GovernanceError::Database)?
+            .expect("latest block not found");
+
         Ok((
-            db_proposals.into_iter().map(Proposal::from).collect(),
+            db_proposals
+                .into_iter()
+                .map(|p| {
+                    Proposal::from_proposal_db(p, latest_epoch, latest_block)
+                })
+                .collect(),
             total_items as u64,
         ))
     }
@@ -67,7 +89,22 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
-        Ok(db_proposal.map(Proposal::from))
+        let latest_epoch = self
+            .chain_repo
+            .find_latest_epoch()
+            .await
+            .map_err(GovernanceError::Database)?
+            .expect("latest epoch not found");
+
+        let latest_block = self
+            .chain_repo
+            .find_latest_height()
+            .await
+            .map_err(GovernanceError::Database)?
+            .expect("latest block not found");
+
+        Ok(db_proposal
+            .map(|p| Proposal::from_proposal_db(p, latest_epoch, latest_block)))
     }
 
     pub async fn search_governance_proposals_by_pattern(
@@ -85,8 +122,27 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
+        let latest_epoch = self
+            .chain_repo
+            .find_latest_epoch()
+            .await
+            .map_err(GovernanceError::Database)?
+            .expect("latest epoch not found");
+
+        let latest_block = self
+            .chain_repo
+            .find_latest_height()
+            .await
+            .map_err(GovernanceError::Database)?
+            .expect("latest block not found");
+
         Ok((
-            db_proposals.into_iter().map(Proposal::from).collect(),
+            db_proposals
+                .into_iter()
+                .map(|p| {
+                    Proposal::from_proposal_db(p, latest_epoch, latest_block)
+                })
+                .collect(),
             total_items as u64,
         ))
     }
@@ -142,6 +198,22 @@ impl GovernanceService {
                 proposal_id as i32,
                 voter_address,
             )
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok(db_proposal_votes
+            .into_iter()
+            .map(ProposalVote::from)
+            .collect())
+    }
+
+    pub async fn find_governance_proposal_votes_by_voter(
+        &self,
+        voter_address: String,
+    ) -> Result<Vec<ProposalVote>, GovernanceError> {
+        let db_proposal_votes = self
+            .governance_repo
+            .find_governance_proposal_votes_by_voter(voter_address)
             .await
             .map_err(GovernanceError::Database)?;
 

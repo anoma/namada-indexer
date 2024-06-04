@@ -157,6 +157,11 @@ async fn crawling_fn(
     let proposals = block.governance_proposal(next_governance_proposal_id);
     tracing::info!("Creating {} governance proposals...", proposals.len());
 
+    let proposals_with_tally =
+        namada_service::query_tallies(&client, proposals)
+            .await
+            .into_rpc_error()?;
+
     let proposals_votes = block.governance_votes();
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
@@ -171,6 +176,12 @@ async fn crawling_fn(
         .await
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
+
+    let revealed_pks = block.revealed_pks();
+    tracing::info!(
+        "Updating revealed pks for {} addresses",
+        revealed_pks.len()
+    );
 
     let metadata_change = block.validator_metadata();
 
@@ -187,7 +198,10 @@ async fn crawling_fn(
                     balances,
                 )?;
 
-                repository::gov::insert_proposals(transaction_conn, proposals)?;
+                repository::gov::insert_proposals(
+                    transaction_conn,
+                    proposals_with_tally,
+                )?;
                 repository::gov::insert_votes(
                     transaction_conn,
                     proposals_votes,
@@ -195,11 +209,6 @@ async fn crawling_fn(
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
-
-                repository::crawler::insert_crawler_state(
-                    transaction_conn,
-                    crawler_state,
-                )?;
 
                 repository::pos::delete_claimed_rewards(
                     transaction_conn,
@@ -209,6 +218,16 @@ async fn crawling_fn(
                 repository::pos::update_validator_metadata(
                     transaction_conn,
                     metadata_change,
+                )?;
+
+                repository::revealed_pk::insert_revealed_pks(
+                    transaction_conn,
+                    revealed_pks,
+                )?;
+
+                repository::crawler::insert_crawler_state(
+                    transaction_conn,
+                    crawler_state,
                 )?;
 
                 anyhow::Ok(())
@@ -261,6 +280,17 @@ async fn initial_query(
 
     tracing::info!("Querying proposals...");
     let proposals = query_all_proposals(client).await.into_rpc_error()?;
+    let proposals_with_tally =
+        namada_service::query_tallies(client, proposals.clone())
+            .await
+            .into_rpc_error()?;
+
+    let proposals_votes = namada_service::query_all_votes(
+        client,
+        proposals.iter().map(|p| p.id).collect(),
+    )
+    .await
+    .into_rpc_error()?;
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
@@ -275,7 +305,15 @@ async fn initial_query(
                     balances,
                 )?;
 
-                repository::gov::insert_proposals(transaction_conn, proposals)?;
+                repository::gov::insert_proposals(
+                    transaction_conn,
+                    proposals_with_tally,
+                )?;
+
+                repository::gov::insert_votes(
+                    transaction_conn,
+                    proposals_votes,
+                )?;
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;

@@ -1,11 +1,13 @@
 CREATE TYPE GOVERNANCE_KIND AS ENUM ('pgf_steward', 'pgf_funding', 'default', 'default_with_wasm');
 CREATE TYPE GOVERNANCE_RESULT AS ENUM ('passed', 'rejected', 'pending', 'unknown', 'voting_period');
+CREATE TYPE GOVERNANCE_TALLY_TYPE AS ENUM ('two_thirds', 'one_half_over_one_third', 'less_one_half_over_one_third_nay');
 
 CREATE TABLE governance_proposals (
   id INT PRIMARY KEY,
   content VARCHAR NOT NULL,
   data VARCHAR,
   kind GOVERNANCE_KIND NOT NULL,
+  tally_type GOVERNANCE_TALLY_TYPE NOT NULL,
   author VARCHAR NOT NULL,
   start_epoch INT NOT NULL,
   end_epoch INT NOT NULL,

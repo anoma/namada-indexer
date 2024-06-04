@@ -49,6 +49,11 @@ pub trait GovernanceRepoTrait {
         proposal_id: i32,
         voter_address: String,
     ) -> Result<Vec<GovernanceProposalVoteDb>, String>;
+
+    async fn find_governance_proposal_votes_by_voter(
+        &self,
+        voter_address: String,
+    ) -> Result<Vec<GovernanceProposalVoteDb>, String>;
 }
 
 #[async_trait]
@@ -146,6 +151,23 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 .filter(governance_votes::dsl::id.eq(proposal_id).and(
                     governance_votes::dsl::voter_address.eq(voter_address),
                 ))
+                .select(GovernanceProposalVoteDb::as_select())
+                .get_results(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_governance_proposal_votes_by_voter(
+        &self,
+        voter_address: String,
+    ) -> Result<Vec<GovernanceProposalVoteDb>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            governance_votes::table
+                .filter(governance_votes::dsl::voter_address.eq(voter_address))
                 .select(GovernanceProposalVoteDb::as_select())
                 .get_results(conn)
         })

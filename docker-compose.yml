@@ -65,6 +65,7 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
       CACHE_URL: redis://dragonfly:6379
+      TENDERMINT_URL: http://localhost:27657
     healthcheck:
       test: curl --fail http://localhost:5000/health || exit 1
       interval: 15s

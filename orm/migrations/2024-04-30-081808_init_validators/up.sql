@@ -6,6 +6,7 @@ CREATE TABLE validators (
     voting_power INT NOT NULL,
     max_commission VARCHAR NOT NULL,
     commission VARCHAR NOT NULL,
+    name VARCHAR,
     email VARCHAR,
     website VARCHAR,
     description VARCHAR,

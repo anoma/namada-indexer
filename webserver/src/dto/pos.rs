@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use super::utils::Pagination;
-
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct PoSQueryParams {
-    #[serde(flatten)]
-    pub pagination: Option<Pagination>,
+    #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
 }

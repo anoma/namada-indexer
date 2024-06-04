@@ -16,6 +16,13 @@ paths:
           description: Health check
   /api/v1/pos/validator:
     get:
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
           description: A list of validator.
@@ -23,26 +30,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Validator'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
@@ -134,9 +129,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/VotingPower'  
+                $ref: '#/components/schemas/VotingPower'
   /api/v1/gov/proposal:
     get:
       summary: Get a list of governance proposals
@@ -160,26 +153,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Proposal'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/gov/search/{text}:
     get:
       summary: Get a list of governance proposals matching a text in the title
@@ -204,26 +185,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Proposal'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/gov/proposal/{id}:
     get:
       summary: Get a governance proposal by proposal id
@@ -260,26 +229,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Vote'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/gov/proposal/{id}/votes/{address}:
     get:
       summary: Get all the votes for a governance proposal from an address
@@ -291,6 +248,25 @@ paths:
             minimum: 1
           required: true
           description: Proposal id
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The voter address
+      responses:
+        '200':
+          description: A list of votes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vote'
+  /api/v1/gov/voter/{address}/votes:
+    get:
+      summary: Get all the votes from a voter
+      parameters:
         - in: path
           name: address
           schema:
@@ -322,25 +298,58 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Balance'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+
+  /api/v1/revealed_public_key/{address}:
+    get:
+      summary: Get revealed public key for an address if exists
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The address account
+      responses:
+        '200':
+          description: Revealed public key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevealedPk'
+
+  /api/v1/gas_table:
+    get:
+      summary: Get the gas table
+      responses:
+        '200':
+          description: Gas table
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
 
 components:
   schemas:
     Validator:
       type: object
-      required: [id, address, name, voting_power, max_commission, commission]
+      required: [validatorId, address, name, votingPower, maxCommission, commission]
       properties:
-        id:
+        validatorId:
           type: integer
         address:
           type: string
-        name:
+        votingPower:
           type: string
-        voting_power:
-          type: string
-        max_commission:
+        maxCommission:
           type: string
         commission:
+          type: string
+        name:
           type: string
         email:
           type: string
@@ -348,12 +357,13 @@ components:
           type: string
         description:
           type: string
-        discord_handle:
+        discordHandle:
           type: string
         avatar:
           type: string
     Proposal:
       type: object
+      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
       properties:
         id:
           type: integer
@@ -361,6 +371,10 @@ components:
           type: string
         type:
           type: string
+          enum: [default, defaultWithWasm, pgfSteward, pgfFunding]
+        tallyType:
+          type: string
+          enum: [twoThirds, oneHalfOverOneThird, lessOneHalfOverOneThirdNay]
         data:
           type: string
         author:
@@ -371,30 +385,36 @@ components:
           type: integer
         activationEpoch:
           type: integer
+        startTime:
+          type: integer
+        endTime:
+          type: integer
+        currentTime:
+          type: integer
         status:
           type: string
           enum: [pending, voting, passed, rejected]
         yayVotes:
-          type: integer
+          type: string
         nayVotes:
-          type: integer
-        abstrainVotes:
-          type: integer
+          type: string
+        abstainVotes:
+          type: string
     Vote:
       type: object
+      required: [proposal_id, vote, voterAddress]
       properties:
         proposal_id:
           type: integer
         vote:
           type: string
-          enum: [yay, nay, abstrain]
+          enum: [yay, nay, abstain]
         voterAddress:
           type: string
     Reward:
       type: object
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
@@ -402,9 +422,9 @@ components:
           minimum: 0
     Bond:
       type: object
+      required: [validator, amount]
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
@@ -412,39 +432,67 @@ components:
           minimum: 0
     Unbond:
       type: object
+      required: [validator, amount, withdrawEpoch]
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
           minimum: 0
-        withdrawEpoch: 
-          type: integer
+        withdrawEpoch:
+          type: number
     Withdraw:
       type: object
+      required: [amount, withdrawEpoch]
       properties:
         validator:
-          type: object
           $ref: '#/components/schemas/Validator'
         amount:
           type: number
           format: float
           minimum: 0
-        withdrawEpoch: 
-          type: integer
+        withdrawEpoch:
+          type: number
     VotingPower:
       type: object
+      required: [totalVotingPower]
       properties:
-        votingPower:
+        totalVotingPower:
           type: integer
     Balance:
       type: object
+      required: [tokenAddress, balance]
       properties:
-        token:
+        tokenAddress:
           type: string
         balance:
-          type: number
-          format: float
+          type: string
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
           minimum: 0
+        per_page:
+          type: integer
+          minimum: 0
+        total_pages:
+          type: integer
+          minimum: 0
+        total_items:
+          type: integer
+          minimum: 0
+    RevealedPk:
+      type: object
+      properties:
+        publicKey:
+          type: string
+    GasCost:
+      type: object
+      properties:
+        tokenAddress:
+          type: string
+        amount:
+          type: string
+

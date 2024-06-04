@@ -1,5 +1,9 @@
-use diesel::{Insertable, Queryable, Selectable};
+use diesel::{
+    associations::Associations, Identifiable, Insertable, Queryable, Selectable,
+};
 use shared::bond::Bond;
+
+use crate::validators::ValidatorDb;
 
 use crate::schema::bonds;
 
@@ -12,7 +16,16 @@ pub struct BondInsertDb {
     pub raw_amount: String,
 }
 
-pub type BondDb = BondInsertDb;
+#[derive(Identifiable, Clone, Queryable, Selectable, Associations)]
+#[diesel(table_name = bonds)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(belongs_to(ValidatorDb, foreign_key = validator_id))]
+pub struct BondDb {
+    pub id: i32,
+    pub address: String,
+    pub validator_id: i32,
+    pub raw_amount: String,
+}
 
 impl BondInsertDb {
     pub fn from_bond(bond: Bond, validator_id: i32) -> Self {

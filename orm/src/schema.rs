@@ -1,27 +1,19 @@
 // @generated automatically by Diesel CLI.
 
 pub mod sql_types {
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_kind"))]
     pub struct GovernanceKind;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_result"))]
     pub struct GovernanceResult;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "governance_tally_type"))]
+    pub struct GovernanceTallyType;
+
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
 }
@@ -62,6 +54,7 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::GovernanceKind;
+    use super::sql_types::GovernanceTallyType;
     use super::sql_types::GovernanceResult;
 
     governance_proposals (id) {
@@ -69,6 +62,7 @@ diesel::table! {
         content -> Varchar,
         data -> Nullable<Varchar>,
         kind -> GovernanceKind,
+        tally_type -> GovernanceTallyType,
         author -> Varchar,
         start_epoch -> Int4,
         end_epoch -> Int4,
@@ -102,6 +96,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    revealed_pk (id) {
+        id -> Int4,
+        address -> Varchar,
+        pk -> Varchar,
+    }
+}
+
+diesel::table! {
     unbonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -118,6 +120,7 @@ diesel::table! {
         voting_power -> Int4,
         max_commission -> Varchar,
         commission -> Varchar,
+        name -> Nullable<Varchar>,
         email -> Nullable<Varchar>,
         website -> Nullable<Varchar>,
         description -> Nullable<Varchar>,
@@ -139,6 +142,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     governance_proposals,
     governance_votes,
     pos_rewards,
+    revealed_pk,
     unbonds,
     validators,
 );

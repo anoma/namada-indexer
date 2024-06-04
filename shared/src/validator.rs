@@ -19,6 +19,7 @@ pub struct Validator {
     pub voting_power: VotingPower,
     pub max_commission: String,
     pub commission: String,
+    pub name: Option<String>,
     pub email: Option<String>,
     pub description: Option<String>,
     pub website: Option<String>,
@@ -30,6 +31,7 @@ pub struct Validator {
 pub struct ValidatorMetadataChange {
     pub address: Id,
     pub commission: Option<String>,
+    pub name: Option<String>,
     pub email: Option<String>,
     pub description: Option<String>,
     pub website: Option<String>,
@@ -47,9 +49,10 @@ impl Validator {
         let commission = ((0..100).fake::<u64>() as f64 / 100_f64).to_string();
         let email = Some(SafeEmail().fake());
         let description: Option<String> = CatchPhase().fake();
+        let name = Some(CompanyName().fake::<String>());
         let website: Option<String> = Some(format!(
             "{}.{}",
-            CompanyName().fake::<String>(),
+            name.clone().unwrap(),
             DomainSuffix().fake::<String>()
         ));
         let discord_handler: Option<String> = Username().fake();
@@ -59,6 +62,7 @@ impl Validator {
             voting_power,
             max_commission,
             commission,
+            name,
             email,
             description,
             website,

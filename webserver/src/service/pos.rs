@@ -3,6 +3,8 @@ use crate::error::pos::PoSError;
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
 
+use super::utils::raw_amount_to_nam;
+
 #[derive(Clone)]
 pub struct PosService {
     pos_repo: PosRepository,
@@ -59,7 +61,16 @@ impl PosService {
                 );
             }
         }
-        Ok(bonds)
+
+        let denominated_bonds: Vec<Bond> = bonds
+            .iter()
+            .cloned()
+            .map(|bond| Bond {
+                amount: raw_amount_to_nam(bond.amount),
+                ..bond
+            })
+            .collect();
+        Ok(denominated_bonds)
     }
 
     pub async fn get_unbonds_by_address(
@@ -87,7 +98,15 @@ impl PosService {
                 );
             }
         }
-        Ok(unbonds)
+        let denominated_unbonds: Vec<Unbond> = unbonds
+            .iter()
+            .cloned()
+            .map(|unbond| Unbond {
+                amount: raw_amount_to_nam(unbond.amount),
+                ..unbond
+            })
+            .collect();
+        Ok(denominated_unbonds)
     }
 
     pub async fn get_withdraws_by_address(
@@ -101,14 +120,14 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
-        let mut unbonds = vec![];
+        let mut withdraws = vec![];
         for db_unbond in db_unbonds {
             let db_validator = self
                 .pos_repo
                 .find_validator_by_id(db_unbond.validator_id)
                 .await;
             if let Ok(Some(db_validator)) = db_validator {
-                unbonds.push(Withdraw::from(db_unbond.clone(), db_validator));
+                withdraws.push(Withdraw::from(db_unbond.clone(), db_validator));
             } else {
                 tracing::error!(
                     "Couldn't find validator with id {} in bond query",
@@ -116,7 +135,15 @@ impl PosService {
                 );
             }
         }
-        Ok(unbonds)
+        let denominated_withdraw: Vec<Withdraw> = withdraws
+            .iter()
+            .cloned()
+            .map(|withdraw| Withdraw {
+                amount: raw_amount_to_nam(withdraw.amount),
+                ..withdraw
+            })
+            .collect();
+        Ok(denominated_withdraw)
     }
 
     pub async fn get_rewards_by_address(
@@ -144,9 +171,18 @@ impl PosService {
                 );
             }
         }
-        Ok(rewards)
+        let denominated_rewards: Vec<Reward> = rewards
+            .iter()
+            .cloned()
+            .map(|reward| Reward {
+                amount: raw_amount_to_nam(reward.amount),
+                ..reward
+            })
+            .collect();
+        Ok(denominated_rewards)
     }
 
+    // TODO: maybe remove object(struct) instead
     pub async fn get_total_voting_power(&self) -> Result<u64, PoSError> {
         let total_voting_power_db = self
             .pos_repo

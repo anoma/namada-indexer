@@ -15,6 +15,8 @@ pub trait ChainRepositoryTrait {
     fn new(app_state: AppState) -> Self;
 
     async fn find_latest_height(&self) -> Result<Option<i32>, String>;
+
+    async fn find_latest_epoch(&self) -> Result<Option<i32>, String>;
 }
 
 #[async_trait]
@@ -29,6 +31,19 @@ impl ChainRepositoryTrait for ChainRepository {
         conn.interact(move |conn| {
             block_crawler_state::dsl::block_crawler_state
                 .select(max(block_crawler_state::dsl::height))
+                .first::<Option<i32>>(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_latest_epoch(&self) -> Result<Option<i32>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            block_crawler_state::dsl::block_crawler_state
+                .select(max(block_crawler_state::dsl::epoch))
                 .first::<Option<i32>>(conn)
         })
         .await

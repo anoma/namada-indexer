@@ -9,6 +9,7 @@ use axum::routing::get;
 use axum::{BoxError, Json, Router};
 use axum_trace_id::SetTraceIdLayer;
 use lazy_static::lazy_static;
+use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
 use tower::buffer::BufferLayer;
 use tower::limit::RateLimitLayer;
@@ -19,8 +20,8 @@ use tower_http::trace::TraceLayer;
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, chain as chain_handlers,
-    governance as gov_handlers, pos as pos_handlers,
+    balance as balance_handlers, chain as chain_handlers, gas as gas_handlers,
+    governance as gov_handlers, pk as pk_handlers, pos as pos_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -37,9 +38,10 @@ impl ApplicationServer {
         let cache_url = config.cache_url.clone();
 
         let app_state = AppState::new(db_url, cache_url);
+        let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
 
         let routes = {
-            let common_state = CommonState::new(app_state.clone());
+            let common_state = CommonState::new(client, app_state.clone());
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))
@@ -75,9 +77,19 @@ impl ApplicationServer {
                     get(gov_handlers::get_governance_proposal_votes_by_address),
                 )
                 .route(
+                    "/gov/voter/:address/votes",
+                    get(gov_handlers::get_governance_proposal_votes_by_voter),
+                )
+                .route(
                     "/account/:address",
                     get(balance_handlers::get_address_balance),
                 )
+                .route(
+                    "/revealed_public_key/:address",
+                    get(pk_handlers::get_revealed_pk),
+                )
+                // TODO: this is a temporary endpoint, we should get gas cost per tx type
+                .route("/gas_table", get(gas_handlers::get_gas_table))
                 .route("/chain/sync", get(chain_handlers::sync_height))
                 .with_state(common_state)
         };

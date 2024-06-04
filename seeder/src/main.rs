@@ -21,7 +21,9 @@ use seeder::state::AppState;
 use shared::balance::Balance;
 use shared::bond::Bond;
 use shared::error::{AsDbError, ContextDbInteractError, MainError};
-use shared::proposal::{GovernanceProposal, GovernanceProposalStatus};
+use shared::proposal::{
+    GovernanceProposal, GovernanceProposalStatus, TallyType,
+};
 use shared::rewards::Reward;
 use shared::unbond::Unbond;
 use shared::validator::Validator;
@@ -57,6 +59,15 @@ async fn main() -> anyhow::Result<(), MainError> {
     let governance_proposals = (0..config.total_proposals)
         .map(GovernanceProposal::fake)
         .collect::<Vec<GovernanceProposal>>();
+
+    let governance_proposals_with_tally = governance_proposals
+        .iter()
+        .cloned()
+        .map(|proposal| {
+            let tally_type = TallyType::fake();
+            (proposal, tally_type)
+        })
+        .collect::<Vec<(GovernanceProposal, TallyType)>>();
 
     let governance_proposals_status = (0..config.total_proposals)
         .map(GovernanceProposalStatus::fake)
@@ -149,10 +160,10 @@ async fn main() -> anyhow::Result<(), MainError> {
 
                 diesel::insert_into(governance_proposals::table)
                     .values::<&Vec<GovernanceProposalInsertDb>>(
-                        &governance_proposals
+                        &governance_proposals_with_tally
                             .into_iter()
-                            .map(|proposal| {
-                                GovernanceProposalInsertDb::from_governance_proposal(proposal)
+                            .map(|(proposal, tally_type)| {
+                                GovernanceProposalInsertDb::from_governance_proposal(proposal, tally_type)
                             })
                             .collect::<Vec<_>>(),
                     )

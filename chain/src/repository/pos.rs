@@ -110,6 +110,7 @@ pub fn update_validator_metadata(
     for metadata in metadata_change {
         let metadata_change_db = ValidatorUpdateMetadataDb {
             commission: metadata.commission,
+            name: metadata.name,
             email: metadata.email,
             website: metadata.website,
             description: metadata.description,
