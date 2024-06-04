@@ -8,7 +8,7 @@ use orm::bond::BondDb;
 use orm::pos_rewards::PoSRewardDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
-use orm::validators::ValidatorDb;
+use orm::validators::{ValidatorDb, ValidatorStateDb};
 
 use super::utils::Paginate;
 use crate::appstate::AppState;
@@ -25,6 +25,13 @@ pub trait PosRepositoryTrait {
     async fn find_all_validators(
         &self,
         page: i64,
+        states: Vec<ValidatorStateDb>,
+    ) -> Result<(Vec<ValidatorDb>, i64), String>;
+
+    async fn find_validators_by_bond_addresses(
+        &self,
+        page: i64,
+        addreses: Vec<String>,
     ) -> Result<(Vec<ValidatorDb>, i64), String>;
 
     async fn find_validator_by_id(
@@ -65,11 +72,33 @@ impl PosRepositoryTrait for PosRepository {
     async fn find_all_validators(
         &self,
         page: i64,
+        states: Vec<ValidatorStateDb>,
     ) -> Result<(Vec<ValidatorDb>, i64), String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             validators::table
+                .filter(validators::dsl::state.eq_any(states))
+                .select(ValidatorDb::as_select())
+                .paginate(page)
+                .load_and_count_pages(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_validators_by_bond_addresses(
+        &self,
+        page: i64,
+        addreses: Vec<String>,
+    ) -> Result<(Vec<ValidatorDb>, i64), String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            validators::table
+                .inner_join(bonds::table)
+                .filter(bonds::dsl::address.eq_any(addreses))
                 .select(ValidatorDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)

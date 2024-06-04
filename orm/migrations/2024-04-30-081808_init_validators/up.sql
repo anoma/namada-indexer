@@ -1,5 +1,7 @@
 -- Your SQL goes here
 
+CREATE TYPE VALIDATOR_STATE AS ENUM ('active', 'inactive', 'jailed');
+
 CREATE TABLE validators (
     id SERIAL PRIMARY KEY,
     namada_address VARCHAR NOT NULL,
@@ -11,7 +13,8 @@ CREATE TABLE validators (
     website VARCHAR,
     description VARCHAR,
     discord_handle VARCHAR,
-    avatar VARCHAR
+    avatar VARCHAR,
+    state VALIDATOR_STATE NOT NULL
 );
 
 ALTER TABLE validators

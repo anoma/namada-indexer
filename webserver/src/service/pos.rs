@@ -1,5 +1,8 @@
+use orm::validators::ValidatorStateDb;
+
 use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
+use crate::dto::pos::ValidatorStateDto;
 use crate::error::pos::PoSError;
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
@@ -19,10 +22,46 @@ impl PosService {
     pub async fn get_all_validators(
         &self,
         page: u64,
+        states: Vec<ValidatorStateDto>,
+    ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
+        let validator_states = states
+            .into_iter()
+            .map(|state| match state {
+                ValidatorStateDto::Consensus => ValidatorStateDb::Consensus,
+                ValidatorStateDto::BelowCapacity => {
+                    ValidatorStateDb::BelowCapacity
+                }
+                ValidatorStateDto::BelowThreshold => {
+                    ValidatorStateDb::BelowThreshold
+                }
+                ValidatorStateDto::Inactive => ValidatorStateDb::Inactive,
+                ValidatorStateDto::Jailed => ValidatorStateDb::Jailed,
+                ValidatorStateDto::Unknown => ValidatorStateDb::Unknown,
+            })
+            .collect();
+        let (db_validators, total_items) = self
+            .pos_repo
+            .find_all_validators(page as i64, validator_states)
+            .await
+            .map_err(PoSError::Database)?;
+
+        Ok((
+            db_validators
+                .into_iter()
+                .map(ValidatorWithId::from)
+                .collect(),
+            total_items as u64,
+        ))
+    }
+
+    pub async fn get_my_validators(
+        &self,
+        page: u64,
+        addresses: Vec<String>,
     ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
         let (db_validators, total_items) = self
             .pos_repo
-            .find_all_validators(page as i64)
+            .find_validators_by_bond_addresses(page as i64, addresses)
             .await
             .map_err(PoSError::Database)?;
 
@@ -39,6 +78,7 @@ impl PosService {
         &self,
         address: String,
     ) -> Result<Vec<Bond>, PoSError> {
+        // TODO: could optimize and make a single query
         let db_bonds = self
             .pos_repo
             .find_bonds_by_address(address)
@@ -76,6 +116,7 @@ impl PosService {
         &self,
         address: String,
     ) -> Result<Vec<Unbond>, PoSError> {
+        // TODO: could optimize and make a single query
         let db_unbonds = self
             .pos_repo
             .find_unbonds_by_address(address)
@@ -113,6 +154,7 @@ impl PosService {
         address: String,
         current_epoch: u64,
     ) -> Result<Vec<Withdraw>, PoSError> {
+        // TODO: could optimize and make a single query
         let db_unbonds = self
             .pos_repo
             .find_withdraws_by_address(address, current_epoch as i32)
@@ -149,6 +191,7 @@ impl PosService {
         &self,
         address: String,
     ) -> Result<Vec<Reward>, PoSError> {
+        // TODO: could optimize and make a single query
         let db_rewards = self
             .pos_repo
             .find_rewards_by_address(address)
