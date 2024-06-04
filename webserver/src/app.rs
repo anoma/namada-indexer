@@ -45,6 +45,10 @@ impl ApplicationServer {
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))
+                .route(
+                    "/pos/my-validator",
+                    get(pos_handlers::get_my_validators),
+                )
                 .route("/pos/bond/:address", get(pos_handlers::get_bonds))
                 .route("/pos/unbond/:address", get(pos_handlers::get_unbonds))
                 .route(
