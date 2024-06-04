@@ -30,6 +30,14 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "validator_state"))]
+    pub struct ValidatorState;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
 }
@@ -139,6 +147,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ValidatorState;
+
     validators (id) {
         id -> Int4,
         namada_address -> Varchar,
@@ -151,6 +162,7 @@ diesel::table! {
         description -> Nullable<Varchar>,
         discord_handle -> Nullable<Varchar>,
         avatar -> Nullable<Varchar>,
+        state -> ValidatorState,
     }
 }
 

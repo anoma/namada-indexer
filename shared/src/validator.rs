@@ -1,11 +1,39 @@
 use fake::faker::company::en::{CatchPhase, CompanyName};
 use fake::faker::internet::en::{DomainSuffix, SafeEmail, Username};
 use fake::Fake;
+use namada_proof_of_stake::types::ValidatorState as NamadaValidatorState;
+use rand::distributions::{Distribution, Standard};
 
 use crate::block::Epoch;
 use crate::id::Id;
 
 pub type VotingPower = String;
+
+#[derive(Debug, Clone)]
+pub enum ValidatorState {
+    Consensus,
+    BelowCapacity,
+    BelowThreshold,
+    Inactive,
+    Jailed,
+    Unknown,
+}
+
+impl From<NamadaValidatorState> for ValidatorState {
+    fn from(value: NamadaValidatorState) -> Self {
+        match value {
+            NamadaValidatorState::Consensus => ValidatorState::Consensus,
+            NamadaValidatorState::BelowCapacity => {
+                ValidatorState::BelowCapacity
+            }
+            NamadaValidatorState::BelowThreshold => {
+                ValidatorState::BelowThreshold
+            }
+            NamadaValidatorState::Inactive => ValidatorState::Inactive,
+            NamadaValidatorState::Jailed => ValidatorState::Jailed,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ValidatorSet {
@@ -25,6 +53,7 @@ pub struct Validator {
     pub website: Option<String>,
     pub discord_handler: Option<String>,
     pub avatar: Option<String>,
+    pub state: ValidatorState,
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +97,22 @@ impl Validator {
             website,
             discord_handler,
             avatar: Some("https://picsum.photos/200/300".to_string()),
+            state: rand::random(),
+        }
+    }
+}
+
+impl Distribution<ValidatorState> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+    ) -> ValidatorState {
+        match rng.gen_range(0..=5) {
+            0 => ValidatorState::Consensus,
+            1 => ValidatorState::Inactive,
+            2 => ValidatorState::Jailed,
+            3 => ValidatorState::BelowCapacity,
+            _ => ValidatorState::BelowThreshold,
         }
     }
 }

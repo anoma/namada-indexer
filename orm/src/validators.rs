@@ -1,12 +1,36 @@
 use std::str::FromStr;
 
-use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
-use serde::Serialize;
-use shared::validator::Validator;
+use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use serde::{Deserialize, Serialize};
+use shared::validator::{Validator, ValidatorState};
 
 use crate::schema::validators;
 
-#[derive(Identifiable, Serialize, Queryable, Selectable, Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::ValidatorState"]
+pub enum ValidatorStateDb {
+    Consensus,
+    BelowCapacity,
+    BelowThreshold,
+    Inactive,
+    Jailed,
+    Unknown,
+}
+
+impl From<ValidatorState> for ValidatorStateDb {
+    fn from(value: ValidatorState) -> Self {
+        match value {
+            ValidatorState::Consensus => Self::Consensus,
+            ValidatorState::BelowCapacity => Self::BelowCapacity,
+            ValidatorState::BelowThreshold => Self::BelowThreshold,
+            ValidatorState::Inactive => Self::Inactive,
+            ValidatorState::Jailed => Self::Jailed,
+            ValidatorState::Unknown => Self::Unknown,
+        }
+    }
+}
+
+#[derive(Serialize, Queryable, Selectable, Clone)]
 #[diesel(table_name = validators)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ValidatorDb {
@@ -21,6 +45,7 @@ pub struct ValidatorDb {
     pub description: Option<String>,
     pub discord_handle: Option<String>,
     pub avatar: Option<String>,
+    pub state: ValidatorStateDb,
 }
 
 #[derive(Serialize, Insertable, Clone)]

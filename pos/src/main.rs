@@ -122,7 +122,6 @@ async fn crawling_fn(
                             .eq(excluded(validators::columns::max_commission)),
                         validators::columns::commission
                             .eq(excluded(validators::columns::commission)),
-                        // TODO: maybe metadata can change more often?
                         validators::columns::email
                             .eq(excluded(validators::columns::email)),
                         validators::columns::website
@@ -133,6 +132,8 @@ async fn crawling_fn(
                             .eq(excluded(validators::columns::discord_handle)),
                         validators::columns::avatar
                             .eq(excluded(validators::columns::avatar)),
+                        validators::columns::state
+                            .eq(excluded(validators::columns::state)),
                     ))
                     .execute(transaction_conn)
                     .context("Failed to update validators in db")?;

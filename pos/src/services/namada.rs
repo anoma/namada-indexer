@@ -4,7 +4,7 @@ use namada_core::storage::Epoch as NamadaSdkEpoch;
 use namada_sdk::rpc;
 use shared::block::Epoch;
 use shared::id::Id;
-use shared::validator::{Validator, ValidatorSet};
+use shared::validator::{Validator, ValidatorSet, ValidatorState};
 use tendermint_rpc::HttpClient;
 
 pub async fn get_validator_set_at_epoch(
@@ -47,8 +47,19 @@ pub async fn get_validator_set_at_epoch(
                     })
             };
 
-            let (voting_power, commission_pair) =
-                futures::try_join!(voting_power_fut, commission_fut)?;
+            let validator_state = async {
+                rpc::get_validator_state(client, &address, Some(namada_epoch))
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Failed to query validator {address} \
+                         state"
+                        )
+                    })
+            };
+
+            let (voting_power, commission_pair, validator_state) =
+                futures::try_join!(voting_power_fut, commission_fut, validator_state)?;
             let commission = commission_pair
                 .commission_rate
                 .expect("Commission rate has to exist")
@@ -57,6 +68,7 @@ pub async fn get_validator_set_at_epoch(
                 .max_commission_change_per_epoch
                 .expect("Max commission rate change has to exist")
                 .to_string();
+            let validator_state = validator_state.0.map(ValidatorState::from).unwrap_or(ValidatorState::Unknown);
 
             anyhow::Ok(Validator {
                 address: Id::Account(address.to_string()),
@@ -69,6 +81,7 @@ pub async fn get_validator_set_at_epoch(
                 website: None,
                 discord_handler: None,
                 avatar: None,
+                state: validator_state
             })
         })
         .buffer_unordered(100)
