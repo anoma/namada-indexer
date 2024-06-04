@@ -281,12 +281,12 @@ async fn initial_query(
     tracing::info!("Querying proposals...");
     let proposals = query_all_proposals(client).await.into_rpc_error()?;
     let proposals_with_tally =
-        namada_service::query_tallies(&client, proposals.clone())
+        namada_service::query_tallies(client, proposals.clone())
             .await
             .into_rpc_error()?;
 
     let proposals_votes = namada_service::query_all_votes(
-        &client,
+        client,
         proposals.iter().map(|p| p.id).collect(),
     )
     .await

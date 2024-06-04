@@ -435,8 +435,7 @@ pub async fn query_tallies(
 ) -> anyhow::Result<Vec<(GovernanceProposal, TallyType)>> {
     let proposals = futures::stream::iter(proposals)
         .filter_map(|proposal| async move {
-            let is_steward =
-                is_steward(&client, &proposal.author).await.ok()?;
+            let is_steward = is_steward(client, &proposal.author).await.ok()?;
 
             let tally_type = TallyType::from(&proposal.r#type, is_steward);
 
@@ -475,7 +474,7 @@ pub async fn query_all_votes(
         .collect::<Vec<_>>()
         .await;
 
-    anyhow::Ok(votes.iter().cloned().flatten().collect())
+    anyhow::Ok(votes.iter().flatten().cloned().collect())
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {

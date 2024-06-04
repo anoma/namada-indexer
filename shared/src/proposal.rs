@@ -227,6 +227,10 @@ pub enum TallyType {
 
 // TODO: copied from namada for time being
 impl TallyType {
+    pub fn fake() -> Self {
+        rand::random()
+    }
+
     pub fn from(
         proposal_type: &GovernanceProposalKind,
         is_steward: bool,
