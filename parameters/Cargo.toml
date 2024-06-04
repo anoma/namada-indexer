@@ -1,0 +1,34 @@
+[package]
+name = "parameters"
+description = "Namada chain parameters crawling."
+resolver = "2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "pos"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true 
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true 
+anyhow.workspace = true
+namada_sdk.workspace = true
+namada_core.workspace = true
+namada_parameters.workspace = true
+tendermint-rpc.workspace = true
+shared.workspace = true
+futures.workspace = true
+deadpool-diesel.workspace = true
+diesel.workspace = true
+diesel_migrations.workspace = true
+orm.workspace = true
+clap-verbosity-flag.workspace = true
+
+[build-dependencies]
+vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

@@ -8,6 +8,7 @@ pub mod crawler_state;
 pub mod error;
 pub mod header;
 pub mod id;
+pub mod parameters;
 pub mod proposal;
 pub mod public_key;
 pub mod rewards;

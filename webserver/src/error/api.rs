@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 
 use super::balance::BalanceError;
+use super::chain::ChainError;
 use super::governance::GovernanceError;
 use super::pos::PoSError;
 use super::revealed_pk::RevealedPkError;
@@ -10,6 +11,8 @@ use crate::response::api::ApiErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
+    #[error(transparent)]
+    ChainError(#[from] ChainError),
     #[error(transparent)]
     PoSError(#[from] PoSError),
     #[error(transparent)]
@@ -33,6 +36,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
+            ApiError::ChainError(error) => error.into_response(),
             ApiError::PoSError(error) => error.into_response(),
             ApiError::BalanceError(error) => error.into_response(),
             ApiError::GovernanceError(error) => error.into_response(),

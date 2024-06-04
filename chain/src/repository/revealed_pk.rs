@@ -1,7 +1,9 @@
 use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
-use orm::{revealed_pk::RevealedPkInsertDb, schema::revealed_pk};
-use shared::{id::Id, public_key::PublicKey};
+use orm::revealed_pk::RevealedPkInsertDb;
+use orm::schema::revealed_pk;
+use shared::id::Id;
+use shared::public_key::PublicKey;
 
 pub fn insert_revealed_pks(
     transaction_conn: &mut PgConnection,

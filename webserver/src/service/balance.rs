@@ -1,9 +1,8 @@
+use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
 use crate::error::balance::BalanceError;
 use crate::repository::balance::{BalanceRepo, BalanceRepoTrait};
 use crate::response::balance::AddressBalance;
-
-use super::utils::raw_amount_to_nam;
 
 #[derive(Clone)]
 pub struct BalanceService {

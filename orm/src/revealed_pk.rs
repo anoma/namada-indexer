@@ -1,5 +1,6 @@
 use diesel::{Insertable, Queryable, Selectable};
-use shared::{id::Id, public_key::PublicKey};
+use shared::id::Id;
+use shared::public_key::PublicKey;
 
 use crate::schema::revealed_pk;
 
