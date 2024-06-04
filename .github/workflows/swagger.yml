@@ -1,13 +1,10 @@
 name: Deploy Stuff 🧙‍♂️
 
 on:
-    push:
-      branches:
-        - main
-
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-[a-z]+"
 
 jobs:
   swagger-ui:
@@ -17,10 +14,72 @@ jobs:
         uses: Legion2/swagger-ui-action@v1
         with:
           output: swagger-ui
-          spec-file: swagger.json
+          spec-file: swagger.yml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: swagger-ui
+
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    env:
+      GIT_LFS_SKIP_SMUDGE: 1
+      REGISTRY_URL: ghcr.io
+      
+    strategy:
+      fail-fast: true
+      matrix:
+        docker:
+          [
+            { image: namada-indexer-chain, context: chain },
+            { image: namada-indexer-governance, context: governance },
+            { image: namada-indexer-pos, context: pos },
+            { image: namada-indexer-rewards, context: rewards },
+            { image: namada-indexer-seeder, context: seeder },
+            { image: namada-indexer-webserver, context: webserver },
+          ]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ matrix.docker.image }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+      - name: Build and Push
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.docker.context }}/Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  swagger-npm-package:
+    runs-on: ubuntu-latest
+    steps:
+      - id: get_version
+        uses: battila7/get-version-action@v2
