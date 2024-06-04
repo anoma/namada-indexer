@@ -79,15 +79,19 @@ jobs:
           cache-to: type=gha,mode=max
 
   swagger-npm-package:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - id: get_version
         uses: battila7/get-version-action@v2
+      - name: Install swagger codegen
+        run: brew install swagger-codegen
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Authenticate with private NPM package
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - name: Generate client
+        run: swagger-codegen generate -i swagger.yml -l javascript -o ./code
       - name: Update package.json
         run: python3 .github/workflows/scripts/update-package.py code/package.json ${{ steps.get_version.outputs.version-without-v }}
       - name: Publish package
