@@ -15,6 +15,7 @@ permissions:
   packages: write
   pages: write
   id-token: write
+  contents: read
 
 jobs:
   clippy:
@@ -94,12 +95,12 @@ jobs:
       matrix:
         docker:
           [
-            { image: namada-indexer-chain, context: chain },
-            { image: namada-indexer-governance, context: governance },
-            { image: namada-indexer-pos, context: pos },
-            { image: namada-indexer-rewards, context: rewards },
-            { image: namada-indexer-seeder, context: seeder },
-            { image: namada-indexer-webserver, context: webserver },
+            { image: chain, context: chain },
+            { image: governance, context: governance },
+            { image: pos, context: pos },
+            { image: rewards, context: rewards },
+            { image: seeder, context: seeder },
+            { image: webserver, context: webserver },
           ]
 
     steps:
@@ -117,7 +118,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY_URL }}/anoma/${{ matrix.docker.image }}
+          images: ${{ env.REGISTRY_URL }}/anoma/namada-indexer
           tags: |
             type=schedule
             type=ref,event=branch
@@ -133,7 +134,7 @@ jobs:
           context: .
           file: ${{ matrix.docker.context }}/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ matrix.docker.image }}-${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
