@@ -45,6 +45,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+      - id: get_version
+        uses: battila7/get-version-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to GHCR
@@ -53,19 +55,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY_URL }}/anoma/${{ matrix.docker.image }}
-          tags: |
-            type=schedule
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest
       - name: Build and Push
         id: push
         uses: docker/build-push-action@v5
@@ -73,7 +62,7 @@ jobs:
           context: .
           file: ${{ matrix.docker.context }}/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.REGISTRY_URL }}/anoma/namada-indexer:${{ matrix.docker.image }}-${{ steps.get_version.outputs.version-without-v }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
