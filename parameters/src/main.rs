@@ -47,45 +47,58 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    // We always start from the current epoch
-    let current_epoch = namada_service::get_current_epoch(&client.clone())
-        .await
-        .into_rpc_error()?;
+    let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
+    let exit_handle = must_exit_handle();
 
-    crawler::crawl(
-        move |epoch| crawling_fn(epoch, conn.clone(), client.clone()),
-        current_epoch,
-    )
-    .await
-}
+    loop {
+        if must_exit(&exit_handle) {
+            break;
+        }
 
-async fn crawling_fn(
-    epoch_to_process: u32,
-    conn: Arc<Object>,
-    client: Arc<HttpClient>,
-) -> Result<(), MainError> {
-    tracing::info!("Attempting to process epoch: {}...", epoch_to_process);
+        _ = RetryIf::spawn(
+            retry_strategy.clone(),
+            || async {
+                // We always start from the current epoch
+                let current_epoch =
+                    namada_service::get_current_epoch(&client.clone())
+                        .await
+                        .into_rpc_error()?;
 
-    let parameters = namada_service::get_parameters(&client, epoch_to_process)
-        .await
-        .into_rpc_error()?;
+                tracing::info!(
+                    "Attempting to process epoch: {}...",
+                    current_epoch
+                );
 
-    conn.interact(move |conn| {
-        conn.build_transaction()
-            .read_write()
-            .run(|transaction_conn| {
-                diesel::insert_into(chain_parameters::table)
-                    .values::<&ParametersInsertDb>(&parameters.into())
-                    .on_conflict_do_nothing()
-                    .execute(transaction_conn)
-                    .context("Failed to update crawler state in db")?;
+                let parameters =
+                    namada_service::get_parameters(&client, current_epoch)
+                        .await
+                        .into_rpc_error()?;
 
-                anyhow::Ok(())
-            })
-    })
-    .await
-    .context_db_interact_error()
-    .into_db_error()?
-    .context("Commit block db transaction error")
-    .into_db_error()
+                conn.interact(move |conn| {
+                    conn.build_transaction().read_write().run(
+                        |transaction_conn| {
+                            diesel::insert_into(chain_parameters::table)
+                                .values::<&ParametersInsertDb>(
+                                    &parameters.into(),
+                                )
+                                .on_conflict_do_nothing()
+                                .execute(transaction_conn)
+                                .context(
+                                    "Failed to update crawler state in db",
+                                )?;
+
+                            anyhow::Ok(())
+                        },
+                    )
+                })
+                .await
+                .context_db_interact_error()
+                .into_db_error()?
+                .context("Commit block db transaction error")
+                .into_db_error()
+            },
+            |_: &MainError| !must_exit(&exit_handle),
+        )
+        .await;
+    }
 }
