@@ -57,7 +57,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY_URL }}/${{ matrix.docker.image }}
+          images: ${{ env.REGISTRY_URL }}/anoma/${{ matrix.docker.image }}
           tags: |
             type=schedule
             type=ref,event=branch
