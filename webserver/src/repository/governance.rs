@@ -4,7 +4,7 @@ use diesel::{
     QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::governance_proposal::{
-    GovernanceProposalDb, GovernanceProposalResultDb,
+    GovernanceProposalDb, GovernanceProposalKindDb, GovernanceProposalResultDb,
 };
 use orm::governance_votes::GovernanceProposalVoteDb;
 use orm::schema::{governance_proposals, governance_votes};
@@ -24,6 +24,8 @@ pub trait GovernanceRepoTrait {
     async fn find_governance_proposals(
         &self,
         status: Vec<GovernanceProposalResultDb>,
+        kind: Option<GovernanceProposalKindDb>,
+        pattern: Option<String>,
         page: i64,
     ) -> Result<(Vec<GovernanceProposalDb>, i64), String>;
 
@@ -31,12 +33,6 @@ pub trait GovernanceRepoTrait {
         &self,
         proposal_id: i32,
     ) -> Result<Option<GovernanceProposalDb>, String>;
-
-    async fn search_governance_proposals_by_pattern(
-        &self,
-        pattern: String,
-        page: i64,
-    ) -> Result<(Vec<GovernanceProposalDb>, i64), String>;
 
     async fn find_governance_proposal_votes(
         &self,
@@ -65,13 +61,29 @@ impl GovernanceRepoTrait for GovernanceRepo {
     async fn find_governance_proposals(
         &self,
         status: Vec<GovernanceProposalResultDb>,
+        kind: Option<GovernanceProposalKindDb>,
+        pattern: Option<String>,
         page: i64,
     ) -> Result<(Vec<GovernanceProposalDb>, i64), String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            governance_proposals::table
-                .filter(governance_proposals::dsl::result.eq_any(status))
+            let mut query = governance_proposals::table.into_boxed().filter(
+                governance_proposals::dsl::result.eq_any(status.clone()),
+            );
+
+            if let Some(kind) = kind {
+                query = query.filter(governance_proposals::dsl::kind.eq(kind));
+            }
+
+            if let Some(pattern) = pattern {
+                query = query.filter(
+                    governance_proposals::dsl::content
+                        .ilike(format!("%{}%", pattern)),
+                );
+            }
+
+            query
                 .select(GovernanceProposalDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
@@ -95,28 +107,6 @@ impl GovernanceRepoTrait for GovernanceRepo {
                 .ok()
         })
         .await
-        .map_err(|e| e.to_string())
-    }
-
-    async fn search_governance_proposals_by_pattern(
-        &self,
-        pattern: String,
-        page: i64,
-    ) -> Result<(Vec<GovernanceProposalDb>, i64), String> {
-        let conn = self.app_state.get_db_connection().await;
-
-        conn.interact(move |conn| {
-            governance_proposals::table
-                .filter(
-                    governance_proposals::dsl::content
-                        .ilike(format!("%{}%", pattern)),
-                )
-                .select(GovernanceProposalDb::as_select())
-                .paginate(page)
-                .load_and_count_pages(conn)
-        })
-        .await
-        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
