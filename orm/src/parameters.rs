@@ -13,6 +13,8 @@ pub struct ParametersInsertDb {
     pub unbonding_length: i32,
     pub pipeline_length: i32,
     pub epochs_per_year: i32,
+    pub min_num_of_blocks: i32,
+    pub min_duration: i32,
 }
 
 pub type ParametersDb = ParametersInsertDb;
@@ -24,6 +26,8 @@ impl From<Parameters> for ParametersInsertDb {
             unbonding_length: value.unbonding_length as i32,
             pipeline_length: value.pipeline_length as i32,
             epochs_per_year: value.epochs_per_year as i32,
+            min_num_of_blocks: value.min_num_of_blocks as i32,
+            min_duration: value.min_duration as i32,
         }
     }
 }

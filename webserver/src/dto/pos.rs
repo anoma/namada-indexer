@@ -36,6 +36,7 @@ pub struct PoSQueryParams {
 pub struct MyValidatorQueryParams {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
+
     #[validate(length(
         min = 1,
         message = "Address query parameter cannot be empty"

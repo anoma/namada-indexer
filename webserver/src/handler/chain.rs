@@ -6,7 +6,6 @@ use axum::http::HeaderMap;
 use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
 use axum::Json;
-use axum_trace_id::TraceId;
 use futures::Stream;
 use tokio_stream::StreamExt;
 
@@ -33,7 +32,6 @@ pub async fn sync_height(
 }
 
 pub async fn get_parameters(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     State(state): State<CommonState>,
 ) -> Result<Json<Parameters>, ApiError> {

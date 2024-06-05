@@ -2,7 +2,6 @@ use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use axum::Json;
 use axum_macros::debug_handler;
-use axum_trace_id::TraceId;
 
 use crate::dto::governance::{ProposalQueryParams, ProposalVotesQueryparams};
 use crate::error::api::ApiError;
@@ -13,7 +12,6 @@ use crate::state::common::CommonState;
 
 #[debug_handler]
 pub async fn get_governance_proposals(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Query(query): Query<ProposalQueryParams>,
     State(state): State<CommonState>,
@@ -35,7 +33,6 @@ pub async fn get_governance_proposals(
 
 #[debug_handler]
 pub async fn get_governance_proposal_by_id(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(proposal_id): Path<u64>,
     State(state): State<CommonState>,
@@ -54,7 +51,6 @@ pub async fn get_governance_proposal_by_id(
 
 #[debug_handler]
 pub async fn get_governance_proposal_votes(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(proposal_id): Path<u64>,
     Query(query): Query<ProposalVotesQueryparams>,
@@ -75,7 +71,6 @@ pub async fn get_governance_proposal_votes(
 
 #[debug_handler]
 pub async fn get_governance_proposal_votes_by_address(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path((proposal_id, address)): Path<(u64, String)>,
     State(state): State<CommonState>,
@@ -90,7 +85,6 @@ pub async fn get_governance_proposal_votes_by_address(
 
 #[debug_handler]
 pub async fn get_governance_proposal_votes_by_voter(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(address): Path<String>,
     State(state): State<CommonState>,

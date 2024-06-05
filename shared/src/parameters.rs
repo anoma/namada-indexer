@@ -4,4 +4,6 @@ pub struct Parameters {
     pub unbonding_length: u64,
     pub pipeline_length: u64,
     pub epochs_per_year: u64,
+    pub min_num_of_blocks: u64,
+    pub min_duration: u64,
 }

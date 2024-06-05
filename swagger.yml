@@ -16,6 +16,7 @@ paths:
           description: Health check
   /api/v1/pos/validator:
     get:
+      summary: Get all validators
       parameters:
         - in: query
           name: page
@@ -38,22 +39,24 @@ paths:
                       $ref: '#/components/schemas/Validator'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
   /api/v1/pos/my-validator:
     get:
+      summary: Get validators that delegator has delegated to
+      parameters:
+        - in: query
+          name: addresses
+          schema:
+            type: array
+            items:
+              type: string
+          required: true
+          description: The delegator addresses
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
           description: Given a list of address return a list of a validator for which those addresses have delegations
@@ -61,26 +64,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Validator'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
@@ -353,7 +344,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Balance'
+                  $ref: '#/components/schemas/GasCost'
   /api/v1/parameters:
     get:
       summary: Get chain parameters
@@ -371,7 +362,7 @@ components:
   schemas:
     Validator:
       type: object
-      required: [validatorId, address, name, votingPower, maxCommission, commission]
+      required: [validatorId, address, name, votingPower, maxCommission, commission, state]
       properties:
         validatorId:
           type: integer
@@ -395,6 +386,9 @@ components:
           type: string
         avatar:
           type: string
+        state:
+          type: string
+          enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
     Proposal:
       type: object
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]

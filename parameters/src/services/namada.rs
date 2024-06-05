@@ -1,4 +1,5 @@
 use anyhow::Context;
+use namada_parameters::EpochDuration;
 use namada_sdk::rpc;
 use shared::block::Epoch;
 use shared::parameters::Parameters;
@@ -21,11 +22,22 @@ pub async fn get_parameters(
                 "Failed to query epochs_per_year parameter".to_string()
             })?;
 
+    let epoch_duration_key =
+        namada_parameters::storage::get_epoch_duration_storage_key();
+    let epoch_duration: EpochDuration =
+        rpc::query_storage_value(client, &epoch_duration_key)
+            .await
+            .with_context(|| {
+                "Failed to query epochs_per_year parameter".to_string()
+            })?;
+
     Ok(Parameters {
         epoch,
         unbonding_length: pos_parameters.unbonding_len,
         pipeline_length: pos_parameters.pipeline_len,
         epochs_per_year,
+        min_num_of_blocks: epoch_duration.min_num_of_blocks,
+        min_duration: epoch_duration.min_duration.0,
     })
 }
 

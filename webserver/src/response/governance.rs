@@ -109,25 +109,35 @@ pub struct ProposalVote {
     pub voter_address: String,
 }
 
-// TODO: read it from storage later
-const CONSENSUS_TIME_IN_SEC: i64 = 10;
-const MIN_NUMBER_OF_BLOCKS: i64 = 4;
-
 impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
         current_epoch: i32,
         current_block: i32,
+        min_num_of_blocks: i32,
+        min_duration: i32,
     ) -> Self {
-        let seconds_since_beginning =
-            i64::from(current_block) * CONSENSUS_TIME_IN_SEC;
-        let seconds_until_end = i64::from(value.end_epoch - current_epoch)
-            * MIN_NUMBER_OF_BLOCKS
-            * CONSENSUS_TIME_IN_SEC;
+        // Calculate the block in the current epoch
+        let block_in_current_epoch = current_block % min_num_of_blocks;
+
+        // Calculate how much into the epoch we are
+        let epoch_progress =
+            block_in_current_epoch as f64 / min_num_of_blocks as f64;
+
+        // Seconds since the beginning is the sum of seconds in all previous epochs
+        // and a sum of seconds in the current epoch
+        let seconds_since_beginning = (current_epoch - 1) * min_duration
+            + (epoch_progress * min_duration as f64).round() as i32;
+
+        // Seconds until the end is the sum of seconds in all future epochs
+        // and a sum of seconds that are left in the current epoch
+        let seconds_until_end = (value.end_epoch - current_epoch)
+            * min_duration
+            + ((1.0 - epoch_progress) * min_duration as f64).round() as i32;
 
         let time_now = DateTimeUtc::now().0.timestamp();
-        let start_time = time_now - seconds_since_beginning;
-        let end_time = time_now + seconds_until_end;
+        let start_time = time_now - i64::from(seconds_since_beginning);
+        let end_time = time_now + i64::from(seconds_until_end);
 
         Self {
             id: value.id as u64,

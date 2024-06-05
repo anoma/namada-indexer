@@ -83,11 +83,23 @@ impl GovernanceService {
             .map_err(GovernanceError::Database)?
             .expect("latest block not found");
 
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters(latest_epoch)
+            .await
+            .map_err(GovernanceError::Database)?;
+
         Ok((
             db_proposals
                 .into_iter()
                 .map(|p| {
-                    Proposal::from_proposal_db(p, latest_epoch, latest_block)
+                    Proposal::from_proposal_db(
+                        p,
+                        latest_epoch,
+                        latest_block,
+                        parameters.min_num_of_blocks,
+                        parameters.min_duration,
+                    )
                 })
                 .collect(),
             total_items as u64,
@@ -118,8 +130,21 @@ impl GovernanceService {
             .map_err(GovernanceError::Database)?
             .expect("latest block not found");
 
-        Ok(db_proposal
-            .map(|p| Proposal::from_proposal_db(p, latest_epoch, latest_block)))
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters(latest_epoch)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok(db_proposal.map(|p| {
+            Proposal::from_proposal_db(
+                p,
+                latest_epoch,
+                latest_block,
+                parameters.min_num_of_blocks,
+                parameters.min_duration,
+            )
+        }))
     }
 
     pub async fn find_governance_proposal_votes(

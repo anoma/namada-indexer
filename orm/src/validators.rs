@@ -56,6 +56,7 @@ pub struct ValidatorInsertDb {
     pub voting_power: i32,
     pub max_commission: String,
     pub commission: String,
+    pub state: ValidatorStateDb,
 }
 
 #[derive(Serialize, AsChangeset, Clone)]
@@ -79,6 +80,7 @@ impl ValidatorInsertDb {
                 as i32,
             max_commission: validator.max_commission.clone(),
             commission: validator.commission.clone(),
+            state: validator.state.into(),
         }
     }
 }
