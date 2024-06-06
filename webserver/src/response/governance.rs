@@ -151,7 +151,8 @@ impl Proposal {
             min_duration,
         );
 
-        // This should be read from the DB to avoid time jumps equal to the commit time
+        // This should be read from the DB to avoid time jumps equal to the
+        // commit time
         let time_now = DateTimeUtc::now().0.timestamp();
         let start_time = time_now + i64::from(to_start);
         let end_time = time_now + i64::from(to_end);
