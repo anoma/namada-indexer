@@ -56,7 +56,7 @@ pub struct Bond {
 pub struct Unbond {
     pub amount: String,
     pub validator: ValidatorWithId,
-    pub withdraw_epoch: u64,
+    pub withdraw_epoch: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -64,7 +64,7 @@ pub struct Unbond {
 pub struct Withdraw {
     pub amount: String,
     pub validator: ValidatorWithId,
-    pub withdraw_epoch: u64,
+    pub withdraw_epoch: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -77,7 +77,7 @@ pub struct Reward {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TotalVotingPower {
-    pub total_voting_power: u64,
+    pub total_voting_power: String,
 }
 
 impl From<ValidatorDb> for Validator {
@@ -103,13 +103,13 @@ impl From<ValidatorDb> for Validator {
 pub struct ValidatorWithId {
     #[serde(flatten)]
     pub validator: Validator,
-    pub validator_id: u64,
+    pub validator_id: String,
 }
 
 impl ValidatorWithId {
     pub fn from(db_validator: ValidatorDb) -> Self {
         Self {
-            validator_id: db_validator.id as u64,
+            validator_id: db_validator.id.to_string(),
             validator: Validator::from(db_validator),
         }
     }
@@ -129,7 +129,7 @@ impl Unbond {
         Self {
             amount: db_unbond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
-            withdraw_epoch: db_unbond.withdraw_epoch as u64,
+            withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
         }
     }
 }
@@ -139,7 +139,7 @@ impl Withdraw {
         Self {
             amount: db_unbond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
-            withdraw_epoch: db_unbond.withdraw_epoch as u64,
+            withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
         }
     }
 }

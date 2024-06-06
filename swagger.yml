@@ -345,7 +345,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/GasCost'
-  /api/v1/parameters:
+  /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
       responses:
@@ -354,9 +354,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Parameters'
+                $ref: '#/components/schemas/Parameters'
 
 components:
   schemas:
@@ -365,7 +363,7 @@ components:
       required: [validatorId, address, name, votingPower, maxCommission, commission, state]
       properties:
         validatorId:
-          type: integer
+          type: string
         address:
           type: string
         votingPower:
@@ -394,7 +392,7 @@ components:
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
       properties:
         id:
-          type: integer
+          type: string
         content:
           type: string
         type:
@@ -408,17 +406,17 @@ components:
         author:
           type: string
         startEpoch:
-          type: integer
+          type: string
         endEpoch:
-          type: integer
+          type: string
         activationEpoch:
-          type: integer
+          type: string
         startTime:
-          type: integer
+          type: string
         endTime:
-          type: integer
+          type: string
         currentTime:
-          type: integer
+          type: string
         status:
           type: string
           enum: [pending, voting, passed, rejected]
@@ -433,7 +431,7 @@ components:
       required: [proposal_id, vote, voterAddress]
       properties:
         proposal_id:
-          type: integer
+          type: string
         vote:
           type: string
           enum: [yay, nay, abstain]
@@ -445,7 +443,7 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
+          type: string
           format: float
           minimum: 0
     Bond:
@@ -455,9 +453,7 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
-          format: float
-          minimum: 0
+          type: string
     Unbond:
       type: object
       required: [validator, amount, withdrawEpoch]
@@ -465,11 +461,9 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
-          format: float
-          minimum: 0
+          type: string
         withdrawEpoch:
-          type: number
+          type: string
     Withdraw:
       type: object
       required: [amount, withdrawEpoch]
@@ -477,17 +471,17 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
+          type: string
           format: float
           minimum: 0
         withdrawEpoch:
-          type: number
+          type: string
     VotingPower:
       type: object
       required: [totalVotingPower]
       properties:
         totalVotingPower:
-          type: integer
+          type: string
     Balance:
       type: object
       required: [tokenAddress, balance]
@@ -500,16 +494,16 @@ components:
       type: object
       properties:
         page:
-          type: integer
+          type: string
           minimum: 0
         per_page:
-          type: integer
+          type: string
           minimum: 0
         total_pages:
-          type: integer
+          type: string
           minimum: 0
         total_items:
-          type: integer
+          type: string
           minimum: 0
     RevealedPk:
       type: object
@@ -525,11 +519,12 @@ components:
           type: string
     Parameters:
       type: object
+      required: [unbondingLength, pipelineLength, epochsPerYear]
       properties:
         unbondingLength:
-          type: integer
+          type: string
         pipelineLength:
-          type: integer
+          type: string
         epochsPerYear:
-          type: integer
+          type: string
 

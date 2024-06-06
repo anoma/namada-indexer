@@ -83,18 +83,18 @@ impl Display for ProposalStatus {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Proposal {
-    pub id: u64,
+    pub id: String,
     pub content: String,
     pub r#type: ProposalType,
     pub tally_type: TallyType,
     pub data: Option<String>,
     pub author: String,
-    pub start_epoch: u64,
-    pub end_epoch: u64,
-    pub activation_epoch: u64,
-    pub start_time: i64,
-    pub end_time: i64,
-    pub current_time: i64,
+    pub start_epoch: String,
+    pub end_epoch: String,
+    pub activation_epoch: String,
+    pub start_time: String,
+    pub end_time: String,
+    pub current_time: String,
     pub status: ProposalStatus,
     pub yay_votes: String,
     pub nay_votes: String,
@@ -151,13 +151,13 @@ impl Proposal {
             min_duration,
         );
 
-        // This should be read from the DB
+        // This should be read from the DB to avoid time jumps equal to the commit time
         let time_now = DateTimeUtc::now().0.timestamp();
         let start_time = time_now + i64::from(to_start);
         let end_time = time_now + i64::from(to_end);
 
         Self {
-            id: value.id as u64,
+            id: value.id.to_string(),
             content: value.content,
             r#type: match value.kind {
                 GovernanceProposalKindDb::PgfSteward => {
@@ -184,13 +184,13 @@ impl Proposal {
             },
             data: value.data,
             author: value.author,
-            start_epoch: value.start_epoch as u64,
-            end_epoch: value.end_epoch as u64,
-            activation_epoch: value.activation_epoch as u64,
+            start_epoch: value.start_epoch.to_string(),
+            end_epoch: value.end_epoch.to_string(),
+            activation_epoch: value.activation_epoch.to_string(),
 
-            start_time,
-            end_time,
-            current_time: time_now,
+            start_time: start_time.to_string(),
+            end_time: end_time.to_string(),
+            current_time: time_now.to_string(),
 
             status: match value.result {
                 GovernanceProposalResultDb::Passed => ProposalStatus::Passed,

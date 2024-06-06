@@ -180,7 +180,7 @@ pub async fn query_all_bonds_and_unbonds(
     let mut bonds: BondsMap = HashMap::new();
     let mut unbonds: UnbondsMap = HashMap::new();
 
-    // This is not super nice but it's fewer iteratirons that doing map and then
+    // This is not super nice but it's fewer iterations that doing map and then
     // reduce
     for (bond_id, details) in bonds_and_unbonds {
         for bd in details.bonds {

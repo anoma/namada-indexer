@@ -95,5 +95,7 @@ pub async fn get_total_voting_power(
     State(state): State<CommonState>,
 ) -> Result<Json<TotalVotingPower>, ApiError> {
     let total_voting_power = state.pos_service.get_total_voting_power().await?;
-    Ok(Json(TotalVotingPower { total_voting_power }))
+    Ok(Json(TotalVotingPower {
+        total_voting_power: total_voting_power.to_string(),
+    }))
 }
