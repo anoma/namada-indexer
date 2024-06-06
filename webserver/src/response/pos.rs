@@ -1,7 +1,7 @@
+use orm::bond::BondDb;
 use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
-use orm::validators::ValidatorDb;
-use orm::{bond::BondDb, validators::ValidatorStateDb};
+use orm::validators::{ValidatorDb, ValidatorStateDb};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

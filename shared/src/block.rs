@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey as NamadaPublicKey;
+use namada_sdk::token;
 use namada_tx::data::pos;
 use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
@@ -284,7 +285,7 @@ impl Block {
                 let mut balance_changes = match &tx.kind {
                     TransactionKind::TransparentTransfer(data) => {
                         let transfer_data =
-                            namada_core::token::Transfer::try_from_slice(data)
+                            token::TransparentTransfer::try_from_slice(data)
                                 .unwrap();
                         let transfer_source = Id::from(transfer_data.source);
                         let transfer_target = Id::from(transfer_data.target);

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::uint::Uint;
 use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
@@ -31,21 +30,8 @@ pub enum TransactionKind {
 impl TransactionKind {
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
-            "tx_transfer" => {
-                if let Ok(transfer_data) =
-                    namada_core::token::Transfer::try_from_slice(data)
-                {
-                    match transfer_data.shielded {
-                        Some(_) => {
-                            TransactionKind::ShieldedTransfer(data.to_vec())
-                        }
-                        None => {
-                            TransactionKind::TransparentTransfer(data.to_vec())
-                        }
-                    }
-                } else {
-                    TransactionKind::Unknown
-                }
+            "tx_transparent_transfer" => {
+                TransactionKind::TransparentTransfer(data.to_vec())
             }
             "tx_bond" => TransactionKind::Bond(data.to_vec()),
             "tx_redelegation" => TransactionKind::Redelegation(data.to_vec()),
