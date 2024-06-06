@@ -109,6 +109,19 @@ pub struct ProposalVote {
     pub voter_address: String,
 }
 
+// Calculate the time between current epoch and arbitrary epoch
+fn time_between(
+    current_epoch_progress: f64,
+    current_epoch: i32,
+    to_epoch: i32,
+    epoch_duration: i32,
+) -> i32 {
+    let epoch_time = (to_epoch - current_epoch) * epoch_duration;
+    let extra_time = current_epoch_progress * epoch_duration as f64;
+
+    epoch_time - extra_time as i32
+}
+
 impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
@@ -124,20 +137,24 @@ impl Proposal {
         let epoch_progress =
             block_in_current_epoch as f64 / min_num_of_blocks as f64;
 
-        // Seconds since the beginning is the sum of seconds in all previous epochs
-        // and a sum of seconds in the current epoch
-        let seconds_since_beginning = (current_epoch - 1) * min_duration
-            + (epoch_progress * min_duration as f64).round() as i32;
+        let to_start = time_between(
+            epoch_progress,
+            current_epoch,
+            value.start_epoch,
+            min_duration,
+        );
 
-        // Seconds until the end is the sum of seconds in all future epochs
-        // and a sum of seconds that are left in the current epoch
-        let seconds_until_end = (value.end_epoch - current_epoch)
-            * min_duration
-            + ((1.0 - epoch_progress) * min_duration as f64).round() as i32;
+        let to_end = time_between(
+            epoch_progress,
+            current_epoch,
+            value.end_epoch,
+            min_duration,
+        );
 
+        // This should be read from the DB
         let time_now = DateTimeUtc::now().0.timestamp();
-        let start_time = time_now - i64::from(seconds_since_beginning);
-        let end_time = time_now + i64::from(seconds_until_end);
+        let start_time = time_now + i64::from(to_start);
+        let end_time = time_now + i64::from(to_end);
 
         Self {
             id: value.id as u64,
