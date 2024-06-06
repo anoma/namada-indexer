@@ -2,7 +2,7 @@ use orm::validators::ValidatorStateDb;
 
 use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
-use crate::dto::pos::ValidatorStateDto;
+use crate::dto::pos::{MyValidatorKindDto, ValidatorStateDto};
 use crate::error::pos::PoSError;
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
@@ -58,10 +58,11 @@ impl PosService {
         &self,
         page: u64,
         addresses: Vec<String>,
+        kind: MyValidatorKindDto,
     ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
         let (db_validators, total_items) = self
             .pos_repo
-            .find_validators_by_bond_addresses(page as i64, addresses)
+            .find_validators_by_addresses(page as i64, addresses, kind)
             .await
             .map_err(PoSError::Database)?;
 

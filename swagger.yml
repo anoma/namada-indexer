@@ -52,6 +52,13 @@ paths:
           required: true
           description: The delegator addresses
         - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [withBonds, withUnbonds]
+          required: true
+          description: Pagination parameter
+        - in: query
           name: page
           schema:
             type: integer
@@ -512,6 +519,7 @@ components:
           type: string
     GasCost:
       type: object
+      required: [tokenAddress, amount]
       properties:
         tokenAddress:
           type: string

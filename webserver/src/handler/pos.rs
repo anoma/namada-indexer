@@ -39,7 +39,7 @@ pub async fn get_my_validators(
     let page = query.page.unwrap_or(1);
     let (validators, total_validators) = state
         .pos_service
-        .get_my_validators(page, query.addresses.clone())
+        .get_my_validators(page, query.addresses.clone(), query.kind.clone())
         .await?;
 
     let response = PaginatedResponse::new(validators, page, total_validators);
