@@ -1,9 +1,9 @@
+use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 
 use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use deadpool_diesel::postgres::Object;
 use diesel::RunQueryDsl;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
@@ -11,14 +11,16 @@ use orm::schema::chain_parameters;
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
 use parameters::services::namada as namada_service;
-use shared::crawler;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
+use tokio::signal;
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::RetryIf;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
-async fn main() -> Result<(), MainError> {
+async fn main() -> anyhow::Result<()> {
     let config = AppConfig::parse();
 
     let log_level = match config.verbosity.log_level_filter() {
@@ -101,4 +103,24 @@ async fn main() -> Result<(), MainError> {
         )
         .await;
     }
+
+    Ok(())
+}
+
+#[inline]
+fn must_exit(handle: &AtomicBool) -> bool {
+    handle.load(atomic::Ordering::Relaxed)
+}
+
+fn must_exit_handle() -> Arc<AtomicBool> {
+    let handle = Arc::new(AtomicBool::new(false));
+    let task_handle = Arc::clone(&handle);
+    tokio::spawn(async move {
+        signal::ctrl_c()
+            .await
+            .expect("Error receiving interrupt signal");
+        tracing::info!("Ctrl-c received");
+        task_handle.store(true, atomic::Ordering::Relaxed);
+    });
+    handle
 }

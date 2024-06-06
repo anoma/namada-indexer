@@ -37,11 +37,7 @@ impl ChainService {
             .chain_repo
             .find_chain_parameters(epoch)
             .await
-            .map(|parameters| Parameters {
-                unbonding_length: parameters.unbonding_length as u64,
-                pipeline_length: parameters.pipeline_length as u64,
-                epochs_per_year: parameters.epochs_per_year as u64,
-            })
+            .map(Parameters::from)
             .map_err(ChainError::Database)?;
 
         Ok(parameters)

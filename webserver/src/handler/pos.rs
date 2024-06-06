@@ -1,8 +1,8 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::Json;
+use axum_extra::extract::Query;
 use axum_macros::debug_handler;
-use axum_trace_id::TraceId;
 
 use crate::dto::pos::{
     MyValidatorQueryParams, PoSQueryParams, ValidatorStateDto,
@@ -16,7 +16,6 @@ use crate::state::common::CommonState;
 
 #[debug_handler]
 pub async fn get_validators(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Query(query): Query<PoSQueryParams>,
     State(state): State<CommonState>,
@@ -30,11 +29,9 @@ pub async fn get_validators(
     Ok(Json(response))
 }
 
-#[debug_handler]
 pub async fn get_my_validators(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
-    Query(query): Query<MyValidatorQueryParams>,
+    query: Query<MyValidatorQueryParams>,
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
     // TODO: validate that query.address contains valid bech32m  encoded
@@ -42,7 +39,7 @@ pub async fn get_my_validators(
     let page = query.page.unwrap_or(1);
     let (validators, total_validators) = state
         .pos_service
-        .get_my_validators(page, query.addresses)
+        .get_my_validators(page, query.addresses.clone(), query.kind.clone())
         .await?;
 
     let response = PaginatedResponse::new(validators, page, total_validators);
@@ -51,7 +48,6 @@ pub async fn get_my_validators(
 
 #[debug_handler]
 pub async fn get_bonds(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(address): Path<String>,
     State(state): State<CommonState>,
@@ -62,7 +58,6 @@ pub async fn get_bonds(
 
 #[debug_handler]
 pub async fn get_unbonds(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(address): Path<String>,
     State(state): State<CommonState>,
@@ -73,7 +68,6 @@ pub async fn get_unbonds(
 
 #[debug_handler]
 pub async fn get_withdraws(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path((address, epoch)): Path<(String, u64)>,
     State(state): State<CommonState>,
@@ -87,7 +81,6 @@ pub async fn get_withdraws(
 
 #[debug_handler]
 pub async fn get_rewards(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(address): Path<String>,
     State(state): State<CommonState>,
@@ -98,10 +91,11 @@ pub async fn get_rewards(
 
 #[debug_handler]
 pub async fn get_total_voting_power(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     State(state): State<CommonState>,
 ) -> Result<Json<TotalVotingPower>, ApiError> {
     let total_voting_power = state.pos_service.get_total_voting_power().await?;
-    Ok(Json(TotalVotingPower { total_voting_power }))
+    Ok(Json(TotalVotingPower {
+        total_voting_power: total_voting_power.to_string(),
+    }))
 }

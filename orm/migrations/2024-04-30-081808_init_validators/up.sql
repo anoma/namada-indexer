@@ -1,6 +1,6 @@
 -- Your SQL goes here
 
-CREATE TYPE VALIDATOR_STATE AS ENUM ('active', 'inactive', 'jailed');
+CREATE TYPE VALIDATOR_STATE AS ENUM ('consensus', 'inactive', 'jailed', 'below_capacity', 'below_threshold', 'unknown');
 
 CREATE TABLE validators (
     id SERIAL PRIMARY KEY,

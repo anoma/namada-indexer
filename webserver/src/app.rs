@@ -7,7 +7,6 @@ use axum::http::{HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{BoxError, Json, Router};
-use axum_trace_id::SetTraceIdLayer;
 use lazy_static::lazy_static;
 use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
@@ -117,8 +116,7 @@ impl ApplicationServer {
                     .layer(RateLimitLayer::new(
                         *REQ_PER_SEC,
                         Duration::from_secs(1),
-                    ))
-                    .layer(SetTraceIdLayer::<String>::new()),
+                    )),
             );
 
         let router = router.fallback(Self::handle_404);
@@ -128,8 +126,9 @@ impl ApplicationServer {
 
         tracing::info!("🚀 Server has launched on https://{addr}");
 
-        axum::Server::bind(&addr)
-            .serve(router.into_make_service())
+        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+
+        axum::serve(listener, router.into_make_service())
             .with_graceful_shutdown(Self::shutdown_signal())
             .await
             .unwrap_or_else(|e| panic!("Server error: {}", e));

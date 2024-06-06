@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ValidatorStateDto {
     Consensus,
     BelowCapacity,
@@ -32,13 +33,23 @@ pub struct PoSQueryParams {
     pub state: Option<Vec<ValidatorStateDto>>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MyValidatorKindDto {
+    WithBonds,
+    WithUnbonds,
+}
+
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct MyValidatorQueryParams {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
+
     #[validate(length(
         min = 1,
         message = "Address query parameter cannot be empty"
     ))]
     pub addresses: Vec<String>,
+
+    pub kind: MyValidatorKindDto,
 }

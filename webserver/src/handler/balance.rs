@@ -2,7 +2,6 @@ use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::Json;
 use axum_macros::debug_handler;
-use axum_trace_id::TraceId;
 
 use crate::error::api::ApiError;
 use crate::response::balance::AddressBalance;
@@ -10,7 +9,6 @@ use crate::state::common::CommonState;
 
 #[debug_handler]
 pub async fn get_address_balance(
-    _trace_id: TraceId<String>,
     _headers: HeaderMap,
     Path(address): Path<String>,
     State(state): State<CommonState>,

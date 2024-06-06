@@ -16,6 +16,7 @@ paths:
           description: Health check
   /api/v1/pos/validator:
     get:
+      summary: Get all validators
       parameters:
         - in: query
           name: page
@@ -38,22 +39,31 @@ paths:
                       $ref: '#/components/schemas/Validator'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
   /api/v1/pos/my-validator:
     get:
+      summary: Get validators that delegator has delegated to
+      parameters:
+        - in: query
+          name: addresses
+          schema:
+            type: array
+            items:
+              type: string
+          required: true
+          description: The delegator addresses
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [withBonds, withUnbonds]
+          required: true
+          description: Pagination parameter
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
           description: Given a list of address return a list of a validator for which those addresses have delegations
@@ -61,26 +71,14 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Validator'
                   pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                        minimum: 0
-                      per_page:
-                        type: integer
-                        minimum: 0
-                      total_pages:
-                        type: integer
-                        minimum: 0
-                      total_items:
-                        type: integer
-                        minimum: 0
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
@@ -353,8 +351,8 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Balance'
-  /api/v1/parameters:
+                  $ref: '#/components/schemas/GasCost'
+  /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
       responses:
@@ -363,18 +361,16 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Parameters'
+                $ref: '#/components/schemas/Parameters'
 
 components:
   schemas:
     Validator:
       type: object
-      required: [validatorId, address, name, votingPower, maxCommission, commission]
+      required: [validatorId, address, name, votingPower, maxCommission, commission, state]
       properties:
         validatorId:
-          type: integer
+          type: string
         address:
           type: string
         votingPower:
@@ -395,12 +391,15 @@ components:
           type: string
         avatar:
           type: string
+        state:
+          type: string
+          enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
     Proposal:
       type: object
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
       properties:
         id:
-          type: integer
+          type: string
         content:
           type: string
         type:
@@ -414,17 +413,17 @@ components:
         author:
           type: string
         startEpoch:
-          type: integer
+          type: string
         endEpoch:
-          type: integer
+          type: string
         activationEpoch:
-          type: integer
+          type: string
         startTime:
-          type: integer
+          type: string
         endTime:
-          type: integer
+          type: string
         currentTime:
-          type: integer
+          type: string
         status:
           type: string
           enum: [pending, voting, passed, rejected]
@@ -439,7 +438,7 @@ components:
       required: [proposal_id, vote, voterAddress]
       properties:
         proposal_id:
-          type: integer
+          type: string
         vote:
           type: string
           enum: [yay, nay, abstain]
@@ -451,7 +450,7 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
+          type: string
           format: float
           minimum: 0
     Bond:
@@ -461,9 +460,7 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
-          format: float
-          minimum: 0
+          type: string
     Unbond:
       type: object
       required: [validator, amount, withdrawEpoch]
@@ -471,11 +468,9 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
-          format: float
-          minimum: 0
+          type: string
         withdrawEpoch:
-          type: number
+          type: string
     Withdraw:
       type: object
       required: [amount, withdrawEpoch]
@@ -483,17 +478,17 @@ components:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
-          type: number
+          type: string
           format: float
           minimum: 0
         withdrawEpoch:
-          type: number
+          type: string
     VotingPower:
       type: object
       required: [totalVotingPower]
       properties:
         totalVotingPower:
-          type: integer
+          type: string
     Balance:
       type: object
       required: [tokenAddress, balance]
@@ -506,16 +501,16 @@ components:
       type: object
       properties:
         page:
-          type: integer
+          type: string
           minimum: 0
         per_page:
-          type: integer
+          type: string
           minimum: 0
         total_pages:
-          type: integer
+          type: string
           minimum: 0
         total_items:
-          type: integer
+          type: string
           minimum: 0
     RevealedPk:
       type: object
@@ -524,6 +519,7 @@ components:
           type: string
     GasCost:
       type: object
+      required: [tokenAddress, amount]
       properties:
         tokenAddress:
           type: string
@@ -531,11 +527,12 @@ components:
           type: string
     Parameters:
       type: object
+      required: [unbondingLength, pipelineLength, epochsPerYear]
       properties:
         unbondingLength:
-          type: integer
+          type: string
         pipelineLength:
-          type: integer
+          type: string
         epochsPerYear:
-          type: integer
+          type: string
 
