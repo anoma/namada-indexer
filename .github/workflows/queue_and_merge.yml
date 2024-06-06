@@ -101,6 +101,7 @@ jobs:
             { image: rewards, context: rewards },
             { image: seeder, context: seeder },
             { image: webserver, context: webserver },
+            { image: parameters, context: parameters },
           ]
 
     steps:
