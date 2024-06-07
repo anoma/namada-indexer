@@ -44,18 +44,21 @@ pub trait PosRepositoryTrait {
     async fn find_bonds_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<BondDb>, String>;
+        page: i64,
+    ) -> Result<(Vec<(ValidatorDb, BondDb)>, i64), String>;
 
     async fn find_unbonds_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<UnbondDb>, String>;
+        page: i64,
+    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
 
     async fn find_withdraws_by_address(
         &self,
         address: String,
         current_epoch: i32,
-    ) -> Result<Vec<UnbondDb>, String>;
+        page: i64,
+    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
 
     async fn find_rewards_by_address(
         &self,
@@ -138,14 +141,17 @@ impl PosRepositoryTrait for PosRepository {
     async fn find_bonds_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<BondDb>, String> {
+        page: i64,
+    ) -> Result<(Vec<(ValidatorDb, BondDb)>, i64), String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            bonds::table
+            validators::table
+                .inner_join(bonds::table)
                 .filter(bonds::dsl::address.eq(address))
-                .select(BondDb::as_select())
-                .get_results(conn)
+                .select((validators::all_columns, bonds::all_columns))
+                .paginate(page)
+                .load_and_count_pages::<(ValidatorDb, BondDb)>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
@@ -155,14 +161,17 @@ impl PosRepositoryTrait for PosRepository {
     async fn find_unbonds_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<UnbondDb>, String> {
+        page: i64,
+    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            unbonds::table
+            validators::table
+                .inner_join(unbonds::table)
                 .filter(unbonds::dsl::address.eq(address))
-                .select(UnbondDb::as_select())
-                .get_results(conn)
+                .select((validators::all_columns, unbonds::all_columns))
+                .paginate(page)
+                .load_and_count_pages::<(ValidatorDb, UnbondDb)>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
@@ -173,18 +182,21 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         current_epoch: i32,
-    ) -> Result<Vec<UnbondDb>, String> {
+        page: i64,
+    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            unbonds::table
+            validators::table
+                .inner_join(unbonds::table)
                 .filter(
                     unbonds::dsl::address
                         .eq(address)
-                        .and(unbonds::dsl::withdraw_epoch.ge(current_epoch)),
+                        .and(unbonds::dsl::withdraw_epoch.le(current_epoch)),
                 )
-                .select(UnbondDb::as_select())
-                .get_results(conn)
+                .select((validators::all_columns, unbonds::all_columns))
+                .paginate(page)
+                .load_and_count_pages::<(ValidatorDb, UnbondDb)>(conn)
         })
         .await
         .map_err(|e| e.to_string())?

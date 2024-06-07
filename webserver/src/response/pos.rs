@@ -1,8 +1,11 @@
+use namada_sdk::time::DateTimeUtc;
 use orm::bond::BondDb;
 use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
 use serde::{Deserialize, Serialize};
+
+use super::utils::{epoch_progress, time_between_epochs};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,6 +60,7 @@ pub struct Unbond {
     pub amount: String,
     pub validator: ValidatorWithId,
     pub withdraw_epoch: String,
+    pub withdraw_time: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -125,11 +129,32 @@ impl Bond {
 }
 
 impl Unbond {
-    pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
+    pub fn from(
+        db_unbond: UnbondDb,
+        db_validator: ValidatorDb,
+        current_block: i32,
+        current_epoch: i32,
+        min_num_of_blocks: i32,
+        min_duration: i32,
+    ) -> Self {
+        let epoch_progress = epoch_progress(current_block, min_num_of_blocks);
+        let to_withdraw = time_between_epochs(
+            epoch_progress,
+            current_epoch,
+            db_unbond.withdraw_epoch,
+            min_duration,
+        );
+
+        // This should be read from the DB to avoid time jumps equal to the
+        // commit time
+        let time_now = DateTimeUtc::now().0.timestamp();
+        let withdraw_time = time_now + i64::from(to_withdraw);
+
         Self {
             amount: db_unbond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
+            withdraw_time: withdraw_time.to_string(),
         }
     }
 }

@@ -5,7 +5,8 @@ use axum_extra::extract::Query;
 use axum_macros::debug_handler;
 
 use crate::dto::pos::{
-    MyValidatorQueryParams, PoSQueryParams, ValidatorStateDto,
+    BondsDto, MyValidatorQueryParams, PoSQueryParams, UnbondsDto,
+    ValidatorStateDto, WithdrawsDto,
 };
 use crate::error::api::ApiError;
 use crate::response::pos::{
@@ -49,34 +50,58 @@ pub async fn get_my_validators(
 #[debug_handler]
 pub async fn get_bonds(
     _headers: HeaderMap,
+    query: Query<BondsDto>,
     Path(address): Path<String>,
     State(state): State<CommonState>,
-) -> Result<Json<Vec<Bond>>, ApiError> {
-    let bonds = state.pos_service.get_bonds_by_address(address).await?;
-    Ok(Json(bonds))
+) -> Result<Json<PaginatedResponse<Vec<Bond>>>, ApiError> {
+    let page = query.page.unwrap_or(1);
+
+    let (bonds, total_bonds) = state
+        .pos_service
+        .get_bonds_by_address(address, page)
+        .await?;
+
+    let response = PaginatedResponse::new(bonds, page, total_bonds);
+
+    Ok(Json(response))
 }
 
 #[debug_handler]
 pub async fn get_unbonds(
     _headers: HeaderMap,
+    query: Query<UnbondsDto>,
     Path(address): Path<String>,
     State(state): State<CommonState>,
-) -> Result<Json<Vec<Unbond>>, ApiError> {
-    let bonds = state.pos_service.get_unbonds_by_address(address).await?;
-    Ok(Json(bonds))
+) -> Result<Json<PaginatedResponse<Vec<Unbond>>>, ApiError> {
+    let page = query.page.unwrap_or(1);
+
+    let (unbonds, total_unbonds) = state
+        .pos_service
+        .get_unbonds_by_address(address, page)
+        .await?;
+
+    let response = PaginatedResponse::new(unbonds, page, total_unbonds);
+
+    Ok(Json(response))
 }
 
 #[debug_handler]
 pub async fn get_withdraws(
     _headers: HeaderMap,
+    query: Query<WithdrawsDto>,
     Path((address, epoch)): Path<(String, u64)>,
     State(state): State<CommonState>,
-) -> Result<Json<Vec<Withdraw>>, ApiError> {
-    let withdraws = state
+) -> Result<Json<PaginatedResponse<Vec<Withdraw>>>, ApiError> {
+    let page = query.page.unwrap_or(1);
+
+    let (withdraws, total_withdraws) = state
         .pos_service
-        .get_withdraws_by_address(address, epoch)
+        .get_withdraws_by_address(address, epoch, page)
         .await?;
-    Ok(Json(withdraws))
+
+    let response = PaginatedResponse::new(withdraws, page, total_withdraws);
+
+    Ok(Json(response))
 }
 
 #[debug_handler]

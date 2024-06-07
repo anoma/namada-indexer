@@ -69,19 +69,14 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
-        let latest_epoch = self
+        let (latest_epoch, latest_block) = self
             .chain_repo
-            .find_latest_epoch()
+            .get_chain_state()
             .await
-            .map_err(GovernanceError::Database)?
-            .expect("latest epoch not found");
+            .map_err(GovernanceError::Database)?;
 
-        let latest_block = self
-            .chain_repo
-            .find_latest_height()
-            .await
-            .map_err(GovernanceError::Database)?
-            .expect("latest block not found");
+        let latest_epoch = latest_epoch.expect("latest epoch not found");
+        let latest_block = latest_block.expect("latest block not found");
 
         let parameters = self
             .chain_repo
@@ -116,19 +111,14 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
-        let latest_epoch = self
+        let (latest_epoch, latest_block) = self
             .chain_repo
-            .find_latest_epoch()
+            .get_chain_state()
             .await
-            .map_err(GovernanceError::Database)?
-            .expect("latest epoch not found");
+            .map_err(GovernanceError::Database)?;
 
-        let latest_block = self
-            .chain_repo
-            .find_latest_height()
-            .await
-            .map_err(GovernanceError::Database)?
-            .expect("latest block not found");
+        let latest_epoch = latest_epoch.expect("latest epoch not found");
+        let latest_block = latest_block.expect("latest block not found");
 
         let parameters = self
             .chain_repo
