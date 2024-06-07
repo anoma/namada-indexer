@@ -8,6 +8,8 @@ use orm::governance_proposal::{
 use orm::governance_votes::{GovernanceProposalVoteDb, GovernanceVoteKindDb};
 use serde::{Deserialize, Serialize};
 
+use super::utils::{epoch_progress, time_between_epochs};
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ProposalType {
@@ -109,19 +111,6 @@ pub struct ProposalVote {
     pub voter_address: String,
 }
 
-// Calculate the time between current epoch and arbitrary epoch
-fn time_between(
-    current_epoch_progress: f64,
-    current_epoch: i32,
-    to_epoch: i32,
-    epoch_duration: i32,
-) -> i32 {
-    let epoch_time = (to_epoch - current_epoch) * epoch_duration;
-    let extra_time = current_epoch_progress * epoch_duration as f64;
-
-    epoch_time - extra_time as i32
-}
-
 impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
@@ -130,21 +119,16 @@ impl Proposal {
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
-        // Calculate the block in the current epoch
-        let block_in_current_epoch = current_block % min_num_of_blocks;
+        let epoch_progress = epoch_progress(current_block, min_num_of_blocks);
 
-        // Calculate how much into the epoch we are
-        let epoch_progress =
-            block_in_current_epoch as f64 / min_num_of_blocks as f64;
-
-        let to_start = time_between(
+        let to_start = time_between_epochs(
             epoch_progress,
             current_epoch,
             value.start_epoch,
             min_duration,
         );
 
-        let to_end = time_between(
+        let to_end = time_between_epochs(
             epoch_progress,
             current_epoch,
             value.end_epoch,

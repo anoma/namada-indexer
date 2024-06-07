@@ -4,18 +4,21 @@ use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
 use crate::dto::pos::{MyValidatorKindDto, ValidatorStateDto};
 use crate::error::pos::PoSError;
+use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
 
 #[derive(Clone)]
 pub struct PosService {
     pos_repo: PosRepository,
+    chain_repo: ChainRepository,
 }
 
 impl PosService {
     pub fn new(app_state: AppState) -> Self {
         Self {
-            pos_repo: PosRepository::new(app_state),
+            pos_repo: PosRepository::new(app_state.clone()),
+            chain_repo: ChainRepository::new(app_state),
         }
     }
 
@@ -78,114 +81,106 @@ impl PosService {
     pub async fn get_bonds_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<Bond>, PoSError> {
-        // TODO: could optimize and make a single query
+        page: u64,
+    ) -> Result<(Vec<Bond>, u64), PoSError> {
         let db_bonds = self
             .pos_repo
-            .find_bonds_by_address(address)
+            .find_bonds_by_address(address, page as i64)
             .await
             .map_err(PoSError::Database)?;
 
-        let mut bonds = vec![];
-        for db_bond in db_bonds {
-            let db_validator = self
-                .pos_repo
-                .find_validator_by_id(db_bond.validator_id)
-                .await;
-            if let Ok(Some(db_validator)) = db_validator {
-                bonds.push(Bond::from(db_bond.clone(), db_validator));
-            } else {
-                tracing::error!(
-                    "Couldn't find validator with id {} in bond query",
-                    db_bond.validator_id
-                );
-            }
-        }
-
-        let denominated_bonds: Vec<Bond> = bonds
-            .iter()
-            .cloned()
-            .map(|bond| Bond {
-                amount: raw_amount_to_nam(bond.amount),
-                ..bond
+        let bonds: Vec<Bond> = db_bonds
+            .0
+            .into_iter()
+            .map(|(validator, bond)| {
+                let bond = Bond::from(bond, validator);
+                Bond {
+                    amount: raw_amount_to_nam(bond.amount),
+                    ..bond
+                }
             })
             .collect();
-        Ok(denominated_bonds)
+
+        Ok((bonds, db_bonds.1 as u64))
     }
 
     pub async fn get_unbonds_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<Unbond>, PoSError> {
-        // TODO: could optimize and make a single query
+        page: u64,
+    ) -> Result<(Vec<Unbond>, u64), PoSError> {
         let db_unbonds = self
             .pos_repo
-            .find_unbonds_by_address(address)
+            .find_unbonds_by_address(address, page as i64)
             .await
             .map_err(PoSError::Database)?;
 
-        let mut unbonds = vec![];
-        for db_unbond in db_unbonds {
-            let db_validator = self
-                .pos_repo
-                .find_validator_by_id(db_unbond.validator_id)
-                .await;
-            if let Ok(Some(db_validator)) = db_validator {
-                unbonds.push(Unbond::from(db_unbond.clone(), db_validator));
-            } else {
-                tracing::error!(
-                    "Couldn't find validator with id {} in bond query",
-                    db_unbond.validator_id
+        let (latest_epoch, latest_block) = self
+            .chain_repo
+            .get_chain_state()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let latest_epoch = latest_epoch.expect("latest epoch not found");
+        let latest_block = latest_block.expect("latest block not found");
+
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters(latest_epoch)
+            .await
+            .map_err(PoSError::Database)?;
+
+        let unbonds: Vec<Unbond> = db_unbonds
+            .0
+            .into_iter()
+            .map(|(validator, unbond)| {
+                let bond = Unbond::from(
+                    unbond,
+                    validator,
+                    latest_block,
+                    latest_epoch,
+                    parameters.min_duration,
+                    parameters.min_num_of_blocks,
                 );
-            }
-        }
-        let denominated_unbonds: Vec<Unbond> = unbonds
-            .iter()
-            .cloned()
-            .map(|unbond| Unbond {
-                amount: raw_amount_to_nam(unbond.amount),
-                ..unbond
+                Unbond {
+                    amount: raw_amount_to_nam(bond.amount),
+                    ..bond
+                }
             })
             .collect();
-        Ok(denominated_unbonds)
+
+        Ok((unbonds, db_unbonds.1 as u64))
     }
 
     pub async fn get_withdraws_by_address(
         &self,
         address: String,
         current_epoch: u64,
-    ) -> Result<Vec<Withdraw>, PoSError> {
-        // TODO: could optimize and make a single query
-        let db_unbonds = self
+        page: u64,
+    ) -> Result<(Vec<Withdraw>, u64), PoSError> {
+        let db_withdraws = self
             .pos_repo
-            .find_withdraws_by_address(address, current_epoch as i32)
+            .find_withdraws_by_address(
+                address,
+                current_epoch as i32,
+                page as i64,
+            )
             .await
             .map_err(PoSError::Database)?;
 
-        let mut withdraws = vec![];
-        for db_unbond in db_unbonds {
-            let db_validator = self
-                .pos_repo
-                .find_validator_by_id(db_unbond.validator_id)
-                .await;
-            if let Ok(Some(db_validator)) = db_validator {
-                withdraws.push(Withdraw::from(db_unbond.clone(), db_validator));
-            } else {
-                tracing::error!(
-                    "Couldn't find validator with id {} in bond query",
-                    db_unbond.validator_id
-                );
-            }
-        }
-        let denominated_withdraw: Vec<Withdraw> = withdraws
-            .iter()
-            .cloned()
-            .map(|withdraw| Withdraw {
-                amount: raw_amount_to_nam(withdraw.amount),
-                ..withdraw
+        let withdraws: Vec<Withdraw> = db_withdraws
+            .0
+            .into_iter()
+            .map(|(validator, withdraw)| {
+                let bond = Withdraw::from(withdraw, validator);
+                Withdraw {
+                    amount: raw_amount_to_nam(bond.amount),
+                    ..bond
+                }
             })
             .collect();
-        Ok(denominated_withdraw)
+
+        Ok((withdraws, db_withdraws.1 as u64))
     }
 
     pub async fn get_rewards_by_address(

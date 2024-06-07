@@ -53,3 +53,21 @@ pub struct MyValidatorQueryParams {
 
     pub kind: MyValidatorKindDto,
 }
+
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub struct BondsDto {
+    #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub struct UnbondsDto {
+    #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub struct WithdrawsDto {
+    #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
+}

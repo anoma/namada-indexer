@@ -108,15 +108,27 @@ paths:
             type: string
           required: true
           description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
           description: A list of bonds.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Bond'
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/unbond/{address}:
     get:
       summary: Get all the unbonds for an an address
@@ -127,15 +139,27 @@ paths:
             type: string
           required: true
           description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
-          description: A list of bonds.
+          description: A list of unbonds.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Unbond'
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Unbond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/withdraw/{address}/{epoch}:
     get:
       summary: Get all the withdraws for an address at a specific epoch
@@ -152,15 +176,27 @@ paths:
             type: integer
           required: true
           description: The epoch
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
       responses:
         '200':
           description: A list of withdraws.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Withdraw'  
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Withdraw'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/voting-power:
     get:
       summary: Get the total voting power
@@ -470,6 +506,8 @@ components:
         amount:
           type: string
         withdrawEpoch:
+          type: string
+        withdrawTime:
           type: string
     Withdraw:
       type: object
