@@ -41,6 +41,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    blocks (id) {
+        #[max_length = 32]
+        id -> Varchar,
+        block_height -> Int4,
+        epoch -> Int4,
+        #[max_length = 32]
+        app_hash -> Varchar,
+        validator_id -> Int4,
+    }
+}
+
+diesel::table! {
     bonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -59,6 +71,16 @@ diesel::table! {
         min_duration -> Int4,
         apr -> Varchar,
         native_token_address -> Varchar,
+    }
+}
+
+diesel::table! {
+    consensus_keys (id) {
+        #[max_length = 32]
+        id -> Varchar,
+        validator_id -> Int4,
+        consensus_key -> Int4,
+        epoch -> Int4,
     }
 }
 
@@ -101,6 +123,19 @@ diesel::table! {
         kind -> VoteKind,
         voter_address -> Varchar,
         proposal_id -> Int4,
+    }
+}
+
+diesel::table! {
+    inner_transactions (id) {
+        #[max_length = 32]
+        id -> Varchar,
+        #[max_length = 32]
+        wrapper_id -> Varchar,
+        kind -> Varchar,
+        data -> Varchar,
+        memo -> Nullable<Varchar>,
+        exit_code -> Int4,
     }
 }
 
@@ -151,21 +186,42 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    wrapper_transactions (id) {
+        #[max_length = 32]
+        id -> Varchar,
+        fee_amount_per_gas_unit_amount -> Varchar,
+        fee_amount_per_gas_unit_denomination -> Varchar,
+        #[max_length = 32]
+        fee_token -> Varchar,
+        gas_limit -> Varchar,
+        block_height -> Int4,
+        atomic -> Bool,
+    }
+}
+
+diesel::joinable!(blocks -> validators (validator_id));
 diesel::joinable!(bonds -> validators (validator_id));
+diesel::joinable!(consensus_keys -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balances,
     block_crawler_state,
+    blocks,
     bonds,
     chain_parameters,
+    consensus_keys,
     epoch_crawler_state,
     governance_proposals,
     governance_votes,
+    inner_transactions,
     pos_rewards,
     revealed_pk,
     unbonds,
     validators,
+    wrapper_transactions,
 );

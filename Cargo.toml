@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver", "seeder", "parameters"]
+members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver", "seeder", "parameters", "blocks"]
 
 [workspace.package]
 authors = ["Heliax <hello@heliax.dev>"]

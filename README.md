@@ -12,6 +12,7 @@ The indexer is composed of a set microservices and a webserver, each one of thes
 - `pos`: fetches the validator set each new epoch
 - `rewards`: fetches PoS rewards each new epoch
 - `governance`: fetches new proposal and the corresponding votes
+- `parameterd`: fetches the chain parameters 
 
 The `webserver` is responsible to serve the data via a REST API, which are described in the `swagger.yml` file in the project root.
 
@@ -19,12 +20,21 @@ The `webserver` is responsible to serve the data via a REST API, which are descr
 
 ## How to run
 
+### With docker
 - Get a Namada RPC url
   - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
   - Or use a Public RPC
-- Change `CHAIN_ID` and `CHECKSUMS_FILE` env variable and file
+- Change `CHAIN_ID`
 - Install [just](https://github.com/casey/just)
 - Run `just docker-run`
+
+### Without docker
+- Install rust/cargo
+- Get a Namada RPC url
+  - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
+  - Or use a Public RPC
+- Get a network `CHAIN_ID`
+- Use the `run.sh` script inside each package. Keep in mind that PoS package have to be run always while other service might not 
 
 ## Testing via seeder
 
