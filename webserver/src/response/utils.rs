@@ -42,10 +42,12 @@ where
 }
 
 pub fn epoch_progress(current_block: i32, min_num_of_blocks: i32) -> f64 {
-    // Not sure why but real min number of blocks is usually 2 more what is in store
+    // Not sure why but real min number of blocks is usually 2 more what is in
+    // store
     let min_num_of_blocks = min_num_of_blocks + 2;
 
-    // We remove 1 to the current_block so progress resets to 0 when new epoch starts
+    // We remove 1 to the current_block so progress resets to 0 when new epoch
+    // starts
     let current_block = current_block - 1;
 
     // Calculate the block in the current epoch

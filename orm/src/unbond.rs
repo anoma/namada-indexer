@@ -1,9 +1,9 @@
-use diesel::{
-    associations::Associations, Identifiable, Insertable, Queryable, Selectable,
-};
+use diesel::associations::Associations;
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use shared::unbond::Unbond;
 
-use crate::{schema::unbonds, validators::ValidatorDb};
+use crate::schema::unbonds;
+use crate::validators::ValidatorDb;
 
 #[derive(Insertable, Clone, Queryable, Selectable)]
 #[diesel(table_name = unbonds)]

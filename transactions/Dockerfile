@@ -13,12 +13,12 @@ RUN apt-get update && apt-get install -y protobuf-compiler build-essential clang
 RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
-RUN cargo build --release --package blocks
+RUN cargo build --release --package transactions
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
-COPY --from=builder /app/target/release/blocks /app/blocks
+COPY --from=builder /app/target/release/transactions /app/transactions
 
 WORKDIR /app
 
-CMD ["./blocks"]
+CMD ["./transactions"]
