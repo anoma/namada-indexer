@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use namada_tx::data::TxResult;
-use serde::Deserialize;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
 use crate::id::Id;
@@ -153,7 +152,6 @@ impl TxAttributes {
                     .unwrap(),
                 info: attributes.get("info").unwrap().to_owned(),
             }),
-            _ => None,
         }
     }
 }

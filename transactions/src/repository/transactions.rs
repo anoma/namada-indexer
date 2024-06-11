@@ -1,10 +1,7 @@
 use anyhow::Context;
-use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::balances::BalancesInsertDb;
-use orm::schema::{balances, inner_transactions, wrapper_transactions};
+use diesel::{PgConnection, RunQueryDsl};
+use orm::schema::{inner_transactions, wrapper_transactions};
 use orm::transactions::{InnerTransactionInsertDb, WrapperTransactionInsertDb};
-use shared::balance::Balances;
 use shared::transaction::{InnerTransaction, WrapperTransaction};
 
 pub fn insert_inner_transactions(
@@ -13,8 +10,7 @@ pub fn insert_inner_transactions(
 ) -> anyhow::Result<()> {
     diesel::insert_into(inner_transactions::table)
         .values::<&Vec<InnerTransactionInsertDb>>(
-            &txs
-                .into_iter()
+            &txs.into_iter()
                 .map(InnerTransactionInsertDb::from)
                 .collect::<Vec<_>>(),
         )
@@ -30,8 +26,7 @@ pub fn insert_wrapper_transactions(
 ) -> anyhow::Result<()> {
     diesel::insert_into(wrapper_transactions::table)
         .values::<&Vec<WrapperTransactionInsertDb>>(
-            &txs
-                .into_iter()
+            &txs.into_iter()
                 .map(WrapperTransactionInsertDb::from)
                 .collect::<Vec<_>>(),
         )

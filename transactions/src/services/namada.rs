@@ -1,7 +1,5 @@
 use anyhow::Context;
-use namada_core::storage::{
-    BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
-};
+use namada_core::storage::BlockHeight as NamadaSdkBlockHeight;
 use namada_sdk::hash::Hash;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;

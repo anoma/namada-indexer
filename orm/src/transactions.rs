@@ -1,11 +1,11 @@
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use shared::transaction::{InnerTransaction, TransactionKind, WrapperTransaction};
-use shared::{id::Id, transaction::TransactionExitStatus};
-use shared::public_key::PublicKey;
+use shared::transaction::{
+    InnerTransaction, TransactionExitStatus, TransactionKind,
+    WrapperTransaction,
+};
 
-use crate::schema::{inner_transactions, revealed_pk, wrapper_transactions};
-
+use crate::schema::{inner_transactions, wrapper_transactions};
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::TransactionKind"]
@@ -30,8 +30,12 @@ pub enum TransactionKindDb {
 impl From<TransactionKind> for TransactionKindDb {
     fn from(value: TransactionKind) -> Self {
         match value {
-            TransactionKind::TransparentTransfer(_) => TransactionKindDb::TransparentTransfer,
-            TransactionKind::ShieldedTransfer(_) => TransactionKindDb::ShieldedTransfer,
+            TransactionKind::TransparentTransfer(_) => {
+                TransactionKindDb::TransparentTransfer
+            }
+            TransactionKind::ShieldedTransfer(_) => {
+                TransactionKindDb::ShieldedTransfer
+            }
             TransactionKind::Bond(_) => TransactionKindDb::Bond,
             TransactionKind::Redelegation(_) => TransactionKindDb::Redelegation,
             TransactionKind::Unbond(_) => TransactionKindDb::Unbond,
@@ -39,14 +43,17 @@ impl From<TransactionKind> for TransactionKindDb {
             TransactionKind::ClaimRewards(_) => TransactionKindDb::ClaimRewards,
             TransactionKind::ProposalVote(_) => TransactionKindDb::VoteProposal,
             TransactionKind::InitProposal(_) => TransactionKindDb::InitProposal,
-            TransactionKind::MetadataChange(_) => TransactionKindDb::ChangeMetadata,
-            TransactionKind::CommissionChange(_) => TransactionKindDb::ChangeCommission,
+            TransactionKind::MetadataChange(_) => {
+                TransactionKindDb::ChangeMetadata
+            }
+            TransactionKind::CommissionChange(_) => {
+                TransactionKindDb::ChangeCommission
+            }
             TransactionKind::RevealPk(_) => TransactionKindDb::RevealPk,
             TransactionKind::Unknown => TransactionKindDb::Unknown,
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::TransactionResult"]
@@ -73,7 +80,7 @@ pub struct InnerTransactionInsertDb {
     pub kind: TransactionKindDb,
     pub data: Option<String>,
     pub memo: Option<String>,
-    pub exit_code: TransactionResultDb
+    pub exit_code: TransactionResultDb,
 }
 
 pub type InnerTransactionDb = InnerTransactionInsertDb;
@@ -86,7 +93,7 @@ impl InnerTransactionInsertDb {
             kind: TransactionKindDb::from(tx.kind),
             data: tx.data,
             memo: tx.memo,
-            exit_code: TransactionResultDb::from(tx.exit_code)
+            exit_code: TransactionResultDb::from(tx.exit_code),
         }
     }
 }
@@ -101,7 +108,7 @@ pub struct WrapperTransactionInsertDb {
     pub gas_limit: String,
     pub block_height: i32,
     pub exit_code: TransactionResultDb,
-    pub atomic: bool
+    pub atomic: bool,
 }
 
 impl WrapperTransactionInsertDb {

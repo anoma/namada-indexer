@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
-use futures::SinkExt;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey as NamadaPublicKey;
 use namada_sdk::token;
