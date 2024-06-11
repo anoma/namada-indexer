@@ -63,6 +63,18 @@ services:
       DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
       TENDERMINT_URL: http://localhost:27657
 
+  transactions:
+    image: namada/transactions-indexer
+    restart: on-failure
+    depends_on: 
+      - postgres
+    build:
+      context: .
+      dockerfile: transactions/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
+      TENDERMINT_URL: http://localhost:27657
+
   webserver:
     image: namada/webserver-indexer
     restart: on-failure
