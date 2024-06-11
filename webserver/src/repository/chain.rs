@@ -61,7 +61,7 @@ impl ChainRepositoryTrait for ChainRepository {
         .map_err(|e| e.to_string())
     }
 
-    //TODO: just return whole state
+    // TODO: just return whole state
     async fn get_chain_state(
         &self,
     ) -> Result<(Option<i32>, Option<i32>), String> {

@@ -11,3 +11,4 @@ pub mod revealed_pk;
 pub mod schema;
 pub mod unbond;
 pub mod validators;
+pub mod transactions;

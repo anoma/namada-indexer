@@ -14,6 +14,14 @@ pub mod sql_types {
     pub struct GovernanceTallyType;
 
     #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "transaction_kind"))]
+    pub struct TransactionKind;
+
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "transaction_result"))]
+    pub struct TransactionResult;
+
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "validator_state"))]
     pub struct ValidatorState;
 
@@ -40,18 +48,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    blocks (id) {
-        #[max_length = 32]
-        id -> Varchar,
-        block_height -> Int4,
-        epoch -> Int4,
-        #[max_length = 32]
-        app_hash -> Varchar,
-        validator_id -> Int4,
-    }
-}
-
-diesel::table! {
     bonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -68,16 +64,6 @@ diesel::table! {
         epochs_per_year -> Int4,
         min_num_of_blocks -> Int4,
         min_duration -> Int4,
-    }
-}
-
-diesel::table! {
-    consensus_keys (id) {
-        #[max_length = 32]
-        id -> Varchar,
-        validator_id -> Int4,
-        consensus_key -> Int4,
-        epoch -> Int4,
     }
 }
 
@@ -124,15 +110,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::TransactionKind;
+    use super::sql_types::TransactionResult;
+
     inner_transactions (id) {
         #[max_length = 32]
         id -> Varchar,
         #[max_length = 32]
         wrapper_id -> Varchar,
-        kind -> Varchar,
-        data -> Varchar,
+        kind -> TransactionKind,
+        data -> Nullable<Varchar>,
         memo -> Nullable<Varchar>,
-        exit_code -> Int4,
+        exit_code -> TransactionResult,
     }
 }
 
@@ -184,22 +174,23 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::TransactionResult;
+
     wrapper_transactions (id) {
         #[max_length = 32]
         id -> Varchar,
         fee_amount_per_gas_unit_amount -> Varchar,
-        fee_amount_per_gas_unit_denomination -> Varchar,
-        #[max_length = 32]
+        fee_payer -> Varchar,
         fee_token -> Varchar,
         gas_limit -> Varchar,
         block_height -> Int4,
+        exit_code -> TransactionResult,
         atomic -> Bool,
     }
 }
 
-diesel::joinable!(blocks -> validators (validator_id));
 diesel::joinable!(bonds -> validators (validator_id));
-diesel::joinable!(consensus_keys -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
@@ -208,10 +199,8 @@ diesel::joinable!(unbonds -> validators (validator_id));
 diesel::allow_tables_to_appear_in_same_query!(
     balances,
     block_crawler_state,
-    blocks,
     bonds,
     chain_parameters,
-    consensus_keys,
     epoch_crawler_state,
     governance_proposals,
     governance_votes,
