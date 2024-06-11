@@ -102,6 +102,7 @@ jobs:
             { image: seeder, context: seeder },
             { image: webserver, context: webserver },
             { image: parameters, context: parameters },
+            { image: transactions, context: transactions },
           ]
 
     steps:
