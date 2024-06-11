@@ -28,6 +28,7 @@ diesel.workspace = true
 orm.workspace = true
 clap-verbosity-flag.workspace = true
 tokio-retry.workspace = true
+pq = "1.4.3"
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

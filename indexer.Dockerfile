@@ -1,26 +1,23 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.78-bookworm AS chef
-WORKDIR /app
+RUN apt-get update && apt-get install -y protobuf-compiler build-essential clang-tools-14 
 
 FROM chef AS planner
+WORKDIR /app
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM chef AS builder 
+FROM chef AS builder
+WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
-
-RUN apt-get update && apt-get install -y protobuf-compiler build-essential clang-tools-14
-
 RUN cargo chef cook --release --recipe-path recipe.json
-
 COPY . .
-RUN cargo build --release --package pos
+ARG PACKAGE
+RUN cargo build --release --bin ${PACKAGE}
 
 FROM debian:bookworm-slim AS runtime
-WORKDIR /app
-COPY --from=builder /app/target/release/pos /app/pos
-
 RUN apt-get update && apt-get install -y libpq5
-
 WORKDIR /app
+ARG PACKAGE
+COPY --from=builder /app/target/release/${PACKAGE} ./
+RUN mv ./${PACKAGE} ./service
 
-CMD ["./pos"]
