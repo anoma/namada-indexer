@@ -21,6 +21,9 @@ pub struct AppConfig {
     pub tendermint_url: String,
 
     #[clap(long, env)]
+    pub from_block_height: u32,
+
+    #[clap(long, env)]
     pub database_url: String,
 
     #[command(flatten)]
