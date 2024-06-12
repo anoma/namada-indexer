@@ -37,8 +37,19 @@ pub struct WrapperTransaction {
     pub fee_token: String,
     pub gas_limit: String,
     pub block_height: u64,
+    pub inner_transactions: Vec<ShortInnerTransaction>,
     pub exit_code: TransactionResult,
     pub atomic: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortInnerTransaction {
+    pub id: String,
+    pub kind: TransactionKind,
+    pub data: Option<String>,
+    pub memo: Option<String>,
+    pub exit_code: TransactionResult,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -50,6 +61,18 @@ pub struct InnerTransaction {
     pub data: Option<String>,
     pub memo: Option<String>,
     pub exit_code: TransactionResult,
+}
+
+impl InnerTransaction {
+    pub fn to_short(&self) -> ShortInnerTransaction {
+        ShortInnerTransaction {
+            id: self.id.clone(),
+            kind: self.kind.clone(),
+            data: self.data.clone(),
+            memo: self.memo.clone(),
+            exit_code: self.exit_code.clone(),
+        }
+    }
 }
 
 impl From<TransactionResultDb> for TransactionResult {
@@ -103,6 +126,7 @@ impl From<WrapperTransactionDb> for WrapperTransaction {
             fee_token: value.fee_token,
             gas_limit: value.gas_limit,
             block_height: value.block_height as u64,
+            inner_transactions: vec![],
             exit_code: TransactionResult::from(value.exit_code),
             atomic: value.atomic,
         }
