@@ -88,9 +88,7 @@ impl ApplicationServer {
                     "/revealed_public_key/:address",
                     get(pk_handlers::get_revealed_pk),
                 )
-                // TODO: this is a temporary endpoint, we should get gas cost
-                // per tx type
-                .route("/gas-table", get(gas_handlers::get_gas_table))
+                .route("/gas/{token}", get(gas_handlers::get_gas_by_token))
                 .route(
                     "/chain/wrapper/:id",
                     get(transaction_handlers::get_wrapper_tx),
