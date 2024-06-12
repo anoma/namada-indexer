@@ -24,6 +24,13 @@ paths:
             type: integer
             minimum: 1
           description: Pagination parameter
+        - in: query
+          name: state
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ValidatorStatus'
+          description: Pagination parameter
       responses:
         '200':
           description: A list of validator.
@@ -438,8 +445,10 @@ components:
         avatar:
           type: string
         state:
-          type: string
-          enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
+          $ref: '#/components/schemas/ValidatorStatus'
+    ValidatorStatus:
+      type: string
+      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
     Proposal:
       type: object
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
