@@ -67,7 +67,7 @@ async fn main() -> Result<(), MainError> {
 
     let next_block = std::cmp::max(
         last_block_height.expect("Last block height has to be set!"),
-        config.from_block_height
+        config.from_block_height,
     );
 
     crawl(
