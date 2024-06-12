@@ -17,6 +17,9 @@ RUN cargo build --release --package chain
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y libpq5
+
 COPY --from=builder /app/target/release/chain /app/chain
 
 WORKDIR /app
