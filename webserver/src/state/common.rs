@@ -8,6 +8,7 @@ use crate::service::gas::GasService;
 use crate::service::governance::GovernanceService;
 use crate::service::pos::PosService;
 use crate::service::revealed_pk::RevealedPkService;
+use crate::service::transaction::TransactionService;
 
 #[derive(Clone)]
 pub struct CommonState {
@@ -17,6 +18,7 @@ pub struct CommonState {
     pub chain_service: ChainService,
     pub revealed_pk_service: RevealedPkService,
     pub gas_service: GasService,
+    pub transaction_service: TransactionService,
     pub client: HttpClient,
     pub config: AppConfig,
 }
@@ -30,6 +32,7 @@ impl CommonState {
             chain_service: ChainService::new(data.clone()),
             revealed_pk_service: RevealedPkService::new(data.clone()),
             gas_service: GasService::new(data.clone()),
+            transaction_service: TransactionService::new(data.clone()),
             client,
             config,
         }
