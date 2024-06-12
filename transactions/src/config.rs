@@ -20,7 +20,7 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub tendermint_url: String,
 
-    #[clap(long, env)]
+    #[clap(long, env, default_value_t = 0)]
     pub from_block_height: u32,
 
     #[clap(long, env)]
