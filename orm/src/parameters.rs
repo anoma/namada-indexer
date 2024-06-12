@@ -15,6 +15,8 @@ pub struct ParametersInsertDb {
     pub epochs_per_year: i32,
     pub min_num_of_blocks: i32,
     pub min_duration: i32,
+    pub apr: String,
+    pub native_token_address: String,
 }
 
 pub type ParametersDb = ParametersInsertDb;
@@ -28,6 +30,8 @@ impl From<Parameters> for ParametersInsertDb {
             epochs_per_year: value.epochs_per_year as i32,
             min_num_of_blocks: value.min_num_of_blocks as i32,
             min_duration: value.min_duration as i32,
+            apr: value.apr,
+            native_token_address: value.native_token_address,
         }
     }
 }

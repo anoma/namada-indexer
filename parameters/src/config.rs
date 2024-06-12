@@ -25,4 +25,7 @@ pub struct AppConfig {
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
+
+    #[clap(long, env, default_value_t = 900)]
+    pub sleep_for: u64,
 }

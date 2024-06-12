@@ -175,7 +175,6 @@ pub async fn query_all_bonds_and_unbonds(
     let bonds_and_unbonds = bonds_and_unbonds(client, &None, &None)
         .await
         .context("Failed to query all bonds and unbonds")?;
-    tracing::info!("bonds_and_unbonds {:?}", bonds_and_unbonds);
 
     let mut bonds: BondsMap = HashMap::new();
     let mut unbonds: UnbondsMap = HashMap::new();
@@ -319,32 +318,38 @@ pub async fn query_bonds(
     addresses: Vec<BondAddresses>,
     epoch: Epoch,
 ) -> anyhow::Result<Bonds> {
+    let pos_parameters = rpc::get_pos_params(client)
+        .await
+        .with_context(|| "Failed to query pos parameters".to_string())?;
+    let pipeline_length = pos_parameters.pipeline_len as u32;
+
     let bonds = futures::stream::iter(addresses)
-        .filter_map(|BondAddresses { source, target }| async move {
+        .filter_map(|BondAddresses { source, target }| {
             let source = NamadaSdkAddress::from_str(&source.to_string())
                 .expect("Failed to parse source address");
             let target = NamadaSdkAddress::from_str(&target.to_string())
                 .expect("Failed to parse target address");
 
-            let amount = RPC
-                .vp()
-                .pos()
-                .bond_with_slashing(
-                    client,
-                    &source,
-                    &target,
-                    // TODO: + 2 is hardcoded pipeline len
-                    &Some(to_epoch(epoch + 2)),
-                )
-                .await
-                .context("Failed to query bond amount")
-                .ok()?;
+            async {
+                let amount = RPC
+                    .vp()
+                    .pos()
+                    .bond_with_slashing(
+                        client,
+                        &source,
+                        &target,
+                        &Some(to_epoch(epoch + pipeline_length)),
+                    )
+                    .await
+                    .context("Failed to query bond amount")
+                    .ok()?;
 
-            Some(Bond {
-                source: Id::from(source),
-                target: Id::from(target),
-                amount: Amount::from(amount),
-            })
+                Some(Bond {
+                    source: Id::from(source),
+                    target: Id::from(target),
+                    amount: Amount::from(amount),
+                })
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)

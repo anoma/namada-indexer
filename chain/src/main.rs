@@ -294,7 +294,7 @@ async fn initial_query(
 
     let crawler_state = CrawlerState::new(block_height, epoch);
 
-    tracing::info!("Inserting initial data... {:?}", balances);
+    tracing::info!("Inserting initial data... ");
 
     conn.interact(move |conn| {
         conn.build_transaction()

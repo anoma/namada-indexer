@@ -1,7 +1,7 @@
 use crate::appstate::AppState;
 use crate::error::chain::ChainError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::response::parameters::Parameters;
+use crate::response::chain::Parameters;
 
 #[derive(Clone)]
 pub struct ChainService {

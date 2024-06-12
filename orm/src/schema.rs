@@ -56,6 +56,8 @@ diesel::table! {
         epochs_per_year -> Int4,
         min_num_of_blocks -> Int4,
         min_duration -> Int4,
+        apr -> Varchar,
+        native_token_address -> Varchar,
     }
 }
 

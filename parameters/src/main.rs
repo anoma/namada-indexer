@@ -1,5 +1,6 @@
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 use clap::Parser;
@@ -14,6 +15,7 @@ use parameters::services::namada as namada_service;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
+use tokio::time::sleep;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::RetryIf;
 use tracing::Level;
@@ -97,7 +99,13 @@ async fn main() -> anyhow::Result<()> {
                 .context_db_interact_error()
                 .into_db_error()?
                 .context("Commit block db transaction error")
-                .into_db_error()
+                .into_db_error()?;
+
+                tracing::info!("Done!");
+
+                sleep(Duration::from_secs(config.sleep_for)).await;
+
+                Ok(())
             },
             |_: &MainError| !must_exit(&exit_handle),
         )
