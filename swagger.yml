@@ -398,6 +398,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Parameters'
+  /api/v1/chain/wrapper/{tx_id}:
+    get:
+      summary: Get the wrapper transaction by hash
+      responses:
+        '200':
+          description: Wrapper transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperTransaction'
+  /api/v1/chain/inner/{tx_id}:
+    get:
+      summary: Get the inner transaction by hash
+      responses:
+        '200':
+          description: Inner transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InnerTransaction'
 
 components:
   schemas:
@@ -573,4 +593,58 @@ components:
           type: string
         epochsPerYear:
           type: string
-
+    WrapperTransaction:
+      type: object
+      required: [txId, feePayer, feeToken, gasLimit, blockHeight, innerTransactions, exitCode, atomic]
+      properties:
+        txId:
+          type: string
+        feePayer:
+          type: string
+        feeToken:
+          type: string
+        gasLimit:
+          type: string
+        blockHeight:
+          type: string
+        innerTransactions:
+          type: array
+          items:
+            type: object
+            required: [txId, kind, exitCode]
+            properties:
+              txId:
+                type: string
+              kind:
+                type: string
+                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+              exitCode:
+                type: string
+                enum: [applied, rejected]
+              memo:
+                type: string
+              data:
+                type: string
+        exitCode:
+          type: string
+          enum: [applied, rejected]
+        atomic:
+          type: boolean
+    InnerTransaction:
+      type: object
+      required: [txId, kind, wrapperId, exitCode]
+      properties:
+        txId:
+          type: string
+        wrapperId:
+          type: string
+        kind:
+          type: string
+          enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+        exitCode:
+          type: string
+          enum: [applied, rejected]
+        memo:
+          type: string
+        data:
+          type: string

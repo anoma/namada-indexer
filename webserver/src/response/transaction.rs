@@ -45,7 +45,7 @@ pub struct WrapperTransaction {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShortInnerTransaction {
-    pub id: String,
+    pub tx_id: String,
     pub kind: TransactionKind,
     pub data: Option<String>,
     pub memo: Option<String>,
@@ -55,7 +55,7 @@ pub struct ShortInnerTransaction {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InnerTransaction {
-    pub id: String,
+    pub tx_id: String,
     pub wrapper_id: String,
     pub kind: TransactionKind,
     pub data: Option<String>,
@@ -66,7 +66,7 @@ pub struct InnerTransaction {
 impl InnerTransaction {
     pub fn to_short(&self) -> ShortInnerTransaction {
         ShortInnerTransaction {
-            id: self.id.clone(),
+            tx_id: self.tx_id.clone(),
             kind: self.kind.clone(),
             data: self.data.clone(),
             memo: self.memo.clone(),
@@ -136,7 +136,7 @@ impl From<WrapperTransactionDb> for WrapperTransaction {
 impl From<InnerTransactionDb> for InnerTransaction {
     fn from(value: InnerTransactionDb) -> Self {
         Self {
-            id: value.id,
+            tx_id: value.id,
             wrapper_id: value.wrapper_id,
             kind: TransactionKind::from(value.kind),
             data: value.data,
