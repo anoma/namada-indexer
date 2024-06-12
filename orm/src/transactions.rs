@@ -111,6 +111,8 @@ pub struct WrapperTransactionInsertDb {
     pub atomic: bool,
 }
 
+pub type WrapperTransactionDb = WrapperTransactionInsertDb;
+
 impl WrapperTransactionInsertDb {
     pub fn from(tx: WrapperTransaction) -> Self {
         Self {

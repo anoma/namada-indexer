@@ -172,6 +172,8 @@ impl Transaction {
                 for (index, tx_commitment) in
                     transaction.header().batch.into_iter().enumerate()
                 {
+                    let inner_tx_id = Id::from(tx_commitment.get_hash());
+
                     let memo =
                         transaction.memo(&tx_commitment).map(|memo_bytes| {
                             String::from_utf8_lossy(
@@ -179,8 +181,6 @@ impl Transaction {
                             )
                             .to_string()
                         });
-
-                    let inner_tx_id = Id::from(tx_commitment.get_hash());
 
                     let tx_code_id = transaction
                         .get_section(tx_commitment.code_sechash())
