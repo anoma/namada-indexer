@@ -378,6 +378,13 @@ paths:
 
   /api/v1/gas/{token}:
     get:
+      parameters:
+        - in: path
+          name: token
+          schema:
+            type: string
+          required: true
+          description: The gas token. For native token use `native`.
       summary: Get the gas limit per tx kind per token. Native token gas can be queried by using `native` as {token} parameter
       responses:
         '200':
