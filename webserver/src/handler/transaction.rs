@@ -16,9 +16,25 @@ pub async fn get_wrapper_tx(
 ) -> Result<Json<Option<WrapperTransaction>>, ApiError> {
     is_valid_hash(&tx_id)?;
 
-    let wrapper_tx = state.transaction_service.get_wrapper_tx(tx_id).await?;
+    let wrapper_tx = state
+        .transaction_service
+        .get_wrapper_tx(tx_id.clone())
+        .await?;
 
-    Ok(Json(wrapper_tx))
+    if wrapper_tx.is_none() {
+        return Err(TransactionError::TxIdNotFound(tx_id).into());
+    }
+
+    let inner_txs = state
+        .transaction_service
+        .get_inner_tx_by_wrapper_id(tx_id)
+        .await?;
+
+    Ok(Json(wrapper_tx.map(|mut wrapper| {
+        wrapper.inner_transactions =
+            inner_txs.into_iter().map(|tx| tx.to_short()).collect();
+        wrapper
+    })))
 }
 
 #[debug_handler]
@@ -29,25 +45,16 @@ pub async fn get_inner_tx(
 ) -> Result<Json<Option<InnerTransaction>>, ApiError> {
     is_valid_hash(&tx_id)?;
 
-    let inner_tx = state.transaction_service.get_inner_tx(tx_id).await?;
-
-    Ok(Json(inner_tx))
-}
-
-#[debug_handler]
-pub async fn get_inner_txs_by_wrapper_id(
-    _headers: HeaderMap,
-    Path(tx_id): Path<String>,
-    State(state): State<CommonState>,
-) -> Result<Json<Vec<InnerTransaction>>, ApiError> {
-    is_valid_hash(&tx_id)?;
-
-    let inner_txs = state
+    let inner_tx = state
         .transaction_service
-        .get_inner_tx_by_wrapper_id(tx_id)
+        .get_inner_tx(tx_id.clone())
         .await?;
 
-    Ok(Json(inner_txs))
+    if inner_tx.is_none() {
+        return Err(TransactionError::TxIdNotFound(tx_id).into());
+    }
+
+    Ok(Json(inner_tx))
 }
 
 fn is_valid_hash(hash: &str) -> Result<(), TransactionError> {

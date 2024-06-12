@@ -8,6 +8,8 @@ use crate::response::api::ApiErrorResponse;
 pub enum TransactionError {
     #[error("The tx id must be 32bytes long")]
     InvalidTxId,
+    #[error("The tx id {0} does not exist")]
+    TxIdNotFound(String),
     #[error("Database error: {0}")]
     Database(String),
     #[error("Rpc error: {0}")]
@@ -20,6 +22,7 @@ impl IntoResponse for TransactionError {
     fn into_response(self) -> Response {
         let status_code = match self {
             TransactionError::InvalidTxId => StatusCode::BAD_REQUEST,
+            TransactionError::TxIdNotFound(_) => StatusCode::NOT_FOUND,
             TransactionError::Unknown(_)
             | TransactionError::Database(_)
             | TransactionError::Rpc(_) => StatusCode::INTERNAL_SERVER_ERROR,
