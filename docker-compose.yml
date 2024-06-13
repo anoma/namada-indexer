@@ -71,16 +71,13 @@ services:
         PACKAGE: parameters
 
   transactions:
-    image: namada/transactions-indexer
-    restart: on-failure
-    depends_on: 
-      - postgres
+    <<: *defaults
+    image: namada/transaction-indexer
     build:
-      context: .
-      dockerfile: transactions/Dockerfile
-    environment:
-      DATABASE_URL: postgres://postgres:password@postgres:5435/namada-indexer
-      TENDERMINT_URL: http://localhost:27657
+      <<: *build
+      args:
+        <<: *build-args
+        PACKAGE: transactions
 
   webserver:
     image: namada/webserver-indexer
