@@ -1,5 +1,5 @@
 [package]
-name = "blocks"
+name = "transactions"
 description = "Namada blocks crawler."
 resolver = "2"
 authors.workspace = true
@@ -9,7 +9,7 @@ readme.workspace = true
 version.workspace = true
 
 [[bin]]
-name = "blocks"
+name = "transactions"
 path = "src/main.rs"
 
 [dependencies]
