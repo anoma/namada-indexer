@@ -22,8 +22,7 @@ CREATE TYPE TRANSACTION_RESULT AS ENUM (
 );
 
 CREATE TABLE wrapper_transactions (
-    id VARCHAR(32) PRIMARY KEY,
-    fee_amount_per_gas_unit_amount VARCHAR NOT NULL,
+    id VARCHAR(64) PRIMARY KEY,
     fee_payer VARCHAR NOT NULL,
     fee_token VARCHAR NOT NULL,
     gas_limit VARCHAR NOT NULL,
@@ -33,8 +32,8 @@ CREATE TABLE wrapper_transactions (
 );
 
 CREATE TABLE inner_transactions (
-    id VARCHAR(32) PRIMARY KEY,
-    wrapper_id VARCHAR(32) NOT NULL,
+    id VARCHAR(64) PRIMARY KEY,
+    wrapper_id VARCHAR(64) NOT NULL,
     kind TRANSACTION_KIND NOT NULL,
     data VARCHAR,
     memo VARCHAR, -- hex serialized

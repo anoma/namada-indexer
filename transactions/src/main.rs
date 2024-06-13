@@ -65,10 +65,8 @@ async fn main() -> Result<(), MainError> {
         .await
         .into_db_error()?;
 
-    let next_block = std::cmp::max(
-        last_block_height.expect("Last block height has to be set!"),
-        config.from_block_height,
-    );
+    let next_block =
+        std::cmp::max(last_block_height.unwrap_or(1), config.from_block_height);
 
     crawl(
         move |block_height| {
