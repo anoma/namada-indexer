@@ -9,5 +9,6 @@ pub mod parameters;
 pub mod pos_rewards;
 pub mod revealed_pk;
 pub mod schema;
+pub mod transactions;
 pub mod unbond;
 pub mod validators;

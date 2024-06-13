@@ -5,13 +5,13 @@ use namada_sdk::uint::Uint;
 use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
 
-use crate::block_result::{BlockResult, TxAttributes, TxEventStatusCode};
+use crate::block::BlockHeight;
+use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
 
 #[derive(Debug, Clone)]
 pub enum TransactionKind {
-    Wrapper,
     TransparentTransfer(Vec<u8>),
     ShieldedTransfer(Vec<u8>),
     Bond(Vec<u8>),
@@ -38,7 +38,6 @@ impl TransactionKind {
             "tx_unbond" => TransactionKind::Unbond(data.to_vec()),
             "tx_withdraw" => TransactionKind::Withdraw(data.to_vec()),
             "tx_claim_rewards" => TransactionKind::ClaimRewards(data.to_vec()),
-            "wrapper" => TransactionKind::Wrapper,
             "tx_init_proposal" => TransactionKind::InitProposal(data.to_vec()),
             "tx_vote_proposal" => TransactionKind::ProposalVote(data.to_vec()),
             "tx_metadata_change" => {
@@ -55,7 +54,6 @@ impl TransactionKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransactionExitStatus {
-    Accepted,
     Applied,
     Rejected,
 }
@@ -63,24 +61,17 @@ pub enum TransactionExitStatus {
 impl Display for TransactionExitStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Accepted => write!(f, "Accepted"),
             Self::Applied => write!(f, "Applied"),
             Self::Rejected => write!(f, "Rejected"),
         }
     }
 }
 
-impl TransactionExitStatus {
-    pub fn from(
-        tx_attributes: &TxAttributes,
-        tx_kind: &TransactionKind,
-    ) -> Self {
-        match (tx_kind, tx_attributes.code) {
-            (TransactionKind::Wrapper, TxEventStatusCode::Ok) => {
-                TransactionExitStatus::Accepted
-            }
-            (_, TxEventStatusCode::Ok) => TransactionExitStatus::Applied,
-            (_, TxEventStatusCode::Fail) => TransactionExitStatus::Rejected,
+impl From<TxEventStatusCode> for TransactionExitStatus {
+    fn from(value: TxEventStatusCode) -> Self {
+        match value {
+            TxEventStatusCode::Ok => Self::Applied,
+            TxEventStatusCode::Fail => Self::Rejected,
         }
     }
 }
@@ -97,8 +88,43 @@ pub struct Transaction {
 }
 
 #[derive(Debug, Clone)]
+pub struct Transaction2 {
+    pub wrapper: WrapperTransaction,
+    pub inners: InnerTransaction,
+}
+
+#[derive(Debug, Clone)]
+pub struct WrapperTransaction {
+    pub tx_id: Id,
+    pub index: usize,
+    pub fee: Fee,
+    pub atomic: bool,
+    pub block_height: BlockHeight,
+    pub exit_code: TransactionExitStatus,
+}
+
+#[derive(Debug, Clone)]
+pub struct InnerTransaction {
+    pub tx_id: Id,
+    pub index: usize,
+    pub wrapper_id: Id,
+    pub kind: TransactionKind,
+    pub memo: Option<String>,
+    pub data: Option<String>,
+    pub extra_sections: HashMap<Id, Vec<u8>>,
+    pub exit_code: TransactionExitStatus,
+}
+
+impl InnerTransaction {
+    pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
+        self.extra_sections.get(&section_id).cloned()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Fee {
     pub gas: String,
+    pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
 }
@@ -107,100 +133,125 @@ impl Transaction {
     pub fn deserialize(
         raw_tx_bytes: &[u8],
         index: usize,
+        block_height: BlockHeight,
         checksums: Checksums,
         block_results: &BlockResult,
-    ) -> Result<(Self, String), String> {
+    ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
 
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
-                let tx_id = Id::from(transaction.header_hash());
-                let raw_hash = Id::from(transaction.raw_header_hash());
-                let raw_hash_str = raw_hash.to_string();
+                let wrapper_tx_id = Id::from(transaction.header_hash());
                 let wrapper_tx_status =
-                    block_results.find_tx_hash_result(&tx_id).unwrap();
+                    block_results.is_wrapper_tx_applied(&wrapper_tx_id);
 
-                let commitments =
-                    transaction.first_commitments().unwrap().to_owned();
-
-                let memo = transaction.memo(&commitments);
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
+                    amount_per_gas_unit: wrapper
+                        .fee
+                        .amount_per_gas_unit
+                        .to_string_precise(),
                     gas_payer: Id::from(wrapper.pk),
                     gas_token: Id::from(wrapper.fee.token),
                 };
 
-                let wrapper_tx_exit = TransactionExitStatus::from(
-                    &wrapper_tx_status,
-                    &TransactionKind::Wrapper,
-                );
-                if wrapper_tx_exit == TransactionExitStatus::Rejected {
-                    return Err(format!("Wrapper {} was rejected", tx_id));
+                let atomic = transaction.header().atomic;
+
+                let wrapper_tx = WrapperTransaction {
+                    tx_id: wrapper_tx_id.clone(),
+                    index,
+                    fee,
+                    atomic,
+                    block_height,
+                    exit_code: wrapper_tx_status,
                 };
 
-                let tx_status =
-                    block_results.find_tx_hash_result(&tx_id).unwrap();
-                let tx_exit = TransactionExitStatus::from(
-                    &tx_status,
-                    &TransactionKind::Wrapper,
-                );
-                if tx_exit == TransactionExitStatus::Rejected {
-                    return Err(format!(
-                        "Transaction {} was rejected",
-                        raw_hash
-                    ));
-                };
+                let mut inner_txs = vec![];
 
-                let tx_code_id = transaction
-                    .get_section(commitments.code_sechash())
-                    .and_then(|s| s.code_sec())
-                    .map(|s| s.code.hash().0)
-                    .map(|bytes| {
-                        String::from_utf8(subtle_encoding::hex::encode(bytes))
+                for (index, tx_commitment) in
+                    transaction.header().batch.into_iter().enumerate()
+                {
+                    let inner_tx_id = Id::from(tx_commitment.get_hash());
+
+                    let memo =
+                        transaction.memo(&tx_commitment).map(|memo_bytes| {
+                            String::from_utf8_lossy(
+                                &subtle_encoding::hex::encode(memo_bytes),
+                            )
+                            .to_string()
+                        });
+
+                    let tx_code_id = transaction
+                        .get_section(tx_commitment.code_sechash())
+                        .and_then(|s| s.code_sec())
+                        .map(|s| s.code.hash().0)
+                        .map(|bytes| {
+                            String::from_utf8(subtle_encoding::hex::encode(
+                                bytes,
+                            ))
                             .unwrap()
-                    });
+                        });
 
-                let extra_sections = transaction
-                    .sections
-                    .iter()
-                    .filter_map(|section| match section {
-                        Section::ExtraData(code) => match code.code.clone() {
-                            namada_tx::Commitment::Hash(_) => None,
-                            namada_tx::Commitment::Id(data) => {
-                                Some((Id::from(section.get_hash()), data))
-                            }
-                        },
-                        _ => None,
-                    })
-                    .fold(HashMap::new(), |mut acc, (id, data)| {
-                        acc.insert(id, data);
-                        acc
-                    });
+                    let tx_data =
+                        transaction.data(&tx_commitment).unwrap_or_default();
 
-                let tx_kind = if let Some(id) = tx_code_id {
-                    if let Some(tx_kind_name) = checksums.get_name_by_id(&id) {
-                        let tx_data =
-                            transaction.data(&commitments).unwrap_or_default();
-                        TransactionKind::from(&tx_kind_name, &tx_data)
+                    let tx_kind = if let Some(id) = tx_code_id {
+                        if let Some(tx_kind_name) =
+                            checksums.get_name_by_id(&id)
+                        {
+                            TransactionKind::from(&tx_kind_name, &tx_data)
+                        } else {
+                            TransactionKind::Unknown
+                        }
                     } else {
                         TransactionKind::Unknown
-                    }
-                } else {
-                    TransactionKind::Unknown
-                };
+                    };
 
-                let transaction = Transaction {
-                    hash: tx_id,
-                    inner_hash: Some(raw_hash),
-                    kind: tx_kind,
-                    extra_sections,
-                    index,
-                    memo,
-                    fee,
-                };
+                    let encoded_tx_data = if !tx_data.is_empty() {
+                        let hex_encode = subtle_encoding::hex::encode(tx_data);
+                        let encoded_data = String::from_utf8_lossy(&hex_encode);
+                        Some(encoded_data.to_string())
+                    } else {
+                        None
+                    };
 
-                Ok((transaction, raw_hash_str))
+                    let inner_tx_status = block_results
+                        .is_inner_tx_accepted(&wrapper_tx_id, &inner_tx_id);
+
+                    let extra_sections = transaction
+                        .sections
+                        .iter()
+                        .filter_map(|section| match section {
+                            Section::ExtraData(code) => match code.code.clone()
+                            {
+                                namada_tx::Commitment::Hash(_) => None,
+                                namada_tx::Commitment::Id(data) => {
+                                    Some((Id::from(section.get_hash()), data))
+                                }
+                            },
+                            _ => None,
+                        })
+                        .fold(HashMap::new(), |mut acc, (id, data)| {
+                            acc.insert(id, data);
+                            acc
+                        });
+
+                    let inner_tx = InnerTransaction {
+                        tx_id: inner_tx_id,
+                        index,
+                        wrapper_id: wrapper_tx_id.clone(),
+                        memo,
+                        data: encoded_tx_data,
+                        extra_sections,
+                        exit_code: inner_tx_status,
+                        kind: tx_kind,
+                    };
+
+                    inner_txs.push(inner_tx);
+                }
+
+                Ok((wrapper_tx, inner_txs))
             }
             TxType::Raw => {
                 Err("Raw transaction are not supported.".to_string())

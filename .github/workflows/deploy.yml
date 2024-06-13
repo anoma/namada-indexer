@@ -41,6 +41,7 @@ jobs:
             { image: namada-indexer-seeder, context: seeder },
             { image: namada-indexer-webserver, context: webserver },
             { image: namada-indexer-parameters, context: parameters },
+            { image: namada-indexer-transactions, context: transactions },
           ]
 
     steps:

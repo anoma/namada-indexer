@@ -20,6 +20,7 @@ use crate::config::AppConfig;
 use crate::handler::{
     balance as balance_handlers, chain as chain_handlers, gas as gas_handlers,
     governance as gov_handlers, pk as pk_handlers, pos as pos_handlers,
+    transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -90,6 +91,14 @@ impl ApplicationServer {
                 // TODO: this is a temporary endpoint, we should get gas cost
                 // per tx type
                 .route("/gas-table", get(gas_handlers::get_gas_table))
+                .route(
+                    "/chain/wrapper/:id",
+                    get(transaction_handlers::get_wrapper_tx),
+                )
+                .route(
+                    "/chain/inner/:id",
+                    get(transaction_handlers::get_inner_tx),
+                )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/sync", get(chain_handlers::sync_height))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))

@@ -118,8 +118,9 @@ impl Proposal {
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
-        // TODO: It would be better to save first block height of current epoch in state and use
-        // that here, otherwise if any epoch had different number of blocks than min_num_of_blocks
+        // TODO: It would be better to save first block height of current epoch
+        // in state and use that here, otherwise if any epoch had
+        // different number of blocks than min_num_of_blocks
         // this will be off
         let epoch_progress =
             epoch_progress(chain_state.height, min_num_of_blocks);

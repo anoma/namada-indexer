@@ -45,7 +45,7 @@ pub async fn get_validator_set_at_epoch(
                     })
             };
 
-            let validator_state = async {
+            let validator_state_fut = async {
                 rpc::get_validator_state(client, &address, Some(namada_epoch))
                     .await
                     .with_context(|| {
@@ -57,7 +57,7 @@ pub async fn get_validator_set_at_epoch(
             };
 
             let (voting_power, commission_pair, validator_state) =
-                futures::try_join!(voting_power_fut, commission_fut, validator_state)?;
+                futures::try_join!(voting_power_fut, commission_fut, validator_state_fut)?;
             let commission = commission_pair
                 .commission_rate
                 .expect("Commission rate has to exist")
