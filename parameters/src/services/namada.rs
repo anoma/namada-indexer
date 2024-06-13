@@ -56,7 +56,6 @@ pub async fn get_parameters(
     .await?;
 
     Ok(Parameters {
-        epoch,
         unbonding_length: pos_parameters.unbonding_len,
         pipeline_length: pos_parameters.pipeline_len,
         epochs_per_year,

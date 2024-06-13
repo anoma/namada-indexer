@@ -36,6 +36,7 @@ diesel::table! {
         id -> Int4,
         height -> Int4,
         epoch -> Int4,
+        timestamp -> Int8,
     }
 }
 
@@ -49,8 +50,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    chain_parameters (epoch) {
-        epoch -> Int4,
+    chain_parameters (id) {
+        id -> Int4,
         unbonding_length -> Int4,
         pipeline_length -> Int4,
         epochs_per_year -> Int4,

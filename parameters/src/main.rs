@@ -5,7 +5,8 @@ use std::time::Duration;
 use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::RunQueryDsl;
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, RunQueryDsl};
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
 use orm::schema::chain_parameters;
@@ -82,10 +83,15 @@ async fn main() -> anyhow::Result<()> {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
                             diesel::insert_into(chain_parameters::table)
-                                .values::<&ParametersInsertDb>(
-                                    &parameters.into(),
+                                .values(ParametersInsertDb::from(parameters))
+                                .on_conflict(
+                                    chain_parameters::native_token_address,
                                 )
-                                .on_conflict_do_nothing()
+                                .do_update()
+                                .set(
+                                    chain_parameters::apr
+                                        .eq(excluded(chain_parameters::apr)),
+                                )
                                 .execute(transaction_conn)
                                 .context(
                                     "Failed to update crawler state in db",

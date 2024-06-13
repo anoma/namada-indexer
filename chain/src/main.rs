@@ -17,6 +17,7 @@ use chain::services::{
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
+use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
 use shared::block::Block;
 use shared::block_result::BlockResult;
@@ -187,7 +188,10 @@ async fn crawling_fn(
 
     let reward_claimers = block.pos_rewards();
 
-    let crawler_state = CrawlerState::new(block_height, epoch);
+    let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
+
+    let crawler_state =
+        CrawlerState::new(block_height, epoch, timestamp_in_sec);
 
     conn.interact(move |conn| {
         conn.build_transaction()
@@ -292,7 +296,9 @@ async fn initial_query(
     .await
     .into_rpc_error()?;
 
-    let crawler_state = CrawlerState::new(block_height, epoch);
+    let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
+    let crawler_state =
+        CrawlerState::new(block_height, epoch, timestamp_in_sec);
 
     tracing::info!("Inserting initial data... ");
 

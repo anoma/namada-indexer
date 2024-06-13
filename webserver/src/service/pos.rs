@@ -115,18 +115,15 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
-        let (latest_epoch, latest_block) = self
+        let chain_state = self
             .chain_repo
             .get_chain_state()
             .await
             .map_err(PoSError::Database)?;
 
-        let latest_epoch = latest_epoch.expect("latest epoch not found");
-        let latest_block = latest_block.expect("latest block not found");
-
         let parameters = self
             .chain_repo
-            .find_chain_parameters(latest_epoch)
+            .find_chain_parameters()
             .await
             .map_err(PoSError::Database)?;
 
@@ -137,8 +134,8 @@ impl PosService {
                 let bond = Unbond::from(
                     unbond,
                     validator,
-                    latest_block,
-                    latest_epoch,
+                    chain_state.height,
+                    chain_state.epoch,
                     parameters.min_duration,
                     parameters.min_num_of_blocks,
                 );
