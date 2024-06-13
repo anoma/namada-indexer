@@ -45,6 +45,7 @@ pub async fn get_crawler_state(conn: &Object) -> anyhow::Result<CrawlerState> {
     Ok(CrawlerState::new(
         crawler_state.height as BlockHeight,
         crawler_state.epoch as Epoch,
+        crawler_state.timestamp,
     ))
 }
 
@@ -70,5 +71,6 @@ pub async fn get_pos_crawler_state(
     Ok(CrawlerState::new(
         0 as BlockHeight,
         crawler_state.epoch as Epoch,
+        0,
     ))
 }

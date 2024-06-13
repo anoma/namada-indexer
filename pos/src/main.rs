@@ -99,7 +99,7 @@ async fn crawling_fn(
         epoch_to_process,
         validators_set.validators.len()
     );
-    let crawler_state = CrawlerState::new(0, epoch_to_process);
+    let crawler_state = CrawlerState::new(0, epoch_to_process, 0);
 
     conn.interact(move |conn| {
         conn.build_transaction()

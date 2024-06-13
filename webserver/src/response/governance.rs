@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use namada_core::time::DateTimeUtc;
+use orm::block_crawler_state::BlockCrawlerStateDb;
 use orm::governance_proposal::{
     GovernanceProposalDb, GovernanceProposalKindDb, GovernanceProposalResultDb,
     GovernanceProposalTallyTypeDb,
@@ -114,32 +114,47 @@ pub struct ProposalVote {
 impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
-        current_epoch: i32,
-        current_block: i32,
+        chain_state: &BlockCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
-        let epoch_progress = epoch_progress(current_block, min_num_of_blocks);
+        // TODO: It would be better to save first block height of current epoch in state and use
+        // that here, otherwise if any epoch had different number of blocks than min_num_of_blocks
+        // this will be off
+        let epoch_progress =
+            epoch_progress(chain_state.height, min_num_of_blocks);
+
+        tracing::info!(
+            "Epoch progress: {}, current epoch: {}, height: {}",
+            epoch_progress,
+            chain_state.epoch,
+            chain_state.height
+        );
 
         let to_start = time_between_epochs(
             epoch_progress,
-            current_epoch,
+            chain_state.epoch,
             value.start_epoch,
             min_duration,
         );
 
         let to_end = time_between_epochs(
             epoch_progress,
-            current_epoch,
+            chain_state.epoch,
             value.end_epoch,
             min_duration,
         );
 
-        // This should be read from the DB to avoid time jumps equal to the
-        // commit time
-        let time_now = DateTimeUtc::now().0.timestamp();
+        let time_now = chain_state.timestamp;
         let start_time = time_now + i64::from(to_start);
         let end_time = time_now + i64::from(to_end);
+
+        tracing::info!(
+            "Proposal start time: {}, end time: {}, current time: {}",
+            start_time,
+            end_time,
+            time_now
+        );
 
         Self {
             id: value.id.to_string(),

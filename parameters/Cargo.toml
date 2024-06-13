@@ -30,6 +30,7 @@ diesel_migrations.workspace = true
 orm.workspace = true
 clap-verbosity-flag.workspace = true
 tokio-retry.workspace = true
+smooth-operator.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

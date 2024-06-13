@@ -1,6 +1,7 @@
 use namada_sdk::tendermint_rpc::HttpClient;
 
 use crate::appstate::AppState;
+use crate::config::AppConfig;
 use crate::service::balance::BalanceService;
 use crate::service::chain::ChainService;
 use crate::service::gas::GasService;
@@ -17,10 +18,11 @@ pub struct CommonState {
     pub revealed_pk_service: RevealedPkService,
     pub gas_service: GasService,
     pub client: HttpClient,
+    pub config: AppConfig,
 }
 
 impl CommonState {
-    pub fn new(client: HttpClient, data: AppState) -> Self {
+    pub fn new(client: HttpClient, config: AppConfig, data: AppState) -> Self {
         Self {
             pos_service: PosService::new(data.clone()),
             gov_service: GovernanceService::new(data.clone()),
@@ -29,6 +31,7 @@ impl CommonState {
             revealed_pk_service: RevealedPkService::new(data.clone()),
             gas_service: GasService::new(data.clone()),
             client,
+            config,
         }
     }
 }

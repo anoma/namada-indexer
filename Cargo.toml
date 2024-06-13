@@ -58,6 +58,7 @@ async-stream = "0.3.5"
 futures-core = "0.3.30"
 futures-util = "0.3.30"
 futures = "0.3.30"
+smooth-operator = {git = "https://github.com/heliaxdev/smooth-operator", tag = "v0.7.0"}
 tokio-stream = "0.1.15"
 tokio-retry = "0.3"
 thiserror = "1.0.56"

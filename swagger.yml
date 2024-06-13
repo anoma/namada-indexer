@@ -24,6 +24,13 @@ paths:
             type: integer
             minimum: 1
           description: Pagination parameter
+        - in: query
+          name: state
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ValidatorStatus'
+          description: Pagination parameter
       responses:
         '200':
           description: A list of validator.
@@ -398,6 +405,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Parameters'
+  /api/v1/chain/rpc-url:
+    get:
+      summary: Get rpc url that indexer connects to
+      responses:
+        '200':
+          description: Rpc url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RpcUrl'
 
 components:
   schemas:
@@ -428,8 +445,10 @@ components:
         avatar:
           type: string
         state:
-          type: string
-          enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
+          $ref: '#/components/schemas/ValidatorStatus'
+    ValidatorStatus:
+      type: string
+      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
     Proposal:
       type: object
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
@@ -565,7 +584,7 @@ components:
           type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress]
       properties:
         unbondingLength:
           type: string
@@ -573,4 +592,13 @@ components:
           type: string
         epochsPerYear:
           type: string
-
+        apr:
+          type: string
+        nativeTokenAddress:
+          type: string
+    RpcUrl:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string

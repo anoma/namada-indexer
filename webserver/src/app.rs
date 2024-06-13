@@ -1,5 +1,4 @@
 use std::net::{Ipv4Addr, SocketAddr};
-use std::sync::Arc;
 use std::time::Duration;
 
 use axum::error_handling::HandleErrorLayer;
@@ -32,7 +31,7 @@ lazy_static! {
 pub struct ApplicationServer;
 
 impl ApplicationServer {
-    pub async fn serve(config: Arc<AppConfig>) -> anyhow::Result<()> {
+    pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
         let db_url = config.database_url.clone();
         let cache_url = config.cache_url.clone();
 
@@ -40,7 +39,8 @@ impl ApplicationServer {
         let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
 
         let routes = {
-            let common_state = CommonState::new(client, app_state.clone());
+            let common_state =
+                CommonState::new(client, config.clone(), app_state.clone());
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))
@@ -92,6 +92,7 @@ impl ApplicationServer {
                 .route("/gas-table", get(gas_handlers::get_gas_table))
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/sync", get(chain_handlers::sync_height))
+                .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .with_state(common_state)
         };
 

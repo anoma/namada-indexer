@@ -1,6 +1,10 @@
 use axum::async_trait;
 use diesel::dsl::max;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use diesel::{
+    ExpressionMethods, NullableExpressionMethods, QueryDsl, RunQueryDsl,
+    SelectableHelper,
+};
+use orm::block_crawler_state::BlockCrawlerStateDb;
 use orm::parameters::ParametersDb;
 use orm::schema::{block_crawler_state, chain_parameters};
 
@@ -19,14 +23,9 @@ pub trait ChainRepositoryTrait {
 
     async fn find_latest_epoch(&self) -> Result<Option<i32>, String>;
 
-    async fn find_chain_parameters(
-        &self,
-        epoch: i32,
-    ) -> Result<ParametersDb, String>;
+    async fn find_chain_parameters(&self) -> Result<ParametersDb, String>;
 
-    async fn get_chain_state(
-        &self,
-    ) -> Result<(Option<i32>, Option<i32>), String>;
+    async fn get_chain_state(&self) -> Result<BlockCrawlerStateDb, String>;
 }
 
 #[async_trait]
@@ -61,34 +60,38 @@ impl ChainRepositoryTrait for ChainRepository {
         .map_err(|e| e.to_string())
     }
 
-    //TODO: just return whole state
-    async fn get_chain_state(
-        &self,
-    ) -> Result<(Option<i32>, Option<i32>), String> {
+    async fn get_chain_state(&self) -> Result<BlockCrawlerStateDb, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            block_crawler_state::dsl::block_crawler_state
-                .select((
-                    max(block_crawler_state::dsl::epoch),
-                    max(block_crawler_state::dsl::height),
-                ))
-                .first::<(Option<i32>, Option<i32>)>(conn)
+            let (state1, state2) = diesel::alias!(
+                block_crawler_state as state1,
+                block_crawler_state as state2
+            );
+            let subquery = state1
+                .select(max(state1.field(block_crawler_state::height)))
+                .single_value();
+
+            state2
+                .filter(
+                    state2
+                        .field(block_crawler_state::height)
+                        .nullable()
+                        .eq(subquery),
+                )
+                .select(state2.fields(block_crawler_state::all_columns))
+                .first::<BlockCrawlerStateDb>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
     }
 
-    async fn find_chain_parameters(
-        &self,
-        epoch: i32,
-    ) -> Result<ParametersDb, String> {
+    async fn find_chain_parameters(&self) -> Result<ParametersDb, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             chain_parameters::table
-                .filter(chain_parameters::dsl::epoch.eq(epoch))
                 .select(ParametersDb::as_select())
                 .first(conn)
         })

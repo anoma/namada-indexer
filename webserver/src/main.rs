@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use clap::Parser;
 use webserver::app::ApplicationServer;
@@ -7,7 +5,7 @@ use webserver::config::AppConfig;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = Arc::new(AppConfig::parse());
+    let config = AppConfig::parse();
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)

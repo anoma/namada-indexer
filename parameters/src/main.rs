@@ -1,10 +1,12 @@
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::RunQueryDsl;
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, RunQueryDsl};
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
 use orm::schema::chain_parameters;
@@ -14,6 +16,7 @@ use parameters::services::namada as namada_service;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
+use tokio::time::sleep;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::RetryIf;
 use tracing::Level;
@@ -80,10 +83,15 @@ async fn main() -> anyhow::Result<()> {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
                             diesel::insert_into(chain_parameters::table)
-                                .values::<&ParametersInsertDb>(
-                                    &parameters.into(),
+                                .values(ParametersInsertDb::from(parameters))
+                                .on_conflict(
+                                    chain_parameters::native_token_address,
                                 )
-                                .on_conflict_do_nothing()
+                                .do_update()
+                                .set(
+                                    chain_parameters::apr
+                                        .eq(excluded(chain_parameters::apr)),
+                                )
                                 .execute(transaction_conn)
                                 .context(
                                     "Failed to update crawler state in db",
@@ -97,7 +105,13 @@ async fn main() -> anyhow::Result<()> {
                 .context_db_interact_error()
                 .into_db_error()?
                 .context("Commit block db transaction error")
-                .into_db_error()
+                .into_db_error()?;
+
+                tracing::info!("Done!");
+
+                sleep(Duration::from_secs(config.sleep_for)).await;
+
+                Ok(())
             },
             |_: &MainError| !must_exit(&exit_handle),
         )

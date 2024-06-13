@@ -1,7 +1,7 @@
 use crate::appstate::AppState;
 use crate::error::chain::ChainError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::response::parameters::Parameters;
+use crate::response::chain::Parameters;
 
 #[derive(Clone)]
 pub struct ChainService {
@@ -26,16 +26,9 @@ impl ChainService {
     pub async fn find_latest_parameters(
         &self,
     ) -> Result<Parameters, ChainError> {
-        let epoch = self
-            .chain_repo
-            .find_latest_epoch()
-            .await
-            .map_err(ChainError::Database)?
-            .expect("latest epoch not found");
-
         let parameters = self
             .chain_repo
-            .find_chain_parameters(epoch)
+            .find_chain_parameters()
             .await
             .map(Parameters::from)
             .map_err(ChainError::Database)?;

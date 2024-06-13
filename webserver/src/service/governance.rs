@@ -69,18 +69,15 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
-        let (latest_epoch, latest_block) = self
+        let chain_state = self
             .chain_repo
             .get_chain_state()
             .await
             .map_err(GovernanceError::Database)?;
 
-        let latest_epoch = latest_epoch.expect("latest epoch not found");
-        let latest_block = latest_block.expect("latest block not found");
-
         let parameters = self
             .chain_repo
-            .find_chain_parameters(latest_epoch)
+            .find_chain_parameters()
             .await
             .map_err(GovernanceError::Database)?;
 
@@ -90,8 +87,7 @@ impl GovernanceService {
                 .map(|p| {
                     Proposal::from_proposal_db(
                         p,
-                        latest_epoch,
-                        latest_block,
+                        &chain_state,
                         parameters.min_num_of_blocks,
                         parameters.min_duration,
                     )
@@ -111,26 +107,22 @@ impl GovernanceService {
             .await
             .map_err(GovernanceError::Database)?;
 
-        let (latest_epoch, latest_block) = self
+        let chain_state = self
             .chain_repo
             .get_chain_state()
             .await
             .map_err(GovernanceError::Database)?;
 
-        let latest_epoch = latest_epoch.expect("latest epoch not found");
-        let latest_block = latest_block.expect("latest block not found");
-
         let parameters = self
             .chain_repo
-            .find_chain_parameters(latest_epoch)
+            .find_chain_parameters()
             .await
             .map_err(GovernanceError::Database)?;
 
         Ok(db_proposal.map(|p| {
             Proposal::from_proposal_db(
                 p,
-                latest_epoch,
-                latest_block,
+                &chain_state,
                 parameters.min_num_of_blocks,
                 parameters.min_duration,
             )

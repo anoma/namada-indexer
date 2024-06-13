@@ -21,8 +21,6 @@ pub async fn get_validator_set_at_epoch(
             )
         })?;
 
-    tracing::info!("validator_set {:?} at {}", validator_set, epoch);
-
     let validators = futures::stream::iter(validator_set)
         .map(|address| async move {
             let voting_power_fut = async {

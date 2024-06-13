@@ -10,7 +10,7 @@ use futures::Stream;
 use tokio_stream::StreamExt;
 
 use crate::error::api::ApiError;
-use crate::response::parameters::Parameters;
+use crate::response::chain::{Parameters, RpcUrl};
 use crate::state::common::CommonState;
 
 pub async fn sync_height(
@@ -38,4 +38,10 @@ pub async fn get_parameters(
     let parameters = state.chain_service.find_latest_parameters().await?;
 
     Ok(Json(parameters))
+}
+
+pub async fn get_rpc_url(State(state): State<CommonState>) -> Json<RpcUrl> {
+    Json(RpcUrl {
+        url: state.config.tendermint_url,
+    })
 }
