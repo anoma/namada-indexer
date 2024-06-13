@@ -1,13 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use blocks::app_state::AppState;
-use blocks::config::AppConfig;
-use blocks::repository::transactions as transaction_repo;
-use blocks::services::{
-    db as db_service, namada as namada_service,
-    tendermint as tendermint_service,
-};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
@@ -20,6 +13,13 @@ use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
+use transactions::app_state::AppState;
+use transactions::config::AppConfig;
+use transactions::repository::transactions as transaction_repo;
+use transactions::services::{
+    db as db_service, namada as namada_service,
+    tendermint as tendermint_service,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
