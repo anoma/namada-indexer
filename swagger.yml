@@ -383,9 +383,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/RevealedPk'
 
-  /api/v1/gas-table:
+  /api/v1/gas/{token}:
     get:
-      summary: Get the gas table
+      parameters:
+        - in: path
+          name: token
+          schema:
+            type: string
+          required: true
+          description: The gas token. For native token use `native`.
+      summary: Get the gas limit per tx kind per token. Native token gas can be queried by using `native` as {token} parameter
       responses:
         '200':
           description: Gas table
@@ -394,7 +401,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/GasCost'
+                  $ref: '#/components/schemas/GasTable'
   /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
@@ -594,14 +601,19 @@ components:
       properties:
         publicKey:
           type: string
-    GasCost:
-      type: object
-      required: [tokenAddress, amount]
-      properties:
-        tokenAddress:
-          type: string
-        amount:
-          type: string
+    GasTable:
+      type: array
+      items:
+        type: object
+        required: [token, gasLimit, txKind]
+        properties:
+          token:
+            type: string
+          gasLimit:
+            type: number
+          txKind:
+            type: string
+            enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
     Parameters:
       type: object
       required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress]

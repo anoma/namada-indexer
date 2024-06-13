@@ -107,6 +107,18 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+    use super::sql_types::TransactionKind;
+
+    gas (id) {
+        id -> Int4,
+        tx_kind -> TransactionKind,
+        token -> Varchar,
+        gas_limit -> Int4,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
     use super::sql_types::GovernanceKind;
     use super::sql_types::GovernanceTallyType;
     use super::sql_types::GovernanceResult;
@@ -233,6 +245,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     bonds,
     chain_parameters,
     epoch_crawler_state,
+    gas,
     governance_proposals,
     governance_votes,
     inner_transactions,
