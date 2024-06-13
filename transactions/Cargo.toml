@@ -1,6 +1,6 @@
 [package]
 name = "transactions"
-description = "Namada blocks crawler."
+description = "Namada transactions indexer."
 resolver = "2"
 authors.workspace = true
 edition.workspace = true

@@ -2,6 +2,7 @@ pub mod balances;
 pub mod block_crawler_state;
 pub mod bond;
 pub mod epoch_crawler_state;
+pub mod gas;
 pub mod governance_proposal;
 pub mod governance_votes;
 pub mod migrations;
