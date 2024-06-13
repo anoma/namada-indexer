@@ -425,6 +425,13 @@ paths:
   /api/v1/chain/wrapper/{tx_id}:
     get:
       summary: Get the wrapper transaction by hash
+      parameters:
+        - in: path
+          name: tx_id
+          schema:
+            type: string
+          required: true
+          description: Tx id hash 
       responses:
         '200':
           description: Wrapper transaction
@@ -435,6 +442,13 @@ paths:
   /api/v1/chain/inner/{tx_id}:
     get:
       summary: Get the inner transaction by hash
+      parameters:
+        - in: path
+          name: tx_id
+          schema:
+            type: string
+          required: true
+          description: Tx id hash 
       responses:
         '200':
           description: Inner transaction
