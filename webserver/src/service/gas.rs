@@ -28,11 +28,11 @@ impl GasService {
     pub async fn get_gas_price_by_token(
         &self,
         token: String,
-    ) -> Result<GasPrice, GasError> {
+    ) -> Result<Vec<GasPrice>, GasError> {
         self.gas_repo
             .find_gas_price_by_token(token)
             .await
             .map_err(GasError::Database)
-            .map(GasPrice::from)
+            .map(|r| r.iter().cloned().map(GasPrice::from).collect())
     }
 }

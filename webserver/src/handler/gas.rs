@@ -23,7 +23,7 @@ pub async fn get_gas_price_by_token(
     _headers: HeaderMap,
     Path(token): Path<String>,
     State(state): State<CommonState>,
-) -> Result<Json<GasPrice>, ApiError> {
+) -> Result<Json<Vec<GasPrice>>, ApiError> {
     let gas_price = state.gas_service.get_gas_price_by_token(token).await?;
 
     Ok(Json(gas_price))

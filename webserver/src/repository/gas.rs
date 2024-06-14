@@ -22,7 +22,7 @@ pub trait GasRepositoryTrait {
     async fn find_gas_price_by_token(
         &self,
         token: String,
-    ) -> Result<GasPriceDb, String>;
+    ) -> Result<Vec<GasPriceDb>, String>;
 }
 
 #[async_trait]
@@ -51,14 +51,14 @@ impl GasRepositoryTrait for GasRepository {
     async fn find_gas_price_by_token(
         &self,
         token: String,
-    ) -> Result<GasPriceDb, String> {
+    ) -> Result<Vec<GasPriceDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             gas_price::table
                 .filter(gas_price::token.eq(token))
                 .select(GasPriceDb::as_select())
-                .first(conn)
+                .get_results(conn)
         })
         .await
         .map_err(|e| e.to_string())?

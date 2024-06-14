@@ -649,7 +649,7 @@ components:
         properties:
           token:
             type: string
-          gasLimit:
+          amount:
             type: string
     Parameters:
       type: object
