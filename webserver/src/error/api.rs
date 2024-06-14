@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use super::balance::BalanceError;
 use super::chain::ChainError;
+use super::gas::GasError;
 use super::governance::GovernanceError;
 use super::pos::PoSError;
 use super::revealed_pk::RevealedPkError;
@@ -22,6 +23,8 @@ pub enum ApiError {
     GovernanceError(#[from] GovernanceError),
     #[error(transparent)]
     RevealedPkError(#[from] RevealedPkError),
+    #[error(transparent)]
+    GasError(#[from] GasError),
 }
 
 impl IntoResponse for ApiError {
@@ -33,6 +36,7 @@ impl IntoResponse for ApiError {
             ApiError::BalanceError(error) => error.into_response(),
             ApiError::GovernanceError(error) => error.into_response(),
             ApiError::RevealedPkError(error) => error.into_response(),
+            ApiError::GasError(error) => error.into_response(),
         }
     }
 }

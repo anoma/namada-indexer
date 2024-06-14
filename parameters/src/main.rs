@@ -7,9 +7,10 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, RunQueryDsl};
+use orm::gas::GasPriceDb;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
-use orm::schema::chain_parameters;
+use orm::schema::{chain_parameters, gas_price};
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
 use parameters::services::namada as namada_service;
@@ -79,6 +80,8 @@ async fn main() -> anyhow::Result<()> {
                         .await
                         .into_rpc_error()?;
 
+                let gas_price = namada_service::get_gas_price(&client).await;
+
                 conn.interact(move |conn| {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
@@ -94,7 +97,22 @@ async fn main() -> anyhow::Result<()> {
                                 )
                                 .execute(transaction_conn)
                                 .context(
-                                    "Failed to update crawler state in db",
+                                    "Failed to update chain_parameters state in db",
+                                )?;
+
+                            diesel::insert_into(gas_price::table)
+                                .values(gas_price.iter().cloned().map(GasPriceDb::from).collect::<Vec<GasPriceDb>>())
+                                .on_conflict(
+                                    gas_price::token,
+                                )
+                                .do_update()
+                                .set(
+                                    gas_price::amount
+                                        .eq(excluded(gas_price::amount)),
+                                )
+                                .execute(transaction_conn)
+                                .context(
+                                    "Failed to update gas price in db",
                                 )?;
 
                             anyhow::Ok(())

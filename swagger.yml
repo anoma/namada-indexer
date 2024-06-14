@@ -364,7 +364,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Balance'
-
   /api/v1/revealed_public_key/{address}:
     get:
       summary: Get revealed public key for an address if exists
@@ -382,7 +381,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RevealedPk'
-
   /api/v1/gas/{token}:
     get:
       parameters:
@@ -395,13 +393,28 @@ paths:
       summary: Get the gas limit per tx kind per token. Native token gas can be queried by using `native` as {token} parameter
       responses:
         '200':
-          description: Gas table
+          description: Gas limit table
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/GasTable'
+                $ref: '#/components/schemas/GasLimitTable'
+  /api/v1/gas-price/{token}:
+    get:
+      parameters:
+        - in: path
+          name: token
+          schema:
+            type: string
+          required: true
+          description: The gas token. 
+      summary: Get the gas price per token type
+      responses:
+        '200':
+          description: Gas price table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GasPriceTable'
   /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
@@ -615,7 +628,7 @@ components:
       properties:
         publicKey:
           type: string
-    GasTable:
+    GasLimitTable:
       type: array
       items:
         type: object
@@ -628,6 +641,16 @@ components:
           txKind:
             type: string
             enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+    GasPriceTable:
+      type: array
+      items:
+        type: object
+        required: [token, amount]
+        properties:
+          token:
+            type: string
+          amount:
+            type: string
     Parameters:
       type: object
       required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress]

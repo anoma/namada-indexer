@@ -90,6 +90,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    gas_price (token) {
+        token -> Varchar,
+        amount -> Varchar,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::GovernanceKind;
     use super::sql_types::GovernanceTallyType;
@@ -217,6 +224,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     chain_parameters,
     epoch_crawler_state,
     gas,
+    gas_price,
     governance_proposals,
     governance_votes,
     inner_transactions,

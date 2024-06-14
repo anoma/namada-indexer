@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::Context;
 use namada_core::storage::Epoch as NamadaEpoch;
 use namada_parameters::EpochDuration;
@@ -11,6 +13,7 @@ use namada_sdk::rpc::{
 };
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use shared::block::Epoch;
+use shared::gas::GasPrice;
 use shared::parameters::Parameters;
 use tendermint_rpc::HttpClient;
 
@@ -64,6 +67,27 @@ pub async fn get_parameters(
         apr,
         native_token_address: native_token_address.to_string(),
     })
+}
+
+pub async fn get_gas_price(client: &HttpClient) -> Vec<GasPrice> {
+    let min_gas_price_key = namada_parameters::storage::get_gas_cost_key();
+    let gas_cost_table = query_storage_value::<
+        HttpClient,
+        BTreeMap<NamadaAddress, NamadaSdkAmount>,
+    >(client, &min_gas_price_key)
+    .await
+    .expect("Gas cost table should be defined.");
+
+    let mut gas_table: Vec<GasPrice> = Vec::new();
+
+    for (token, gas_cost) in gas_cost_table {
+        gas_table.push(GasPrice {
+            token: token.to_string(),
+            amount: gas_cost.to_string_native(),
+        })
+    }
+
+    gas_table
 }
 
 pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
