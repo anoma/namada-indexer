@@ -11,6 +11,7 @@ pub enum TransactionResult {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TransactionKind {
     TransparentTransfer,
     ShieldedTransfer,
