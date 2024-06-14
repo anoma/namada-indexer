@@ -1,6 +1,7 @@
 use crate::appstate::AppState;
+use crate::error::gas::GasError;
 use crate::repository::gas::{GasRepository, GasRepositoryTrait};
-use crate::response::gas::Gas;
+use crate::response::gas::{Gas, GasPrice};
 
 #[derive(Clone)]
 pub struct GasService {
@@ -22,5 +23,16 @@ impl GasService {
             .into_iter()
             .map(Gas::from)
             .collect()
+    }
+
+    pub async fn get_gas_price_by_token(
+        &self,
+        token: String,
+    ) -> Result<GasPrice, GasError> {
+        self.gas_repo
+            .find_gas_price_by_token(token)
+            .await
+            .map_err(GasError::Database)
+            .map(GasPrice::from)
     }
 }
