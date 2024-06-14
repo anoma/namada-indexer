@@ -632,10 +632,8 @@ components:
       type: array
       items:
         type: object
-        required: [token, gasLimit, txKind]
+        required: [gasLimit, txKind]
         properties:
-          token:
-            type: string
           gasLimit:
             type: number
           txKind:
