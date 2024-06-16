@@ -97,23 +97,26 @@ async fn main() -> anyhow::Result<()> {
                                 )
                                 .execute(transaction_conn)
                                 .context(
-                                    "Failed to update chain_parameters state in db",
+                                    "Failed to update chain_parameters state \
+                                     in db",
                                 )?;
 
                             diesel::insert_into(gas_price::table)
-                                .values(gas_price.iter().cloned().map(GasPriceDb::from).collect::<Vec<GasPriceDb>>())
-                                .on_conflict(
-                                    gas_price::token,
+                                .values(
+                                    gas_price
+                                        .iter()
+                                        .cloned()
+                                        .map(GasPriceDb::from)
+                                        .collect::<Vec<GasPriceDb>>(),
                                 )
+                                .on_conflict(gas_price::token)
                                 .do_update()
                                 .set(
                                     gas_price::amount
                                         .eq(excluded(gas_price::amount)),
                                 )
                                 .execute(transaction_conn)
-                                .context(
-                                    "Failed to update gas price in db",
-                                )?;
+                                .context("Failed to update gas price in db")?;
 
                             anyhow::Ok(())
                         },

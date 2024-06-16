@@ -103,7 +103,8 @@ async fn main() -> anyhow::Result<(), MainError> {
         .map(|_| {
             let index =
                 rand::thread_rng().gen_range(0..config.total_validators);
-            Reward::fake(index)
+            let validator = validators.get(index as usize).unwrap();
+            Reward::fake(validator.address.clone())
         })
         .collect::<Vec<Reward>>();
 
@@ -155,7 +156,8 @@ async fn main() -> anyhow::Result<(), MainError> {
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .execute(transaction_conn)
+                    .returning(validators::dsl::id)
+                    .get_results::<i32>(transaction_conn)
                     .context("Failed to insert validators in db")?;
 
                 diesel::insert_into(governance_proposals::table)
@@ -193,8 +195,12 @@ async fn main() -> anyhow::Result<(), MainError> {
                         &rewards
                             .into_iter()
                             .map(|reward| {
-                                let validator_id = reward.delegation_pair.validator_address.to_string().parse::<i32>().unwrap();
-                                PosRewardInsertDb::from_reward(reward, validator_id)
+                                let validator: ValidatorDb = validators::table
+                                    .filter(validators::namada_address.eq(&reward.delegation_pair.validator_address.to_string()))
+                                    .select(ValidatorDb::as_select())
+                                    .first(transaction_conn)
+                                    .expect("Failed to get validator");
+                                PosRewardInsertDb::from_reward(reward, validator.id)
                             })
                             .collect::<Vec<_>>(),
                     )
@@ -211,7 +217,7 @@ async fn main() -> anyhow::Result<(), MainError> {
                             .collect::<Vec<_>>(),
                     )
                     .execute(transaction_conn)
-                    .context("Failed to insert pos rewards in db")?;
+                    .context("Failed to balances rewards in db")?;
 
                 diesel::insert_into(bonds::table)
                 .values::<&Vec<BondInsertDb>>(

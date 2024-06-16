@@ -9,13 +9,13 @@ pub struct Reward {
 }
 
 impl Reward {
-    pub fn fake(validator_id: u64) -> Self {
+    pub fn fake(validator_address: Id) -> Self {
         let delegator_address =
             namada_core::address::gen_established_address("namada-indexer");
 
         Self {
             delegation_pair: DelegationPair {
-                validator_address: Id::Account(validator_id.to_string()),
+                validator_address,
                 delegator_address: Id::Account(delegator_address.to_string()),
             },
             amount: Amount::fake(),
