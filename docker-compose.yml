@@ -4,7 +4,7 @@ x-defaults: &defaults
     - postgres
   build: &build
     context: .
-    dockerfile: indexer.Dockerfile
+    dockerfile: Dockerfile
     args: &build-args
       DATABASE_URL: ${DATABASE_URL}
       TENDERMINT_URL: ${TENDERMINT_URL}
@@ -87,7 +87,7 @@ services:
       - dragonfly
     build:
       context: .
-      dockerfile: indexer.Dockerfile
+      dockerfile: Dockerfile
       args:
         PACKAGE: webserver
     command: "./service"
