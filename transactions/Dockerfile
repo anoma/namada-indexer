@@ -21,4 +21,6 @@ COPY --from=builder /app/target/release/transactions /app/transactions
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y libpq5
+
 CMD ["./transactions"]
