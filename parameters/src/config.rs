@@ -28,4 +28,7 @@ pub struct AppConfig {
 
     #[clap(long, env, default_value_t = 30)]
     pub sleep_for: u64,
+
+    #[clap(long, env)]
+    pub chain_id: String,
 }

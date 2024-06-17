@@ -6,7 +6,8 @@ CREATE TABLE chain_parameters (
   min_num_of_blocks INT NOT NULL,
   min_duration INT NOT NULL,
   apr VARCHAR NOT NULL,
-  native_token_address VARCHAR NOT NULL
+  native_token_address VARCHAR NOT NULL,
+  chain_id VARCHAR NOT NULL
 );
 
-ALTER TABLE chain_parameters ADD UNIQUE (native_token_address);
+ALTER TABLE chain_parameters ADD UNIQUE (chain_id);

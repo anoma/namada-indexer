@@ -134,10 +134,9 @@ impl PosService {
                 let bond = Unbond::from(
                     unbond,
                     validator,
-                    chain_state.height,
-                    chain_state.epoch,
-                    parameters.min_duration,
+                    &chain_state,
                     parameters.min_num_of_blocks,
+                    parameters.min_duration,
                 );
                 Unbond {
                     amount: raw_amount_to_nam(bond.amount),

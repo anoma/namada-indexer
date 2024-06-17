@@ -67,6 +67,7 @@ diesel::table! {
         min_duration -> Int4,
         apr -> Varchar,
         native_token_address -> Varchar,
+        chain_id -> Varchar,
     }
 }
 

@@ -7,4 +7,5 @@ pub struct Parameters {
     pub min_duration: u64,
     pub apr: String,
     pub native_token_address: String,
+    pub chain_id: String,
 }

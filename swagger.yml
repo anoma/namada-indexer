@@ -572,7 +572,7 @@ components:
           type: string
     Unbond:
       type: object
-      required: [validator, amount, withdrawEpoch]
+      required: [validator, amount, withdrawEpoch, withdrawTime]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
@@ -651,7 +651,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId]
       properties:
         unbondingLength:
           type: string
@@ -662,6 +662,8 @@ components:
         apr:
           type: string
         nativeTokenAddress:
+          type: string
+        chainId:
           type: string
     RpcUrl:
       type: object

@@ -1,4 +1,4 @@
-use namada_sdk::time::DateTimeUtc;
+use orm::block_crawler_state::BlockCrawlerStateDb;
 use orm::bond::BondDb;
 use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
@@ -132,22 +132,21 @@ impl Unbond {
     pub fn from(
         db_unbond: UnbondDb,
         db_validator: ValidatorDb,
-        current_block: i32,
-        current_epoch: i32,
+        chain_state: &BlockCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
-        let epoch_progress = epoch_progress(current_block, min_num_of_blocks);
+        let epoch_progress =
+            epoch_progress(chain_state.height, min_num_of_blocks);
+
         let to_withdraw = time_between_epochs(
             epoch_progress,
-            current_epoch,
+            chain_state.epoch,
             db_unbond.withdraw_epoch,
             min_duration,
         );
 
-        // This should be read from the DB to avoid time jumps equal to the
-        // commit time
-        let time_now = DateTimeUtc::now().0.timestamp();
+        let time_now = chain_state.timestamp;
         let withdraw_time = time_now + i64::from(to_withdraw);
 
         Self {
