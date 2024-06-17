@@ -1,11 +1,11 @@
 name: Check Stuff 👨‍🔧
 
 on:
-    merge_group:
-    pull_request:
-    push:
-      branches:
-        - main
+  merge_group:
+  pull_request:
+  push:
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.ref }}
@@ -34,7 +34,7 @@ jobs:
         with:
           cache: true
       - run: just clippy
-    
+
   validate-swagger:
     runs-on: ubuntu-latest
     name: Validate Swagger
@@ -45,7 +45,7 @@ jobs:
         uses: char0n/swagger-editor-validate@v1.3.2
         with:
           definition-file: swagger.yml
-  
+
   format:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     name: Format
@@ -89,20 +89,20 @@ jobs:
     env:
       GIT_LFS_SKIP_SMUDGE: 1
       REGISTRY_URL: ghcr.io
-      
+
     strategy:
       fail-fast: true
       matrix:
         docker:
           [
-            { image: chain, context: chain },
-            { image: governance, context: governance },
-            { image: pos, context: pos },
-            { image: rewards, context: rewards },
-            { image: seeder, context: seeder },
-            { image: webserver, context: webserver },
-            { image: parameters, context: parameters },
-            { image: transactions, context: transactions },
+            { image: chain, package: chain },
+            { image: governance, package: governance },
+            { image: pos, package: pos },
+            { image: rewards, package: rewards },
+            { image: seeder, package: seeder },
+            { image: webserver, package: webserver },
+            { image: parameters, package: parameters },
+            { image: transactions, package: transactions },
           ]
 
     steps:
@@ -121,7 +121,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ matrix.docker.context }}/Dockerfile
+          file: Dockerfile
+          build-args: PACKAGE=${{matrix.docker.package}}
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.REGISTRY_URL }}/anoma/namada-indexer:${{ matrix.docker.image }}-main
           labels: ${{ steps.meta.outputs.labels }}
@@ -135,13 +136,13 @@ jobs:
       actions: read
     runs-on: ubuntu-latest
     steps:
-    - env:
-        NEEDS_JSON: "${{toJSON(needs)}}"
-      name: Transform outcomes
-      run: |
-        echo "ALL_SUCCESS=$(echo "$NEEDS_JSON" | jq '. | to_entries | map([.value.result == "success", .value.result == "skipped"] | any) | all')" >> $GITHUB_ENV        
-    - name: check outcomes
-      run: "[ $ALL_SUCCESS == true ]"
+      - env:
+          NEEDS_JSON: "${{toJSON(needs)}}"
+        name: Transform outcomes
+        run: |
+          echo "ALL_SUCCESS=$(echo "$NEEDS_JSON" | jq '. | to_entries | map([.value.result == "success", .value.result == "skipped"] | any) | all')" >> $GITHUB_ENV
+      - name: check outcomes
+        run: "[ $ALL_SUCCESS == true ]"
 
   can_merge:
     needs: [clippy, format, docker, validate-swagger]
@@ -153,10 +154,11 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-    - env:
-        NEEDS_JSON: "${{toJSON(needs)}}"
-      name: Transform outcomes
-      run: |
-        echo "ALL_SUCCESS=$(echo "$NEEDS_JSON" | jq '. | to_entries | map([.value.result == "success", .value.result == "skipped"] | any) | all')" >> $GITHUB_ENV        
-    - name: check outcomes
-      run: "[ $ALL_SUCCESS == true ]"
+      - env:
+          NEEDS_JSON: "${{toJSON(needs)}}"
+        name: Transform outcomes
+        run: |
+          echo "ALL_SUCCESS=$(echo "$NEEDS_JSON" | jq '. | to_entries | map([.value.result == "success", .value.result == "skipped"] | any) | all')" >> $GITHUB_ENV
+      - name: check outcomes
+        run: "[ $ALL_SUCCESS == true ]"
+
