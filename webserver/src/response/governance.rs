@@ -125,13 +125,6 @@ impl Proposal {
         let epoch_progress =
             epoch_progress(chain_state.height, min_num_of_blocks);
 
-        tracing::info!(
-            "Epoch progress: {}, current epoch: {}, height: {}",
-            epoch_progress,
-            chain_state.epoch,
-            chain_state.height
-        );
-
         let to_start = time_between_epochs(
             epoch_progress,
             chain_state.epoch,
@@ -149,13 +142,6 @@ impl Proposal {
         let time_now = chain_state.timestamp;
         let start_time = time_now + i64::from(to_start);
         let end_time = time_now + i64::from(to_end);
-
-        tracing::info!(
-            "Proposal start time: {}, end time: {}, current time: {}",
-            start_time,
-            end_time,
-            time_now
-        );
 
         Self {
             id: value.id.to_string(),

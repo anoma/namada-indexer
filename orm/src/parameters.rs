@@ -17,6 +17,7 @@ pub struct ParametersInsertDb {
     pub min_duration: i32,
     pub apr: String,
     pub native_token_address: String,
+    pub chain_id: String,
 }
 
 #[derive(Serialize, Queryable, Selectable, Clone)]
@@ -31,6 +32,7 @@ pub struct ParametersDb {
     pub min_duration: i32,
     pub apr: String,
     pub native_token_address: String,
+    pub chain_id: String,
 }
 
 impl From<Parameters> for ParametersInsertDb {
@@ -43,6 +45,7 @@ impl From<Parameters> for ParametersInsertDb {
             min_duration: value.min_duration as i32,
             apr: value.apr,
             native_token_address: value.native_token_address,
+            chain_id: value.chain_id,
         }
     }
 }

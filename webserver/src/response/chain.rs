@@ -9,6 +9,7 @@ pub struct Parameters {
     pub epochs_per_year: String,
     pub apr: String,
     pub native_token_address: String,
+    pub chain_id: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -19,6 +20,7 @@ impl From<ParametersDb> for Parameters {
             epochs_per_year: parameters.epochs_per_year.to_string(),
             apr: parameters.apr,
             native_token_address: parameters.native_token_address,
+            chain_id: parameters.chain_id,
         }
     }
 }

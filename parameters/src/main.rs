@@ -76,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 let parameters =
-                    namada_service::get_parameters(&client, current_epoch)
+                    namada_service::get_parameters(&client, current_epoch, config.chain_id.clone())
                         .await
                         .into_rpc_error()?;
 
@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
                             diesel::insert_into(chain_parameters::table)
                                 .values(ParametersInsertDb::from(parameters))
                                 .on_conflict(
-                                    chain_parameters::native_token_address,
+                                    chain_parameters::chain_id,
                                 )
                                 .do_update()
                                 .set(
