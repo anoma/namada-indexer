@@ -10,9 +10,10 @@ use orm::governance_proposal::{
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{
-    balances, bonds, governance_proposals, governance_votes, pos_rewards,
-    unbonds, validators,
+    balances, bonds, governance_proposals, governance_votes,
+    inner_transactions, pos_rewards, unbonds, validators, wrapper_transactions,
 };
+use orm::transactions::{InnerTransactionInsertDb, WrapperTransactionInsertDb};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorInsertDb};
 use rand::Rng;
@@ -25,6 +26,7 @@ use shared::proposal::{
     GovernanceProposal, GovernanceProposalStatus, TallyType,
 };
 use shared::rewards::Reward;
+use shared::transaction::{InnerTransaction, WrapperTransaction};
 use shared::unbond::Unbond;
 use shared::validator::Validator;
 use shared::vote::GovernanceVote;
@@ -112,6 +114,18 @@ async fn main() -> anyhow::Result<(), MainError> {
         .map(|_| Balance::fake())
         .collect::<Vec<Balance>>();
 
+    let wrapper_txs = (0..10)
+        .map(|_| WrapperTransaction::fake())
+        .collect::<Vec<WrapperTransaction>>();
+
+    let inner_txs = (0..50)
+        .map(|_| {
+            let index = rand::thread_rng().gen_range(0..wrapper_txs.len());
+            let wrapper_tx = wrapper_txs[index].clone();
+            InnerTransaction::fake(wrapper_tx.tx_id)
+        })
+        .collect::<Vec<_>>();
+
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = app_state.get_db_connection().await.into_db_error()?;
 
@@ -121,31 +135,39 @@ async fn main() -> anyhow::Result<(), MainError> {
             .run(|transaction_conn| {
                 diesel::delete(governance_votes::table)
                 .execute(transaction_conn)
-                .context("Failed to remove all validators")?;
+                .context("Failed to remove all votes")?;
 
                 diesel::delete(governance_proposals::table)
                     .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
+                    .context("Failed to remove all governance proposal")?;
 
                 diesel::delete(pos_rewards::table)
                     .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
+                    .context("Failed to remove pos rewards")?;
 
                 diesel::delete(bonds::table)
                     .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
+                    .context("Failed to remove all bonds")?;
 
                 diesel::delete(unbonds::table)
                     .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
+                    .context("Failed to remove all unbonds")?;
 
                 diesel::delete(balances::table)
                     .execute(transaction_conn)
-                    .context("Failed to remove all validators")?;
+                    .context("Failed to remove all balances")?;
 
-                    diesel::delete(validators::table)
+                diesel::delete(validators::table)
                     .execute(transaction_conn)
                     .context("Failed to remove all validators")?;
+
+                diesel::delete(inner_transactions::table)
+                    .execute(transaction_conn)
+                    .context("Failed to remove all inner transactions")?;
+
+                diesel::delete(wrapper_transactions::table)
+                    .execute(transaction_conn)
+                    .context("Failed to remove all wrapper transactions")?;
 
                 diesel::insert_into(validators::table)
                     .values::<&Vec<ValidatorInsertDb>>(
@@ -248,6 +270,28 @@ async fn main() -> anyhow::Result<(), MainError> {
                             .expect("Failed to get validator");
 
                         UnbondInsertDb::from_unbond(unbond, validator.id)
+                    })
+                    .collect::<Vec<_>>())
+                .execute(transaction_conn)
+                .context("Failed to update unbonds in db")?;
+
+                diesel::insert_into(wrapper_transactions::table)
+                .values::<&Vec<WrapperTransactionInsertDb>>(
+                    &wrapper_txs
+                    .into_iter()
+                    .map(|wrapper_tx| {
+                        WrapperTransactionInsertDb::from(wrapper_tx)
+                    })
+                    .collect::<Vec<_>>())
+                .execute(transaction_conn)
+                .context("Failed to update unbonds in db")?;
+
+                diesel::insert_into(inner_transactions::table)
+                .values::<&Vec<InnerTransactionInsertDb>>(
+                    &inner_txs
+                    .into_iter()
+                    .map(|inner_tx| {
+                        InnerTransactionInsertDb::from(inner_tx)
                     })
                     .collect::<Vec<_>>())
                 .execute(transaction_conn)

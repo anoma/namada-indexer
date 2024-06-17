@@ -4,6 +4,8 @@ use std::fmt::Display;
 use namada_sdk::uint::Uint;
 use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
+use rand::distributions::{Alphanumeric, Distribution, Standard};
+use rand::{Rng, RngCore};
 
 use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
@@ -103,6 +105,36 @@ pub struct WrapperTransaction {
     pub exit_code: TransactionExitStatus,
 }
 
+impl WrapperTransaction {
+    pub fn fake() -> Self {
+        let tx_id: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect();
+
+        let tx_index = rand::thread_rng().gen_range(0..10);
+        let gas_payer =
+            namada_core::address::gen_established_address("namada-indexer");
+        let gas_token =
+            namada_core::address::gen_established_address("namada-indexer");
+
+        Self {
+            tx_id: Id::Hash(tx_id),
+            index: tx_index,
+            fee: Fee {
+                gas: "20000".to_string(),
+                amount_per_gas_unit: "0.00000".to_string(),
+                gas_payer: Id::from(gas_payer),
+                gas_token: Id::from(gas_token),
+            },
+            atomic: rand::random(),
+            block_height: rand::random(),
+            exit_code: rand::random(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct InnerTransaction {
     pub tx_id: Id,
@@ -116,6 +148,35 @@ pub struct InnerTransaction {
 }
 
 impl InnerTransaction {
+    pub fn fake(wrapper_id: Id) -> Self {
+        let tx_id: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect();
+
+        let tx_index = rand::thread_rng().gen_range(0..10);
+        let tx_kind: TransactionKind = rand::random();
+
+        let mut data = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut data);
+        let memo = String::from_utf8_lossy(&subtle_encoding::hex::encode(data))
+            .to_string();
+
+        let tx_exit_code: TransactionExitStatus = rand::random();
+
+        Self {
+            tx_id: Id::Hash(tx_id),
+            index: tx_index,
+            wrapper_id,
+            kind: tx_kind,
+            memo: Some(memo),
+            data: None,
+            extra_sections: HashMap::new(),
+            exit_code: tx_exit_code,
+        }
+    }
+
     pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
         self.extra_sections.get(&section_id).cloned()
     }
@@ -264,5 +325,39 @@ impl Transaction {
 
     pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
         self.extra_sections.get(&section_id).cloned()
+    }
+}
+
+impl Distribution<TransactionKind> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+    ) -> TransactionKind {
+        match rng.gen_range(0..=11) {
+            0 => TransactionKind::Bond(vec![]),
+            1 => TransactionKind::ClaimRewards(vec![]),
+            2 => TransactionKind::CommissionChange(vec![]),
+            3 => TransactionKind::InitProposal(vec![]),
+            4 => TransactionKind::MetadataChange(vec![]),
+            5 => TransactionKind::ProposalVote(vec![]),
+            6 => TransactionKind::Redelegation(vec![]),
+            7 => TransactionKind::RevealPk(vec![]),
+            8 => TransactionKind::ShieldedTransfer(vec![]),
+            9 => TransactionKind::TransparentTransfer(vec![]),
+            10 => TransactionKind::Unbond(vec![]),
+            _ => TransactionKind::Withdraw(vec![]),
+        }
+    }
+}
+
+impl Distribution<TransactionExitStatus> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+    ) -> TransactionExitStatus {
+        match rng.gen_range(0..=1) {
+            0 => TransactionExitStatus::Applied,
+            _ => TransactionExitStatus::Rejected,
+        }
     }
 }
