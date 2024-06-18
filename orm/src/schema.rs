@@ -68,6 +68,7 @@ diesel::table! {
         apr -> Varchar,
         native_token_address -> Varchar,
         chain_id -> Varchar,
+        genesis_time -> Int8,
     }
 }
 

@@ -23,6 +23,7 @@ namada_core.workspace = true
 namada_parameters.workspace = true
 tendermint-rpc.workspace = true
 shared.workspace = true
+serde_json.workspace = true
 futures.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
