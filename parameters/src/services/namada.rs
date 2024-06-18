@@ -20,7 +20,6 @@ use tendermint_rpc::HttpClient;
 pub async fn get_parameters(
     client: &HttpClient,
     epoch: Epoch,
-    chain_id: String,
 ) -> anyhow::Result<Parameters> {
     let pos_parameters = rpc::get_pos_params(client)
         .await
@@ -67,7 +66,6 @@ pub async fn get_parameters(
         min_duration: epoch_duration.min_duration.0,
         apr,
         native_token_address: native_token_address.to_string(),
-        chain_id,
     })
 }
 

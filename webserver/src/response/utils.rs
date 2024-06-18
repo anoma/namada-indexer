@@ -1,5 +1,6 @@
 use std::ops::Rem;
 
+use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
 use serde::Serialize;
 
 use crate::constant::ITEM_PER_PAGE;
@@ -44,7 +45,8 @@ where
 pub fn epoch_progress(current_block: i32, min_num_of_blocks: i32) -> f64 {
     // Not sure why but real min number of blocks is usually 2 more what is in
     // store
-    let min_num_of_blocks = min_num_of_blocks + 2;
+    let min_num_of_blocks =
+        min_num_of_blocks + (EPOCH_SWITCH_BLOCKS_DELAY as i32);
 
     // We remove 1 to the current_block so progress resets to 0 when new epoch
     // starts

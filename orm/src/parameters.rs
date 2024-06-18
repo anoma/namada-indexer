@@ -2,6 +2,7 @@ use diesel::prelude::Insertable;
 use diesel::query_builder::AsChangeset;
 use diesel::{Queryable, Selectable};
 use serde::Serialize;
+use shared::genesis::Genesis;
 use shared::parameters::Parameters;
 
 use crate::schema::chain_parameters;
@@ -18,6 +19,7 @@ pub struct ParametersInsertDb {
     pub apr: String,
     pub native_token_address: String,
     pub chain_id: String,
+    pub genesis_time: i64,
 }
 
 #[derive(Serialize, Queryable, Selectable, Clone)]
@@ -33,19 +35,21 @@ pub struct ParametersDb {
     pub apr: String,
     pub native_token_address: String,
     pub chain_id: String,
+    pub genesis_time: i64,
 }
 
-impl From<Parameters> for ParametersInsertDb {
-    fn from(value: Parameters) -> Self {
+impl From<(Parameters, Genesis)> for ParametersInsertDb {
+    fn from((parameters, genesis): (Parameters, Genesis)) -> Self {
         Self {
-            unbonding_length: value.unbonding_length as i32,
-            pipeline_length: value.pipeline_length as i32,
-            epochs_per_year: value.epochs_per_year as i32,
-            min_num_of_blocks: value.min_num_of_blocks as i32,
-            min_duration: value.min_duration as i32,
-            apr: value.apr,
-            native_token_address: value.native_token_address,
-            chain_id: value.chain_id,
+            unbonding_length: parameters.unbonding_length as i32,
+            pipeline_length: parameters.pipeline_length as i32,
+            epochs_per_year: parameters.epochs_per_year as i32,
+            min_num_of_blocks: parameters.min_num_of_blocks as i32,
+            min_duration: parameters.min_duration as i32,
+            apr: parameters.apr,
+            native_token_address: parameters.native_token_address,
+            chain_id: genesis.chain_id,
+            genesis_time: genesis.genesis_time,
         }
     }
 }

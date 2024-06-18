@@ -14,6 +14,7 @@ use orm::schema::{chain_parameters, gas_price};
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
 use parameters::services::namada as namada_service;
+use parameters::services::tendermint as tendermint_service;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
@@ -76,9 +77,13 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 let parameters =
-                    namada_service::get_parameters(&client, current_epoch, config.chain_id.clone())
+                    namada_service::get_parameters(&client, current_epoch)
                         .await
                         .into_rpc_error()?;
+
+                let genesis = tendermint_service::query_genesis(&client)
+                    .await
+                    .into_rpc_error()?;
 
                 let gas_price = namada_service::get_gas_price(&client).await;
 
@@ -86,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
                             diesel::insert_into(chain_parameters::table)
-                                .values(ParametersInsertDb::from(parameters))
+                                .values(ParametersInsertDb::from((parameters, genesis)))
                                 .on_conflict(
                                     chain_parameters::chain_id,
                                 )

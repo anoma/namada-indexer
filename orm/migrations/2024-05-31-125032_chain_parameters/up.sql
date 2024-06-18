@@ -7,7 +7,8 @@ CREATE TABLE chain_parameters (
   min_duration INT NOT NULL,
   apr VARCHAR NOT NULL,
   native_token_address VARCHAR NOT NULL,
-  chain_id VARCHAR NOT NULL
+  chain_id VARCHAR NOT NULL,
+  genesis_time BIGINT NOT NULL
 );
 
 ALTER TABLE chain_parameters ADD UNIQUE (chain_id);

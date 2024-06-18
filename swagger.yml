@@ -651,7 +651,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime]
       properties:
         unbondingLength:
           type: string
@@ -664,6 +664,8 @@ components:
         nativeTokenAddress:
           type: string
         chainId:
+          type: string
+        genesisTime:
           type: string
     RpcUrl:
       type: object
