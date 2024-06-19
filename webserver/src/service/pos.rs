@@ -6,7 +6,9 @@ use crate::dto::pos::{MyValidatorKindDto, ValidatorStateDto};
 use crate::error::pos::PoSError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
-use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
+use crate::response::pos::{
+    Bond, BondStatus, Reward, Unbond, ValidatorWithId, Withdraw,
+};
 
 #[derive(Clone)]
 pub struct PosService {
@@ -88,12 +90,22 @@ impl PosService {
             .find_bonds_by_address(address, page as i64)
             .await
             .map_err(PoSError::Database)?;
+        let chain_state = self
+            .chain_repo
+            .get_chain_state()
+            .await
+            .map_err(PoSError::Database)?;
 
         let bonds: Vec<Bond> = db_bonds
             .0
             .into_iter()
             .map(|(validator, bond)| {
-                let bond = Bond::from(bond, validator);
+                let bond_status = match chain_state.epoch.cmp(&bond.start) {
+                    std::cmp::Ordering::Less => BondStatus::Inactive,
+                    std::cmp::Ordering::Equal => BondStatus::Active,
+                    std::cmp::Ordering::Greater => BondStatus::Active,
+                };
+                let bond = Bond::from(bond, validator, bond_status);
                 Bond {
                     amount: raw_amount_to_nam(bond.amount),
                     ..bond

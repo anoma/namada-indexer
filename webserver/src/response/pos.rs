@@ -47,11 +47,19 @@ pub struct Validator {
     pub avatar: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BondStatus {
+    Active,
+    Inactive,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bond {
     pub amount: String,
     pub validator: ValidatorWithId,
+    pub status: BondStatus,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -120,10 +128,15 @@ impl ValidatorWithId {
 }
 
 impl Bond {
-    pub fn from(db_bond: BondDb, db_validator: ValidatorDb) -> Self {
+    pub fn from(
+        db_bond: BondDb,
+        db_validator: ValidatorDb,
+        status: BondStatus,
+    ) -> Self {
         Self {
             amount: db_bond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
+            status,
         }
     }
 }

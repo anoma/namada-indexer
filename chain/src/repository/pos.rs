@@ -37,7 +37,11 @@ pub fn insert_bonds(
                 })
                 .collect::<Vec<_>>(),
         )
-        .on_conflict((bonds::columns::validator_id, bonds::columns::address))
+        .on_conflict((
+            bonds::columns::validator_id,
+            bonds::columns::address,
+            bonds::columns::start,
+        ))
         .do_update()
         .set((
             bonds::columns::raw_amount.eq(excluded(bonds::columns::raw_amount)),
