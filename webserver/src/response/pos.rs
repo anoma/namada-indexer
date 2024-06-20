@@ -52,6 +52,7 @@ pub struct Validator {
 pub struct Bond {
     pub amount: String,
     pub validator: ValidatorWithId,
+    pub start: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -124,6 +125,7 @@ impl Bond {
         Self {
             amount: db_bond.raw_amount,
             validator: ValidatorWithId::from(db_validator),
+            start: db_bond.start.to_string(),
         }
     }
 }

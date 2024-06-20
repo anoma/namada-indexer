@@ -5,6 +5,7 @@ CREATE TABLE bonds (
     address VARCHAR NOT NULL,
     validator_id INT NOT NULL,
     raw_amount VARCHAR NOT NULL,
+    start INT NOT NULL,
     CONSTRAINT fk_validator_id FOREIGN KEY(validator_id) REFERENCES validators(id) ON DELETE CASCADE
 );
 

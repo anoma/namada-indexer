@@ -12,6 +12,7 @@ pub struct BondInsertDb {
     pub address: String,
     pub validator_id: i32,
     pub raw_amount: String,
+    pub start: i32,
 }
 
 #[derive(Identifiable, Clone, Queryable, Selectable, Associations)]
@@ -23,6 +24,7 @@ pub struct BondDb {
     pub address: String,
     pub validator_id: i32,
     pub raw_amount: String,
+    pub start: i32,
 }
 
 impl BondInsertDb {
@@ -31,6 +33,7 @@ impl BondInsertDb {
             address: bond.source.to_string(),
             validator_id,
             raw_amount: bond.amount.to_string(),
+            start: bond.start as i32,
         }
     }
 }

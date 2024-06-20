@@ -54,6 +54,7 @@ diesel::table! {
         address -> Varchar,
         validator_id -> Int4,
         raw_amount -> Varchar,
+        start -> Int4,
     }
 }
 

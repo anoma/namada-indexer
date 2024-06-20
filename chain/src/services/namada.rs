@@ -165,8 +165,9 @@ pub async fn query_all_bonds_and_unbonds(
     type Source = NamadaSdkAddress;
     type Validator = NamadaSdkAddress;
     type WithdrawEpoch = NamadaSdkEpoch;
+    type StartEpoch = NamadaSdkEpoch;
 
-    type BondKey = (Source, Validator);
+    type BondKey = (Source, Validator, StartEpoch);
     type BondsMap = HashMap<BondKey, NamadaSdkAmount>;
 
     type UnbondKey = (Source, Validator, WithdrawEpoch);
@@ -184,7 +185,7 @@ pub async fn query_all_bonds_and_unbonds(
     for (bond_id, details) in bonds_and_unbonds {
         for bd in details.bonds {
             let id = bond_id.clone();
-            let key = (id.source, id.validator);
+            let key = (id.source, id.validator, bd.start);
 
             if let Some(record) = bonds.get_mut(&key) {
                 *record = record.checked_add(bd.amount).unwrap();
@@ -205,13 +206,16 @@ pub async fn query_all_bonds_and_unbonds(
         }
     }
 
+    // TODO: we can iter in parallel
+
     // Map the types, mostly because we can't add indexer amounts
     let bonds = bonds
         .into_iter()
-        .map(|((source, target), amount)| Bond {
+        .map(|((source, target, start), amount)| Bond {
             source: Id::from(source),
             target: Id::from(target),
             amount: Amount::from(amount),
+            start: start.0 as Epoch,
         })
         .collect();
 
@@ -348,6 +352,7 @@ pub async fn query_bonds(
                     source: Id::from(source),
                     target: Id::from(target),
                     amount: Amount::from(amount),
+                    start: epoch + pipeline_length,
                 })
             }
         })

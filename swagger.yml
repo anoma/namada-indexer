@@ -564,11 +564,13 @@ components:
           minimum: 0
     Bond:
       type: object
-      required: [validator, amount]
+      required: [validator, amount, start]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
         amount:
+          type: string
+        start:
           type: string
     Unbond:
       type: object
