@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use shared::gas::GasPrice;
 
@@ -18,14 +21,15 @@ pub struct GasDb {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct GasPriceDb {
     pub token: String,
-    pub amount: String,
+    pub amount: BigDecimal,
 }
 
 impl From<GasPrice> for GasPriceDb {
     fn from(value: GasPrice) -> Self {
         Self {
             token: value.token,
-            amount: value.amount,
+            amount: BigDecimal::from_str(&value.amount.to_string())
+                .expect("Invalid amount"),
         }
     }
 }

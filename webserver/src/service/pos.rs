@@ -1,3 +1,4 @@
+use bigdecimal::{BigDecimal, Zero};
 use orm::validators::ValidatorStateDb;
 
 use super::utils::raw_amount_to_nam;
@@ -6,7 +7,9 @@ use crate::dto::pos::{MyValidatorKindDto, ValidatorStateDto};
 use crate::error::pos::PoSError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
-use crate::response::pos::{Bond, Reward, Unbond, ValidatorWithId, Withdraw};
+use crate::response::pos::{
+    Bond, BondStatus, MergedBond, Reward, Unbond, ValidatorWithId, Withdraw,
+};
 
 #[derive(Clone)]
 pub struct PosService {
@@ -83,6 +86,12 @@ impl PosService {
         address: String,
         page: u64,
     ) -> Result<(Vec<Bond>, u64), PoSError> {
+        let chain_state = self
+            .chain_repo
+            .get_chain_state()
+            .await
+            .map_err(PoSError::Database)?;
+
         let db_bonds = self
             .pos_repo
             .find_bonds_by_address(address, page as i64)
@@ -93,8 +102,40 @@ impl PosService {
             .0
             .into_iter()
             .map(|(validator, bond)| {
-                let bond = Bond::from(bond, validator);
+                let bond_status = BondStatus::from((&bond, &chain_state));
+                let bond = Bond::from(bond, bond_status, validator);
+
                 Bond {
+                    amount: raw_amount_to_nam(bond.amount),
+                    ..bond
+                }
+            })
+            .collect();
+
+        Ok((bonds, db_bonds.1 as u64))
+    }
+
+    pub async fn get_merged_bonds_by_address(
+        &self,
+        address: String,
+        page: u64,
+    ) -> Result<(Vec<MergedBond>, u64), PoSError> {
+        let db_bonds = self
+            .pos_repo
+            .find_merged_bonds_by_address(address, page as i64)
+            .await
+            .map_err(PoSError::Database)?;
+
+        let bonds: Vec<MergedBond> = db_bonds
+            .0
+            .into_iter()
+            .map(|(_, validator, amount)| {
+                let bond = MergedBond::from(
+                    amount.unwrap_or(BigDecimal::zero()),
+                    validator,
+                );
+
+                MergedBond {
                     amount: raw_amount_to_nam(bond.amount),
                     ..bond
                 }

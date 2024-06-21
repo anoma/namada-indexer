@@ -12,7 +12,7 @@ impl From<BalanceDb> for AddressBalance {
     fn from(value: BalanceDb) -> Self {
         Self {
             token_address: value.token,
-            balance: value.raw_amount,
+            balance: value.raw_amount.to_string(),
         }
     }
 }

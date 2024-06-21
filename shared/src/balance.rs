@@ -6,23 +6,23 @@ use namada_sdk::token::Amount as NamadaAmount;
 use crate::id::Id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Amount(String);
+pub struct Amount(NamadaAmount);
+
+impl From<NamadaAmount> for Amount {
+    fn from(amount: NamadaAmount) -> Amount {
+        Amount(amount)
+    }
+}
 
 impl Amount {
     pub fn fake() -> Self {
-        Self((0..10000000).fake::<u64>().to_string())
+        Self(NamadaAmount::from_u64((0..10000000).fake::<u64>()))
     }
 }
 
 impl Display for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl From<NamadaAmount> for Amount {
-    fn from(amount: NamadaAmount) -> Amount {
-        Amount(amount.to_string())
     }
 }
 

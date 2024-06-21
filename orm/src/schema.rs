@@ -35,7 +35,7 @@ diesel::table! {
         id -> Int4,
         owner -> Varchar,
         token -> Varchar,
-        raw_amount -> Varchar,
+        raw_amount -> Numeric,
     }
 }
 
@@ -53,7 +53,7 @@ diesel::table! {
         id -> Int4,
         address -> Varchar,
         validator_id -> Int4,
-        raw_amount -> Varchar,
+        raw_amount -> Numeric,
         start -> Int4,
     }
 }
@@ -95,7 +95,7 @@ diesel::table! {
 diesel::table! {
     gas_price (token) {
         token -> Varchar,
-        amount -> Varchar,
+        amount -> Numeric,
     }
 }
 
@@ -156,7 +156,7 @@ diesel::table! {
         id -> Int4,
         owner -> Varchar,
         validator_id -> Int4,
-        raw_amount -> Varchar,
+        raw_amount -> Numeric,
     }
 }
 
@@ -173,7 +173,7 @@ diesel::table! {
         id -> Int4,
         address -> Varchar,
         validator_id -> Int4,
-        raw_amount -> Varchar,
+        raw_amount -> Numeric,
         withdraw_epoch -> Int4,
     }
 }

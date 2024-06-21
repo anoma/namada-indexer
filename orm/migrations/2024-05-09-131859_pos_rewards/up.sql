@@ -4,7 +4,7 @@ CREATE TABLE pos_rewards (
   id SERIAL PRIMARY KEY,
   owner VARCHAR NOT NULL,
   validator_id INT NOT NULL,
-  raw_amount VARCHAR NOT NULL,
+  raw_amount NUMERIC(78) NOT NULL,
   CONSTRAINT fk_validator_id FOREIGN KEY(validator_id) REFERENCES validators(id) ON DELETE CASCADE
 );
 

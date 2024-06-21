@@ -136,6 +136,37 @@ paths:
                       $ref: '#/components/schemas/Bond'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/merged-bonds/{address}:
+    get:
+      summary: Get all the bonds for an address, with merged amounts, regardless of the status
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of bonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MergedBond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/unbond/{address}:
     get:
       summary: Get all the unbonds for an an address
@@ -570,7 +601,16 @@ components:
           $ref: '#/components/schemas/Validator'
         amount:
           type: string
-        start:
+        status:
+          type: string
+          enum: [active, inactive]
+    MergedBond:
+      type: object
+      required: [validator, amount]
+      properties:
+        validator:
+          $ref: '#/components/schemas/Validator'
+        amount:
           type: string
     Unbond:
       type: object
@@ -616,13 +656,13 @@ components:
         page:
           type: string
           minimum: 0
-        per_page:
+        perPage:
           type: string
           minimum: 0
-        total_pages:
+        totalPages:
           type: string
           minimum: 0
-        total_items:
+        totalItems:
           type: string
           minimum: 0
     RevealedPk:

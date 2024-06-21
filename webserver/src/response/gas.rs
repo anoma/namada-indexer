@@ -30,7 +30,7 @@ impl From<GasPriceDb> for GasPrice {
     fn from(value: GasPriceDb) -> Self {
         Self {
             token: value.token,
-            amount: value.amount,
+            amount: value.amount.to_string(),
         }
     }
 }

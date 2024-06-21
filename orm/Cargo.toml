@@ -19,3 +19,4 @@ diesel.workspace = true
 diesel_migrations.workspace = true
 serde.workspace = true
 shared.workspace = true
+bigdecimal.workspace = true

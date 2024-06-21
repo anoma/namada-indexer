@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use bigdecimal::BigDecimal;
 use diesel::associations::Associations;
 use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use shared::unbond::Unbond;
@@ -11,7 +14,7 @@ use crate::validators::ValidatorDb;
 pub struct UnbondInsertDb {
     pub address: String,
     pub validator_id: i32,
-    pub raw_amount: String,
+    pub raw_amount: BigDecimal,
     pub withdraw_epoch: i32,
 }
 
@@ -23,7 +26,7 @@ pub struct UnbondDb {
     pub id: i32,
     pub address: String,
     pub validator_id: i32,
-    pub raw_amount: String,
+    pub raw_amount: BigDecimal,
     pub withdraw_epoch: i32,
 }
 
@@ -32,7 +35,8 @@ impl UnbondInsertDb {
         Self {
             address: unbond.source.to_string(),
             validator_id,
-            raw_amount: unbond.amount.to_string(),
+            raw_amount: BigDecimal::from_str(&unbond.amount.to_string())
+                .expect("Invalid amount"),
             withdraw_epoch: unbond.withdraw_at as i32,
         }
     }

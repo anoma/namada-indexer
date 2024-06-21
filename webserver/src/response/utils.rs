@@ -12,6 +12,7 @@ pub struct PaginatedResponse<T: Serialize> {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Pagination {
     pub page: u64,
     pub per_page: u64,

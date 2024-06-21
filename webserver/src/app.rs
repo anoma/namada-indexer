@@ -50,6 +50,10 @@ impl ApplicationServer {
                     get(pos_handlers::get_my_validators),
                 )
                 .route("/pos/bond/:address", get(pos_handlers::get_bonds))
+                .route(
+                    "/pos/merged-bonds/:address",
+                    get(pos_handlers::get_merged_bonds),
+                )
                 .route("/pos/unbond/:address", get(pos_handlers::get_unbonds))
                 .route(
                     "/pos/withdraw/:address/:epoch",

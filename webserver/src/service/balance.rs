@@ -32,7 +32,7 @@ impl BalanceService {
             .cloned()
             .map(|balance| AddressBalance {
                 token_address: balance.token,
-                balance: raw_amount_to_nam(balance.raw_amount),
+                balance: raw_amount_to_nam(balance.raw_amount.to_string()),
             })
             .collect();
 

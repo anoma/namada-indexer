@@ -5,6 +5,7 @@ pub mod epoch_crawler_state;
 pub mod gas;
 pub mod governance_proposal;
 pub mod governance_votes;
+pub mod group_by_macros;
 pub mod migrations;
 pub mod parameters;
 pub mod pos_rewards;

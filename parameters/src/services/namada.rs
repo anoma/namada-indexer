@@ -12,6 +12,7 @@ use namada_sdk::rpc::{
     self, get_token_total_supply, get_total_staked_tokens, query_storage_value,
 };
 use namada_sdk::token::Amount as NamadaSdkAmount;
+use shared::balance::Amount;
 use shared::block::Epoch;
 use shared::gas::GasPrice;
 use shared::parameters::Parameters;
@@ -83,7 +84,7 @@ pub async fn get_gas_price(client: &HttpClient) -> Vec<GasPrice> {
     for (token, gas_cost) in gas_cost_table {
         gas_table.push(GasPrice {
             token: token.to_string(),
-            amount: gas_cost.to_string_native(),
+            amount: Amount::from(gas_cost),
         })
     }
 
