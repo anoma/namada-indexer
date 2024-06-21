@@ -2,9 +2,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
 use namada_sdk::borsh::BorshDeserialize;
-use namada_sdk::key::common::PublicKey as NamadaPublicKey;
-use namada_sdk::token;
-use namada_tx::data::pos;
 use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
@@ -171,11 +168,7 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::InitProposal(data) => {
-                    let init_proposal_data =
-                        namada_governance::InitProposalData::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
+                    let init_proposal_data = data.clone();
 
                     let proposal_content_bytes = tx
                         .get_section_data_by_id(Id::from(
@@ -251,11 +244,7 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ClaimRewards(data) => {
-                    let data = pos::Withdraw::try_from_slice(
-                        // seems wrong but its correct
-                        data,
-                    )
-                    .unwrap();
+                    let data = data.clone();
                     let source = data.source.unwrap_or(data.validator);
 
                     Some(Id::from(source))
@@ -271,11 +260,7 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ProposalVote(data) => {
-                    let vote_proposal_data =
-                        namada_governance::VoteProposalData::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
+                    let vote_proposal_data = data.clone();
 
                     Some(GovernanceVote {
                         proposal_id: vote_proposal_data.id,
@@ -299,64 +284,65 @@ impl Block {
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
                         TransactionKind::TransparentTransfer(data) => {
-                            let transfer_data =
-                                token::TransparentTransfer::try_from_slice(data)
-                                    .unwrap();
-                            let transfer_source = Id::from(transfer_data.source);
-                            let transfer_target = Id::from(transfer_data.target);
+                            let transfer_data = data.clone();
+                            let transfer_source =
+                                Id::from(transfer_data.source);
+                            let transfer_target =
+                                Id::from(transfer_data.target);
                             let transfer_token = Id::from(transfer_data.token);
                             vec![
                                 BalanceChange::new(
                                     transfer_source,
                                     transfer_token.clone(),
                                 ),
-                                BalanceChange::new(transfer_target, transfer_token),
+                                BalanceChange::new(
+                                    transfer_target,
+                                    transfer_token,
+                                ),
                             ]
                         }
                         TransactionKind::Bond(data) => {
-                            let bond_data =
-                                namada_tx::data::pos::Bond::try_from_slice(data)
-                                    .unwrap();
+                            let bond_data = data.clone();
                             let address =
                                 bond_data.source.unwrap_or(bond_data.validator);
                             let source = Id::from(address);
-                            vec![BalanceChange::new(source, native_token.clone())]
+                            vec![BalanceChange::new(
+                                source,
+                                native_token.clone(),
+                            )]
                         }
                         TransactionKind::Withdraw(data) => {
-                            let withdraw_data =
-                                namada_tx::data::pos::Withdraw::try_from_slice(
-                                    data,
-                                )
-                                .unwrap();
+                            let withdraw_data = data.clone();
                             let address = withdraw_data
                                 .source
                                 .unwrap_or(withdraw_data.validator);
                             let source = Id::from(address);
 
-                            vec![BalanceChange::new(source, native_token.clone())]
+                            vec![BalanceChange::new(
+                                source,
+                                native_token.clone(),
+                            )]
                         }
                         TransactionKind::ClaimRewards(data) => {
-                            let claim_rewards_data =
-                                namada_tx::data::pos::ClaimRewards::try_from_slice(
-                                    data,
-                                )
-                                .unwrap();
+                            let claim_rewards_data = data.clone();
                             let address = claim_rewards_data
                                 .source
                                 .unwrap_or(claim_rewards_data.validator);
                             let source = Id::from(address);
 
-                            vec![BalanceChange::new(source, native_token.clone())]
+                            vec![BalanceChange::new(
+                                source,
+                                native_token.clone(),
+                            )]
                         }
                         TransactionKind::InitProposal(data) => {
-                            let init_proposal_data =
-                            namada_governance::InitProposalData::try_from_slice(
-                                data,
-                            )
-                            .unwrap();
+                            let init_proposal_data = data.clone();
                             let author = Id::from(init_proposal_data.author);
 
-                            vec![BalanceChange::new(author, native_token.clone())]
+                            vec![BalanceChange::new(
+                                author,
+                                native_token.clone(),
+                            )]
                         }
                         _ => vec![],
                     };
@@ -378,9 +364,7 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Bond(data) => {
-                    let bond_data =
-                        namada_tx::data::pos::Bond::try_from_slice(data)
-                            .unwrap();
+                    let bond_data = data.clone();
                     let source_address =
                         bond_data.source.unwrap_or(bond_data.validator.clone());
                     let target_address = bond_data.validator;
@@ -391,9 +375,7 @@ impl Block {
                     }])
                 }
                 TransactionKind::Unbond(data) => {
-                    let unbond_data =
-                        namada_tx::data::pos::Unbond::try_from_slice(data)
-                            .unwrap();
+                    let unbond_data = data.clone();
                     let source_address = unbond_data
                         .source
                         .unwrap_or(unbond_data.validator.clone());
@@ -405,11 +387,7 @@ impl Block {
                     }])
                 }
                 TransactionKind::Redelegation(data) => {
-                    let redelegation_data =
-                        namada_tx::data::pos::Redelegation::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
+                    let redelegation_data = data.clone();
                     let owner = redelegation_data.owner;
                     let source_validator = redelegation_data.src_validator;
                     let destination_validator =
@@ -438,9 +416,8 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Unbond(data) => {
-                    let unbond_data =
-                        namada_tx::data::pos::Unbond::try_from_slice(data)
-                            .unwrap();
+                    let unbond_data = data.clone();
+
                     let source_address = unbond_data
                         .source
                         .unwrap_or(unbond_data.validator.clone());
@@ -462,11 +439,8 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::MetadataChange(data) => {
-                    let metadata_change_data =
-                        namada_tx::data::pos::MetaDataChange::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
+                    let metadata_change_data = data.clone();
+
                     let source_address = metadata_change_data.validator;
 
                     Some(ValidatorMetadataChange {
@@ -483,11 +457,7 @@ impl Block {
                     })
                 }
                 TransactionKind::CommissionChange(data) => {
-                    let commission_change =
-                        namada_tx::data::pos::CommissionChange::try_from_slice(
-                            data,
-                        )
-                        .unwrap();
+                    let commission_change = data.clone();
 
                     let source_address = commission_change.validator;
 
@@ -515,8 +485,7 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::RevealPk(data) => {
-                    let namada_public_key =
-                        NamadaPublicKey::try_from_slice(data).unwrap();
+                    let namada_public_key = data.clone();
 
                     Some((
                         PublicKey::from(namada_public_key.clone()),

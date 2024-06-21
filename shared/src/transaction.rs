@@ -1,52 +1,96 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use namada_governance::{InitProposalData, VoteProposalData};
+use namada_sdk::masp::ShieldedTransfer;
+use namada_sdk::token::TransparentTransfer;
 use namada_sdk::uint::Uint;
-use namada_tx::data::TxType;
+use namada_sdk::{borsh::BorshDeserialize, key::common::PublicKey};
+use namada_tx::data::{
+    pos::{
+        Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation,
+        Unbond, Withdraw,
+    },
+    TxType,
+};
 use namada_tx::{Section, Tx};
+use serde::Serialize;
 
 use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
+#[serde(untagged)]
 pub enum TransactionKind {
-    TransparentTransfer(Vec<u8>),
-    ShieldedTransfer(Vec<u8>),
-    Bond(Vec<u8>),
-    Redelegation(Vec<u8>),
-    Unbond(Vec<u8>),
-    Withdraw(Vec<u8>),
-    ClaimRewards(Vec<u8>),
-    ProposalVote(Vec<u8>),
-    InitProposal(Vec<u8>),
-    MetadataChange(Vec<u8>),
-    CommissionChange(Vec<u8>),
-    RevealPk(Vec<u8>),
+    TransparentTransfer(TransparentTransfer),
+    // TODO: remove once ShieldedTransfer can be serialized
+    #[serde(skip)]
+    ShieldedTransfer(ShieldedTransfer),
+    Bond(Bond),
+    Redelegation(Redelegation),
+    Unbond(Unbond),
+    Withdraw(Withdraw),
+    ClaimRewards(ClaimRewards),
+    ProposalVote(VoteProposalData),
+    InitProposal(InitProposalData),
+    MetadataChange(MetaDataChange),
+    CommissionChange(CommissionChange),
+    RevealPk(PublicKey),
     Unknown,
 }
 
 impl TransactionKind {
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(&self).expect("Cannot serialize TransactionKind")
+    }
+
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
-            "tx_transparent_transfer" => {
-                TransactionKind::TransparentTransfer(data.to_vec())
-            }
-            "tx_bond" => TransactionKind::Bond(data.to_vec()),
-            "tx_redelegation" => TransactionKind::Redelegation(data.to_vec()),
-            "tx_unbond" => TransactionKind::Unbond(data.to_vec()),
-            "tx_withdraw" => TransactionKind::Withdraw(data.to_vec()),
-            "tx_claim_rewards" => TransactionKind::ClaimRewards(data.to_vec()),
-            "tx_init_proposal" => TransactionKind::InitProposal(data.to_vec()),
-            "tx_vote_proposal" => TransactionKind::ProposalVote(data.to_vec()),
-            "tx_metadata_change" => {
-                TransactionKind::MetadataChange(data.to_vec())
-            }
-            "tx_commission_change" => {
-                TransactionKind::CommissionChange(data.to_vec())
-            }
-            "tx_reveal_pk" => TransactionKind::RevealPk(data.to_vec()),
+            "tx_transparent_transfer" => TransactionKind::TransparentTransfer(
+                TransparentTransfer::try_from_slice(data)
+                    .expect("Cannot deserialize TransparentTransfer"),
+            ),
+            "tx_bond" => TransactionKind::Bond(
+                Bond::try_from_slice(data).expect("Cannot deserialize Bond"),
+            ),
+            "tx_redelegation" => TransactionKind::Redelegation(
+                Redelegation::try_from_slice(data)
+                    .expect("Cannot deserialize Redelegation"),
+            ),
+            "tx_unbond" => TransactionKind::Unbond(
+                Unbond::try_from_slice(data)
+                    .expect("Cannot deserialize Unbond"),
+            ),
+            "tx_withdraw" => TransactionKind::Withdraw(
+                Withdraw::try_from_slice(data)
+                    .expect("Cannot deserialize Withdraw"),
+            ),
+            "tx_claim_rewards" => TransactionKind::ClaimRewards(
+                ClaimRewards::try_from_slice(data)
+                    .expect("Cannot deserialize ClaimRewards"),
+            ),
+            "tx_init_proposal" => TransactionKind::InitProposal(
+                InitProposalData::try_from_slice(data)
+                    .expect("Cannot deserialize InitProposal"),
+            ),
+            "tx_vote_proposal" => TransactionKind::ProposalVote(
+                VoteProposalData::try_from_slice(data)
+                    .expect("Cannot deserialize VoteProposal"),
+            ),
+            "tx_metadata_change" => TransactionKind::MetadataChange(
+                MetaDataChange::try_from_slice(data)
+                    .expect("Cannot deserialize MetaDataChange"),
+            ),
+            "tx_commission_change" => TransactionKind::CommissionChange(
+                CommissionChange::try_from_slice(data)
+                    .expect("Cannot deserialize CommissionChange"),
+            ),
+            "tx_reveal_pk" => TransactionKind::RevealPk(
+                PublicKey::try_from_slice(data)
+                    .expect("Cannot deserialize PublicKey"),
+            ),
             _ => TransactionKind::Unknown,
         }
     }
@@ -209,9 +253,7 @@ impl Transaction {
                     };
 
                     let encoded_tx_data = if !tx_data.is_empty() {
-                        let hex_encode = subtle_encoding::hex::encode(tx_data);
-                        let encoded_data = String::from_utf8_lossy(&hex_encode);
-                        Some(encoded_data.to_string())
+                        Some(tx_kind.to_json())
                     } else {
                         None
                     };
