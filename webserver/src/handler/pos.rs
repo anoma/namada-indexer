@@ -10,7 +10,8 @@ use crate::dto::pos::{
 };
 use crate::error::api::ApiError;
 use crate::response::pos::{
-    Bond, Reward, TotalVotingPower, Unbond, ValidatorWithId, Withdraw,
+    Bond, MergedBond, Reward, TotalVotingPower, Unbond, ValidatorWithId,
+    Withdraw,
 };
 use crate::response::utils::PaginatedResponse;
 use crate::state::common::CommonState;
@@ -59,6 +60,25 @@ pub async fn get_bonds(
     let (bonds, total_bonds) = state
         .pos_service
         .get_bonds_by_address(address, page)
+        .await?;
+
+    let response = PaginatedResponse::new(bonds, page, total_bonds);
+
+    Ok(Json(response))
+}
+
+#[debug_handler]
+pub async fn get_merged_bonds(
+    _headers: HeaderMap,
+    query: Query<BondsDto>,
+    Path(address): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<PaginatedResponse<Vec<MergedBond>>>, ApiError> {
+    let page = query.page.unwrap_or(1);
+
+    let (bonds, total_bonds) = state
+        .pos_service
+        .get_merged_bonds_by_address(address, page)
         .await?;
 
     let response = PaginatedResponse::new(bonds, page, total_bonds);

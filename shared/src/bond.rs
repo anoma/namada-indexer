@@ -1,4 +1,7 @@
+use fake::Fake;
+
 use crate::balance::Amount;
+use crate::block::Epoch;
 use crate::id::Id;
 
 #[derive(Debug, Clone)]
@@ -12,6 +15,7 @@ pub struct Bond {
     pub source: Id,
     pub target: Id,
     pub amount: Amount,
+    pub start: Epoch,
 }
 
 impl Bond {
@@ -23,6 +27,7 @@ impl Bond {
             source: Id::Account(source_address.to_string()),
             target: validator_address,
             amount: Amount::fake(),
+            start: (1..1000).fake::<u32>(),
         }
     }
 }

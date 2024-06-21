@@ -69,6 +69,7 @@ deadpool-diesel = { version = "0.5.0", features = ["postgres"] }
 diesel = { version = "2.1.0", features = [
     "postgres",
     "serde_json",
+    "numeric"
 ] }
 diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 orm = { path = "orm" }
@@ -80,3 +81,4 @@ clap-verbosity-flag = "2.1.1"
 duration-str = "0.7.1"
 fake = { version = "2.9.2", features = ["derive"] }
 rand = "0.8.5"
+bigdecimal = "0.4.5"

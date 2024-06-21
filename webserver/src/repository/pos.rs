@@ -1,4 +1,5 @@
 use axum::async_trait;
+use bigdecimal::BigDecimal;
 use diesel::dsl::sum;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
@@ -40,6 +41,12 @@ pub trait PosRepositoryTrait {
         &self,
         id: i32,
     ) -> Result<Option<ValidatorDb>, String>;
+
+    async fn find_merged_bonds_by_address(
+        &self,
+        address: String,
+        page: i64,
+    ) -> Result<(Vec<(String, ValidatorDb, Option<BigDecimal>)>, i64), String>;
 
     async fn find_bonds_by_address(
         &self,
@@ -152,6 +159,36 @@ impl PosRepositoryTrait for PosRepository {
                 .select((validators::all_columns, bonds::all_columns))
                 .paginate(page)
                 .load_and_count_pages::<(ValidatorDb, BondDb)>(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_merged_bonds_by_address(
+        &self,
+        address: String,
+        page: i64,
+    ) -> Result<(Vec<(String, ValidatorDb, Option<BigDecimal>)>, i64), String>
+    {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            validators::table
+                .inner_join(bonds::table)
+                .filter(bonds::address.eq(address.clone()))
+                .group_by((bonds::address, validators::id))
+                .select((
+                    bonds::address,
+                    validators::all_columns,
+                    sum(bonds::raw_amount),
+                ))
+                .paginate(page)
+                // TODO: this is ok for now, create mixed aggragate later
+                .load_and_count_pages::<(String, ValidatorDb, Option<BigDecimal>)>(
+                    conn,
+                )
+
         })
         .await
         .map_err(|e| e.to_string())?

@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use diesel::{
+    sql_types::Nullable, AsChangeset, Insertable, Queryable, Selectable,
+};
 use serde::{Deserialize, Serialize};
 use shared::validator::{Validator, ValidatorState};
 
@@ -30,7 +32,7 @@ impl From<ValidatorState> for ValidatorStateDb {
     }
 }
 
-#[derive(Serialize, Queryable, Selectable, Clone)]
+#[derive(Serialize, Queryable, Selectable, Clone, Debug)]
 #[diesel(table_name = validators)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ValidatorDb {

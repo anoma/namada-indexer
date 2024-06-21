@@ -1,3 +1,4 @@
+use bigdecimal::BigDecimal;
 use orm::block_crawler_state::BlockCrawlerStateDb;
 use orm::bond::BondDb;
 use orm::pos_rewards::PoSRewardDb;
@@ -47,9 +48,24 @@ pub struct Validator {
     pub avatar: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BondStatus {
+    Active,
+    Inactive,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bond {
+    pub amount: String,
+    pub validator: ValidatorWithId,
+    pub status: BondStatus,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MergedBond {
     pub amount: String,
     pub validator: ValidatorWithId,
 }
@@ -119,10 +135,34 @@ impl ValidatorWithId {
     }
 }
 
+impl From<(&BondDb, &BlockCrawlerStateDb)> for BondStatus {
+    fn from((bond, state): (&BondDb, &BlockCrawlerStateDb)) -> Self {
+        if bond.start <= state.epoch {
+            Self::Active
+        } else {
+            Self::Inactive
+        }
+    }
+}
+
 impl Bond {
-    pub fn from(db_bond: BondDb, db_validator: ValidatorDb) -> Self {
+    pub fn from(
+        db_bond: BondDb,
+        status: BondStatus,
+        db_validator: ValidatorDb,
+    ) -> Self {
         Self {
-            amount: db_bond.raw_amount,
+            amount: db_bond.raw_amount.to_string(),
+            validator: ValidatorWithId::from(db_validator),
+            status,
+        }
+    }
+}
+
+impl MergedBond {
+    pub fn from(amount: BigDecimal, db_validator: ValidatorDb) -> Self {
+        Self {
+            amount: amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
         }
     }
@@ -150,7 +190,7 @@ impl Unbond {
         let withdraw_time = time_now + i64::from(to_withdraw);
 
         Self {
-            amount: db_unbond.raw_amount,
+            amount: db_unbond.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
             withdraw_time: withdraw_time.to_string(),
@@ -161,7 +201,7 @@ impl Unbond {
 impl Withdraw {
     pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: db_unbond.raw_amount,
+            amount: db_unbond.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
         }
@@ -171,7 +211,7 @@ impl Withdraw {
 impl Reward {
     pub fn from(db_reward: PoSRewardDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: db_reward.raw_amount,
+            amount: db_reward.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
         }
     }

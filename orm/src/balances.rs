@@ -1,5 +1,7 @@
+use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use shared::balance::Balance;
+use std::str::FromStr;
 
 use crate::schema::balances;
 
@@ -9,7 +11,7 @@ use crate::schema::balances;
 pub struct BalancesInsertDb {
     pub owner: String,
     pub token: String,
-    pub raw_amount: String,
+    pub raw_amount: BigDecimal,
 }
 
 pub type BalanceDb = BalancesInsertDb;
@@ -19,7 +21,8 @@ impl BalancesInsertDb {
         Self {
             owner: balance.owner.to_string(),
             token: balance.token.to_string(),
-            raw_amount: balance.amount.to_string(),
+            raw_amount: BigDecimal::from_str(&balance.amount.to_string())
+                .expect("Invalid amount"),
         }
     }
 }
