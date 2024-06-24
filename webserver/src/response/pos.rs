@@ -180,6 +180,7 @@ impl Unbond {
             epoch_progress(chain_state.height, min_num_of_blocks);
 
         let to_withdraw = time_between_epochs(
+            min_num_of_blocks,
             epoch_progress,
             chain_state.epoch,
             db_unbond.withdraw_epoch,

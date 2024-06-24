@@ -334,7 +334,7 @@ pub async fn query_bonds(
             let target = NamadaSdkAddress::from_str(&target.to_string())
                 .expect("Failed to parse target address");
 
-            async {
+            async move {
                 let amount = RPC
                     .vp()
                     .pos()
@@ -368,35 +368,68 @@ pub async fn query_unbonds(
     client: &HttpClient,
     addresses: Vec<UnbondAddresses>,
 ) -> anyhow::Result<Unbonds> {
-    let unbonds = futures::stream::iter(addresses)
-        .filter_map(|UnbondAddresses { source, validator }| async move {
+    let nested_unbonds = futures::stream::iter(addresses)
+        .filter_map(|UnbondAddresses { source, validator }| {
             let source = NamadaSdkAddress::from_str(&source.to_string())
                 .expect("Failed to parse source address");
             let validator = NamadaSdkAddress::from_str(&validator.to_string())
                 .expect("Failed to parse validator address");
 
-            let res = RPC
-                .vp()
-                .pos()
-                .unbond_with_slashing(client, &source, &validator)
-                .await
-                .context("Failed to query unbond amount")
-                .ok()?;
+            async move {
+                let unbonds = RPC
+                    .vp()
+                    .pos()
+                    .unbond_with_slashing(client, &source, &validator)
+                    .await
+                    .context("Failed to query unbond amount")
+                    .ok()?;
 
-            let ((_, withdraw_epoch), amount) =
-                res.last().expect("Unbonds are empty");
+                let mut unbonds_map: HashMap<(Id, Id, Epoch), Amount> =
+                    HashMap::new();
 
-            Some(Unbond {
-                source: Id::from(source),
-                target: Id::from(validator),
-                amount: Amount::from(*amount),
-                withdraw_at: withdraw_epoch.0 as Epoch,
-            })
+                for ((_, withdraw_epoch), amount) in unbonds {
+                    let record = unbonds_map.get_mut(&(
+                        Id::from(source.clone()),
+                        Id::from(validator.clone()),
+                        withdraw_epoch.0 as Epoch,
+                    ));
+
+                    match record {
+                        Some(r) => {
+                            *r = r.checked_add(&Amount::from(amount)).unwrap();
+                        }
+                        None => {
+                            unbonds_map.insert(
+                                (
+                                    Id::from(source.clone()),
+                                    Id::from(validator.clone()),
+                                    withdraw_epoch.0 as Epoch,
+                                ),
+                                Amount::from(amount),
+                            );
+                        }
+                    }
+                }
+
+                let unbonds: Vec<Unbond> = unbonds_map
+                    .into_iter()
+                    .map(|((source, target, start), amount)| Unbond {
+                        source,
+                        target,
+                        amount,
+                        withdraw_at: start,
+                    })
+                    .collect();
+
+                Some(unbonds)
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
         .collect::<Vec<_>>()
         .await;
+
+    let unbonds = nested_unbonds.iter().flatten().cloned().collect();
 
     anyhow::Ok(unbonds)
 }

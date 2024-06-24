@@ -680,7 +680,7 @@ components:
             type: number
           txKind:
             type: string
-            enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+            enum: [transparentTransfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, unknown]
     GasPriceTable:
       type: array
       items:
@@ -693,7 +693,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, epochSwitchBlocksDelay]
       properties:
         unbondingLength:
           type: string
@@ -710,6 +710,10 @@ components:
         genesisTime:
           type: string
         minDuration:
+          type: string
+        minNumOfBlocks:
+          type: string
+        epochSwitchBlocksDelay:
           type: string
     RpcUrl:
       type: object

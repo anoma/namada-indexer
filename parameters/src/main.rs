@@ -7,6 +7,7 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, RunQueryDsl};
+use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
 use orm::gas::GasPriceDb;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
@@ -91,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
                             diesel::insert_into(chain_parameters::table)
-                                .values(ParametersInsertDb::from((parameters, genesis)))
+                                .values(ParametersInsertDb::from((parameters, genesis, EPOCH_SWITCH_BLOCKS_DELAY)))
                                 .on_conflict(
                                     chain_parameters::chain_id,
                                 )

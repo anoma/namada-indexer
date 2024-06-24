@@ -12,6 +12,8 @@ pub struct Parameters {
     pub chain_id: String,
     pub genesis_time: String,
     pub min_duration: String,
+    pub min_num_of_blocks: String,
+    pub epoch_switch_blocks_delay: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -25,6 +27,10 @@ impl From<ParametersDb> for Parameters {
             chain_id: parameters.chain_id,
             genesis_time: parameters.genesis_time.to_string(),
             min_duration: parameters.min_duration.to_string(),
+            min_num_of_blocks: parameters.min_num_of_blocks.to_string(),
+            epoch_switch_blocks_delay: parameters
+                .epoch_switch_blocks_delay
+                .to_string(),
         }
     }
 }

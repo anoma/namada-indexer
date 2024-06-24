@@ -15,6 +15,10 @@ impl From<NamadaAmount> for Amount {
 }
 
 impl Amount {
+    pub fn checked_add(&self, other: &Self) -> Option<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
+
     pub fn fake() -> Self {
         Self(NamadaAmount::from_u64((0..10000000).fake::<u64>()))
     }
