@@ -693,7 +693,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration]
       properties:
         unbondingLength:
           type: string
@@ -708,6 +708,8 @@ components:
         chainId:
           type: string
         genesisTime:
+          type: string
+        minDuration:
           type: string
     RpcUrl:
       type: object

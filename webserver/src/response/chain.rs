@@ -11,6 +11,7 @@ pub struct Parameters {
     pub native_token_address: String,
     pub chain_id: String,
     pub genesis_time: String,
+    pub min_duration: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -23,6 +24,7 @@ impl From<ParametersDb> for Parameters {
             native_token_address: parameters.native_token_address,
             chain_id: parameters.chain_id,
             genesis_time: parameters.genesis_time.to_string(),
+            min_duration: parameters.min_duration.to_string(),
         }
     }
 }
