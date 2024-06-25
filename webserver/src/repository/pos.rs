@@ -1,6 +1,7 @@
 use axum::async_trait;
 use bigdecimal::BigDecimal;
-use diesel::dsl::sum;
+use diesel::dsl::{sql, sum};
+use diesel::sql_types::Integer;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
     SelectableHelper,
@@ -59,6 +60,16 @@ pub trait PosRepositoryTrait {
         address: String,
         page: i64,
     ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
+
+    async fn find_merged_unbonds_by_address(
+        &self,
+        address: String,
+        current_epoch: i32,
+        page: i64,
+    ) -> Result<
+        (Vec<(String, ValidatorDb, Option<BigDecimal>, i32)>, i64),
+        String,
+    >;
 
     async fn find_withdraws_by_address(
         &self,
@@ -209,6 +220,36 @@ impl PosRepositoryTrait for PosRepository {
                 .select((validators::all_columns, unbonds::all_columns))
                 .paginate(page)
                 .load_and_count_pages::<(ValidatorDb, UnbondDb)>(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_merged_unbonds_by_address(
+        &self,
+        address: String,
+        current_epoch: i32,
+        page: i64,
+    ) -> Result<
+        (Vec<(String, ValidatorDb, Option<BigDecimal>, i32)>, i64),
+        String,
+    > {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+                validators::table
+                .inner_join(unbonds::table)
+                .filter(unbonds::dsl::address.eq(address))
+                .group_by((unbonds::address, validators::id, sql::<Integer>(&format!("CASE WHEN withdraw_epoch < {} THEN 0 ELSE withdraw_epoch END", current_epoch))))
+                .select((
+                        unbonds::address,
+                        validators::all_columns,
+                        sum(unbonds::raw_amount),
+                        sql::<Integer>(&format!("CASE WHEN MIN(withdraw_epoch) < {} THEN 0 ELSE MAX(withdraw_epoch) END AS withdraw_epoch", current_epoch))))
+                .paginate(page)
+                .load_and_count_pages::<(String, ValidatorDb, Option<BigDecimal>, i32)>(conn)
+
         })
         .await
         .map_err(|e| e.to_string())?

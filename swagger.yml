@@ -198,6 +198,37 @@ paths:
                       $ref: '#/components/schemas/Unbond'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/merged-unbonds/{address}:
+    get:
+      summary: Get all the unbonds for an an address with merged withdraw amounts
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of unbonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Unbond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/withdraw/{address}/{epoch}:
     get:
       summary: Get all the withdraws for an address at a specific epoch

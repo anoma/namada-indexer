@@ -428,6 +428,19 @@ impl Block {
                         validator: Id::from(validator_address),
                     })
                 }
+                TransactionKind::Withdraw(data) => {
+                    let withdraw_data = data.clone();
+
+                    let source_address = withdraw_data
+                        .source
+                        .unwrap_or(withdraw_data.validator.clone());
+                    let validator_address = withdraw_data.validator;
+
+                    Some(UnbondAddresses {
+                        source: Id::from(source_address),
+                        validator: Id::from(validator_address),
+                    })
+                }
                 _ => None,
             })
             .collect()

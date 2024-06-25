@@ -170,7 +170,8 @@ impl MergedBond {
 
 impl Unbond {
     pub fn from(
-        db_unbond: UnbondDb,
+        raw_amount: BigDecimal,
+        withdraw_epoch: i32,
         db_validator: ValidatorDb,
         chain_state: &BlockCrawlerStateDb,
         min_num_of_blocks: i32,
@@ -183,7 +184,7 @@ impl Unbond {
             min_num_of_blocks,
             epoch_progress,
             chain_state.epoch,
-            db_unbond.withdraw_epoch,
+            withdraw_epoch,
             min_duration,
         );
 
@@ -191,9 +192,9 @@ impl Unbond {
         let withdraw_time = time_now + i64::from(to_withdraw);
 
         Self {
-            amount: db_unbond.raw_amount.to_string(),
+            amount: raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
-            withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
+            withdraw_epoch: withdraw_epoch.to_string(),
             withdraw_time: withdraw_time.to_string(),
         }
     }

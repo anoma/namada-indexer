@@ -8,7 +8,7 @@ use chain::repository;
 use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_last_block_height,
+    query_bonds, query_last_block_height,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -172,9 +172,7 @@ async fn crawling_fn(
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
     let addresses = block.bond_addresses();
-    let bonds = namada_service::query_bonds(&client, addresses, epoch)
-        .await
-        .into_rpc_error()?;
+    let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
     tracing::info!("Updating bonds for {} addresses", bonds.len());
 
     let addresses = block.unbond_addresses();
@@ -284,8 +282,9 @@ async fn initial_query(
     let balances = query_all_balances(client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
-    let (bonds, unbonds) =
-        query_all_bonds_and_unbonds(client).await.into_rpc_error()?;
+    let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
+        .await
+        .into_rpc_error()?;
 
     tracing::info!("Querying proposals...");
     let proposals = query_all_proposals(client).await.into_rpc_error()?;
