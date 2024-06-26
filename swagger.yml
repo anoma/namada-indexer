@@ -645,7 +645,7 @@ components:
           type: string
     Unbond:
       type: object
-      required: [validator, amount, withdrawEpoch, withdrawTime]
+      required: [validator, amount, withdrawEpoch, withdrawTime, currentTime]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
@@ -654,6 +654,8 @@ components:
         withdrawEpoch:
           type: string
         withdrawTime:
+          type: string
+        currentTime:
           type: string
     Withdraw:
       type: object

@@ -241,12 +241,12 @@ impl PosRepositoryTrait for PosRepository {
                 validators::table
                 .inner_join(unbonds::table)
                 .filter(unbonds::dsl::address.eq(address))
-                .group_by((unbonds::address, validators::id, sql::<Integer>(&format!("CASE WHEN withdraw_epoch < {} THEN 0 ELSE withdraw_epoch END", current_epoch))))
+                .group_by((unbonds::address, validators::id, sql::<Integer>(&format!("CASE WHEN withdraw_epoch <= {} THEN 0 ELSE withdraw_epoch END", current_epoch))))
                 .select((
                         unbonds::address,
                         validators::all_columns,
                         sum(unbonds::raw_amount),
-                        sql::<Integer>(&format!("CASE WHEN MIN(withdraw_epoch) < {} THEN 0 ELSE MAX(withdraw_epoch) END AS withdraw_epoch", current_epoch))))
+                        sql::<Integer>(&format!("CASE WHEN MIN(withdraw_epoch) <= {} THEN 0 ELSE MAX(withdraw_epoch) END AS withdraw_epoch", current_epoch))))
                 .paginate(page)
                 .load_and_count_pages::<(String, ValidatorDb, Option<BigDecimal>, i32)>(conn)
 

@@ -345,8 +345,6 @@ pub async fn query_bonds(
 
     let bonds = nested_bonds.iter().flatten().cloned().collect();
 
-    tracing::info!("Bonds: {:?}", bonds);
-
     anyhow::Ok(bonds)
 }
 
@@ -380,8 +378,9 @@ pub async fn query_unbonds(
                         withdraw_epoch.0 as Epoch,
                     ));
 
-                    // We have  to merge the unbonds with the same withdraw epoch into one
-                    // otherwise we can't insert them into the db
+                    // We have  to merge the unbonds with the same withdraw
+                    // epoch into one otherwise we can't
+                    // insert them into the db
                     match record {
                         Some(r) => {
                             *r = r.checked_add(&Amount::from(amount)).unwrap();

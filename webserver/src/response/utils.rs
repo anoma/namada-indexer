@@ -74,7 +74,10 @@ pub fn time_between_epochs(
     // But we warn just in case parameters are wrong
     let rest = epoch_duration % min_num_of_blocks;
     if rest != 0 {
-        tracing::warn!("Time per block is not a whole number of seconds, time between epoch calculation will be off");
+        tracing::warn!(
+            "Time per block is not a whole number of seconds, time between \
+             epoch calculation will be off"
+        );
     }
 
     // Because of the EPIC_SWITCH_BLOCKS_DELAY we need to add some extra time

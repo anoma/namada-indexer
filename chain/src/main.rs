@@ -181,6 +181,8 @@ async fn crawling_fn(
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
 
+    let withdraw_addreses = block.withdraw_addresses();
+
     let revealed_pks = block.revealed_pks();
     tracing::info!(
         "Updating revealed pks for {} addresses",
@@ -216,6 +218,11 @@ async fn crawling_fn(
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+                repository::pos::remove_withdraws(
+                    transaction_conn,
+                    epoch,
+                    withdraw_addreses,
+                )?;
 
                 repository::pos::delete_claimed_rewards(
                     transaction_conn,

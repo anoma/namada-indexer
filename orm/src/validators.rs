@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
-use diesel::{
-    sql_types::Nullable, AsChangeset, Insertable, Queryable, Selectable,
-};
+use diesel::sql_types::Nullable;
+use diesel::{AsChangeset, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::validator::{Validator, ValidatorState};
 

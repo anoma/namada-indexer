@@ -1,8 +1,7 @@
+use diesel::allow_columns_to_appear_in_same_group_by_clause;
+use diesel::expression::{SqlLiteral, ValidGrouping};
+
 use crate::schema::{bonds, unbonds, validators};
-use diesel::{
-    allow_columns_to_appear_in_same_group_by_clause,
-    expression::{SqlLiteral, ValidGrouping},
-};
 
 allow_columns_to_appear_in_same_group_by_clause!(
     bonds::address,
