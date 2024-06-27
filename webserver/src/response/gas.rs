@@ -1,6 +1,8 @@
 use orm::gas::{GasDb, GasPriceDb};
 use serde::{Deserialize, Serialize};
 
+use crate::service::utils::raw_amount_to_nam;
+
 use super::transaction::TransactionKind;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -30,7 +32,7 @@ impl From<GasPriceDb> for GasPrice {
     fn from(value: GasPriceDb) -> Self {
         Self {
             token: value.token,
-            amount: value.amount.to_string(),
+            amount: raw_amount_to_nam(value.amount.to_string()),
         }
     }
 }

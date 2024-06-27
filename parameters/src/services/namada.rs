@@ -11,7 +11,9 @@ use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     self, get_token_total_supply, get_total_staked_tokens, query_storage_value,
 };
-use namada_sdk::token::Amount as NamadaSdkAmount;
+use namada_sdk::token::{
+    Amount as NamadaSdkAmount,
+};
 use shared::balance::Amount;
 use shared::block::Epoch;
 use shared::gas::GasPrice;
