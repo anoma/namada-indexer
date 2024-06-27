@@ -126,6 +126,7 @@ impl Proposal {
             epoch_progress(chain_state.height, min_num_of_blocks);
 
         let to_start = time_between_epochs(
+            min_num_of_blocks,
             epoch_progress,
             chain_state.epoch,
             value.start_epoch,
@@ -133,6 +134,7 @@ impl Proposal {
         );
 
         let to_end = time_between_epochs(
+            min_num_of_blocks,
             epoch_progress,
             chain_state.epoch,
             value.end_epoch,

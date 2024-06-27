@@ -8,7 +8,7 @@ use chain::repository;
 use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_last_block_height,
+    query_bonds, query_last_block_height,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -172,9 +172,7 @@ async fn crawling_fn(
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
     let addresses = block.bond_addresses();
-    let bonds = namada_service::query_bonds(&client, addresses, epoch)
-        .await
-        .into_rpc_error()?;
+    let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
     tracing::info!("Updating bonds for {} addresses", bonds.len());
 
     let addresses = block.unbond_addresses();
@@ -182,6 +180,8 @@ async fn crawling_fn(
         .await
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
+
+    let withdraw_addreses = block.withdraw_addresses();
 
     let revealed_pks = block.revealed_pks();
     tracing::info!(
@@ -218,6 +218,11 @@ async fn crawling_fn(
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+                repository::pos::remove_withdraws(
+                    transaction_conn,
+                    epoch,
+                    withdraw_addreses,
+                )?;
 
                 repository::pos::delete_claimed_rewards(
                     transaction_conn,
@@ -284,8 +289,9 @@ async fn initial_query(
     let balances = query_all_balances(client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
-    let (bonds, unbonds) =
-        query_all_bonds_and_unbonds(client).await.into_rpc_error()?;
+    let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
+        .await
+        .into_rpc_error()?;
 
     tracing::info!("Querying proposals...");
     let proposals = query_all_proposals(client).await.into_rpc_error()?;

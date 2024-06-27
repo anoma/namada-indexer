@@ -3,7 +3,7 @@ use diesel::query_builder::AsChangeset;
 use diesel::{Queryable, Selectable};
 use serde::Serialize;
 use shared::genesis::Genesis;
-use shared::parameters::Parameters;
+use shared::parameters::{EpochSwitchBlocksDelay, Parameters};
 
 use crate::schema::chain_parameters;
 
@@ -20,6 +20,7 @@ pub struct ParametersInsertDb {
     pub native_token_address: String,
     pub chain_id: String,
     pub genesis_time: i64,
+    pub epoch_switch_blocks_delay: i32,
 }
 
 #[derive(Serialize, Queryable, Selectable, Clone)]
@@ -36,10 +37,19 @@ pub struct ParametersDb {
     pub native_token_address: String,
     pub chain_id: String,
     pub genesis_time: i64,
+    pub epoch_switch_blocks_delay: i32,
 }
 
-impl From<(Parameters, Genesis)> for ParametersInsertDb {
-    fn from((parameters, genesis): (Parameters, Genesis)) -> Self {
+impl From<(Parameters, Genesis, EpochSwitchBlocksDelay)>
+    for ParametersInsertDb
+{
+    fn from(
+        (parameters, genesis, epoch_switch_blocks_delay): (
+            Parameters,
+            Genesis,
+            EpochSwitchBlocksDelay,
+        ),
+    ) -> Self {
         Self {
             unbonding_length: parameters.unbonding_length as i32,
             pipeline_length: parameters.pipeline_length as i32,
@@ -50,6 +60,7 @@ impl From<(Parameters, Genesis)> for ParametersInsertDb {
             native_token_address: parameters.native_token_address,
             chain_id: genesis.chain_id,
             genesis_time: genesis.genesis_time,
+            epoch_switch_blocks_delay: epoch_switch_blocks_delay as i32,
         }
     }
 }

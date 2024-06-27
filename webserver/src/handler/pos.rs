@@ -106,6 +106,25 @@ pub async fn get_unbonds(
 }
 
 #[debug_handler]
+pub async fn get_merged_unbonds(
+    _headers: HeaderMap,
+    query: Query<UnbondsDto>,
+    Path(address): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<PaginatedResponse<Vec<Unbond>>>, ApiError> {
+    let page = query.page.unwrap_or(1);
+
+    let (unbonds, total_unbonds) = state
+        .pos_service
+        .get_merged_unbonds_by_address(address, page)
+        .await?;
+
+    let response = PaginatedResponse::new(unbonds, page, total_unbonds);
+
+    Ok(Json(response))
+}
+
+#[debug_handler]
 pub async fn get_withdraws(
     _headers: HeaderMap,
     query: Query<WithdrawsDto>,

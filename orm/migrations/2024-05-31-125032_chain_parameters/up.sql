@@ -8,7 +8,8 @@ CREATE TABLE chain_parameters (
   apr VARCHAR NOT NULL,
   native_token_address VARCHAR NOT NULL,
   chain_id VARCHAR NOT NULL,
-  genesis_time BIGINT NOT NULL
+  genesis_time BIGINT NOT NULL,
+  epoch_switch_blocks_delay INT NOT NULL
 );
 
 ALTER TABLE chain_parameters ADD UNIQUE (chain_id);

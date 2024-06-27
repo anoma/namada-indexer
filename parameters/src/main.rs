@@ -7,14 +7,16 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, RunQueryDsl};
+use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
 use orm::gas::GasPriceDb;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
 use orm::schema::{chain_parameters, gas_price};
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
-use parameters::services::namada as namada_service;
-use parameters::services::tendermint as tendermint_service;
+use parameters::services::{
+    namada as namada_service, tendermint as tendermint_service,
+};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
@@ -91,10 +93,12 @@ async fn main() -> anyhow::Result<()> {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
                             diesel::insert_into(chain_parameters::table)
-                                .values(ParametersInsertDb::from((parameters, genesis)))
-                                .on_conflict(
-                                    chain_parameters::chain_id,
-                                )
+                                .values(ParametersInsertDb::from((
+                                    parameters,
+                                    genesis,
+                                    EPOCH_SWITCH_BLOCKS_DELAY,
+                                )))
+                                .on_conflict(chain_parameters::chain_id)
                                 .do_update()
                                 .set(
                                     chain_parameters::apr
@@ -102,23 +106,26 @@ async fn main() -> anyhow::Result<()> {
                                 )
                                 .execute(transaction_conn)
                                 .context(
-                                    "Failed to update chain_parameters state in db",
+                                    "Failed to update chain_parameters state \
+                                     in db",
                                 )?;
 
                             diesel::insert_into(gas_price::table)
-                                .values(gas_price.iter().cloned().map(GasPriceDb::from).collect::<Vec<GasPriceDb>>())
-                                .on_conflict(
-                                    gas_price::token,
+                                .values(
+                                    gas_price
+                                        .iter()
+                                        .cloned()
+                                        .map(GasPriceDb::from)
+                                        .collect::<Vec<GasPriceDb>>(),
                                 )
+                                .on_conflict(gas_price::token)
                                 .do_update()
                                 .set(
                                     gas_price::amount
                                         .eq(excluded(gas_price::amount)),
                                 )
                                 .execute(transaction_conn)
-                                .context(
-                                    "Failed to update gas price in db",
-                                )?;
+                                .context("Failed to update gas price in db")?;
 
                             anyhow::Ok(())
                         },

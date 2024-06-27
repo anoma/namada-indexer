@@ -3,15 +3,17 @@ use std::collections::HashSet;
 use anyhow::Context;
 use diesel::upsert::excluded;
 use diesel::{
-    ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, PgConnection, QueryDsl,
+    RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondInsertDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorUpdateMetadataDb};
+use shared::block::Epoch;
 use shared::bond::Bonds;
 use shared::id::Id;
-use shared::unbond::Unbonds;
+use shared::unbond::{UnbondAddresses, Unbonds};
 use shared::validator::ValidatorMetadataChange;
 
 pub fn insert_bonds(
@@ -88,6 +90,39 @@ pub fn insert_unbonds(
         ))
         .execute(transaction_conn)
         .context("Failed to update unbonds in db")?;
+    anyhow::Ok(())
+}
+
+pub fn remove_withdraws(
+    transaction_conn: &mut PgConnection,
+    current_epoch: Epoch,
+    unbond_addresses: Vec<UnbondAddresses>,
+) -> anyhow::Result<()> {
+    let sources = unbond_addresses
+        .iter()
+        .map(|unbond| unbond.source.to_string())
+        .collect::<Vec<String>>();
+
+    let validators = unbond_addresses
+        .iter()
+        .map(|unbond| unbond.validator.to_string())
+        .collect::<Vec<String>>();
+
+    diesel::delete(
+        unbonds::table.filter(
+            unbonds::columns::address
+                .eq_any(sources)
+                .and(unbonds::columns::validator_id.eq_any(
+                    validators::table.select(validators::columns::id).filter(
+                        validators::columns::namada_address.eq_any(validators),
+                    ),
+                ))
+                .and(unbonds::columns::withdraw_epoch.le(current_epoch as i32)),
+        ),
+    )
+    .execute(transaction_conn)
+    .context("Failed to remove withdraws from db")?;
+
     anyhow::Ok(())
 }
 

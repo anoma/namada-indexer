@@ -433,6 +433,29 @@ impl Block {
             .collect()
     }
 
+    pub fn withdraw_addresses(&self) -> Vec<UnbondAddresses> {
+        self.transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::Withdraw(data) => {
+                    let withdraw_data = data.clone();
+
+                    let source_address = withdraw_data
+                        .source
+                        .unwrap_or(withdraw_data.validator.clone());
+                    let validator_address = withdraw_data.validator;
+
+                    Some(UnbondAddresses {
+                        source: Id::from(source_address),
+                        validator: Id::from(validator_address),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn validator_metadata(&self) -> Vec<ValidatorMetadataChange> {
         self.transactions
             .iter()

@@ -198,6 +198,37 @@ paths:
                       $ref: '#/components/schemas/Unbond'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/merged-unbonds/{address}:
+    get:
+      summary: Get all the unbonds for an an address with merged withdraw amounts
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of unbonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Unbond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
   /api/v1/pos/withdraw/{address}/{epoch}:
     get:
       summary: Get all the withdraws for an address at a specific epoch
@@ -614,7 +645,7 @@ components:
           type: string
     Unbond:
       type: object
-      required: [validator, amount, withdrawEpoch, withdrawTime]
+      required: [validator, amount, withdrawEpoch, withdrawTime, currentTime]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
@@ -623,6 +654,8 @@ components:
         withdrawEpoch:
           type: string
         withdrawTime:
+          type: string
+        currentTime:
           type: string
     Withdraw:
       type: object
@@ -680,7 +713,7 @@ components:
             type: number
           txKind:
             type: string
-            enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+            enum: [transparentTransfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, unknown]
     GasPriceTable:
       type: array
       items:
@@ -693,7 +726,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, epochSwitchBlocksDelay]
       properties:
         unbondingLength:
           type: string
@@ -708,6 +741,12 @@ components:
         chainId:
           type: string
         genesisTime:
+          type: string
+        minDuration:
+          type: string
+        minNumOfBlocks:
+          type: string
+        epochSwitchBlocksDelay:
           type: string
     RpcUrl:
       type: object

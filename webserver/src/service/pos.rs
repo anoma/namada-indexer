@@ -173,7 +173,8 @@ impl PosService {
             .into_iter()
             .map(|(validator, unbond)| {
                 let bond = Unbond::from(
-                    unbond,
+                    unbond.raw_amount,
+                    unbond.withdraw_epoch,
                     validator,
                     &chain_state,
                     parameters.min_num_of_blocks,
@@ -187,6 +188,55 @@ impl PosService {
             .collect();
 
         Ok((unbonds, db_unbonds.1 as u64))
+    }
+
+    pub async fn get_merged_unbonds_by_address(
+        &self,
+        address: String,
+        page: u64,
+    ) -> Result<(Vec<Unbond>, u64), PoSError> {
+        let chain_state = self
+            .chain_repo
+            .get_chain_state()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let db_merged_unbonds = self
+            .pos_repo
+            .find_merged_unbonds_by_address(
+                address,
+                chain_state.epoch,
+                page as i64,
+            )
+            .await
+            .map_err(PoSError::Database)?;
+
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let unbonds: Vec<Unbond> = db_merged_unbonds
+            .0
+            .into_iter()
+            .map(|(_, validator, raw_amount, withdraw_epoch)| {
+                let bond = Unbond::from(
+                    raw_amount.unwrap_or(BigDecimal::zero()),
+                    withdraw_epoch,
+                    validator,
+                    &chain_state,
+                    parameters.min_num_of_blocks,
+                    parameters.min_duration,
+                );
+                Unbond {
+                    amount: raw_amount_to_nam(bond.amount),
+                    ..bond
+                }
+            })
+            .collect();
+
+        Ok((unbonds, db_merged_unbonds.1 as u64))
     }
 
     pub async fn get_withdraws_by_address(

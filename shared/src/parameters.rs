@@ -8,3 +8,5 @@ pub struct Parameters {
     pub apr: String,
     pub native_token_address: String,
 }
+
+pub type EpochSwitchBlocksDelay = u32;

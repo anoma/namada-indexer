@@ -1,4 +1,5 @@
-use super::utils::raw_amount_to_nam;
+use shared::balance::{Amount, DenominatedAmount};
+
 use crate::appstate::AppState;
 use crate::error::balance::BalanceError;
 use crate::repository::balance::{BalanceRepo, BalanceRepoTrait};
@@ -32,7 +33,11 @@ impl BalanceService {
             .cloned()
             .map(|balance| AddressBalance {
                 token_address: balance.token,
-                balance: raw_amount_to_nam(balance.raw_amount.to_string()),
+                // TODO: change native to new once we support multiple tokens
+                balance: DenominatedAmount::native(Amount::from(
+                    balance.raw_amount,
+                ))
+                .to_string_precise(),
             })
             .collect();
 
