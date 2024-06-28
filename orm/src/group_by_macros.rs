@@ -1,5 +1,6 @@
-use crate::schema::{bonds, validators};
 use diesel::allow_columns_to_appear_in_same_group_by_clause;
+
+use crate::schema::{bonds, validators};
 
 allow_columns_to_appear_in_same_group_by_clause!(
     bonds::address,

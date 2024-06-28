@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tendermint::{chain, consensus, validator, AppHash, Time};
+use tendermint_rpc::dialect::LatestDialect;
+use tendermint_rpc::request::RequestMessage;
 use tendermint_rpc::{
-    dialect::LatestDialect, request::RequestMessage, Method,
-    Request as TendermintRequest, Response as TendermintResponse,
+    Method, Request as TendermintRequest, Response as TendermintResponse,
     SimpleRequest,
 };
 
