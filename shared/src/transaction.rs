@@ -2,17 +2,16 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
+use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
 use namada_sdk::token::TransparentTransfer;
 use namada_sdk::uint::Uint;
-use namada_sdk::{borsh::BorshDeserialize, key::common::PublicKey};
-use namada_tx::data::{
-    pos::{
-        Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation,
-        Unbond, Withdraw,
-    },
-    TxType,
+use namada_tx::data::pos::{
+    Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation, Unbond,
+    Withdraw,
 };
+use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
 use serde::Serialize;
 
