@@ -212,8 +212,6 @@ pub async fn query_all_bonds_and_unbonds(
         }
     }
 
-    // TODO: we can iter in parallel
-
     // Map the types, mostly because we can't add indexer amounts
     let bonds = bonds
         .into_iter()

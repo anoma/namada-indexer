@@ -307,7 +307,7 @@ impl PosService {
         Ok(denominated_rewards)
     }
 
-    // TODO: maybe remove object(struct) instead
+    // TODO: maybe return object(struct) instead
     pub async fn get_total_voting_power(&self) -> Result<u64, PoSError> {
         let total_voting_power_db = self
             .pos_repo
