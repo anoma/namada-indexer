@@ -30,6 +30,11 @@ pub struct Paginated<T> {
     offset: i64,
 }
 
+pub type TotalPages = i64;
+pub type TotalItems = i64;
+
+pub type PaginatedResponseDb<T> = (Vec<T>, TotalPages, TotalItems);
+
 impl<T> Paginated<T> {
     pub fn per_page(self, per_page: i64) -> Self {
         Paginated {
@@ -42,7 +47,7 @@ impl<T> Paginated<T> {
     pub fn load_and_count_pages<'a, U>(
         self,
         conn: &mut PgConnection,
-    ) -> QueryResult<(Vec<U>, i64)>
+    ) -> QueryResult<PaginatedResponseDb<U>>
     where
         Self: LoadQuery<'a, PgConnection, (U, i64)>,
     {
@@ -51,7 +56,7 @@ impl<T> Paginated<T> {
         let total = results.first().map(|x| x.1).unwrap_or(0);
         let records = results.into_iter().map(|x| x.0).collect();
         let total_pages = (total as f64 / per_page as f64).ceil() as i64;
-        Ok((records, total_pages))
+        Ok((records, total_pages, total))
     }
 }
 

@@ -12,7 +12,7 @@ use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
 
-use super::utils::Paginate;
+use super::utils::{Paginate, PaginatedResponseDb};
 use crate::appstate::AppState;
 
 #[derive(Clone)]
@@ -28,7 +28,7 @@ pub trait PosRepositoryTrait {
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
-    ) -> Result<(Vec<ValidatorDb>, i64), String>;
+    ) -> Result<PaginatedResponseDb<ValidatorDb>, String>;
 
     async fn find_all_validators(
         &self,
@@ -44,19 +44,22 @@ pub trait PosRepositoryTrait {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(String, ValidatorDb, Option<BigDecimal>)>, i64), String>;
+    ) -> Result<
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>)>,
+        String,
+    >;
 
     async fn find_bonds_by_address(
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, BondDb)>, i64), String>;
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, BondDb)>, String>;
 
     async fn find_unbonds_by_address(
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String>;
 
     async fn find_merged_unbonds_by_address(
         &self,
@@ -64,7 +67,7 @@ pub trait PosRepositoryTrait {
         current_epoch: i32,
         page: i64,
     ) -> Result<
-        (Vec<(String, ValidatorDb, Option<BigDecimal>, i32)>, i64),
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>, i32)>,
         String,
     >;
 
@@ -73,7 +76,7 @@ pub trait PosRepositoryTrait {
         address: String,
         current_epoch: i32,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String>;
 
     async fn find_rewards_by_address(
         &self,
@@ -93,7 +96,7 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
-    ) -> Result<(Vec<ValidatorDb>, i64), String> {
+    ) -> Result<PaginatedResponseDb<ValidatorDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -146,7 +149,7 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, BondDb)>, i64), String> {
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, BondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -166,8 +169,10 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(String, ValidatorDb, Option<BigDecimal>)>, i64), String>
-    {
+    ) -> Result<
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>)>,
+        String,
+    > {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -196,7 +201,7 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String> {
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -218,7 +223,7 @@ impl PosRepositoryTrait for PosRepository {
         current_epoch: i32,
         page: i64,
     ) -> Result<
-        (Vec<(String, ValidatorDb, Option<BigDecimal>, i32)>, i64),
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>, i32)>,
         String,
     > {
         let conn = self.app_state.get_db_connection().await;
@@ -247,7 +252,7 @@ impl PosRepositoryTrait for PosRepository {
         address: String,
         current_epoch: i32,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String> {
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {

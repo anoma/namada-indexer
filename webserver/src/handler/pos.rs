@@ -24,10 +24,11 @@ pub async fn get_validators(
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
     let page = query.page.unwrap_or(1);
     let states = query.state.unwrap_or_else(ValidatorStateDto::all);
-    let (validators, total_validators) =
+    let (validators, total_pages, total_validators) =
         state.pos_service.get_validators(page, states).await?;
 
-    let response = PaginatedResponse::new(validators, page, total_validators);
+    let response =
+        PaginatedResponse::new(validators, page, total_pages, total_validators);
     Ok(Json(response))
 }
 
@@ -52,12 +53,13 @@ pub async fn get_bonds(
 ) -> Result<Json<PaginatedResponse<Vec<Bond>>>, ApiError> {
     let page = query.page.unwrap_or(1);
 
-    let (bonds, total_bonds) = state
+    let (bonds, total_pages, total_bonds) = state
         .pos_service
         .get_bonds_by_address(address, page)
         .await?;
 
-    let response = PaginatedResponse::new(bonds, page, total_bonds);
+    let response =
+        PaginatedResponse::new(bonds, page, total_pages, total_bonds);
 
     Ok(Json(response))
 }
@@ -71,12 +73,13 @@ pub async fn get_merged_bonds(
 ) -> Result<Json<PaginatedResponse<Vec<MergedBond>>>, ApiError> {
     let page = query.page.unwrap_or(1);
 
-    let (bonds, total_bonds) = state
+    let (bonds, total_pages, total_bonds) = state
         .pos_service
         .get_merged_bonds_by_address(address, page)
         .await?;
 
-    let response = PaginatedResponse::new(bonds, page, total_bonds);
+    let response =
+        PaginatedResponse::new(bonds, page, total_pages, total_bonds);
 
     Ok(Json(response))
 }
@@ -90,12 +93,13 @@ pub async fn get_unbonds(
 ) -> Result<Json<PaginatedResponse<Vec<Unbond>>>, ApiError> {
     let page = query.page.unwrap_or(1);
 
-    let (unbonds, total_unbonds) = state
+    let (unbonds, total_pages, total_unbonds) = state
         .pos_service
         .get_unbonds_by_address(address, page)
         .await?;
 
-    let response = PaginatedResponse::new(unbonds, page, total_unbonds);
+    let response =
+        PaginatedResponse::new(unbonds, page, total_pages, total_unbonds);
 
     Ok(Json(response))
 }
@@ -109,12 +113,13 @@ pub async fn get_merged_unbonds(
 ) -> Result<Json<PaginatedResponse<Vec<Unbond>>>, ApiError> {
     let page = query.page.unwrap_or(1);
 
-    let (unbonds, total_unbonds) = state
+    let (unbonds, total_pages, total_unbonds) = state
         .pos_service
         .get_merged_unbonds_by_address(address, page)
         .await?;
 
-    let response = PaginatedResponse::new(unbonds, page, total_unbonds);
+    let response =
+        PaginatedResponse::new(unbonds, page, total_pages, total_unbonds);
 
     Ok(Json(response))
 }
@@ -128,12 +133,13 @@ pub async fn get_withdraws(
 ) -> Result<Json<PaginatedResponse<Vec<Withdraw>>>, ApiError> {
     let page = query.page.unwrap_or(1);
 
-    let (withdraws, total_withdraws) = state
+    let (withdraws, total_pages, total_withdraws) = state
         .pos_service
         .get_withdraws_by_address(address, epoch, page)
         .await?;
 
-    let response = PaginatedResponse::new(withdraws, page, total_withdraws);
+    let response =
+        PaginatedResponse::new(withdraws, page, total_pages, total_withdraws);
 
     Ok(Json(response))
 }

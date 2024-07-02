@@ -1,5 +1,3 @@
-use std::ops::Rem;
-
 use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
 use serde::Serialize;
 
@@ -24,19 +22,13 @@ impl<T> PaginatedResponse<T>
 where
     T: Serialize,
 {
-    pub fn new(data: T, page: u64, total_items: u64) -> Self {
+    pub fn new(data: T, page: u64, total_pages: u64, total_items: u64) -> Self {
         Self {
             data,
             pagination: Pagination {
                 page,
                 per_page: ITEM_PER_PAGE,
-                total_pages: if total_items == 0 {
-                    0
-                } else if total_items.rem(ITEM_PER_PAGE) == 0 {
-                    total_items / ITEM_PER_PAGE
-                } else {
-                    (total_items / ITEM_PER_PAGE) + 1
-                },
+                total_pages,
                 total_items,
             },
         }

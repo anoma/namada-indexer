@@ -29,12 +29,12 @@ impl PosService {
         &self,
         page: u64,
         states: Vec<ValidatorStateDto>,
-    ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
+    ) -> Result<(Vec<ValidatorWithId>, u64, u64), PoSError> {
         let validator_states = states
             .into_iter()
             .map(Self::to_validator_state_db)
             .collect();
-        let (db_validators, total_items) = self
+        let (db_validators, total_pages, total_items) = self
             .pos_repo
             .find_validators(page as i64, validator_states)
             .await
@@ -45,6 +45,7 @@ impl PosService {
                 .into_iter()
                 .map(ValidatorWithId::from)
                 .collect(),
+            total_pages as u64,
             total_items as u64,
         ))
     }
@@ -73,21 +74,20 @@ impl PosService {
         &self,
         address: String,
         page: u64,
-    ) -> Result<(Vec<Bond>, u64), PoSError> {
+    ) -> Result<(Vec<Bond>, u64, u64), PoSError> {
         let chain_state = self
             .chain_repo
             .get_chain_state()
             .await
             .map_err(PoSError::Database)?;
 
-        let db_bonds = self
+        let (db_bonds, total_pages, total_items) = self
             .pos_repo
             .find_bonds_by_address(address, page as i64)
             .await
             .map_err(PoSError::Database)?;
 
         let bonds: Vec<Bond> = db_bonds
-            .0
             .into_iter()
             .map(|(validator, bond)| {
                 let bond_status = BondStatus::from((&bond, &chain_state));
@@ -100,22 +100,21 @@ impl PosService {
             })
             .collect();
 
-        Ok((bonds, db_bonds.1 as u64))
+        Ok((bonds, total_pages as u64, total_items as u64))
     }
 
     pub async fn get_merged_bonds_by_address(
         &self,
         address: String,
         page: u64,
-    ) -> Result<(Vec<MergedBond>, u64), PoSError> {
-        let db_bonds = self
+    ) -> Result<(Vec<MergedBond>, u64, u64), PoSError> {
+        let (db_bonds, total_pages, total_items) = self
             .pos_repo
             .find_merged_bonds_by_address(address, page as i64)
             .await
             .map_err(PoSError::Database)?;
 
         let bonds: Vec<MergedBond> = db_bonds
-            .0
             .into_iter()
             .map(|(_, validator, amount)| {
                 let bond = MergedBond::from(
@@ -130,15 +129,15 @@ impl PosService {
             })
             .collect();
 
-        Ok((bonds, db_bonds.1 as u64))
+        Ok((bonds, total_pages as u64, total_items as u64))
     }
 
     pub async fn get_unbonds_by_address(
         &self,
         address: String,
         page: u64,
-    ) -> Result<(Vec<Unbond>, u64), PoSError> {
-        let db_unbonds = self
+    ) -> Result<(Vec<Unbond>, u64, u64), PoSError> {
+        let (db_unbonds, total_pages, total_items) = self
             .pos_repo
             .find_unbonds_by_address(address, page as i64)
             .await
@@ -157,7 +156,6 @@ impl PosService {
             .map_err(PoSError::Database)?;
 
         let unbonds: Vec<Unbond> = db_unbonds
-            .0
             .into_iter()
             .map(|(validator, unbond)| {
                 let bond = Unbond::from(
@@ -175,21 +173,21 @@ impl PosService {
             })
             .collect();
 
-        Ok((unbonds, db_unbonds.1 as u64))
+        Ok((unbonds, total_pages as u64, total_items as u64))
     }
 
     pub async fn get_merged_unbonds_by_address(
         &self,
         address: String,
         page: u64,
-    ) -> Result<(Vec<Unbond>, u64), PoSError> {
+    ) -> Result<(Vec<Unbond>, u64, u64), PoSError> {
         let chain_state = self
             .chain_repo
             .get_chain_state()
             .await
             .map_err(PoSError::Database)?;
 
-        let db_merged_unbonds = self
+        let (db_merged_unbonds, total_pages, total_items) = self
             .pos_repo
             .find_merged_unbonds_by_address(
                 address,
@@ -206,7 +204,6 @@ impl PosService {
             .map_err(PoSError::Database)?;
 
         let unbonds: Vec<Unbond> = db_merged_unbonds
-            .0
             .into_iter()
             .map(|(_, validator, raw_amount, withdraw_epoch)| {
                 let bond = Unbond::from(
@@ -224,7 +221,7 @@ impl PosService {
             })
             .collect();
 
-        Ok((unbonds, db_merged_unbonds.1 as u64))
+        Ok((unbonds, total_pages as u64, total_items as u64))
     }
 
     pub async fn get_withdraws_by_address(
@@ -232,8 +229,8 @@ impl PosService {
         address: String,
         current_epoch: u64,
         page: u64,
-    ) -> Result<(Vec<Withdraw>, u64), PoSError> {
-        let db_withdraws = self
+    ) -> Result<(Vec<Withdraw>, u64, u64), PoSError> {
+        let (db_withdraws, total_pages, total_items) = self
             .pos_repo
             .find_withdraws_by_address(
                 address,
@@ -244,7 +241,6 @@ impl PosService {
             .map_err(PoSError::Database)?;
 
         let withdraws: Vec<Withdraw> = db_withdraws
-            .0
             .into_iter()
             .map(|(validator, withdraw)| {
                 let bond = Withdraw::from(withdraw, validator);
@@ -255,7 +251,7 @@ impl PosService {
             })
             .collect();
 
-        Ok((withdraws, db_withdraws.1 as u64))
+        Ok((withdraws, total_pages as u64, total_items as u64))
     }
 
     pub async fn get_rewards_by_address(

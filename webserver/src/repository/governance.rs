@@ -10,7 +10,7 @@ use orm::governance_votes::GovernanceProposalVoteDb;
 use orm::schema::{governance_proposals, governance_votes};
 
 use crate::appstate::AppState;
-use crate::repository::utils::Paginate;
+use crate::repository::utils::{Paginate, PaginatedResponseDb};
 
 #[derive(Clone)]
 pub struct GovernanceRepo {
@@ -27,7 +27,7 @@ pub trait GovernanceRepoTrait {
         kind: Option<GovernanceProposalKindDb>,
         pattern: Option<String>,
         page: i64,
-    ) -> Result<(Vec<GovernanceProposalDb>, i64), String>;
+    ) -> Result<PaginatedResponseDb<GovernanceProposalDb>, String>;
 
     async fn find_governance_proposals_by_id(
         &self,
@@ -38,7 +38,7 @@ pub trait GovernanceRepoTrait {
         &self,
         proposal_id: i32,
         page: i64,
-    ) -> Result<(Vec<GovernanceProposalVoteDb>, i64), String>;
+    ) -> Result<PaginatedResponseDb<GovernanceProposalVoteDb>, String>;
 
     async fn find_governance_proposal_votes_by_address(
         &self,
@@ -64,7 +64,7 @@ impl GovernanceRepoTrait for GovernanceRepo {
         kind: Option<GovernanceProposalKindDb>,
         pattern: Option<String>,
         page: i64,
-    ) -> Result<(Vec<GovernanceProposalDb>, i64), String> {
+    ) -> Result<PaginatedResponseDb<GovernanceProposalDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -114,7 +114,7 @@ impl GovernanceRepoTrait for GovernanceRepo {
         &self,
         proposal_id: i32,
         page: i64,
-    ) -> Result<(Vec<GovernanceProposalVoteDb>, i64), String> {
+    ) -> Result<PaginatedResponseDb<GovernanceProposalVoteDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {

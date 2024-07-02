@@ -17,7 +17,7 @@ pub async fn get_governance_proposals(
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<Proposal>>>, ApiError> {
     let page = query.pagination.map(|p| p.page).unwrap_or(1);
-    let (proposals, total_proposals) = state
+    let (proposals, total_pages, total_items) = state
         .gov_service
         .find_governance_proposals(
             query.status,
@@ -27,7 +27,8 @@ pub async fn get_governance_proposals(
         )
         .await?;
 
-    let response = PaginatedResponse::new(proposals, page, total_proposals);
+    let response =
+        PaginatedResponse::new(proposals, page, total_pages, total_items);
     Ok(Json(response))
 }
 
@@ -57,7 +58,7 @@ pub async fn get_governance_proposal_votes(
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<ProposalVote>>>, ApiError> {
     let page = query.pagination.map(|p| p.page).unwrap_or(1);
-    let (proposal_votes, total_votes) = state
+    let (proposal_votes, total_pages, total_votes) = state
         .gov_service
         .find_governance_proposal_votes(proposal_id, page)
         .await?;
@@ -65,6 +66,7 @@ pub async fn get_governance_proposal_votes(
     Ok(Json(PaginatedResponse::new(
         proposal_votes,
         page,
+        total_pages,
         total_votes,
     )))
 }
