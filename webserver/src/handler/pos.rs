@@ -5,7 +5,7 @@ use axum_extra::extract::Query;
 use axum_macros::debug_handler;
 
 use crate::dto::pos::{
-    BondsDto, MyValidatorQueryParams, PoSQueryParams, UnbondsDto,
+    AllValidatorsQueryParams, BondsDto, UnbondsDto, ValidatorQueryParams,
     ValidatorStateDto, WithdrawsDto,
 };
 use crate::error::api::ApiError;
@@ -19,33 +19,28 @@ use crate::state::common::CommonState;
 #[debug_handler]
 pub async fn get_validators(
     _headers: HeaderMap,
-    Query(query): Query<PoSQueryParams>,
+    Query(query): Query<ValidatorQueryParams>,
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
     let page = query.page.unwrap_or(1);
     let states = query.state.unwrap_or_else(ValidatorStateDto::all);
     let (validators, total_validators) =
-        state.pos_service.get_all_validators(page, states).await?;
+        state.pos_service.get_validators(page, states).await?;
 
     let response = PaginatedResponse::new(validators, page, total_validators);
     Ok(Json(response))
 }
 
-pub async fn get_my_validators(
+#[debug_handler]
+pub async fn get_all_validators(
     _headers: HeaderMap,
-    query: Query<MyValidatorQueryParams>,
+    Query(query): Query<AllValidatorsQueryParams>,
     State(state): State<CommonState>,
-) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
-    // TODO: validate that query.address contains valid bech32m  encoded
-    // addresses
-    let page = query.page.unwrap_or(1);
-    let (validators, total_validators) = state
-        .pos_service
-        .get_my_validators(page, query.addresses.clone(), query.kind.clone())
-        .await?;
+) -> Result<Json<Vec<ValidatorWithId>>, ApiError> {
+    let states = query.state.unwrap_or_else(ValidatorStateDto::all);
+    let validators = state.pos_service.get_all_validators(states).await?;
 
-    let response = PaginatedResponse::new(validators, page, total_validators);
-    Ok(Json(response))
+    Ok(Json(validators))
 }
 
 #[debug_handler]

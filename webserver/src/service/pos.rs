@@ -3,7 +3,7 @@ use orm::validators::ValidatorStateDb;
 
 use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
-use crate::dto::pos::{MyValidatorKindDto, ValidatorStateDto};
+use crate::dto::pos::ValidatorStateDto;
 use crate::error::pos::PoSError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
@@ -25,29 +25,18 @@ impl PosService {
         }
     }
 
-    pub async fn get_all_validators(
+    pub async fn get_validators(
         &self,
         page: u64,
         states: Vec<ValidatorStateDto>,
     ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
         let validator_states = states
             .into_iter()
-            .map(|state| match state {
-                ValidatorStateDto::Consensus => ValidatorStateDb::Consensus,
-                ValidatorStateDto::BelowCapacity => {
-                    ValidatorStateDb::BelowCapacity
-                }
-                ValidatorStateDto::BelowThreshold => {
-                    ValidatorStateDb::BelowThreshold
-                }
-                ValidatorStateDto::Inactive => ValidatorStateDb::Inactive,
-                ValidatorStateDto::Jailed => ValidatorStateDb::Jailed,
-                ValidatorStateDto::Unknown => ValidatorStateDb::Unknown,
-            })
+            .map(Self::to_validator_state_db)
             .collect();
         let (db_validators, total_items) = self
             .pos_repo
-            .find_all_validators(page as i64, validator_states)
+            .find_validators(page as i64, validator_states)
             .await
             .map_err(PoSError::Database)?;
 
@@ -60,25 +49,24 @@ impl PosService {
         ))
     }
 
-    pub async fn get_my_validators(
+    pub async fn get_all_validators(
         &self,
-        page: u64,
-        addresses: Vec<String>,
-        kind: MyValidatorKindDto,
-    ) -> Result<(Vec<ValidatorWithId>, u64), PoSError> {
-        let (db_validators, total_items) = self
+        states: Vec<ValidatorStateDto>,
+    ) -> Result<Vec<ValidatorWithId>, PoSError> {
+        let validator_states = states
+            .into_iter()
+            .map(Self::to_validator_state_db)
+            .collect();
+        let db_validators = self
             .pos_repo
-            .find_validators_by_addresses(page as i64, addresses, kind)
+            .find_all_validators(validator_states)
             .await
             .map_err(PoSError::Database)?;
 
-        Ok((
-            db_validators
-                .into_iter()
-                .map(ValidatorWithId::from)
-                .collect(),
-            total_items as u64,
-        ))
+        Ok(db_validators
+            .into_iter()
+            .map(ValidatorWithId::from)
+            .collect())
     }
 
     pub async fn get_bonds_by_address(
@@ -316,5 +304,18 @@ impl PosService {
             .map_err(PoSError::Database)?;
 
         Ok(total_voting_power_db.unwrap_or_default() as u64)
+    }
+
+    fn to_validator_state_db(value: ValidatorStateDto) -> ValidatorStateDb {
+        match value {
+            ValidatorStateDto::Consensus => ValidatorStateDb::Consensus,
+            ValidatorStateDto::BelowCapacity => ValidatorStateDb::BelowCapacity,
+            ValidatorStateDto::BelowThreshold => {
+                ValidatorStateDb::BelowThreshold
+            }
+            ValidatorStateDto::Inactive => ValidatorStateDb::Inactive,
+            ValidatorStateDto::Jailed => ValidatorStateDb::Jailed,
+            ValidatorStateDto::Unknown => ValidatorStateDb::Unknown,
+        }
     }
 }

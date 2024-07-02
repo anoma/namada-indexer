@@ -16,7 +16,7 @@ paths:
           description: Health check
   /api/v1/pos/validator:
     get:
-      summary: Get all validators
+      summary: Get all validators, paginated
       parameters:
         - in: query
           name: page
@@ -30,7 +30,7 @@ paths:
             type: array
             items:
               $ref: '#/components/schemas/ValidatorStatus'
-          description: Pagination parameter
+          description: Validator status parameter
       responses:
         '200':
           description: A list of validator.
@@ -46,46 +46,26 @@ paths:
                       $ref: '#/components/schemas/Validator'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-  /api/v1/pos/my-validator:
+  /api/v1/pos/validator/all:
     get:
-      summary: Get validators that delegator has delegated to
+      summary: Get all validators, non paginated
       parameters:
         - in: query
-          name: addresses
+          name: state
           schema:
             type: array
             items:
-              type: string
-          required: true
-          description: The delegator addresses
-        - in: query
-          name: kind
-          schema:
-            type: string
-            enum: [withBonds, withUnbonds]
-          required: true
-          description: Pagination parameter
-        - in: query
-          name: page
-          schema:
-            type: integer
-            minimum: 1
-          description: Pagination parameter
+              $ref: '#/components/schemas/ValidatorStatus'
+          description: Validator status parameter
       responses:
         '200':
-          description: Given a list of address return a list of a validator for which those addresses have delegations
+          description: A list of validator.
           content:
             application/json:
               schema:
-                type: object
-                required: [data, pagination]
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Validator'
-                  pagination:
-                    $ref: '#/components/schemas/Pagination'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Validator'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address

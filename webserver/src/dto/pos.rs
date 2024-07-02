@@ -27,9 +27,14 @@ impl ValidatorStateDto {
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
-pub struct PoSQueryParams {
+pub struct ValidatorQueryParams {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
+    pub state: Option<Vec<ValidatorStateDto>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub struct AllValidatorsQueryParams {
     pub state: Option<Vec<ValidatorStateDto>>,
 }
 
@@ -38,20 +43,6 @@ pub struct PoSQueryParams {
 pub enum MyValidatorKindDto {
     WithBonds,
     WithUnbonds,
-}
-
-#[derive(Clone, Serialize, Deserialize, Validate)]
-pub struct MyValidatorQueryParams {
-    #[validate(range(min = 1, max = 10000))]
-    pub page: Option<u64>,
-
-    #[validate(length(
-        min = 1,
-        message = "Address query parameter cannot be empty"
-    ))]
-    pub addresses: Vec<String>,
-
-    pub kind: MyValidatorKindDto,
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]

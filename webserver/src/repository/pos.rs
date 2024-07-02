@@ -14,7 +14,6 @@ use orm::validators::{ValidatorDb, ValidatorStateDb};
 
 use super::utils::Paginate;
 use crate::appstate::AppState;
-use crate::dto::pos::MyValidatorKindDto;
 
 #[derive(Clone)]
 pub struct PosRepository {
@@ -25,18 +24,16 @@ pub struct PosRepository {
 pub trait PosRepositoryTrait {
     fn new(app_state: AppState) -> Self;
 
-    async fn find_all_validators(
+    async fn find_validators(
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
     ) -> Result<(Vec<ValidatorDb>, i64), String>;
 
-    async fn find_validators_by_addresses(
+    async fn find_all_validators(
         &self,
-        page: i64,
-        addreses: Vec<String>,
-        kind: MyValidatorKindDto,
-    ) -> Result<(Vec<ValidatorDb>, i64), String>;
+        states: Vec<ValidatorStateDb>,
+    ) -> Result<Vec<ValidatorDb>, String>;
 
     async fn find_validator_by_id(
         &self,
@@ -92,7 +89,7 @@ impl PosRepositoryTrait for PosRepository {
         Self { app_state }
     }
 
-    async fn find_all_validators(
+    async fn find_validators(
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
@@ -111,28 +108,17 @@ impl PosRepositoryTrait for PosRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn find_validators_by_addresses(
+    async fn find_all_validators(
         &self,
-        page: i64,
-        addreses: Vec<String>,
-        kind: MyValidatorKindDto,
-    ) -> Result<(Vec<ValidatorDb>, i64), String> {
+        states: Vec<ValidatorStateDb>,
+    ) -> Result<Vec<ValidatorDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
-        conn.interact(move |conn| match kind {
-            MyValidatorKindDto::WithBonds => validators::table
-                .inner_join(bonds::table)
-                .filter(bonds::dsl::address.eq_any(addreses.clone()))
+        conn.interact(move |conn| {
+            validators::table
+                .filter(validators::dsl::state.eq_any(states))
                 .select(ValidatorDb::as_select())
-                .paginate(page)
-                .load_and_count_pages(conn),
-
-            MyValidatorKindDto::WithUnbonds => validators::table
-                .inner_join(unbonds::table)
-                .filter(unbonds::dsl::address.eq_any(addreses.clone()))
-                .select(ValidatorDb::as_select())
-                .paginate(page)
-                .load_and_count_pages(conn),
+                .load(conn)
         })
         .await
         .map_err(|e| e.to_string())?
