@@ -1,5 +1,3 @@
-use std::ops::Rem;
-
 use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
 use serde::Serialize;
 
@@ -24,19 +22,13 @@ impl<T> PaginatedResponse<T>
 where
     T: Serialize,
 {
-    pub fn new(data: T, page: u64, total_items: u64) -> Self {
+    pub fn new(data: T, page: u64, total_pages: u64, total_items: u64) -> Self {
         Self {
             data,
             pagination: Pagination {
                 page,
                 per_page: ITEM_PER_PAGE,
-                total_pages: if total_items == 0 {
-                    0
-                } else if total_items.rem(ITEM_PER_PAGE) == 0 {
-                    total_items / ITEM_PER_PAGE
-                } else {
-                    (total_items / ITEM_PER_PAGE) + 1
-                },
+                total_pages,
                 total_items,
             },
         }
@@ -62,13 +54,30 @@ pub fn epoch_progress(current_block: i32, min_num_of_blocks: i32) -> f64 {
 
 // Calculate the time between current epoch and arbitrary epoch
 pub fn time_between_epochs(
+    min_num_of_blocks: i32,
     current_epoch_progress: f64,
     current_epoch: i32,
     to_epoch: i32,
     epoch_duration: i32,
 ) -> i32 {
-    let epoch_time = (to_epoch - current_epoch) * epoch_duration;
-    let extra_time = current_epoch_progress * epoch_duration as f64;
+    // This should always return whole number
+    let time_per_block = epoch_duration / min_num_of_blocks;
+
+    // But we warn just in case parameters are wrong
+    let rest = epoch_duration % min_num_of_blocks;
+    if rest != 0 {
+        tracing::warn!(
+            "Time per block is not a whole number of seconds, time between \
+             epoch calculation will be off"
+        );
+    }
+
+    // Because of the EPIC_SWITCH_BLOCKS_DELAY we need to add some extra time
+    let real_epoch_duration =
+        epoch_duration + time_per_block * EPOCH_SWITCH_BLOCKS_DELAY as i32;
+
+    let epoch_time = (to_epoch - current_epoch) * real_epoch_duration;
+    let extra_time = current_epoch_progress * real_epoch_duration as f64;
 
     epoch_time - extra_time as i32
 }

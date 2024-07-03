@@ -16,7 +16,7 @@ paths:
           description: Health check
   /api/v1/pos/validator:
     get:
-      summary: Get all validators
+      summary: Get all validators, paginated
       parameters:
         - in: query
           name: page
@@ -30,7 +30,7 @@ paths:
             type: array
             items:
               $ref: '#/components/schemas/ValidatorStatus'
-          description: Pagination parameter
+          description: Validator status parameter
       responses:
         '200':
           description: A list of validator.
@@ -46,46 +46,26 @@ paths:
                       $ref: '#/components/schemas/Validator'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-  /api/v1/pos/my-validator:
+  /api/v1/pos/validator/all:
     get:
-      summary: Get validators that delegator has delegated to
+      summary: Get all validators, non paginated
       parameters:
         - in: query
-          name: addresses
+          name: state
           schema:
             type: array
             items:
-              type: string
-          required: true
-          description: The delegator addresses
-        - in: query
-          name: kind
-          schema:
-            type: string
-            enum: [withBonds, withUnbonds]
-          required: true
-          description: Pagination parameter
-        - in: query
-          name: page
-          schema:
-            type: integer
-            minimum: 1
-          description: Pagination parameter
+              $ref: '#/components/schemas/ValidatorStatus'
+          description: Validator status parameter
       responses:
         '200':
-          description: Given a list of address return a list of a validator for which those addresses have delegations
+          description: A list of validator.
           content:
             application/json:
               schema:
-                type: object
-                required: [data, pagination]
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Validator'
-                  pagination:
-                    $ref: '#/components/schemas/Pagination'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Validator'
   /api/v1/pos/reward/{address}:
     get:
       summary: Get all the rewards for an address
@@ -170,6 +150,37 @@ paths:
   /api/v1/pos/unbond/{address}:
     get:
       summary: Get all the unbonds for an an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of unbonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Unbond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/merged-unbonds/{address}:
+    get:
+      summary: Get all the unbonds for an an address with merged withdraw amounts
       parameters:
         - in: path
           name: address
@@ -614,7 +625,7 @@ components:
           type: string
     Unbond:
       type: object
-      required: [validator, amount, withdrawEpoch, withdrawTime]
+      required: [validator, amount, withdrawEpoch, withdrawTime, currentTime]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
@@ -623,6 +634,8 @@ components:
         withdrawEpoch:
           type: string
         withdrawTime:
+          type: string
+        currentTime:
           type: string
     Withdraw:
       type: object
@@ -680,7 +693,7 @@ components:
             type: number
           txKind:
             type: string
-            enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+            enum: [transparentTransfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, unknown]
     GasPriceTable:
       type: array
       items:
@@ -693,7 +706,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, epochSwitchBlocksDelay]
       properties:
         unbondingLength:
           type: string
@@ -708,6 +721,12 @@ components:
         chainId:
           type: string
         genesisTime:
+          type: string
+        minDuration:
+          type: string
+        minNumOfBlocks:
+          type: string
+        epochSwitchBlocksDelay:
           type: string
     RpcUrl:
       type: object

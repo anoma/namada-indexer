@@ -1,6 +1,7 @@
 use axum::async_trait;
 use bigdecimal::BigDecimal;
-use diesel::dsl::sum;
+use diesel::dsl::{sql, sum};
+use diesel::sql_types::Integer;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
     SelectableHelper,
@@ -11,9 +12,8 @@ use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
 
-use super::utils::Paginate;
+use super::utils::{Paginate, PaginatedResponseDb};
 use crate::appstate::AppState;
-use crate::dto::pos::MyValidatorKindDto;
 
 #[derive(Clone)]
 pub struct PosRepository {
@@ -24,18 +24,16 @@ pub struct PosRepository {
 pub trait PosRepositoryTrait {
     fn new(app_state: AppState) -> Self;
 
-    async fn find_all_validators(
+    async fn find_validators(
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
-    ) -> Result<(Vec<ValidatorDb>, i64), String>;
+    ) -> Result<PaginatedResponseDb<ValidatorDb>, String>;
 
-    async fn find_validators_by_addresses(
+    async fn find_all_validators(
         &self,
-        page: i64,
-        addreses: Vec<String>,
-        kind: MyValidatorKindDto,
-    ) -> Result<(Vec<ValidatorDb>, i64), String>;
+        states: Vec<ValidatorStateDb>,
+    ) -> Result<Vec<ValidatorDb>, String>;
 
     async fn find_validator_by_id(
         &self,
@@ -46,26 +44,39 @@ pub trait PosRepositoryTrait {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(String, ValidatorDb, Option<BigDecimal>)>, i64), String>;
+    ) -> Result<
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>)>,
+        String,
+    >;
 
     async fn find_bonds_by_address(
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, BondDb)>, i64), String>;
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, BondDb)>, String>;
 
     async fn find_unbonds_by_address(
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String>;
+
+    async fn find_merged_unbonds_by_address(
+        &self,
+        address: String,
+        current_epoch: i32,
+        page: i64,
+    ) -> Result<
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>, i32)>,
+        String,
+    >;
 
     async fn find_withdraws_by_address(
         &self,
         address: String,
         current_epoch: i32,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String>;
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String>;
 
     async fn find_rewards_by_address(
         &self,
@@ -81,11 +92,11 @@ impl PosRepositoryTrait for PosRepository {
         Self { app_state }
     }
 
-    async fn find_all_validators(
+    async fn find_validators(
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
-    ) -> Result<(Vec<ValidatorDb>, i64), String> {
+    ) -> Result<PaginatedResponseDb<ValidatorDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -100,28 +111,17 @@ impl PosRepositoryTrait for PosRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn find_validators_by_addresses(
+    async fn find_all_validators(
         &self,
-        page: i64,
-        addreses: Vec<String>,
-        kind: MyValidatorKindDto,
-    ) -> Result<(Vec<ValidatorDb>, i64), String> {
+        states: Vec<ValidatorStateDb>,
+    ) -> Result<Vec<ValidatorDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
-        conn.interact(move |conn| match kind {
-            MyValidatorKindDto::WithBonds => validators::table
-                .inner_join(bonds::table)
-                .filter(bonds::dsl::address.eq_any(addreses.clone()))
+        conn.interact(move |conn| {
+            validators::table
+                .filter(validators::dsl::state.eq_any(states))
                 .select(ValidatorDb::as_select())
-                .paginate(page)
-                .load_and_count_pages(conn),
-
-            MyValidatorKindDto::WithUnbonds => validators::table
-                .inner_join(unbonds::table)
-                .filter(unbonds::dsl::address.eq_any(addreses.clone()))
-                .select(ValidatorDb::as_select())
-                .paginate(page)
-                .load_and_count_pages(conn),
+                .load(conn)
         })
         .await
         .map_err(|e| e.to_string())?
@@ -149,7 +149,7 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, BondDb)>, i64), String> {
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, BondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -169,8 +169,10 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(String, ValidatorDb, Option<BigDecimal>)>, i64), String>
-    {
+    ) -> Result<
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>)>,
+        String,
+    > {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -199,7 +201,7 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String> {
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -215,12 +217,42 @@ impl PosRepositoryTrait for PosRepository {
         .map_err(|e| e.to_string())
     }
 
+    async fn find_merged_unbonds_by_address(
+        &self,
+        address: String,
+        current_epoch: i32,
+        page: i64,
+    ) -> Result<
+        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>, i32)>,
+        String,
+    > {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+                validators::table
+                .inner_join(unbonds::table)
+                .filter(unbonds::dsl::address.eq(address))
+                .group_by((unbonds::address, validators::id, sql::<Integer>(&format!("CASE WHEN withdraw_epoch <= {} THEN 0 ELSE withdraw_epoch END", current_epoch))))
+                .select((
+                        unbonds::address,
+                        validators::all_columns,
+                        sum(unbonds::raw_amount),
+                        sql::<Integer>(&format!("CASE WHEN MIN(withdraw_epoch) <= {} THEN 0 ELSE MAX(withdraw_epoch) END AS withdraw_epoch", current_epoch))))
+                .paginate(page)
+                .load_and_count_pages::<(String, ValidatorDb, Option<BigDecimal>, i32)>(conn)
+
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
     async fn find_withdraws_by_address(
         &self,
         address: String,
         current_epoch: i32,
         page: i64,
-    ) -> Result<(Vec<(ValidatorDb, UnbondDb)>, i64), String> {
+    ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {

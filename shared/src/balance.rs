@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
+use bigdecimal::BigDecimal;
 use fake::Fake;
 use namada_sdk::token::Amount as NamadaAmount;
+use namada_sdk::token::DenominatedAmount as NamadaDenominatedAmount;
+use namada_sdk::token::Denomination as NamadaDenomination;
 
 use crate::id::Id;
 
@@ -14,15 +17,57 @@ impl From<NamadaAmount> for Amount {
     }
 }
 
-impl Amount {
-    pub fn fake() -> Self {
-        Self(NamadaAmount::from_u64((0..10000000).fake::<u64>()))
+impl From<BigDecimal> for Amount {
+    fn from(amount: BigDecimal) -> Amount {
+        Amount(
+            NamadaAmount::from_string_precise(&amount.to_string())
+                .expect("Invalid amount"),
+        )
     }
 }
 
 impl Display for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl Amount {
+    pub fn checked_add(&self, other: &Self) -> Option<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
+
+    pub fn fake() -> Self {
+        Self(NamadaAmount::from_u64((0..10000000).fake::<u64>()))
+    }
+}
+
+pub type Denomination = u8;
+
+pub struct DenominatedAmount(NamadaDenominatedAmount);
+
+impl DenominatedAmount {
+    pub fn native(amount: Amount) -> DenominatedAmount {
+        Self(NamadaDenominatedAmount::native(amount.0))
+    }
+
+    pub fn to_string_precise(&self) -> String {
+        self.0.to_string_precise()
+    }
+}
+
+impl From<NamadaDenominatedAmount> for DenominatedAmount {
+    fn from(amount: NamadaDenominatedAmount) -> DenominatedAmount {
+        DenominatedAmount(amount)
+    }
+}
+
+impl From<(Amount, Denomination)> for DenominatedAmount {
+    fn from((amount, denom): (Amount, Denomination)) -> DenominatedAmount {
+        DenominatedAmount(NamadaDenominatedAmount::new(
+            amount.0,
+            NamadaDenomination(denom),
+        ))
     }
 }
 

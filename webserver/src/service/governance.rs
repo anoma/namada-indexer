@@ -29,7 +29,7 @@ impl GovernanceService {
         kind: Option<ProposalKind>,
         pattern: Option<String>,
         page: u64,
-    ) -> Result<(Vec<Proposal>, u64), GovernanceError> {
+    ) -> Result<(Vec<Proposal>, u64, u64), GovernanceError> {
         let status = status
             .map(|s| match s {
                 ProposalStatus::Pending => {
@@ -63,7 +63,7 @@ impl GovernanceService {
             ProposalKind::PgfFunding => GovernanceProposalKindDb::PgfFunding,
         });
 
-        let (db_proposals, total_items) = self
+        let (db_proposals, total_pages, total_items) = self
             .governance_repo
             .find_governance_proposals(status, kind, pattern, page as i64)
             .await
@@ -93,6 +93,7 @@ impl GovernanceService {
                     )
                 })
                 .collect(),
+            total_pages as u64,
             total_items as u64,
         ))
     }
@@ -133,7 +134,7 @@ impl GovernanceService {
         &self,
         proposal_id: u64,
         page: u64,
-    ) -> Result<(Vec<ProposalVote>, u64), GovernanceError> {
+    ) -> Result<(Vec<ProposalVote>, u64, u64), GovernanceError> {
         let db_proposal = self
             .governance_repo
             .find_governance_proposals_by_id(proposal_id as i32)
@@ -144,7 +145,7 @@ impl GovernanceService {
             return Err(GovernanceError::NotFound(proposal_id));
         }
 
-        let (db_proposal_votes, total_items) = self
+        let (db_proposal_votes, total_pages, total_items) = self
             .governance_repo
             .find_governance_proposal_votes(proposal_id as i32, page as i64)
             .await
@@ -155,6 +156,7 @@ impl GovernanceService {
                 .into_iter()
                 .map(ProposalVote::from)
                 .collect(),
+            total_pages as u64,
             total_items as u64,
         ))
     }

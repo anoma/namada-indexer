@@ -1,7 +1,8 @@
+use std::str::FromStr;
+
 use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use shared::balance::Balance;
-use std::str::FromStr;
 
 use crate::schema::balances;
 

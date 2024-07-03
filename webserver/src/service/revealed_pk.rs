@@ -50,7 +50,7 @@ impl RevealedPkService {
                 // If we find a public key in the storage, we insert it in the
                 // database
                 if let Some(public_key) = public_key.clone() {
-                    // TODO: maybe better to create it using strcuts from shared
+                    // TODO: maybe better to create it using structs from shared
                     let revealed_pk_db = RevealedPkInsertDb {
                         pk: public_key.to_string(),
                         address: address.to_string(),
