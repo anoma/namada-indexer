@@ -2,9 +2,10 @@ use std::fmt::Display;
 
 use bigdecimal::BigDecimal;
 use fake::Fake;
-use namada_sdk::token::Amount as NamadaAmount;
-use namada_sdk::token::DenominatedAmount as NamadaDenominatedAmount;
-use namada_sdk::token::Denomination as NamadaDenomination;
+use namada_sdk::token::{
+    Amount as NamadaAmount, DenominatedAmount as NamadaDenominatedAmount,
+    Denomination as NamadaDenomination,
+};
 
 use crate::id::Id;
 

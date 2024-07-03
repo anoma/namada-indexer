@@ -3,8 +3,6 @@ use diesel::expression::{SqlLiteral, ValidGrouping};
 
 use crate::schema::{bonds, unbonds, validators};
 
-use crate::schema::{bonds, validators};
-
 allow_columns_to_appear_in_same_group_by_clause!(
     bonds::address,
     validators::id,

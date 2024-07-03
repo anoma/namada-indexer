@@ -1,9 +1,8 @@
 use orm::gas::{GasDb, GasPriceDb};
 use serde::{Deserialize, Serialize};
 
-use crate::service::utils::raw_amount_to_nam;
-
 use super::transaction::TransactionKind;
+use crate::service::utils::raw_amount_to_nam;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
