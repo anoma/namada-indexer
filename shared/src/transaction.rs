@@ -24,6 +24,7 @@ use crate::id::Id;
 #[serde(untagged)]
 pub enum TransactionKind {
     Transfer(Transfer),
+    Transfer(Transfer),
     // TODO: remove once ShieldedTransfer can be serialized
     #[serde(skip)]
     ShieldedTransfer(ShieldedTransfer),
