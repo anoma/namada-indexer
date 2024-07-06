@@ -47,7 +47,7 @@ impl TransactionKind {
 
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
-            "tx_transfer" => TransactionKind::Transfer(
+            "tx_transparent_transfer" => TransactionKind::Transfer(
                 Transfer::try_from_slice(data)
                     .expect("Cannot deserialize Transfer"),
             ),
