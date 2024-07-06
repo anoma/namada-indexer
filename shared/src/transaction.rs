@@ -42,7 +42,14 @@ pub enum TransactionKind {
 
 impl TransactionKind {
     pub fn to_json(&self) -> String {
-        serde_json::to_string(&self).expect("Cannot serialize TransactionKind")
+        match serde_json::to_string(&self) {
+            Ok(json) => json,
+            Err(e) => {
+                eprintln!("Cannot serialize TransactionKind: {:?}", e);
+                eprintln!("Problematic value: {:?}", self);
+                panic!("Serialization error");
+            }
+        }
     }
 
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
