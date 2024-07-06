@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::collections::BTreeMap;
+use std::fmt;
 
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::borsh::BorshDeserialize;
@@ -13,12 +15,70 @@ use namada_tx::data::pos::{
 };
 use namada_tx::data::TxType;
 use namada_tx::{Section, Tx};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeStruct;
 
 use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
+
+#[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema, Hash, Eq, Ord, PartialOrd)]
+pub struct Account {
+    pub owner: Address,
+    pub token: Address,
+}
+
+impl fmt::Display for Account {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.owner, self.token)
+    }
+}
+
+impl Serialize for Account {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Account", 2)?;
+        state.serialize_field("owner", &self.owner.to_string())?;
+        state.serialize_field("token", &self.token.to_string())?;
+        state.end()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema, Default, Hash, Eq, PartialOrd)]
+pub struct Transfer {
+    pub sources: BTreeMap<Account, DenominatedAmount>,
+    pub targets: BTreeMap<Account, DenominatedAmount>,
+    pub shielded_section_hash: Option<TxId>,
+}
+
+impl Serialize for Transfer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Transfer", 3)?;
+
+        let sources: BTreeMap<String, &DenominatedAmount> = self
+            .sources
+            .iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
+        state.serialize_field("sources", &sources)?;
+
+        let targets: BTreeMap<String, &DenominatedAmount> = self
+            .targets
+            .iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
+        state.serialize_field("targets", &targets)?;
+
+        state.serialize_field("shielded_section_hash", &self.shielded_section_hash)?;
+        state.end()
+    }
+}
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
