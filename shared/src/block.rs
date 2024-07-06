@@ -283,7 +283,7 @@ impl Block {
                 let mut balance_changes = vec![];
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
-                        TransactionKind::TransparentTransfer(data) => {
+                        TransactionKind::Transfer(data) => {
                             let transfer_data = data.clone();
                             let mut changes = vec![];
     
