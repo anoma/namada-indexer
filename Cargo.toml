@@ -1,7 +1,18 @@
 [workspace]
 resolver = "2"
 
-members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver", "seeder", "parameters", "transactions"]
+members = [
+    "chain",
+    "shared",
+    "rewards",
+    "orm",
+    "pos",
+    "governance",
+    "webserver",
+    "seeder",
+    "parameters",
+    "transactions",
+]
 
 [workspace.package]
 authors = ["Heliax <hello@heliax.dev>"]
@@ -40,14 +51,20 @@ axum-extra = { version = "0.9.3", features = ["query"] }
 chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
-namada_core = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
-namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.39.0", default-features = false, features = ["tendermint-rpc", "std", "async-send", "download-params", "rand"] }
-namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
-namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
-namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
-namada_token = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
-namada_parameters = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
-namada_proof_of_stake = { git = "https://github.com/anoma/namada", tag = "v0.39.0" }
+namada_core = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
+namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.40.0", default-features = false, features = [
+    "tendermint-rpc",
+    "std",
+    "async-send",
+    "download-params",
+    "rand",
+] }
+namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
+namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
+namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
+namada_token = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
+namada_parameters = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
+namada_proof_of_stake = { git = "https://github.com/anoma/namada", tag = "v0.40.0" }
 tendermint = "0.36.0"
 tendermint-config = "0.36.0"
 tendermint-rpc = { version = "0.36.0", features = ["http-client"] }
@@ -58,7 +75,7 @@ async-stream = "0.3.5"
 futures-core = "0.3.30"
 futures-util = "0.3.30"
 futures = "0.3.30"
-smooth-operator = {git = "https://github.com/heliaxdev/smooth-operator", tag = "v0.7.0"}
+smooth-operator = { git = "https://github.com/heliaxdev/smooth-operator", tag = "v0.7.0" }
 tokio-stream = "0.1.15"
 tokio-retry = "0.3"
 thiserror = "1.0.56"
@@ -66,11 +83,7 @@ diesel_migrations = { version = "2.1.0", default-features = false, features = [
     "postgres",
 ] }
 deadpool-diesel = { version = "0.5.0", features = ["postgres"] }
-diesel = { version = "2.1.0", features = [
-    "postgres",
-    "serde_json",
-    "numeric"
-] }
+diesel = { version = "2.1.0", features = ["postgres", "serde_json", "numeric"] }
 diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 orm = { path = "orm" }
 shared = { path = "shared" }

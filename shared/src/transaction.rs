@@ -5,7 +5,7 @@ use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
-use namada_sdk::token::TransparentTransfer;
+use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
     Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation, Unbond,
@@ -23,7 +23,7 @@ use crate::id::Id;
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
-    TransparentTransfer(TransparentTransfer),
+    TransparentTransfer(Transfer),
     // TODO: remove once ShieldedTransfer can be serialized
     #[serde(skip)]
     ShieldedTransfer(ShieldedTransfer),
@@ -48,8 +48,8 @@ impl TransactionKind {
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
             "tx_transparent_transfer" => TransactionKind::TransparentTransfer(
-                TransparentTransfer::try_from_slice(data)
-                    .expect("Cannot deserialize TransparentTransfer"),
+                Transfer::try_from_slice(data)
+                    .expect("Cannot deserialize Transfer"),
             ),
             "tx_bond" => TransactionKind::Bond(
                 Bond::try_from_slice(data).expect("Cannot deserialize Bond"),

@@ -285,26 +285,31 @@ impl Block {
                     let mut balance_change = match &tx.kind {
                         TransactionKind::TransparentTransfer(data) => {
                             let transfer_data = data.clone();
-                            let transfer_source =
-                                Id::from(transfer_data.source);
-                            let transfer_target =
-                                Id::from(transfer_data.target);
-                            let transfer_token = Id::from(transfer_data.token);
-                            vec![
-                                BalanceChange::new(
+                            let mut changes = vec![];
+    
+                            // Iterate over sources in the BTreeMap
+                            for (source, _amount) in transfer_data.sources.iter() {
+                                let transfer_source = Id::from(source.owner.clone());
+                                changes.push(BalanceChange::new(
                                     transfer_source,
-                                    transfer_token.clone(),
-                                ),
-                                BalanceChange::new(
+                                    native_token.clone(),
+                                ));
+                            }
+    
+                            // Iterate over targets in the BTreeMap
+                            for (target, _amount) in transfer_data.targets.iter() {
+                                let transfer_target = Id::from(target.owner.clone());
+                                changes.push(BalanceChange::new(
                                     transfer_target,
-                                    transfer_token,
-                                ),
-                            ]
+                                    native_token.clone(),
+                                ));
+                            }
+    
+                            changes
                         }
                         TransactionKind::Bond(data) => {
                             let bond_data = data.clone();
-                            let address =
-                                bond_data.source.unwrap_or(bond_data.validator);
+                            let address = bond_data.source.unwrap_or(bond_data.validator);
                             let source = Id::from(address);
                             vec![BalanceChange::new(
                                 source,
@@ -317,7 +322,7 @@ impl Block {
                                 .source
                                 .unwrap_or(withdraw_data.validator);
                             let source = Id::from(address);
-
+    
                             vec![BalanceChange::new(
                                 source,
                                 native_token.clone(),
@@ -329,7 +334,7 @@ impl Block {
                                 .source
                                 .unwrap_or(claim_rewards_data.validator);
                             let source = Id::from(address);
-
+    
                             vec![BalanceChange::new(
                                 source,
                                 native_token.clone(),
@@ -338,7 +343,7 @@ impl Block {
                         TransactionKind::InitProposal(data) => {
                             let init_proposal_data = data.clone();
                             let author = Id::from(init_proposal_data.author);
-
+    
                             vec![BalanceChange::new(
                                 author,
                                 native_token.clone(),
@@ -348,7 +353,7 @@ impl Block {
                     };
                     balance_changes.append(&mut balance_change);
                 }
-
+    
                 balance_changes.push(BalanceChange::new(
                     wrapper_tx.fee.gas_payer.clone(),
                     wrapper_tx.fee.gas_token.clone(),
@@ -356,7 +361,7 @@ impl Block {
                 balance_changes
             })
             .collect()
-    }
+    }  
 
     pub fn bond_addresses(&self) -> Vec<BondAddresses> {
         self.transactions

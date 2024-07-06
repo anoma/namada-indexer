@@ -59,48 +59,34 @@ pub struct BatchResults {
 
 impl From<TxResult<String>> for BatchResults {
     fn from(value: TxResult<String>) -> Self {
+        let results: BTreeMap<Id, bool> = value.batch_results.iter().map(|(tx_hash, result)| {
+            let tx_id = Id::from(*tx_hash);
+            let is_accepted = result.is_ok() && result.as_ref().unwrap().is_accepted();
+            (tx_id, is_accepted)
+        }).collect();
+
+        let errors: BTreeMap<Id, BTreeMap<Id, String>> = value.batch_results.iter().map(|(tx_hash, result)| {
+            let tx_id = Id::from(*tx_hash);
+            let error_map = if let Ok(inner_result) = result {
+                inner_result.vps_result.errors.iter().map(|(address, error)| {
+                    (Id::from(address.clone()), error.clone())
+                }).collect()
+            } else {
+                BTreeMap::default()
+            };
+            (tx_id, error_map)
+        }).collect();
+
         Self {
-            batch_results: value.batch_results.0.iter().fold(
-                BTreeMap::default(),
-                |mut acc, (tx_hash, result)| {
-                    let tx_id = Id::from(*tx_hash);
-                    let result = if let Ok(result) = result {
-                        result.is_accepted()
-                    } else {
-                        false
-                    };
-                    acc.insert(tx_id, result);
-                    acc
-                },
-            ),
-            batch_errors: value.batch_results.0.into_iter().fold(
-                BTreeMap::default(),
-                |mut acc, (tx_hash, result)| {
-                    let tx_id = Id::from(tx_hash);
-                    let result = if let Ok(result) = result {
-                        result
-                            .vps_result
-                            .errors
-                            .into_iter()
-                            .map(|(address, error)| (Id::from(address), error))
-                            .collect()
-                    } else {
-                        BTreeMap::default()
-                    };
-                    acc.insert(tx_id, result);
-                    acc
-                },
-            ),
+            batch_results: results,
+            batch_errors: errors,
         }
     }
 }
 
 impl BatchResults {
     pub fn is_successful(&self, tx_id: &Id) -> bool {
-        match self.batch_results.get(tx_id) {
-            Some(result) => *result,
-            None => false,
-        }
+        self.batch_results.get(tx_id).copied().unwrap_or(false)
     }
 }
 
