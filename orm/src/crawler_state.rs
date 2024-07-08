@@ -2,11 +2,11 @@ use diesel::pg::Pg;
 use diesel::sql_types::Nullable;
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use shared::crawler_status::{
-    BlockCrawlerStatus, CrawlerName, EpochCrawlerStatus, IntervalCrawlerStatus,
+use shared::crawler_state::{
+    BlockCrawlerState, CrawlerName, EpochCrawlerState, IntervalCrawlerState,
 };
 
-use crate::schema::crawler_status;
+use crate::schema::crawler_state;
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::CrawlerName"]
@@ -34,7 +34,7 @@ impl From<CrawlerName> for CrawlerNameDb {
 
 // TODO: rename tp state
 #[derive(Serialize, Queryable, Selectable, Clone, Debug)]
-#[diesel(table_name = crawler_status)]
+#[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CrawlerStatusDb {
     pub name: CrawlerNameDb,
@@ -45,7 +45,7 @@ pub struct CrawlerStatusDb {
 
 // TODO: rename tp state
 #[derive(Serialize, Clone, Debug)]
-pub struct BlockCrawlerStatusDb {
+pub struct BlockCrawlerStateDb {
     pub last_processed_block: i32,
     pub last_processed_epoch: i32,
     pub timestamp: chrono::NaiveDateTime,
@@ -58,7 +58,7 @@ impl
             diesel::sql_types::Timestamp,
         ),
         Pg,
-    > for BlockCrawlerStatusDb
+    > for BlockCrawlerStateDb
 {
     type Row = (Option<i32>, Option<i32>, chrono::NaiveDateTime);
 
@@ -73,18 +73,16 @@ impl
                 last_processed_epoch,
                 timestamp,
             }),
-            _ => Err(
-                "last_processed_block or last_processed_epoch missing in the \
-                 epoch crawler status"
-                    .into(),
-            ),
+            _ => Err("last_processed_block or last_processed_epoch missing \
+                      in the epoch crawler status"
+                .into()),
         }
     }
 }
 
 // TODO: rename tp state
 #[derive(Serialize, Clone, Debug)]
-pub struct EpochCrawlerStatusDb {
+pub struct EpochCrawlerStateDb {
     pub last_processed_epoch: i32,
     pub timestamp: chrono::NaiveDateTime,
 }
@@ -95,7 +93,7 @@ impl
             diesel::sql_types::Timestamp,
         ),
         Pg,
-    > for EpochCrawlerStatusDb
+    > for EpochCrawlerStateDb
 {
     type Row = (Option<i32>, chrono::NaiveDateTime);
 
@@ -105,18 +103,17 @@ impl
                 last_processed_epoch,
                 timestamp,
             }),
-            _ => {
-                Err("last_processed_epoch missing in the chain crawler status"
-                    .into())
-            }
+            _ => Err("last_processed_epoch missing in the chain crawler \
+                      status"
+                .into()),
         }
     }
 }
 
 #[derive(Serialize, Insertable, Clone)]
-#[diesel(table_name = crawler_status)]
+#[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct BlockStatusInsertDb {
+pub struct BlockStateInsertDb {
     pub name: CrawlerNameDb,
     pub last_processed_block: i32,
     pub last_processed_epoch: i32,
@@ -124,7 +121,7 @@ pub struct BlockStatusInsertDb {
 }
 
 #[derive(Serialize, Insertable, Clone)]
-#[diesel(table_name = crawler_status)]
+#[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct EpochStatusInsertDb {
     pub name: CrawlerNameDb,
@@ -133,15 +130,15 @@ pub struct EpochStatusInsertDb {
 }
 
 #[derive(Serialize, Insertable, Clone)]
-#[diesel(table_name = crawler_status)]
+#[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct IntervalStatusInsertDb {
     pub name: CrawlerNameDb,
     pub timestamp: chrono::NaiveDateTime,
 }
 
-impl From<(CrawlerName, BlockCrawlerStatus)> for BlockStatusInsertDb {
-    fn from((crawler_name, state): (CrawlerName, BlockCrawlerStatus)) -> Self {
+impl From<(CrawlerName, BlockCrawlerState)> for BlockStateInsertDb {
+    fn from((crawler_name, state): (CrawlerName, BlockCrawlerState)) -> Self {
         let timestamp = chrono::DateTime::from_timestamp(state.timestamp, 0)
             .expect("Invalid timestamp")
             .naive_utc();
@@ -155,8 +152,8 @@ impl From<(CrawlerName, BlockCrawlerStatus)> for BlockStatusInsertDb {
     }
 }
 
-impl From<(CrawlerName, EpochCrawlerStatus)> for EpochStatusInsertDb {
-    fn from((crawler_name, state): (CrawlerName, EpochCrawlerStatus)) -> Self {
+impl From<(CrawlerName, EpochCrawlerState)> for EpochStatusInsertDb {
+    fn from((crawler_name, state): (CrawlerName, EpochCrawlerState)) -> Self {
         let timestamp = chrono::DateTime::from_timestamp(state.timestamp, 0)
             .expect("Invalid timestamp")
             .naive_utc();
@@ -169,9 +166,9 @@ impl From<(CrawlerName, EpochCrawlerStatus)> for EpochStatusInsertDb {
     }
 }
 
-impl From<(CrawlerName, IntervalCrawlerStatus)> for IntervalStatusInsertDb {
+impl From<(CrawlerName, IntervalCrawlerState)> for IntervalStatusInsertDb {
     fn from(
-        (crawler_name, state): (CrawlerName, IntervalCrawlerStatus),
+        (crawler_name, state): (CrawlerName, IntervalCrawlerState),
     ) -> Self {
         let timestamp = chrono::DateTime::from_timestamp(state.timestamp, 0)
             .expect("Invalid timestamp")

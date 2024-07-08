@@ -4,7 +4,7 @@ pub mod block_result;
 pub mod bond;
 pub mod checksums;
 pub mod crawler;
-pub mod crawler_status;
+pub mod crawler_state;
 pub mod error;
 pub mod gas;
 pub mod genesis;

@@ -9,17 +9,17 @@ pub enum CrawlerName {
     Transactions,
 }
 
-pub struct BlockCrawlerStatus {
+pub struct BlockCrawlerState {
     pub last_processed_block: BlockHeight,
     pub last_processed_epoch: Epoch,
     pub timestamp: i64,
 }
 
-pub struct EpochCrawlerStatus {
+pub struct EpochCrawlerState {
     pub last_processed_epoch: Epoch,
     pub timestamp: i64,
 }
 
-pub struct IntervalCrawlerStatus {
+pub struct IntervalCrawlerState {
     pub timestamp: i64,
 }

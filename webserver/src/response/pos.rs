@@ -1,6 +1,6 @@
 use bigdecimal::BigDecimal;
 use orm::bond::BondDb;
-use orm::crawler_status::{BlockCrawlerStatusDb, EpochCrawlerStatusDb};
+use orm::crawler_state::{BlockCrawlerStateDb, EpochCrawlerStateDb};
 use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
@@ -136,8 +136,8 @@ impl ValidatorWithId {
     }
 }
 
-impl From<(&BondDb, &EpochCrawlerStatusDb)> for BondStatus {
-    fn from((bond, status): (&BondDb, &EpochCrawlerStatusDb)) -> Self {
+impl From<(&BondDb, &EpochCrawlerStateDb)> for BondStatus {
+    fn from((bond, status): (&BondDb, &EpochCrawlerStateDb)) -> Self {
         if bond.start <= status.last_processed_epoch {
             Self::Active
         } else {
@@ -175,7 +175,7 @@ impl Unbond {
         raw_amount: BigDecimal,
         withdraw_epoch: i32,
         db_validator: ValidatorDb,
-        chain_state: &BlockCrawlerStatusDb,
+        chain_state: &BlockCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {

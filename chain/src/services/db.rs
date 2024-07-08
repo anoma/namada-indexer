@@ -1,22 +1,22 @@
 use anyhow::Context;
 use deadpool_diesel::postgres::Object;
 use diesel::{QueryDsl, RunQueryDsl};
-use orm::crawler_status::{BlockCrawlerStatusDb, EpochCrawlerStatusDb};
-use orm::schema::crawler_status;
+use orm::crawler_state::{BlockCrawlerStateDb, EpochCrawlerStateDb};
+use orm::schema::crawler_state;
 use shared::block::{BlockHeight, Epoch};
-use shared::crawler_status::{BlockCrawlerStatus, EpochCrawlerStatus};
+use shared::crawler_state::{BlockCrawlerState, EpochCrawlerState};
 use shared::error::ContextDbInteractError;
 
 pub async fn get_chain_crawler_state(
     conn: &Object,
-) -> anyhow::Result<BlockCrawlerStatus> {
-    let crawler_status: BlockCrawlerStatusDb = conn
+) -> anyhow::Result<BlockCrawlerState> {
+    let crawler_state: BlockCrawlerStateDb = conn
         .interact(move |conn| {
-            crawler_status::table
+            crawler_state::table
                 .select((
-                    crawler_status::dsl::last_processed_block,
-                    crawler_status::dsl::last_processed_epoch,
-                    crawler_status::dsl::timestamp,
+                    crawler_state::dsl::last_processed_block,
+                    crawler_state::dsl::last_processed_epoch,
+                    crawler_state::dsl::timestamp,
                 ))
                 // TODO: replace first
                 .first(conn)
@@ -25,22 +25,21 @@ pub async fn get_chain_crawler_state(
         .context_db_interact_error()?
         .context("Failed to read block max height in db")?;
 
-    Ok(BlockCrawlerStatus {
-        last_processed_block: crawler_status.last_processed_block
-            as BlockHeight,
-        last_processed_epoch: crawler_status.last_processed_epoch as Epoch,
-        timestamp: crawler_status.timestamp.and_utc().timestamp(),
+    Ok(BlockCrawlerState {
+        last_processed_block: crawler_state.last_processed_block as BlockHeight,
+        last_processed_epoch: crawler_state.last_processed_epoch as Epoch,
+        timestamp: crawler_state.timestamp.and_utc().timestamp(),
     })
 }
 pub async fn get_pos_crawler_state(
     conn: &Object,
-) -> anyhow::Result<EpochCrawlerStatus> {
-    let crawler_status: EpochCrawlerStatusDb = conn
+) -> anyhow::Result<EpochCrawlerState> {
+    let crawler_state: EpochCrawlerStateDb = conn
         .interact(move |conn| {
-            crawler_status::table
+            crawler_state::table
                 .select((
-                    crawler_status::dsl::last_processed_epoch,
-                    crawler_status::dsl::timestamp,
+                    crawler_state::dsl::last_processed_epoch,
+                    crawler_state::dsl::timestamp,
                 ))
                 // TODO: replace first
                 .first(conn)
@@ -49,8 +48,8 @@ pub async fn get_pos_crawler_state(
         .context_db_interact_error()?
         .context("Failed to read block max height in db")?;
 
-    Ok(EpochCrawlerStatus {
-        last_processed_epoch: crawler_status.last_processed_epoch as Epoch,
-        timestamp: crawler_status.timestamp.and_utc().timestamp(),
+    Ok(EpochCrawlerState {
+        last_processed_epoch: crawler_state.last_processed_epoch as Epoch,
+        timestamp: crawler_state.timestamp.and_utc().timestamp(),
     })
 }

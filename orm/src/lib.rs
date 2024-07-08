@@ -1,6 +1,6 @@
 pub mod balances;
 pub mod bond;
-pub mod crawler_status;
+pub mod crawler_state;
 pub mod gas;
 pub mod governance_proposal;
 pub mod governance_votes;

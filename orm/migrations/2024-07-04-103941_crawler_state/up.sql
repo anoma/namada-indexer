@@ -2,7 +2,7 @@
 
 CREATE TYPE CRAWLER_NAME AS ENUM ('chain', 'governance', 'parameters', 'pos', 'rewards', 'transactions');
 
-CREATE TABLE crawler_status (
+CREATE TABLE crawler_state (
     name CRAWLER_NAME PRIMARY KEY NOT NULL,
     last_processed_block INT,
     last_processed_epoch INT,

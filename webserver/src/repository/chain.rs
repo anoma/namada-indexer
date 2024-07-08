@@ -4,9 +4,9 @@ use diesel::{
     ExpressionMethods, NullableExpressionMethods, QueryDsl, RunQueryDsl,
     SelectableHelper,
 };
-use orm::crawler_status::BlockCrawlerStatusDb;
+use orm::crawler_state::BlockCrawlerStateDb;
 use orm::parameters::ParametersDb;
-use orm::schema::{chain_parameters, crawler_status};
+use orm::schema::{chain_parameters, crawler_state};
 
 use crate::appstate::AppState;
 
@@ -25,7 +25,7 @@ pub trait ChainRepositoryTrait {
 
     async fn find_chain_parameters(&self) -> Result<ParametersDb, String>;
 
-    async fn get_state(&self) -> Result<BlockCrawlerStatusDb, String>;
+    async fn get_state(&self) -> Result<BlockCrawlerStateDb, String>;
 }
 
 #[async_trait]
@@ -38,8 +38,8 @@ impl ChainRepositoryTrait for ChainRepository {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            crawler_status::dsl::crawler_status
-                .select(max(crawler_status::dsl::last_processed_block))
+            crawler_state::dsl::crawler_state
+                .select(max(crawler_state::dsl::last_processed_block))
                 .first::<Option<i32>>(conn)
         })
         .await
@@ -51,8 +51,8 @@ impl ChainRepositoryTrait for ChainRepository {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            crawler_status::dsl::crawler_status
-                .select(max(crawler_status::dsl::last_processed_epoch))
+            crawler_state::dsl::crawler_state
+                .select(max(crawler_state::dsl::last_processed_epoch))
                 .first::<Option<i32>>(conn)
         })
         .await
@@ -60,31 +60,31 @@ impl ChainRepositoryTrait for ChainRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn get_state(&self) -> Result<BlockCrawlerStatusDb, String> {
+    async fn get_state(&self) -> Result<BlockCrawlerStateDb, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             let (state1, state2) = diesel::alias!(
-                crawler_status as state1,
-                crawler_status as state2
+                crawler_state as state1,
+                crawler_state as state2
             );
             let subquery = state1
-                .select(max(state1.field(crawler_status::last_processed_block)))
+                .select(max(state1.field(crawler_state::last_processed_block)))
                 .single_value();
 
             state2
                 .filter(
                     state2
-                        .field(crawler_status::last_processed_block)
+                        .field(crawler_state::last_processed_block)
                         .nullable()
                         .eq(subquery),
                 )
                 .select(state2.fields((
-                    crawler_status::last_processed_block,
-                    crawler_status::last_processed_epoch,
-                    crawler_status::timestamp,
+                    crawler_state::last_processed_block,
+                    crawler_state::last_processed_epoch,
+                    crawler_state::timestamp,
                 )))
-                .first::<BlockCrawlerStatusDb>(conn)
+                .first::<BlockCrawlerStateDb>(conn)
         })
         .await
         .map_err(|e| e.to_string())?

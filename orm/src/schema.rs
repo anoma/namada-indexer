@@ -1,35 +1,67 @@
 // @generated automatically by Diesel CLI.
 
 pub mod sql_types {
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "crawler_name"))]
     pub struct CrawlerName;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "governance_kind"))]
     pub struct GovernanceKind;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "governance_result"))]
     pub struct GovernanceResult;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "governance_tally_type"))]
     pub struct GovernanceTallyType;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "transaction_kind"))]
     pub struct TransactionKind;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "transaction_result"))]
     pub struct TransactionResult;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "validator_state"))]
     pub struct ValidatorState;
 
-    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
 }
@@ -73,7 +105,7 @@ diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::CrawlerName;
 
-    crawler_status (name) {
+    crawler_state (name) {
         name -> CrawlerName,
         last_processed_block -> Nullable<Int4>,
         last_processed_epoch -> Nullable<Int4>,
@@ -225,7 +257,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     balances,
     bonds,
     chain_parameters,
-    crawler_status,
+    crawler_state,
     gas,
     gas_price,
     governance_proposals,

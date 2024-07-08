@@ -23,7 +23,7 @@ use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
-use shared::crawler_status::{BlockCrawlerStatus, CrawlerName};
+use shared::crawler_state::{BlockCrawlerState, CrawlerName};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
@@ -192,7 +192,7 @@ async fn crawling_fn(
 
     let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
 
-    let crawler_state = BlockCrawlerStatus {
+    let crawler_state = BlockCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
         timestamp: timestamp_in_sec,
@@ -239,7 +239,7 @@ async fn crawling_fn(
                     revealed_pks,
                 )?;
 
-                repository::crawler_status::insert_crawler_status(
+                repository::crawler_state::insert_crawler_state(
                     transaction_conn,
                     CrawlerName::Chain,
                     crawler_state,
@@ -312,7 +312,7 @@ async fn initial_query(
 
     let timestamp = DateTimeUtc::now().0.timestamp();
 
-    let crawler_state = BlockCrawlerStatus {
+    let crawler_state = BlockCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
         timestamp,
@@ -342,7 +342,7 @@ async fn initial_query(
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
-                repository::crawler_status::insert_crawler_status(
+                repository::crawler_state::insert_crawler_state(
                     transaction_conn,
                     CrawlerName::Chain,
                     crawler_state,
