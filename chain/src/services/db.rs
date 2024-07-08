@@ -1,76 +1,56 @@
 use anyhow::Context;
 use deadpool_diesel::postgres::Object;
-use diesel::dsl::max;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
-use orm::block_crawler_state::BlockCrawlerStateDb;
-use orm::epoch_crawler_state::EpochCralwerStateDb;
-use orm::schema::{block_crawler_state, epoch_crawler_state};
+use diesel::{QueryDsl, RunQueryDsl};
+use orm::crawler_status::{BlockCrawlerStatusDb, EpochCrawlerStatusDb};
+use orm::schema::crawler_status;
 use shared::block::{BlockHeight, Epoch};
-use shared::crawler_state::CrawlerState;
+use shared::crawler_status::{BlockCrawlerStatus, EpochCrawlerStatus};
 use shared::error::ContextDbInteractError;
 
-pub async fn get_last_synched_block(
+pub async fn get_chain_crawler_state(
     conn: &Object,
-) -> anyhow::Result<Option<BlockHeight>> {
-    let block_height = conn
+) -> anyhow::Result<BlockCrawlerStatus> {
+    let crawler_status: BlockCrawlerStatusDb = conn
         .interact(move |conn| {
-            block_crawler_state::dsl::block_crawler_state
-                .select(max(block_crawler_state::dsl::height))
-                .first::<Option<i32>>(conn)
+            crawler_status::table
+                .select((
+                    crawler_status::dsl::last_processed_block,
+                    crawler_status::dsl::last_processed_epoch,
+                    crawler_status::dsl::timestamp,
+                ))
+                // TODO: replace first
+                .first(conn)
         })
         .await
         .context_db_interact_error()?
         .context("Failed to read block max height in db")?;
 
-    Ok(block_height.map(|h| h as BlockHeight))
+    Ok(BlockCrawlerStatus {
+        last_processed_block: crawler_status.last_processed_block
+            as BlockHeight,
+        last_processed_epoch: crawler_status.last_processed_epoch as Epoch,
+        timestamp: crawler_status.timestamp.and_utc().timestamp(),
+    })
 }
-
-pub async fn get_crawler_state(conn: &Object) -> anyhow::Result<CrawlerState> {
-    let crawler_state = conn
-        .interact(move |conn| {
-            let max = block_crawler_state::table
-                .select(max(block_crawler_state::columns::height))
-                .first::<Option<i32>>(conn)
-                .expect("Failed to read block max height in db");
-
-            block_crawler_state::table
-                .filter(block_crawler_state::columns::height.eq_any(max))
-                .select(BlockCrawlerStateDb::as_select())
-                .first::<BlockCrawlerStateDb>(conn)
-        })
-        .await
-        .context_db_interact_error()?
-        .context("Failed to read block max height in db")?;
-
-    Ok(CrawlerState::new(
-        crawler_state.height as BlockHeight,
-        crawler_state.epoch as Epoch,
-        crawler_state.timestamp,
-    ))
-}
-
 pub async fn get_pos_crawler_state(
     conn: &Object,
-) -> anyhow::Result<CrawlerState> {
-    let crawler_state = conn
+) -> anyhow::Result<EpochCrawlerStatus> {
+    let crawler_status: EpochCrawlerStatusDb = conn
         .interact(move |conn| {
-            let epoch = epoch_crawler_state::table
-                .select(max(epoch_crawler_state::columns::epoch))
-                .first::<Option<i32>>(conn)
-                .expect("Failed to read block max height in db");
-
-            epoch_crawler_state::table
-                .filter(epoch_crawler_state::columns::epoch.eq_any(epoch))
-                .select(EpochCralwerStateDb::as_select())
-                .first::<EpochCralwerStateDb>(conn)
+            crawler_status::table
+                .select((
+                    crawler_status::dsl::last_processed_epoch,
+                    crawler_status::dsl::timestamp,
+                ))
+                // TODO: replace first
+                .first(conn)
         })
         .await
         .context_db_interact_error()?
         .context("Failed to read block max height in db")?;
 
-    Ok(CrawlerState::new(
-        0 as BlockHeight,
-        crawler_state.epoch as Epoch,
-        0,
-    ))
+    Ok(EpochCrawlerStatus {
+        last_processed_epoch: crawler_status.last_processed_epoch as Epoch,
+        timestamp: crawler_status.timestamp.and_utc().timestamp(),
+    })
 }

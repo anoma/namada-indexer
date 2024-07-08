@@ -2,7 +2,7 @@ use anyhow::Context;
 use deadpool_diesel::postgres::Object;
 use diesel::dsl::max;
 use diesel::{QueryDsl, RunQueryDsl};
-use orm::schema::epoch_crawler_state;
+use orm::schema::crawler_status;
 use shared::block::Epoch;
 use shared::error::ContextDbInteractError;
 
@@ -11,8 +11,8 @@ pub async fn get_last_synched_epoch(
 ) -> anyhow::Result<Option<Epoch>> {
     let epoch = conn
         .interact(move |conn| {
-            epoch_crawler_state::dsl::epoch_crawler_state
-                .select(max(epoch_crawler_state::dsl::epoch))
+            crawler_status::dsl::crawler_status
+                .select(max(crawler_status::dsl::last_processed_epoch))
                 .first::<Option<i32>>(conn)
         })
         .await

@@ -6,16 +6,17 @@ use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, RunQueryDsl};
-use orm::epoch_crawler_state::EpochCralwerStateInsertDb;
+use namada_sdk::time::DateTimeUtc;
+use orm::crawler_status::EpochStatusInsertDb;
 use orm::migrations::run_migrations;
-use orm::schema::{epoch_crawler_state, validators};
+use orm::schema::{crawler_status, validators};
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
 use pos::config::AppConfig;
 use pos::repository::clear_db;
 use pos::services::namada as namada_service;
 use shared::crawler;
-use shared::crawler_state::CrawlerState;
+use shared::crawler_status::{CrawlerName, EpochCrawlerStatus};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
@@ -99,7 +100,12 @@ async fn crawling_fn(
         epoch_to_process,
         validators_set.validators.len()
     );
-    let crawler_state = CrawlerState::new(0, epoch_to_process, 0);
+
+    let timestamp = DateTimeUtc::now().0.timestamp();
+    let crawler_state = EpochCrawlerStatus {
+        last_processed_epoch: epoch_to_process,
+        timestamp,
+    };
 
     conn.interact(move |conn| {
         conn.build_transaction()
@@ -139,8 +145,10 @@ async fn crawling_fn(
                     .context("Failed to update validators in db")?;
 
                 // TODO: should we always override the db?
-                diesel::insert_into(epoch_crawler_state::table)
-                    .values::<&EpochCralwerStateInsertDb>(&crawler_state.into())
+                diesel::insert_into(crawler_status::table)
+                    .values::<&EpochStatusInsertDb>(
+                        &(CrawlerName::Pos, crawler_state).into(),
+                    )
                     .on_conflict_do_nothing()
                     .execute(transaction_conn)
                     .context("Failed to update crawler state in db")?;

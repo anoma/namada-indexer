@@ -1,6 +1,6 @@
 use bigdecimal::BigDecimal;
-use orm::block_crawler_state::BlockCrawlerStateDb;
 use orm::bond::BondDb;
+use orm::crawler_status::{BlockCrawlerStatusDb, EpochCrawlerStatusDb};
 use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
@@ -136,9 +136,9 @@ impl ValidatorWithId {
     }
 }
 
-impl From<(&BondDb, &BlockCrawlerStateDb)> for BondStatus {
-    fn from((bond, state): (&BondDb, &BlockCrawlerStateDb)) -> Self {
-        if bond.start <= state.epoch {
+impl From<(&BondDb, &EpochCrawlerStatusDb)> for BondStatus {
+    fn from((bond, status): (&BondDb, &EpochCrawlerStatusDb)) -> Self {
+        if bond.start <= status.last_processed_epoch {
             Self::Active
         } else {
             Self::Inactive
@@ -171,25 +171,26 @@ impl MergedBond {
 
 impl Unbond {
     pub fn from(
+        // TODO: a lot of args
         raw_amount: BigDecimal,
         withdraw_epoch: i32,
         db_validator: ValidatorDb,
-        chain_state: &BlockCrawlerStateDb,
+        chain_state: &BlockCrawlerStatusDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
         let epoch_progress =
-            epoch_progress(chain_state.height, min_num_of_blocks);
+            epoch_progress(chain_state.last_processed_block, min_num_of_blocks);
 
         let to_withdraw = time_between_epochs(
             min_num_of_blocks,
             epoch_progress,
-            chain_state.epoch,
+            chain_state.last_processed_epoch,
             withdraw_epoch,
             min_duration,
         );
 
-        let time_now = chain_state.timestamp;
+        let time_now = chain_state.timestamp.and_utc().timestamp();
         let withdraw_time = time_now + i64::from(to_withdraw);
 
         Self {

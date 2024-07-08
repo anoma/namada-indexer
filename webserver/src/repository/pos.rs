@@ -7,8 +7,9 @@ use diesel::{
     SelectableHelper,
 };
 use orm::bond::BondDb;
+use orm::crawler_status::EpochCrawlerStatusDb;
 use orm::pos_rewards::PoSRewardDb;
-use orm::schema::{bonds, pos_rewards, unbonds, validators};
+use orm::schema::{bonds, crawler_status, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
 
@@ -84,6 +85,8 @@ pub trait PosRepositoryTrait {
     ) -> Result<Vec<PoSRewardDb>, String>;
 
     async fn get_total_voting_power(&self) -> Result<Option<i64>, String>;
+
+    async fn get_state(&self) -> Result<EpochCrawlerStatusDb, String>;
 }
 
 #[async_trait]
@@ -295,6 +298,23 @@ impl PosRepositoryTrait for PosRepository {
         conn.interact(move |conn| {
             validators::table
                 .select(sum(validators::dsl::voting_power))
+                .first(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn get_state(&self) -> Result<EpochCrawlerStatusDb, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            crawler_status::table
+                .select((
+                    crawler_status::dsl::last_processed_epoch,
+                    crawler_status::dsl::timestamp,
+                ))
+                // TODO: replace first
                 .first(conn)
         })
         .await

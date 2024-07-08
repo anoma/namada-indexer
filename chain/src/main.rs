@@ -23,7 +23,7 @@ use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
-use shared::crawler_state::CrawlerState;
+use shared::crawler_status::{BlockCrawlerStatus, CrawlerName};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
@@ -73,12 +73,9 @@ async fn main() -> Result<(), MainError> {
 
     initial_query(&client, &conn, config.initial_query_retry_time).await?;
 
-    let last_block_height = db_service::get_last_synched_block(&conn)
+    let crawler_state = db_service::get_chain_crawler_state(&conn)
         .await
         .into_db_error()?;
-
-    let next_block =
-        last_block_height.expect("Last block height has to be set!");
 
     crawl(
         move |block_height| {
@@ -89,7 +86,7 @@ async fn main() -> Result<(), MainError> {
                 checksums.clone(),
             )
         },
-        next_block,
+        crawler_state.last_processed_block,
     )
     .await
 }
@@ -195,8 +192,11 @@ async fn crawling_fn(
 
     let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
 
-    let crawler_state =
-        CrawlerState::new(block_height, epoch, timestamp_in_sec);
+    let crawler_state = BlockCrawlerStatus {
+        last_processed_block: block_height,
+        last_processed_epoch: epoch,
+        timestamp: timestamp_in_sec,
+    };
 
     conn.interact(move |conn| {
         conn.build_transaction()
@@ -239,8 +239,9 @@ async fn crawling_fn(
                     revealed_pks,
                 )?;
 
-                repository::crawler::insert_crawler_state(
+                repository::crawler_status::insert_crawler_status(
                     transaction_conn,
+                    CrawlerName::Chain,
                     crawler_state,
                 )?;
 
@@ -268,14 +269,16 @@ async fn initial_query(
             .into_rpc_error()?;
 
     loop {
-        let pos_crawler_epoch =
+        let pos_crawler_state =
             get_pos_crawler_state(conn).await.into_db_error();
 
-        match pos_crawler_epoch {
+        match pos_crawler_state {
             // >= in case epochs are really short
-            Ok(pos_crawler_epoch) if pos_crawler_epoch.epoch >= epoch => {
+            Ok(pos_crawler_state)
+                if pos_crawler_state.last_processed_epoch >= epoch =>
+            {
                 // We assign pos crawler epoch as epoch to process
-                epoch = pos_crawler_epoch.epoch;
+                epoch = pos_crawler_state.last_processed_epoch;
                 break;
             }
             _ => {}
@@ -307,9 +310,13 @@ async fn initial_query(
     .await
     .into_rpc_error()?;
 
-    let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
-    let crawler_state =
-        CrawlerState::new(block_height, epoch, timestamp_in_sec);
+    let timestamp = DateTimeUtc::now().0.timestamp();
+
+    let crawler_state = BlockCrawlerStatus {
+        last_processed_block: block_height,
+        last_processed_epoch: epoch,
+        timestamp,
+    };
 
     tracing::info!("Inserting initial data... ");
 
@@ -335,8 +342,9 @@ async fn initial_query(
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
-                repository::crawler::insert_crawler_state(
+                repository::crawler_status::insert_crawler_status(
                     transaction_conn,
+                    CrawlerName::Chain,
                     crawler_state,
                 )?;
 

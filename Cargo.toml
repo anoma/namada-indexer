@@ -69,7 +69,8 @@ deadpool-diesel = { version = "0.5.0", features = ["postgres"] }
 diesel = { version = "2.1.0", features = [
     "postgres",
     "serde_json",
-    "numeric"
+    "numeric",
+    "chrono",
 ] }
 diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 orm = { path = "orm" }
