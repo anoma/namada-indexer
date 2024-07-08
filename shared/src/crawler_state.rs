@@ -9,6 +9,7 @@ pub enum CrawlerName {
     Transactions,
 }
 
+#[derive(Debug)]
 pub struct BlockCrawlerState {
     pub last_processed_block: BlockHeight,
     pub last_processed_epoch: Epoch,

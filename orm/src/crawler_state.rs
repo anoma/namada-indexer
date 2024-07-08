@@ -74,7 +74,7 @@ impl
                 timestamp,
             }),
             _ => Err("last_processed_block or last_processed_epoch missing \
-                      in the epoch crawler status"
+                      in the block crawler status"
                 .into()),
         }
     }

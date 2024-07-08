@@ -4,13 +4,18 @@ use std::time::Duration;
 
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
+use diesel::upsert::excluded;
+use diesel::ExpressionMethods;
 use diesel::{QueryDsl, RunQueryDsl};
 use governance::config::AppConfig;
 use governance::services::{db as db_service, namada as namada_service};
 use governance::state::AppState;
+use namada_sdk::time::DateTimeUtc;
+use orm::crawler_state::IntervalStatusInsertDb;
 use orm::governance_proposal::GovernanceProposalUpdateStatusDb;
 use orm::migrations::run_migrations;
-use orm::schema::governance_proposals;
+use orm::schema::{crawler_state, governance_proposals};
+use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
@@ -89,6 +94,9 @@ async fn main() -> anyhow::Result<()> {
                         .map_err(|_| MainError::RpcError)?;
                 tracing::info!("Got {} proposals statuses updates...", proposals_statuses.len());
 
+                let timestamp = DateTimeUtc::now().0.timestamp();
+                let crawler_state = IntervalCrawlerState { timestamp };
+
                 let conn = app_state.get_db_connection().await.into_db_error()?;
                 conn.interact(move |conn| {
                     conn.build_transaction().read_write().run(
@@ -98,6 +106,18 @@ async fn main() -> anyhow::Result<()> {
                                     .set::<GovernanceProposalUpdateStatusDb>(proposal_status.into())
                                     .execute(transaction_conn)?;
                             }
+
+                            diesel::insert_into(crawler_state::table)
+                                .values::<&IntervalStatusInsertDb>(
+                                    &(CrawlerName::Governance, crawler_state)
+                                        .into(),
+                                )
+                                .on_conflict(crawler_state::name)
+                                .do_update()
+                                .set(crawler_state::timestamp
+                                    .eq(excluded(crawler_state::timestamp)))
+                                .execute(transaction_conn)?;
+
                             anyhow::Ok(())
                         },
                     )

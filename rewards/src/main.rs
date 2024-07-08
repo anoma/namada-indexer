@@ -6,12 +6,16 @@ use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use namada_sdk::time::DateTimeUtc;
+use orm::crawler_state::IntervalStatusInsertDb;
 use orm::migrations::run_migrations;
 use orm::pos_rewards::PosRewardInsertDb;
+use orm::schema::{crawler_state, pos_rewards, validators};
 use orm::validators::ValidatorDb;
 use rewards::config::AppConfig;
 use rewards::services::namada as namada_service;
 use rewards::state::AppState;
+use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
@@ -88,18 +92,21 @@ async fn main() -> anyhow::Result<()> {
                         .await
                         .into_rpc_error()?;
 
+                let timestamp = DateTimeUtc::now().0.timestamp();
+                let crawler_state = IntervalCrawlerState { timestamp };
+
                 let conn = app_state.get_db_connection().await.into_db_error()?;
                 conn.interact(move |conn| {
                     conn.build_transaction().read_write().run(
                         |transaction_conn: &mut diesel::prelude::PgConnection| {
-                            diesel::insert_into(orm::schema::pos_rewards::table)
+                            diesel::insert_into(pos_rewards::table)
                                 .values::<&Vec<PosRewardInsertDb>>(
                                     &rewards
                                         .into_iter()
                                         .map(|reward, | {
-                                            let validator: ValidatorDb = orm::schema::validators::table
+                                            let validator: ValidatorDb = validators::table
                                                 .filter(
-                                                    orm::schema::validators::dsl::namada_address
+                                                    validators::dsl::namada_address
                                                         .eq(&reward.delegation_pair.validator_address.to_string()),
                                                 )
                                                 .select(ValidatorDb::as_select())
@@ -109,12 +116,25 @@ async fn main() -> anyhow::Result<()> {
                                         })
                                         .collect::<Vec<_>>(),
                                 )
-                                .on_conflict((orm::schema::pos_rewards::columns::owner, orm::schema::pos_rewards::columns::validator_id))
+                                .on_conflict((pos_rewards::columns::owner, pos_rewards::columns::validator_id))
                                 .do_update()
                                 .set(
-                                    orm::schema::pos_rewards::columns::raw_amount.eq(excluded(orm::schema::pos_rewards::columns::raw_amount))
+                                    pos_rewards::columns::raw_amount.eq(excluded(pos_rewards::columns::raw_amount))
                                 )
-                                .execute(transaction_conn)
+                                .execute(transaction_conn)?;
+
+                            diesel::insert_into(crawler_state::table)
+                                .values::<&IntervalStatusInsertDb>(
+                                    &(CrawlerName::Rewards, crawler_state)
+                                        .into(),
+                                )
+                                .on_conflict(crawler_state::name)
+                                .do_update()
+                                .set(crawler_state::timestamp
+                                    .eq(excluded(crawler_state::timestamp)))
+                                .execute(transaction_conn)?;
+
+                            anyhow::Ok(())
                         }
                     )
                 })

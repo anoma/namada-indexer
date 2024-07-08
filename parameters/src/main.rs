@@ -8,15 +8,18 @@ use clap_verbosity_flag::LevelFilter;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, RunQueryDsl};
 use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
+use namada_sdk::time::DateTimeUtc;
+use orm::crawler_state::IntervalStatusInsertDb;
 use orm::gas::GasPriceDb;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
-use orm::schema::{chain_parameters, gas_price};
+use orm::schema::{chain_parameters, crawler_state, gas_price};
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
 use parameters::services::{
     namada as namada_service, tendermint as tendermint_service,
 };
+use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
@@ -89,6 +92,9 @@ async fn main() -> anyhow::Result<()> {
 
                 let gas_price = namada_service::get_gas_price(&client).await;
 
+                let timestamp = DateTimeUtc::now().0.timestamp();
+                let crawler_state = IntervalCrawlerState { timestamp };
+
                 conn.interact(move |conn| {
                     conn.build_transaction().read_write().run(
                         |transaction_conn| {
@@ -126,6 +132,22 @@ async fn main() -> anyhow::Result<()> {
                                 )
                                 .execute(transaction_conn)
                                 .context("Failed to update gas price in db")?;
+
+                            diesel::insert_into(crawler_state::table)
+                                .values::<&IntervalStatusInsertDb>(
+                                    &(CrawlerName::Parameters, crawler_state)
+                                        .into(),
+                                )
+                                .on_conflict(crawler_state::name)
+                                .do_update()
+                                .set(
+                                    crawler_state::timestamp
+                                        .eq(excluded(crawler_state::timestamp)),
+                                )
+                                .execute(transaction_conn)
+                                .context(
+                                    "Failed to update crawler state in db",
+                                )?;
 
                             anyhow::Ok(())
                         },

@@ -4,11 +4,13 @@ use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
+use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
+use shared::crawler_state::IntervalCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
@@ -134,6 +136,10 @@ async fn crawling_fn(
         wrapper_txs.len() + inner_txs.len()
     );
 
+    let timestamp = DateTimeUtc::now().0.timestamp();
+
+    let crawler_state = IntervalCrawlerState { timestamp };
+
     conn.interact(move |conn| {
         conn.build_transaction()
             .read_write()
@@ -146,6 +152,11 @@ async fn crawling_fn(
                     transaction_conn,
                     inner_txs,
                 )?;
+                transaction_repo::insert_crawler_state(
+                    transaction_conn,
+                    crawler_state,
+                )?;
+
                 anyhow::Ok(())
             })
     })

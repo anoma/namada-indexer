@@ -23,7 +23,7 @@ use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
-use shared::crawler_state::{BlockCrawlerState, CrawlerName};
+use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
@@ -241,7 +241,6 @@ async fn crawling_fn(
 
                 repository::crawler_state::insert_crawler_state(
                     transaction_conn,
-                    CrawlerName::Chain,
                     crawler_state,
                 )?;
 
@@ -344,7 +343,6 @@ async fn initial_query(
 
                 repository::crawler_state::insert_crawler_state(
                     transaction_conn,
-                    CrawlerName::Chain,
                     crawler_state,
                 )?;
 
