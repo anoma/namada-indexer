@@ -508,7 +508,7 @@ impl Block {
             .flat_map(|(_, txs)| txs)
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::RevealPk(data) => {
-                    let namada_public_key = data.clone();
+                    let namada_public_key = data.public_key.clone();
 
                     Some((
                         PublicKey::from(namada_public_key.clone()),

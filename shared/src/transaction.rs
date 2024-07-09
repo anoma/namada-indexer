@@ -20,6 +20,13 @@ use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
 
+// We wrap public key in a struct so we serialize data as object instead of
+// string
+#[derive(Serialize, Debug, Clone)]
+pub struct RevealPkData {
+    pub public_key: PublicKey,
+}
+
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
@@ -36,7 +43,7 @@ pub enum TransactionKind {
     InitProposal(InitProposalData),
     MetadataChange(MetaDataChange),
     CommissionChange(CommissionChange),
-    RevealPk(PublicKey),
+    RevealPk(RevealPkData),
     Unknown,
 }
 
@@ -86,10 +93,10 @@ impl TransactionKind {
                 CommissionChange::try_from_slice(data)
                     .expect("Cannot deserialize CommissionChange"),
             ),
-            "tx_reveal_pk" => TransactionKind::RevealPk(
-                PublicKey::try_from_slice(data)
+            "tx_reveal_pk" => TransactionKind::RevealPk(RevealPkData {
+                public_key: PublicKey::try_from_slice(data)
                     .expect("Cannot deserialize PublicKey"),
-            ),
+            }),
             _ => TransactionKind::Unknown,
         }
     }
