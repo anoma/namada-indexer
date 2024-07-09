@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use super::utils::Pagination;
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ProposalStatus {
@@ -23,8 +21,8 @@ pub enum ProposalKind {
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct ProposalQueryParams {
-    #[serde(flatten)]
-    pub pagination: Option<Pagination>,
+    #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
     pub status: Option<ProposalStatus>,
     pub kind: Option<ProposalKind>,
     pub pattern: Option<String>,
@@ -32,6 +30,6 @@ pub struct ProposalQueryParams {
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct ProposalVotesQueryparams {
-    #[serde(flatten)]
-    pub pagination: Option<Pagination>,
+    #[validate(range(min = 1, max = 10000))]
+    pub page: Option<u64>,
 }
