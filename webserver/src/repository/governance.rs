@@ -1,4 +1,6 @@
 use axum::async_trait;
+use diesel::dsl::IntoBoxed;
+use diesel::pg::Pg;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, PgTextExpressionMethods,
     QueryDsl, RunQueryDsl, SelectableHelper,
@@ -23,11 +25,18 @@ pub trait GovernanceRepoTrait {
 
     async fn find_governance_proposals(
         &self,
-        status: Vec<GovernanceProposalResultDb>,
+        status: Option<GovernanceProposalResultDb>,
         kind: Option<GovernanceProposalKindDb>,
         pattern: Option<String>,
         page: i64,
     ) -> Result<PaginatedResponseDb<GovernanceProposalDb>, String>;
+
+    async fn find_all_governance_proposals(
+        &self,
+        status: Option<GovernanceProposalResultDb>,
+        kind: Option<GovernanceProposalKindDb>,
+        pattern: Option<String>,
+    ) -> Result<Vec<GovernanceProposalDb>, String>;
 
     async fn find_governance_proposals_by_id(
         &self,
@@ -60,33 +69,36 @@ impl GovernanceRepoTrait for GovernanceRepo {
 
     async fn find_governance_proposals(
         &self,
-        status: Vec<GovernanceProposalResultDb>,
+        status: Option<GovernanceProposalResultDb>,
         kind: Option<GovernanceProposalKindDb>,
         pattern: Option<String>,
         page: i64,
     ) -> Result<PaginatedResponseDb<GovernanceProposalDb>, String> {
         let conn = self.app_state.get_db_connection().await;
+        let query = self.governance_proposals(status, kind, pattern);
 
         conn.interact(move |conn| {
-            let mut query = governance_proposals::table.into_boxed().filter(
-                governance_proposals::dsl::result.eq_any(status.clone()),
-            );
-
-            if let Some(kind) = kind {
-                query = query.filter(governance_proposals::dsl::kind.eq(kind));
-            }
-
-            if let Some(pattern) = pattern {
-                query = query.filter(
-                    governance_proposals::dsl::content
-                        .ilike(format!("%{}%", pattern)),
-                );
-            }
-
             query
                 .select(GovernanceProposalDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_all_governance_proposals(
+        &self,
+        status: Option<GovernanceProposalResultDb>,
+        kind: Option<GovernanceProposalKindDb>,
+        pattern: Option<String>,
+    ) -> Result<Vec<GovernanceProposalDb>, String> {
+        let conn = self.app_state.get_db_connection().await;
+        let query = self.governance_proposals(status, kind, pattern);
+
+        conn.interact(move |conn| {
+            query.select(GovernanceProposalDb::as_select()).load(conn)
         })
         .await
         .map_err(|e| e.to_string())?
@@ -164,5 +176,34 @@ impl GovernanceRepoTrait for GovernanceRepo {
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
+    }
+}
+
+impl<'a> GovernanceRepo {
+    fn governance_proposals(
+        &self,
+        status: Option<GovernanceProposalResultDb>,
+        kind: Option<GovernanceProposalKindDb>,
+        pattern: Option<String>,
+    ) -> IntoBoxed<'a, governance_proposals::table, Pg> {
+        let mut query = governance_proposals::table.into_boxed();
+
+        if let Some(status) = status {
+            query = query
+                .filter(governance_proposals::dsl::result.eq(status.clone()))
+        }
+
+        if let Some(kind) = kind {
+            query = query.filter(governance_proposals::dsl::kind.eq(kind));
+        }
+
+        if let Some(pattern) = pattern {
+            query = query.filter(
+                governance_proposals::dsl::content
+                    .ilike(format!("%{}%", pattern)),
+            );
+        }
+
+        query
     }
 }

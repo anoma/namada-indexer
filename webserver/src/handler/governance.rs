@@ -33,6 +33,20 @@ pub async fn get_governance_proposals(
 }
 
 #[debug_handler]
+pub async fn get_all_governance_proposals(
+    _headers: HeaderMap,
+    Query(query): Query<ProposalQueryParams>,
+    State(state): State<CommonState>,
+) -> Result<Json<Vec<Proposal>>, ApiError> {
+    let proposals = state
+        .gov_service
+        .find_all_governance_proposals(query.status, query.kind, query.pattern)
+        .await?;
+
+    Ok(Json(proposals))
+}
+
+#[debug_handler]
 pub async fn get_governance_proposal_by_id(
     _headers: HeaderMap,
     Path(proposal_id): Path<u64>,
