@@ -60,7 +60,7 @@ impl ApplicationServer {
                     get(pos_handlers::get_merged_unbonds),
                 )
                 .route(
-                    "/pos/withdraw/:address/:epoch",
+                    "/pos/withdraw/:address",
                     get(pos_handlers::get_withdraws),
                 )
                 .route("/pos/reward/:address", get(pos_handlers::get_rewards))

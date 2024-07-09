@@ -209,7 +209,7 @@ paths:
                       $ref: '#/components/schemas/Unbond'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-  /api/v1/pos/withdraw/{address}/{epoch}:
+  /api/v1/pos/withdraw/{address}:
     get:
       summary: Get all the withdraws for an address at a specific epoch
       parameters:
@@ -219,11 +219,10 @@ paths:
             type: string
           required: true
           description: The delegator address
-        - in: path
+        - in: query
           name: epoch
           schema:
             type: integer
-          required: true
           description: The epoch
         - in: query
           name: page
