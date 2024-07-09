@@ -227,16 +227,22 @@ impl PosService {
     pub async fn get_withdraws_by_address(
         &self,
         address: String,
-        current_epoch: u64,
+        epoch: Option<u64>,
         page: u64,
     ) -> Result<(Vec<Withdraw>, u64, u64), PoSError> {
+        let epoch = if let Some(epoch) = epoch {
+            epoch as i32
+        } else {
+            self.chain_repo
+                .get_chain_state()
+                .await
+                .map_err(PoSError::Database)?
+                .epoch
+        };
+        
         let (db_withdraws, total_pages, total_items) = self
             .pos_repo
-            .find_withdraws_by_address(
-                address,
-                current_epoch as i32,
-                page as i64,
-            )
+            .find_withdraws_by_address(address, epoch, page as i64)
             .await
             .map_err(PoSError::Database)?;
 
