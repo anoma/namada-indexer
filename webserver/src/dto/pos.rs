@@ -61,4 +61,6 @@ pub struct UnbondsDto {
 pub struct WithdrawsDto {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
+    #[validate(range(min = 1, max = 10000))]
+    pub epoch: Option<u64>,
 }

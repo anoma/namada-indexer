@@ -128,14 +128,14 @@ pub async fn get_merged_unbonds(
 pub async fn get_withdraws(
     _headers: HeaderMap,
     query: Query<WithdrawsDto>,
-    Path((address, epoch)): Path<(String, u64)>,
+    Path(address): Path<String>,
     State(state): State<CommonState>,
 ) -> Result<Json<PaginatedResponse<Vec<Withdraw>>>, ApiError> {
     let page = query.page.unwrap_or(1);
 
     let (withdraws, total_pages, total_withdraws) = state
         .pos_service
-        .get_withdraws_by_address(address, epoch, page)
+        .get_withdraws_by_address(address, query.epoch, page)
         .await?;
 
     let response =
