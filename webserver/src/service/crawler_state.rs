@@ -1,4 +1,5 @@
 use crate::dto::crawler_state::CrawlerNameDto;
+use crate::error::crawler_state::CrawlerStateError;
 use crate::{appstate::AppState, response::crawler_state::CrawlersTimestamps};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use orm::crawler_state::{CrawlerNameDb, CrawlerStateDb};
@@ -17,14 +18,14 @@ impl CrawlerStateService {
     pub async fn get_timestamps(
         &self,
         names: Vec<CrawlerNameDto>,
-    ) -> Vec<CrawlersTimestamps> {
+    ) -> Result<Vec<CrawlersTimestamps>, CrawlerStateError> {
         let conn = self.app_state.get_db_connection().await;
         let names_db = names
             .iter()
             .map(Self::to_crawler_name_db)
             .collect::<Vec<_>>();
 
-        let crawlers_db: Vec<CrawlerStateDb> = conn
+        let crawlers_db: Result<Vec<CrawlerStateDb>, CrawlerStateError> = conn
             .interact(move |conn| {
                 let mut query = crawler_state::table.into_boxed();
 
@@ -35,22 +36,20 @@ impl CrawlerStateService {
                 query
                     .select(crawler_state::all_columns)
                     .get_results(conn)
-                    // TODO:
-                    .unwrap_or(vec![])
+                    .map_err(|e| CrawlerStateError::Database(e.to_string()))
             })
             .await
-            // TODO:
-            .unwrap_or(vec![]);
+            .map_err(|e| CrawlerStateError::Database(e.to_string()))?;
 
-        let crawlers: Vec<CrawlersTimestamps> = crawlers_db
-            .into_iter()
-            .map(|crawler| CrawlersTimestamps {
-                name: crawler.name.to_string(),
-                timestamp: crawler.timestamp.and_utc().timestamp(),
-            })
-            .collect();
-
-        crawlers
+        crawlers_db.map(|crawlers| {
+            crawlers
+                .into_iter()
+                .map(|crawler| CrawlersTimestamps {
+                    name: crawler.name.to_string(),
+                    timestamp: crawler.timestamp.and_utc().timestamp(),
+                })
+                .collect::<Vec<CrawlersTimestamps>>()
+        })
     }
 
     fn to_crawler_name_db(value: &CrawlerNameDto) -> CrawlerNameDb {

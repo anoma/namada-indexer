@@ -46,7 +46,6 @@ impl From<CrawlerName> for CrawlerNameDb {
     }
 }
 
-// TODO: rename tp state
 #[derive(Serialize, Queryable, Selectable, Clone, Debug)]
 #[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -57,7 +56,6 @@ pub struct CrawlerStateDb {
     pub timestamp: chrono::NaiveDateTime,
 }
 
-// TODO: rename tp state
 #[derive(Serialize, Clone, Debug)]
 pub struct BlockCrawlerStateDb {
     pub last_processed_block: i32,

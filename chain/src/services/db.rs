@@ -22,12 +22,11 @@ pub async fn get_chain_crawler_state(
                     crawler_state::dsl::last_processed_epoch,
                     crawler_state::dsl::timestamp,
                 ))
-                // TODO: replace first
                 .first(conn)
         })
         .await
         .context_db_interact_error()?
-        .context("Failed to read block max height in db")?;
+        .context("Failed to read chain crawler state from the db")?;
 
     Ok(BlockCrawlerState {
         last_processed_block: crawler_state.last_processed_block as BlockHeight,
@@ -46,12 +45,11 @@ pub async fn get_pos_crawler_state(
                     crawler_state::dsl::last_processed_epoch,
                     crawler_state::dsl::timestamp,
                 ))
-                // TODO: replace first
                 .first(conn)
         })
         .await
         .context_db_interact_error()?
-        .context("Failed to read block max height in db")?;
+        .context("Failed to read block crawler state from the db")?;
 
     Ok(EpochCrawlerState {
         last_processed_epoch: crawler_state.last_processed_epoch as Epoch,

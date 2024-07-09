@@ -435,7 +435,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Balance'
-  /api/v1/revealed_public_key/{address}:
+  /api/v1/revealed-public-key/{address}:
     get:
       summary: Get revealed public key for an address if exists
       parameters:
@@ -540,7 +540,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InnerTransaction'
-  /api/v1/crawlers-timestamps:
+  /api/v1/crawlers/timestamps:
     get:
       summary: Get timestamps of the last activity of the crawlers
       parameters:

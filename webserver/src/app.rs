@@ -98,7 +98,7 @@ impl ApplicationServer {
                     get(balance_handlers::get_address_balance),
                 )
                 .route(
-                    "/revealed_public_key/:address",
+                    "/revealed-public-key/:address",
                     get(pk_handlers::get_revealed_pk),
                 )
                 .route("/gas/:token", get(gas_handlers::get_gas_by_token))
@@ -118,8 +118,8 @@ impl ApplicationServer {
                 .route("/chain/sync", get(chain_handlers::sync_height))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route(
-                    "/crawlers-timestamps",
-                    get(crawler_state_handlers::get_crawlers_state),
+                    "/crawlers/timestamps",
+                    get(crawler_state_handlers::get_crawlers_timestamps),
                 )
                 .with_state(common_state)
         };

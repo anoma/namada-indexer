@@ -314,7 +314,6 @@ impl PosRepositoryTrait for PosRepository {
                     crawler_state::dsl::last_processed_epoch,
                     crawler_state::dsl::timestamp,
                 ))
-                // TODO: replace first
                 .first(conn)
         })
         .await

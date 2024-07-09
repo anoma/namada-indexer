@@ -2,21 +2,21 @@ use axum::{extract::State, http::HeaderMap, Json};
 use axum_extra::extract::Query;
 
 use crate::{
-    dto::crawler_state::CrawlerStateQueryParams,
+    dto::crawler_state::CrawlerStateQueryParams, error::api::ApiError,
     response::crawler_state::CrawlersTimestamps, state::common::CommonState,
 };
 
-pub async fn get_crawlers_state(
+pub async fn get_crawlers_timestamps(
     _headers: HeaderMap,
     Query(query): Query<CrawlerStateQueryParams>,
     State(state): State<CommonState>,
-) -> Json<Vec<CrawlersTimestamps>> {
+) -> Result<Json<Vec<CrawlersTimestamps>>, ApiError> {
     let crawler_names = query.crawler_names.unwrap_or(vec![]);
 
-    let crawler_state = state
+    let timestamps = state
         .crawler_state_service
         .get_timestamps(crawler_names)
-        .await;
+        .await?;
 
-    Json(crawler_state)
+    Ok(Json(timestamps))
 }
