@@ -30,38 +30,8 @@ impl GovernanceService {
         pattern: Option<String>,
         page: u64,
     ) -> Result<(Vec<Proposal>, u64, u64), GovernanceError> {
-        let status = status
-            .map(|s| match s {
-                ProposalStatus::Pending => {
-                    vec![GovernanceProposalResultDb::Pending]
-                }
-                ProposalStatus::VotingPeriod => {
-                    vec![GovernanceProposalResultDb::VotingPeriod]
-                }
-                ProposalStatus::Passed => {
-                    vec![GovernanceProposalResultDb::Passed]
-                }
-                ProposalStatus::Rejected => {
-                    vec![GovernanceProposalResultDb::Rejected]
-                }
-            })
-            .unwrap_or_else(|| {
-                vec![
-                    GovernanceProposalResultDb::Pending,
-                    GovernanceProposalResultDb::VotingPeriod,
-                    GovernanceProposalResultDb::Passed,
-                    GovernanceProposalResultDb::Rejected,
-                ]
-            });
-
-        let kind = kind.map(|t| match t {
-            ProposalKind::Default => GovernanceProposalKindDb::Default,
-            ProposalKind::DefaultWithWasm => {
-                GovernanceProposalKindDb::DefaultWithWasm
-            }
-            ProposalKind::PgfSteward => GovernanceProposalKindDb::PgfSteward,
-            ProposalKind::PgfFunding => GovernanceProposalKindDb::PgfFunding,
-        });
+        let kind = self.map_kind(kind);
+        let status = self.map_status(status);
 
         let (db_proposals, total_pages, total_items) = self
             .governance_repo
@@ -96,6 +66,46 @@ impl GovernanceService {
             total_pages as u64,
             total_items as u64,
         ))
+    }
+
+    pub async fn find_all_governance_proposals(
+        &self,
+        status: Option<ProposalStatus>,
+        kind: Option<ProposalKind>,
+        pattern: Option<String>,
+    ) -> Result<Vec<Proposal>, GovernanceError> {
+        let kind = self.map_kind(kind);
+        let status = self.map_status(status);
+
+        let db_proposals = self
+            .governance_repo
+            .find_all_governance_proposals(status, kind, pattern)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        let chain_state = self
+            .chain_repo
+            .get_chain_state()
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters()
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok(db_proposals
+            .into_iter()
+            .map(|p| {
+                Proposal::from_proposal_db(
+                    p,
+                    &chain_state,
+                    parameters.min_num_of_blocks,
+                    parameters.min_duration,
+                )
+            })
+            .collect())
     }
 
     pub async fn find_governance_proposal_by_id(
@@ -205,5 +215,33 @@ impl GovernanceService {
             .into_iter()
             .map(ProposalVote::from)
             .collect())
+    }
+
+    fn map_status(
+        &self,
+        status: Option<ProposalStatus>,
+    ) -> Option<GovernanceProposalResultDb> {
+        status.map(|s| match s {
+            ProposalStatus::Pending => GovernanceProposalResultDb::Pending,
+            ProposalStatus::VotingPeriod => {
+                GovernanceProposalResultDb::VotingPeriod
+            }
+            ProposalStatus::Passed => GovernanceProposalResultDb::Passed,
+            ProposalStatus::Rejected => GovernanceProposalResultDb::Rejected,
+        })
+    }
+
+    fn map_kind(
+        &self,
+        kind: Option<ProposalKind>,
+    ) -> Option<GovernanceProposalKindDb> {
+        kind.map(|t| match t {
+            ProposalKind::Default => GovernanceProposalKindDb::Default,
+            ProposalKind::DefaultWithWasm => {
+                GovernanceProposalKindDb::DefaultWithWasm
+            }
+            ProposalKind::PgfSteward => GovernanceProposalKindDb::PgfSteward,
+            ProposalKind::PgfFunding => GovernanceProposalKindDb::PgfFunding,
+        })
     }
 }
