@@ -358,7 +358,7 @@ paths:
           description: Proposal id
       responses:
         '200':
-          description: A list of votes for a govenance proposal.
+          description: A list of votes for a governance proposal.
           content:
             application/json:
               schema:
@@ -540,6 +540,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InnerTransaction'
+  /api/v1/crawlers-timestamps:
+    get:
+      summary: Get timestamps of the last activity of the crawlers
+      parameters:
+        - in: query
+          name: crawler_names
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [chain, governance, parameters, pos, rewards, transactions]
+          description: The crawler names
+      responses:
+        '200':
+          description: Inner transaction
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name, timestamp]
+                  properties:
+                    name:
+                      type: string
+                    timestamp:
+                      type: number
 
 components:
   schemas:

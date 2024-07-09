@@ -4,6 +4,7 @@ use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::service::balance::BalanceService;
 use crate::service::chain::ChainService;
+use crate::service::crawler_state::CrawlerStateService;
 use crate::service::gas::GasService;
 use crate::service::governance::GovernanceService;
 use crate::service::pos::PosService;
@@ -19,6 +20,7 @@ pub struct CommonState {
     pub revealed_pk_service: RevealedPkService,
     pub gas_service: GasService,
     pub transaction_service: TransactionService,
+    pub crawler_state_service: CrawlerStateService,
     pub client: HttpClient,
     pub config: AppConfig,
 }
@@ -33,6 +35,7 @@ impl CommonState {
             revealed_pk_service: RevealedPkService::new(data.clone()),
             gas_service: GasService::new(data.clone()),
             transaction_service: TransactionService::new(data.clone()),
+            crawler_state_service: CrawlerStateService::new(data.clone()),
             client,
             config,
         }

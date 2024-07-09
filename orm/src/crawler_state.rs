@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use shared::crawler_state::{
     BlockCrawlerState, CrawlerName, EpochCrawlerState, IntervalCrawlerState,
 };
+use std::fmt::{self, Display, Formatter};
 
 use crate::schema::crawler_state;
 
@@ -17,6 +18,19 @@ pub enum CrawlerNameDb {
     Pos,
     Rewards,
     Transactions,
+}
+
+impl Display for CrawlerNameDb {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Chain => f.write_str("chain"),
+            Self::Governance => f.write_str("governance"),
+            Self::Parameters => f.write_str("parameters"),
+            Self::Pos => f.write_str("pos"),
+            Self::Rewards => f.write_str("rewards"),
+            Self::Transactions => f.write_str("transactions"),
+        }
+    }
 }
 
 impl From<CrawlerName> for CrawlerNameDb {
@@ -36,7 +50,7 @@ impl From<CrawlerName> for CrawlerNameDb {
 #[derive(Serialize, Queryable, Selectable, Clone, Debug)]
 #[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct CrawlerStatusDb {
+pub struct CrawlerStateDb {
     pub name: CrawlerNameDb,
     pub last_processed_block: Option<i32>,
     pub last_processed_epoch: Option<i32>,
@@ -80,7 +94,6 @@ impl
     }
 }
 
-// TODO: rename tp state
 #[derive(Serialize, Clone, Debug)]
 pub struct EpochCrawlerStateDb {
     pub last_processed_epoch: i32,
