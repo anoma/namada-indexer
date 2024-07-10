@@ -1,9 +1,11 @@
-use crate::dto::crawler_state::CrawlerNameDto;
-use crate::error::crawler_state::CrawlerStateError;
-use crate::{appstate::AppState, response::crawler_state::CrawlersTimestamps};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use orm::crawler_state::{CrawlerNameDb, CrawlerStateDb};
 use orm::schema::crawler_state;
+
+use crate::appstate::AppState;
+use crate::dto::crawler_state::CrawlerNameDto;
+use crate::error::crawler_state::CrawlerStateError;
+use crate::response::crawler_state::CrawlersTimestamps;
 
 #[derive(Clone)]
 pub struct CrawlerStateService {

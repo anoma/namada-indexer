@@ -1,7 +1,6 @@
 use anyhow::Context;
 use deadpool_diesel::postgres::Object;
-use diesel::ExpressionMethods;
-use diesel::{QueryDsl, RunQueryDsl};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use orm::crawler_state::{
     BlockCrawlerStateDb, CrawlerNameDb, EpochCrawlerStateDb,
 };

@@ -1,10 +1,12 @@
-use axum::{extract::State, http::HeaderMap, Json};
+use axum::extract::State;
+use axum::http::HeaderMap;
+use axum::Json;
 use axum_extra::extract::Query;
 
-use crate::{
-    dto::crawler_state::CrawlerStateQueryParams, error::api::ApiError,
-    response::crawler_state::CrawlersTimestamps, state::common::CommonState,
-};
+use crate::dto::crawler_state::CrawlerStateQueryParams;
+use crate::error::api::ApiError;
+use crate::response::crawler_state::CrawlersTimestamps;
+use crate::state::common::CommonState;
 
 pub async fn get_crawlers_timestamps(
     _headers: HeaderMap,

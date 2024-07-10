@@ -245,7 +245,7 @@ impl PosService {
                 .map_err(PoSError::Database)?
                 .epoch
         };
-        
+
         let (db_withdraws, total_pages, total_items) = self
             .pos_repo
             .find_withdraws_by_address(address, epoch, page as i64)

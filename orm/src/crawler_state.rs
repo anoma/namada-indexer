@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use diesel::pg::Pg;
 use diesel::sql_types::Nullable;
 use diesel::{Insertable, Queryable, Selectable};
@@ -5,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use shared::crawler_state::{
     BlockCrawlerState, CrawlerName, EpochCrawlerState, IntervalCrawlerState,
 };
-use std::fmt::{self, Display, Formatter};
 
 use crate::schema::crawler_state;
 
