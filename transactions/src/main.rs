@@ -138,7 +138,8 @@ async fn crawling_fn(
         wrapper_txs.len() + inner_txs.len()
     );
 
-    // Because transaction crawler starts from block 1 we read timestamp from the block
+    // Because transaction crawler starts from block 1 we read timestamp from
+    // the block
     let timestamp = tm_block_response.block.header.time.unix_timestamp();
     let crawler_state = IntervalCrawlerState { timestamp };
 

@@ -1,12 +1,10 @@
+use diesel::upsert::excluded;
 use diesel::{
-    upsert::excluded, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
-    SelectableHelper,
+    ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
 };
-use orm::{
-    pos_rewards::PosRewardInsertDb,
-    schema::{pos_rewards, validators},
-    validators::ValidatorDb,
-};
+use orm::pos_rewards::PosRewardInsertDb;
+use orm::schema::{pos_rewards, validators};
+use orm::validators::ValidatorDb;
 use shared::rewards::Reward;
 
 pub fn query_rewards(

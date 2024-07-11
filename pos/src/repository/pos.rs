@@ -1,6 +1,8 @@
 use anyhow::Context;
-use diesel::{upsert::excluded, ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::{schema::validators, validators::ValidatorInsertDb};
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use orm::schema::validators;
+use orm::validators::ValidatorInsertDb;
 
 pub fn upsert_validators(
     transaction_conn: &mut PgConnection,

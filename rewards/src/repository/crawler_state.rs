@@ -1,10 +1,9 @@
 use anyhow::Context;
 use chrono::NaiveDateTime;
-use diesel::{upsert::excluded, ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::{
-    crawler_state::{CrawlerNameDb, IntervalStateInsertDb},
-    schema::crawler_state,
-};
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use orm::crawler_state::{CrawlerNameDb, IntervalStateInsertDb};
+use orm::schema::crawler_state;
 use shared::crawler_state::CrawlerName;
 
 pub fn upsert_crawler_state(

@@ -1,10 +1,9 @@
 use anyhow::Context;
-use diesel::{upsert::excluded, ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::{
-    gas::GasPriceDb,
-    parameters::ParametersInsertDb,
-    schema::{chain_parameters, gas_price},
-};
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use orm::gas::GasPriceDb;
+use orm::parameters::ParametersInsertDb;
+use orm::schema::{chain_parameters, gas_price};
 
 pub fn upsert_chain_parameters(
     transaction_conn: &mut PgConnection,
@@ -16,10 +15,7 @@ pub fn upsert_chain_parameters(
         .do_update()
         .set(chain_parameters::apr.eq(excluded(chain_parameters::apr)))
         .execute(transaction_conn)
-        .context(
-            "Failed to update chain_parameters state \
-                                     in db",
-        )?;
+        .context("Failed to update chain_parameters state in db")?;
 
     Ok(())
 }

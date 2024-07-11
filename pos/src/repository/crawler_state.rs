@@ -1,9 +1,8 @@
 use anyhow::Context;
-use diesel::{upsert::excluded, ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::{
-    crawler_state::{CrawlerNameDb, EpochStateInsertDb},
-    schema::crawler_state,
-};
+use diesel::upsert::excluded;
+use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use orm::crawler_state::{CrawlerNameDb, EpochStateInsertDb};
+use orm::schema::crawler_state;
 use shared::crawler_state::CrawlerName;
 
 pub fn update_timestamp(
