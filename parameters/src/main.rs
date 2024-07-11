@@ -1,36 +1,32 @@
-use std::sync::atomic::{self, AtomicBool};
+use std::convert::identity;
 use std::sync::Arc;
-use std::time::Duration;
 
-use anyhow::Context;
+use chrono::NaiveDateTime;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
-use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, RunQueryDsl};
+use deadpool_diesel::postgres::Object;
 use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
-use namada_sdk::time::DateTimeUtc;
-use orm::crawler_state::IntervalStatusInsertDb;
+use namada_sdk::time::{DateTimeUtc, Utc};
 use orm::gas::GasPriceDb;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
-use orm::schema::{chain_parameters, crawler_state, gas_price};
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
+use parameters::repository;
 use parameters::services::{
     namada as namada_service, tendermint as tendermint_service,
 };
+use shared::crawler;
 use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
-use tokio::signal;
-use tokio::time::sleep;
-use tokio_retry::strategy::{jitter, FixedInterval};
-use tokio_retry::RetryIf;
+use tokio::sync::{Mutex, MutexGuard};
+use tokio::time::Instant;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
     let log_level = match config.verbosity.log_level_filter() {
@@ -53,140 +49,133 @@ async fn main() -> anyhow::Result<()> {
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
+    let instant = Arc::new(Mutex::new(Instant::now()));
+
     // Run migrations
     run_migrations(&conn)
         .await
         .context_db_interact_error()
         .into_db_error()?;
 
-    let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
-    let exit_handle = must_exit_handle();
+    crawler::crawl(
+        move |_| {
+            crawling_fn(
+                conn.clone(),
+                client.clone(),
+                instant.clone(),
+                config.sleep_for,
+            )
+        },
+        0,
+    )
+    .await
+}
 
-    loop {
-        if must_exit(&exit_handle) {
-            break;
-        }
+async fn crawling_fn(
+    conn: Arc<Object>,
+    client: Arc<HttpClient>,
+    instant: Arc<Mutex<Instant>>,
+    sleep_for: u64,
+) -> Result<(), MainError> {
+    let mut instant = instant.lock().await;
 
-        _ = RetryIf::spawn(
-            retry_strategy.clone(),
-            || async {
-                // We always start from the current epoch
-                let current_epoch =
-                    namada_service::get_current_epoch(&client.clone())
-                        .await
-                        .into_rpc_error()?;
+    let should_process = can_process(&instant, sleep_for);
 
-                tracing::info!(
-                    "Attempting to process epoch: {}...",
-                    current_epoch
-                );
+    if !should_process {
+        let timestamp = Utc::now().naive_utc();
+        update_crawler_timestamp(&conn, timestamp).await?;
 
-                let parameters =
-                    namada_service::get_parameters(&client, current_epoch)
-                        .await
-                        .into_rpc_error()?;
+        tracing::warn!(
+            "Not enough time has passed since last crawl, skipping..."
+        );
 
-                let genesis = tendermint_service::query_genesis(&client)
-                    .await
-                    .into_rpc_error()?;
-
-                let gas_price = namada_service::get_gas_price(&client).await;
-
-                let timestamp = DateTimeUtc::now().0.timestamp();
-                let crawler_state = IntervalCrawlerState { timestamp };
-
-                conn.interact(move |conn| {
-                    conn.build_transaction().read_write().run(
-                        |transaction_conn| {
-                            diesel::insert_into(chain_parameters::table)
-                                .values(ParametersInsertDb::from((
-                                    parameters,
-                                    genesis,
-                                    EPOCH_SWITCH_BLOCKS_DELAY,
-                                )))
-                                .on_conflict(chain_parameters::chain_id)
-                                .do_update()
-                                .set(
-                                    chain_parameters::apr
-                                        .eq(excluded(chain_parameters::apr)),
-                                )
-                                .execute(transaction_conn)
-                                .context(
-                                    "Failed to update chain_parameters state \
-                                     in db",
-                                )?;
-
-                            diesel::insert_into(gas_price::table)
-                                .values(
-                                    gas_price
-                                        .iter()
-                                        .cloned()
-                                        .map(GasPriceDb::from)
-                                        .collect::<Vec<GasPriceDb>>(),
-                                )
-                                .on_conflict(gas_price::token)
-                                .do_update()
-                                .set(
-                                    gas_price::amount
-                                        .eq(excluded(gas_price::amount)),
-                                )
-                                .execute(transaction_conn)
-                                .context("Failed to update gas price in db")?;
-
-                            diesel::insert_into(crawler_state::table)
-                                .values::<&IntervalStatusInsertDb>(
-                                    &(CrawlerName::Parameters, crawler_state)
-                                        .into(),
-                                )
-                                .on_conflict(crawler_state::name)
-                                .do_update()
-                                .set(
-                                    crawler_state::timestamp
-                                        .eq(excluded(crawler_state::timestamp)),
-                                )
-                                .execute(transaction_conn)
-                                .context(
-                                    "Failed to update crawler state in db",
-                                )?;
-
-                            anyhow::Ok(())
-                        },
-                    )
-                })
-                .await
-                .context_db_interact_error()
-                .into_db_error()?
-                .context("Commit block db transaction error")
-                .into_db_error()?;
-
-                tracing::info!("Done!");
-
-                sleep(Duration::from_secs(config.sleep_for)).await;
-
-                Ok(())
-            },
-            |_: &MainError| !must_exit(&exit_handle),
-        )
-        .await;
+        return Err(MainError::NoAction);
     }
+
+    let current_epoch = namada_service::get_current_epoch(&client.clone())
+        .await
+        .into_rpc_error()?;
+
+    tracing::info!(
+        "Attempting to process chain parameters: {}...",
+        current_epoch
+    );
+
+    let parameters = namada_service::get_parameters(&client, current_epoch)
+        .await
+        .into_rpc_error()?;
+
+    let genesis = tendermint_service::query_genesis(&client)
+        .await
+        .into_rpc_error()?;
+
+    let gas_price = namada_service::get_gas_price(&client).await;
+
+    let timestamp = DateTimeUtc::now().0.timestamp();
+    let crawler_state = IntervalCrawlerState { timestamp };
+
+    conn.interact(move |conn| {
+        conn.build_transaction()
+            .read_write()
+            .run(|transaction_conn| {
+                repository::parameters::upsert_chain_parameters(
+                    transaction_conn,
+                    ParametersInsertDb::from((
+                        parameters,
+                        genesis,
+                        EPOCH_SWITCH_BLOCKS_DELAY,
+                    )),
+                )?;
+
+                repository::parameters::upsert_gas_price(
+                    transaction_conn,
+                    gas_price
+                        .iter()
+                        .cloned()
+                        .map(GasPriceDb::from)
+                        .collect::<Vec<GasPriceDb>>(),
+                )?;
+
+                repository::crawler_state::upsert_crawler_state(
+                    transaction_conn,
+                    (CrawlerName::Parameters, crawler_state).into(),
+                )?;
+
+                anyhow::Ok(())
+            })
+    })
+    .await
+    .context_db_interact_error()
+    .and_then(identity)
+    .into_db_error()?;
+
+    // Once we are done processing, we reset the instant
+    *instant = Instant::now();
 
     Ok(())
 }
 
-#[inline]
-fn must_exit(handle: &AtomicBool) -> bool {
-    handle.load(atomic::Ordering::Relaxed)
+fn can_process(instant: &MutexGuard<Instant>, sleep_for: u64) -> bool {
+    tracing::info!("Attempting to process goverance data");
+
+    let time_elapsed = instant.elapsed().as_secs();
+    time_elapsed >= sleep_for
 }
 
-fn must_exit_handle() -> Arc<AtomicBool> {
-    let handle = Arc::new(AtomicBool::new(false));
-    let task_handle = Arc::clone(&handle);
-    tokio::spawn(async move {
-        signal::ctrl_c()
-            .await
-            .expect("Error receiving interrupt signal");
-        tracing::info!("Ctrl-c received");
-        task_handle.store(true, atomic::Ordering::Relaxed);
-    });
-    handle
+async fn update_crawler_timestamp(
+    conn: &Object,
+    timestamp: NaiveDateTime,
+) -> Result<(), MainError> {
+    conn.interact(move |transaction_conn| {
+        repository::crawler_state::update_timestamp(
+            transaction_conn,
+            timestamp,
+        )?;
+
+        anyhow::Ok(())
+    })
+    .await
+    .context_db_interact_error()
+    .and_then(identity)
+    .into_db_error()
 }

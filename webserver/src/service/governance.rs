@@ -85,7 +85,7 @@ impl GovernanceService {
 
         let chain_state = self
             .chain_repo
-            .get_chain_state()
+            .get_state()
             .await
             .map_err(GovernanceError::Database)?;
 

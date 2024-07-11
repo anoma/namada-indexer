@@ -125,6 +125,14 @@ impl
 #[derive(Serialize, Insertable, Clone)]
 #[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CrawlerStateTimestampInsertDb {
+    pub name: CrawlerNameDb,
+    pub timestamp: chrono::NaiveDateTime,
+}
+
+#[derive(Serialize, Insertable, Clone)]
+#[diesel(table_name = crawler_state)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct BlockStateInsertDb {
     pub name: CrawlerNameDb,
     pub last_processed_block: i32,
@@ -135,7 +143,7 @@ pub struct BlockStateInsertDb {
 #[derive(Serialize, Insertable, Clone)]
 #[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct EpochStatusInsertDb {
+pub struct EpochStateInsertDb {
     pub name: CrawlerNameDb,
     pub last_processed_epoch: i32,
     pub timestamp: chrono::NaiveDateTime,
@@ -144,9 +152,22 @@ pub struct EpochStatusInsertDb {
 #[derive(Serialize, Insertable, Clone)]
 #[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct IntervalStatusInsertDb {
+pub struct IntervalStateInsertDb {
     pub name: CrawlerNameDb,
     pub timestamp: chrono::NaiveDateTime,
+}
+
+impl From<(CrawlerName, i64)> for CrawlerStateTimestampInsertDb {
+    fn from((crawler_name, timestamp): (CrawlerName, i64)) -> Self {
+        let timestamp = chrono::DateTime::from_timestamp(timestamp, 0)
+            .expect("Invalid timestamp")
+            .naive_utc();
+
+        Self {
+            name: crawler_name.into(),
+            timestamp,
+        }
+    }
 }
 
 impl From<(CrawlerName, BlockCrawlerState)> for BlockStateInsertDb {
@@ -164,7 +185,7 @@ impl From<(CrawlerName, BlockCrawlerState)> for BlockStateInsertDb {
     }
 }
 
-impl From<(CrawlerName, EpochCrawlerState)> for EpochStatusInsertDb {
+impl From<(CrawlerName, EpochCrawlerState)> for EpochStateInsertDb {
     fn from((crawler_name, state): (CrawlerName, EpochCrawlerState)) -> Self {
         let timestamp = chrono::DateTime::from_timestamp(state.timestamp, 0)
             .expect("Invalid timestamp")
@@ -178,7 +199,7 @@ impl From<(CrawlerName, EpochCrawlerState)> for EpochStatusInsertDb {
     }
 }
 
-impl From<(CrawlerName, IntervalCrawlerState)> for IntervalStatusInsertDb {
+impl From<(CrawlerName, IntervalCrawlerState)> for IntervalStateInsertDb {
     fn from(
         (crawler_name, state): (CrawlerName, IntervalCrawlerState),
     ) -> Self {

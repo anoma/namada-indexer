@@ -2,6 +2,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum MainError {
+    #[error("No action error")]
+    NoAction,
     #[error("RPC error")]
     RpcError,
     #[error("Can't commit block to database")]

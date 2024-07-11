@@ -1,19 +1,17 @@
+use std::convert::identity;
 use std::sync::Arc;
 
-use anyhow::Context;
+use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, RunQueryDsl};
 use namada_sdk::time::DateTimeUtc;
-use orm::crawler_state::EpochStatusInsertDb;
+use orm::crawler_state::EpochStateInsertDb;
 use orm::migrations::run_migrations;
-use orm::schema::{crawler_state, validators};
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
 use pos::config::AppConfig;
-use pos::repository::clear_db;
+use pos::repository::{self, clear_db};
 use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
@@ -77,17 +75,18 @@ async fn crawling_fn(
     conn: Arc<Object>,
     client: Arc<HttpClient>,
 ) -> Result<(), MainError> {
-    tracing::info!("Attempting to process epoch: {}...", epoch_to_process);
-    let current_epoch = namada_service::get_current_epoch(&client.clone())
-        .await
-        .into_rpc_error()?;
+    let should_process = can_process(epoch_to_process, client.clone()).await?;
 
-    if current_epoch < epoch_to_process {
+    if !should_process {
+        let timestamp = Utc::now().naive_utc();
+        update_crawler_timestamp(&conn, timestamp).await?;
+
         tracing::warn!(
             "Epoch {} was not processed, retry...",
             epoch_to_process
         );
-        return Err(MainError::RpcError);
+
+        return Err(MainError::NoAction);
     }
 
     let validators_set =
@@ -106,6 +105,8 @@ async fn crawling_fn(
         last_processed_epoch: epoch_to_process,
         timestamp,
     };
+    let crawler_state: EpochStateInsertDb =
+        (CrawlerName::Pos, crawler_state).into();
 
     conn.interact(move |conn| {
         conn.build_transaction()
@@ -117,54 +118,57 @@ async fn crawling_fn(
                     .map(ValidatorInsertDb::from_validator)
                     .collect::<Vec<_>>();
 
-                diesel::insert_into(validators::table)
-                    .values::<&Vec<ValidatorInsertDb>>(validators_dbo)
-                    .on_conflict(validators::columns::namada_address)
-                    .do_update()
-                    .set((
-                        validators::columns::voting_power
-                            .eq(excluded(validators::columns::voting_power)),
-                        validators::columns::max_commission
-                            .eq(excluded(validators::columns::max_commission)),
-                        validators::columns::commission
-                            .eq(excluded(validators::columns::commission)),
-                        validators::columns::email
-                            .eq(excluded(validators::columns::email)),
-                        validators::columns::website
-                            .eq(excluded(validators::columns::website)),
-                        validators::columns::description
-                            .eq(excluded(validators::columns::description)),
-                        validators::columns::discord_handle
-                            .eq(excluded(validators::columns::discord_handle)),
-                        validators::columns::avatar
-                            .eq(excluded(validators::columns::avatar)),
-                        validators::columns::state
-                            .eq(excluded(validators::columns::state)),
-                    ))
-                    .execute(transaction_conn)
-                    .context("Failed to update validators in db")?;
+                repository::pos::upsert_validators(
+                    transaction_conn,
+                    validators_dbo,
+                )?;
 
-                diesel::insert_into(crawler_state::table)
-                    .values::<&EpochStatusInsertDb>(
-                        &(CrawlerName::Pos, crawler_state).into(),
-                    )
-                    .on_conflict(crawler_state::name)
-                    .do_update()
-                    .set((
-                        crawler_state::timestamp
-                            .eq(excluded(crawler_state::timestamp)),
-                        crawler_state::last_processed_epoch
-                            .eq(excluded(crawler_state::last_processed_epoch)),
-                    ))
-                    .execute(transaction_conn)
-                    .context("Failed to update crawler state in db")?;
+                repository::crawler_state::upsert_crawler_state(
+                    transaction_conn,
+                    crawler_state,
+                )?;
 
                 anyhow::Ok(())
             })
     })
     .await
     .context_db_interact_error()
-    .into_db_error()?
-    .context("Commit block db transaction error")
+    .and_then(identity)
+    .into_db_error()
+}
+
+async fn can_process(
+    epoch: u32,
+    client: Arc<HttpClient>,
+) -> Result<bool, MainError> {
+    tracing::info!("Attempting to process epoch: {}...", epoch);
+    let current_epoch = namada_service::get_current_epoch(&client.clone())
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to query Namada's last committed block: {}",
+                e
+            );
+            MainError::RpcError
+        })?;
+
+    Ok(current_epoch >= epoch)
+}
+
+async fn update_crawler_timestamp(
+    conn: &Object,
+    timestamp: NaiveDateTime,
+) -> Result<(), MainError> {
+    conn.interact(move |transaction_conn| {
+        repository::crawler_state::update_timestamp(
+            transaction_conn,
+            timestamp,
+        )?;
+
+        anyhow::Ok(())
+    })
+    .await
+    .context_db_interact_error()
+    .and_then(identity)
     .into_db_error()
 }

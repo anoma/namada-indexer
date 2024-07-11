@@ -240,10 +240,10 @@ impl PosService {
             epoch as i32
         } else {
             self.chain_repo
-                .get_chain_state()
+                .get_state()
                 .await
                 .map_err(PoSError::Database)?
-                .epoch
+                .last_processed_epoch
         };
 
         let (db_withdraws, total_pages, total_items) = self

@@ -1,11 +1,12 @@
 use anyhow::Context;
+use chrono::NaiveDateTime;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::crawler_state::BlockStateInsertDb;
+use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
 use orm::schema::crawler_state;
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
 
-pub fn insert_crawler_state(
+pub fn upsert_crawler_state(
     transaction_conn: &mut PgConnection,
     crawler_state: BlockCrawlerState,
 ) -> anyhow::Result<()> {
@@ -24,6 +25,19 @@ pub fn insert_crawler_state(
         ))
         .execute(transaction_conn)
         .context("Failed to update crawler state in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn update_crawler_timestamp(
+    transaction_conn: &mut PgConnection,
+    timestamp: NaiveDateTime,
+) -> anyhow::Result<()> {
+    diesel::update(crawler_state::table)
+        .filter(crawler_state::name.eq(CrawlerNameDb::from(CrawlerName::Chain)))
+        .set(crawler_state::timestamp.eq(timestamp))
+        .execute(transaction_conn)
+        .context("Failed to update crawler timestamp in db")?;
 
     anyhow::Ok(())
 }

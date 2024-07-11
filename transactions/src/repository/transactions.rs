@@ -1,7 +1,8 @@
 use anyhow::Context;
+use chrono::NaiveDateTime;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::crawler_state::IntervalStatusInsertDb;
+use orm::crawler_state::{CrawlerNameDb, IntervalStateInsertDb};
 use orm::schema::{crawler_state, inner_transactions, wrapper_transactions};
 use orm::transactions::{InnerTransactionInsertDb, WrapperTransactionInsertDb};
 use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
@@ -46,7 +47,7 @@ pub fn insert_crawler_state(
     crawler_state: IntervalCrawlerState,
 ) -> anyhow::Result<()> {
     diesel::insert_into(crawler_state::table)
-        .values::<&IntervalStatusInsertDb>(
+        .values::<&IntervalStateInsertDb>(
             &(CrawlerName::Transactions, crawler_state).into(),
         )
         .on_conflict(crawler_state::name)
@@ -54,6 +55,22 @@ pub fn insert_crawler_state(
         .set(crawler_state::timestamp.eq(excluded(crawler_state::timestamp)))
         .execute(transaction_conn)
         .context("Failed to update crawler state in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn update_crawler_timestamp(
+    transaction_conn: &mut PgConnection,
+    timestamp: NaiveDateTime,
+) -> anyhow::Result<()> {
+    diesel::update(crawler_state::table)
+        .filter(
+            crawler_state::name
+                .eq(CrawlerNameDb::from(CrawlerName::Transactions)),
+        )
+        .set(crawler_state::timestamp.eq(timestamp))
+        .execute(transaction_conn)
+        .context("Failed to update crawler timestamp in db")?;
 
     anyhow::Ok(())
 }

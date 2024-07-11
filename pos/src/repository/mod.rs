@@ -9,6 +9,7 @@ use orm::schema::{
 pub const MIGRATIONS: EmbeddedMigrations =
     embed_migrations!("../orm/migrations/");
 
+// TODO: what to do with this?
 pub fn clear_db(conn: &mut PgConnection) -> anyhow::Result<()> {
     diesel::delete(balances::table)
         .execute(conn)
@@ -40,3 +41,6 @@ pub fn clear_db(conn: &mut PgConnection) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+pub mod crawler_state;
+pub mod pos;

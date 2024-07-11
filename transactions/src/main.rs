@@ -1,10 +1,11 @@
+use std::convert::identity;
 use std::sync::Arc;
 
 use anyhow::Context;
+use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
 use shared::block::Block;
 use shared::block_result::BlockResult;
@@ -90,14 +91,15 @@ async fn crawling_fn(
     conn: Arc<Object>,
     checksums: Checksums,
 ) -> Result<(), MainError> {
-    tracing::info!("Attempting to process block: {}...", block_height);
+    let should_process = can_process(block_height, client.clone()).await?;
 
-    if !namada_service::is_block_committed(&client, block_height)
-        .await
-        .into_rpc_error()?
-    {
+    if !should_process {
+        let timestamp = Utc::now().naive_utc();
+        update_crawler_timestamp(&conn, timestamp).await?;
+
         tracing::warn!("Block {} was not processed, retry...", block_height);
-        return Err(MainError::RpcError);
+
+        return Err(MainError::NoAction);
     }
 
     tracing::info!("Query block...");
@@ -121,7 +123,7 @@ async fn crawling_fn(
     let block_results = BlockResult::from(tm_block_results_response);
 
     let block = Block::from(
-        tm_block_response,
+        tm_block_response.clone(),
         &block_results,
         checksums,
         1_u32,
@@ -136,8 +138,8 @@ async fn crawling_fn(
         wrapper_txs.len() + inner_txs.len()
     );
 
-    let timestamp = DateTimeUtc::now().0.timestamp();
-
+    // Because transaction crawler starts from block 1 we read timestamp from the block
+    let timestamp = tm_block_response.block.header.time.unix_timestamp();
     let crawler_state = IntervalCrawlerState { timestamp };
 
     conn.interact(move |conn| {
@@ -162,9 +164,45 @@ async fn crawling_fn(
     })
     .await
     .context_db_interact_error()
-    .into_db_error()?
-    .context("Commit block db transaction error")
+    .and_then(identity)
     .into_db_error()?;
 
     Ok(())
+}
+
+async fn can_process(
+    block_height: u32,
+    client: Arc<HttpClient>,
+) -> Result<bool, MainError> {
+    tracing::info!("Attempting to process block: {}...", block_height);
+
+    let last_block_height =
+        namada_service::get_last_block(&client).await.map_err(|e| {
+            tracing::error!(
+                "Failed to query Namada's last committed block: {}",
+                e
+            );
+            MainError::RpcError
+        })?;
+
+    Ok(last_block_height >= block_height)
+}
+
+async fn update_crawler_timestamp(
+    conn: &Object,
+    timestamp: NaiveDateTime,
+) -> Result<(), MainError> {
+    conn.interact(move |transaction_conn| {
+        transaction_repo::update_crawler_timestamp(
+            transaction_conn,
+            timestamp,
+        )?;
+
+        anyhow::Ok(())
+    })
+    .await
+    .context_db_interact_error()
+    .into_db_error()?
+    .context("Insert crawler state error")
+    .into_db_error()
 }

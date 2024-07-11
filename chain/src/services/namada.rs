@@ -29,21 +29,6 @@ use tendermint_rpc::HttpClient;
 
 use super::utils::query_storage_prefix;
 
-pub async fn is_block_committed(
-    client: &HttpClient,
-    block_height: BlockHeight,
-) -> anyhow::Result<bool> {
-    let block_height = to_block_height(block_height);
-    let last_block = RPC
-        .shell()
-        .last_block(client)
-        .await
-        .context("Failed to query Namada's last committed block")?;
-    Ok(last_block
-        .map(|b| block_height <= b.height)
-        .unwrap_or(false))
-}
-
 pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
     let native_token = RPC
         .shell()
