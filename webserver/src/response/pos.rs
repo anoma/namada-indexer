@@ -171,7 +171,6 @@ impl MergedBond {
 
 impl Unbond {
     pub fn from(
-        // TODO: a lot of args
         raw_amount: BigDecimal,
         withdraw_epoch: i32,
         db_validator: ValidatorDb,

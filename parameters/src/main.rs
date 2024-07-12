@@ -1,5 +1,6 @@
 use std::convert::identity;
 use std::sync::Arc;
+use std::time::Duration;
 
 use chrono::NaiveDateTime;
 use clap::Parser;
@@ -49,7 +50,13 @@ async fn main() -> Result<(), MainError> {
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
-    let instant = Arc::new(Mutex::new(Instant::now()));
+    // Initially set the instant to the current time minus the sleep_for
+    // so we can start processing right away
+    let instant = Arc::new(Mutex::new(
+        Instant::now()
+            .checked_sub(Duration::from_secs(config.sleep_for))
+            .unwrap(),
+    ));
 
     // Run migrations
     run_migrations(&conn)

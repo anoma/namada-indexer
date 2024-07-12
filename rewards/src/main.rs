@@ -49,9 +49,13 @@ async fn main() -> Result<(), MainError> {
 
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
-    // TODO: set instant to the value of crawler interval so we start processing
-    // immediately
-    let instant = Arc::new(Mutex::new(Instant::now()));
+    // Initially set the instant to the current time minus the sleep_for
+    // so we can start processing right away
+    let instant = Arc::new(Mutex::new(
+        Instant::now()
+            .checked_sub(Duration::from_secs(config.sleep_for))
+            .unwrap(),
+    ));
 
     // Run migrations
     run_migrations(&conn)
@@ -121,7 +125,6 @@ async fn crawling_fn(
     conn.interact(move |conn| {
         conn.build_transaction().read_write().run(
             |transaction_conn: &mut diesel::prelude::PgConnection| {
-                // TODO: change to one query
                 let rewards_db = repository::pos_rewards::query_rewards(
                     transaction_conn,
                     rewards,
