@@ -49,6 +49,8 @@ async fn main() -> Result<(), MainError> {
 
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
+    // TODO: set instant to the value of crawler interval so we start processing
+    // immediately
     let instant = Arc::new(Mutex::new(Instant::now()));
 
     // Run migrations

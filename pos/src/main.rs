@@ -11,7 +11,7 @@ use orm::migrations::run_migrations;
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
 use pos::config::AppConfig;
-use pos::repository::{self, clear_db};
+use pos::repository::{self};
 use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
@@ -49,14 +49,6 @@ async fn main() -> Result<(), MainError> {
         .await
         .context_db_interact_error()
         .into_db_error()?;
-
-    // Clear db
-    conn.interact(|transaction_conn| {
-        clear_db(transaction_conn).into_db_error()
-    })
-    .await
-    .context_db_interact_error()
-    .into_db_error()??;
 
     // We always start from the current epoch
     let next_epoch = namada_service::get_current_epoch(&client.clone())
