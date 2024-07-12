@@ -5,7 +5,8 @@ use diesel::sql_types::Nullable;
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::crawler_state::{
-    BlockCrawlerState, CrawlerName, EpochCrawlerState, IntervalCrawlerState,
+    BlockCrawlerState, ChainCrawlerState, CrawlerName, EpochCrawlerState,
+    IntervalCrawlerState,
 };
 
 use crate::schema::crawler_state;
@@ -58,7 +59,7 @@ pub struct CrawlerStateDb {
 }
 
 #[derive(Serialize, Clone, Debug)]
-pub struct BlockCrawlerStateDb {
+pub struct ChainCrawlerStateDb {
     pub last_processed_block: i32,
     pub last_processed_epoch: i32,
     pub timestamp: chrono::NaiveDateTime,
@@ -71,7 +72,7 @@ impl
             diesel::sql_types::Timestamp,
         ),
         Pg,
-    > for BlockCrawlerStateDb
+    > for ChainCrawlerStateDb
 {
     type Row = (Option<i32>, Option<i32>, chrono::NaiveDateTime);
 
@@ -88,6 +89,35 @@ impl
             }),
             _ => Err("last_processed_block or last_processed_epoch missing \
                       in the block crawler status"
+                .into()),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct BlockCrawlerStateDb {
+    pub last_processed_block: i32,
+    pub timestamp: chrono::NaiveDateTime,
+}
+impl
+    Queryable<
+        (
+            Nullable<diesel::sql_types::Integer>,
+            diesel::sql_types::Timestamp,
+        ),
+        Pg,
+    > for BlockCrawlerStateDb
+{
+    type Row = (Option<i32>, chrono::NaiveDateTime);
+
+    fn build(row: Self::Row) -> diesel::deserialize::Result<Self> {
+        match row {
+            (Some(last_processed_block), timestamp) => Ok(Self {
+                last_processed_block,
+                timestamp,
+            }),
+            _ => Err("last_processed_block missing in the block crawler \
+                      status"
                 .into()),
         }
     }
@@ -133,10 +163,19 @@ pub struct CrawlerStateTimestampInsertDb {
 #[derive(Serialize, Insertable, Clone)]
 #[diesel(table_name = crawler_state)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct BlockStateInsertDb {
+pub struct ChainStateInsertDb {
     pub name: CrawlerNameDb,
     pub last_processed_block: i32,
     pub last_processed_epoch: i32,
+    pub timestamp: chrono::NaiveDateTime,
+}
+
+#[derive(Serialize, Insertable, Clone)]
+#[diesel(table_name = crawler_state)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct BlockStateInsertDb {
+    pub name: CrawlerNameDb,
+    pub last_processed_block: i32,
     pub timestamp: chrono::NaiveDateTime,
 }
 
@@ -170,6 +209,21 @@ impl From<(CrawlerName, i64)> for CrawlerStateTimestampInsertDb {
     }
 }
 
+impl From<(CrawlerName, ChainCrawlerState)> for ChainStateInsertDb {
+    fn from((crawler_name, state): (CrawlerName, ChainCrawlerState)) -> Self {
+        let timestamp = chrono::DateTime::from_timestamp(state.timestamp, 0)
+            .expect("Invalid timestamp")
+            .naive_utc();
+
+        Self {
+            name: crawler_name.into(),
+            last_processed_block: state.last_processed_block as i32,
+            last_processed_epoch: state.last_processed_epoch as i32,
+            timestamp,
+        }
+    }
+}
+
 impl From<(CrawlerName, BlockCrawlerState)> for BlockStateInsertDb {
     fn from((crawler_name, state): (CrawlerName, BlockCrawlerState)) -> Self {
         let timestamp = chrono::DateTime::from_timestamp(state.timestamp, 0)
@@ -179,7 +233,6 @@ impl From<(CrawlerName, BlockCrawlerState)> for BlockStateInsertDb {
         Self {
             name: crawler_name.into(),
             last_processed_block: state.last_processed_block as i32,
-            last_processed_epoch: state.last_processed_epoch as i32,
             timestamp,
         }
     }

@@ -11,7 +11,7 @@ use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
-use shared::crawler_state::IntervalCrawlerState;
+use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tracing::Level;
@@ -64,12 +64,14 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    let last_block_height = db_service::get_last_synched_block(&conn)
-        .await
-        .into_db_error()?;
+    let crawler_state = db_service::get_crawler_state(&conn).await;
 
-    let next_block =
-        std::cmp::max(last_block_height.unwrap_or(1), config.from_block_height);
+    let next_block = std::cmp::max(
+        crawler_state
+            .map(|cs| cs.last_processed_block + 1)
+            .unwrap_or(1),
+        config.from_block_height,
+    );
 
     crawl(
         move |block_height| {
@@ -141,7 +143,10 @@ async fn crawling_fn(
     // Because transaction crawler starts from block 1 we read timestamp from
     // the block
     let timestamp = tm_block_response.block.header.time.unix_timestamp();
-    let crawler_state = IntervalCrawlerState { timestamp };
+    let crawler_state = BlockCrawlerState {
+        timestamp,
+        last_processed_block: block_height,
+    };
 
     conn.interact(move |conn| {
         conn.build_transaction()

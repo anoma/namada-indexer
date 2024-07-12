@@ -1,25 +1,31 @@
 use anyhow::Context;
 use deadpool_diesel::postgres::Object;
-use diesel::dsl::max;
-use diesel::{QueryDsl, RunQueryDsl};
-use orm::schema::wrapper_transactions;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
+use orm::crawler_state::{BlockCrawlerStateDb, CrawlerNameDb};
+use orm::schema::crawler_state;
 use shared::block::BlockHeight;
+use shared::crawler_state::BlockCrawlerState;
 use shared::error::ContextDbInteractError;
 
-pub async fn get_last_synched_block(
+pub async fn get_crawler_state(
     conn: &Object,
-) -> anyhow::Result<Option<BlockHeight>> {
-    let block_height = conn
+) -> anyhow::Result<BlockCrawlerState> {
+    let crawler_state: BlockCrawlerStateDb = conn
         .interact(move |conn| {
-            wrapper_transactions::dsl::wrapper_transactions
-                .select(max(wrapper_transactions::dsl::block_height))
-                .first::<Option<i32>>(conn)
+            crawler_state::table
+                .filter(crawler_state::name.eq(CrawlerNameDb::Transactions))
+                .select((
+                    crawler_state::dsl::last_processed_block,
+                    crawler_state::dsl::timestamp,
+                ))
+                .first(conn)
         })
         .await
         .context_db_interact_error()?
-        .context(
-            "Failed to read block max height in wrapper_transaction db table",
-        )?;
+        .context("Failed to read chain crawler state from the db")?;
 
-    Ok(block_height.map(|h| h as BlockHeight))
+    Ok(BlockCrawlerState {
+        last_processed_block: crawler_state.last_processed_block as BlockHeight,
+        timestamp: crawler_state.timestamp.and_utc().timestamp(),
+    })
 }

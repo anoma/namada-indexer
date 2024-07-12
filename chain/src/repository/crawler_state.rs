@@ -2,16 +2,16 @@ use anyhow::Context;
 use chrono::NaiveDateTime;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
+use orm::crawler_state::{ChainStateInsertDb, CrawlerNameDb};
 use orm::schema::crawler_state;
-use shared::crawler_state::{BlockCrawlerState, CrawlerName};
+use shared::crawler_state::{ChainCrawlerState, CrawlerName};
 
 pub fn upsert_crawler_state(
     transaction_conn: &mut PgConnection,
-    crawler_state: BlockCrawlerState,
+    crawler_state: ChainCrawlerState,
 ) -> anyhow::Result<()> {
     diesel::insert_into(crawler_state::table)
-        .values::<&BlockStateInsertDb>(
+        .values::<&ChainStateInsertDb>(
             &(CrawlerName::Chain, crawler_state).into(),
         )
         .on_conflict(crawler_state::name)

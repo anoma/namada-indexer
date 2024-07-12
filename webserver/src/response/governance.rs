@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use orm::crawler_state::BlockCrawlerStateDb;
+use orm::crawler_state::ChainCrawlerStateDb;
 use orm::governance_proposal::{
     GovernanceProposalDb, GovernanceProposalKindDb, GovernanceProposalResultDb,
     GovernanceProposalTallyTypeDb,
@@ -114,7 +114,7 @@ pub struct ProposalVote {
 impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
-        chain_state: &BlockCrawlerStateDb,
+        chain_state: &ChainCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {

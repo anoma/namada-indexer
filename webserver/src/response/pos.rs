@@ -1,6 +1,6 @@
 use bigdecimal::BigDecimal;
 use orm::bond::BondDb;
-use orm::crawler_state::{BlockCrawlerStateDb, EpochCrawlerStateDb};
+use orm::crawler_state::{ChainCrawlerStateDb, EpochCrawlerStateDb};
 use orm::pos_rewards::PoSRewardDb;
 use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
@@ -175,7 +175,7 @@ impl Unbond {
         raw_amount: BigDecimal,
         withdraw_epoch: i32,
         db_validator: ValidatorDb,
-        chain_state: &BlockCrawlerStateDb,
+        chain_state: &ChainCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {

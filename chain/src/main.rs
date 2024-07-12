@@ -25,7 +25,7 @@ use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
-use shared::crawler_state::BlockCrawlerState;
+use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
@@ -195,7 +195,7 @@ async fn crawling_fn(
 
     let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
 
-    let crawler_state = BlockCrawlerState {
+    let crawler_state = ChainCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
         timestamp: timestamp_in_sec,
@@ -314,7 +314,7 @@ async fn initial_query(
 
     let timestamp = DateTimeUtc::now().0.timestamp();
 
-    let crawler_state = BlockCrawlerState {
+    let crawler_state = ChainCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
         timestamp,

@@ -4,7 +4,7 @@ use diesel::{
     ExpressionMethods, NullableExpressionMethods, QueryDsl, RunQueryDsl,
     SelectableHelper,
 };
-use orm::crawler_state::BlockCrawlerStateDb;
+use orm::crawler_state::ChainCrawlerStateDb;
 use orm::parameters::ParametersDb;
 use orm::schema::{chain_parameters, crawler_state};
 
@@ -25,7 +25,7 @@ pub trait ChainRepositoryTrait {
 
     async fn find_chain_parameters(&self) -> Result<ParametersDb, String>;
 
-    async fn get_state(&self) -> Result<BlockCrawlerStateDb, String>;
+    async fn get_state(&self) -> Result<ChainCrawlerStateDb, String>;
 }
 
 #[async_trait]
@@ -60,7 +60,7 @@ impl ChainRepositoryTrait for ChainRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn get_state(&self) -> Result<BlockCrawlerStateDb, String> {
+    async fn get_state(&self) -> Result<ChainCrawlerStateDb, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -84,7 +84,7 @@ impl ChainRepositoryTrait for ChainRepository {
                     crawler_state::last_processed_epoch,
                     crawler_state::timestamp,
                 )))
-                .first::<BlockCrawlerStateDb>(conn)
+                .first::<ChainCrawlerStateDb>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
