@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
+use strum::{Display, VariantArray};
 use validator::Validate;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, Display, VariantArray, PartialEq,
+)]
 #[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum CrawlerNameDto {
     Chain,
     Governance,

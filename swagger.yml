@@ -565,6 +565,7 @@ paths:
                   properties:
                     name:
                       type: string
+                      enum: [chain, governance, parameters, pos, rewards, transactions]
                     timestamp:
                       type: number
 

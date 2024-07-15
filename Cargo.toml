@@ -83,3 +83,5 @@ duration-str = "0.7.1"
 fake = { version = "2.9.2", features = ["derive"] }
 rand = "0.8.5"
 bigdecimal = "0.4.5"
+strum = "0.26.3"
+strum_macros = "0.26.3"
