@@ -1,2 +1,4 @@
-
-cargo run -- --cargo-env development --tendermint-url http://127.0.0.1:27657 --database-url postgres://postgres:password@0.0.0.0:5435/indexer_local
+. ../.env
+export TENDERMINT_URL
+export DATABASE_URL
+cargo run -- --cargo-env development
