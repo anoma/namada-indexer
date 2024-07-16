@@ -42,6 +42,18 @@ cp .env_sample .env
   - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
   - Or use a Public RPC
 - Get a network `CHAIN_ID`
+- Create a `.env` file in the root of the project with the following content:
+  ```env
+  DATABASE_URL=postgres://postgres:password@0.0.0.0:5435/namada-indexer
+  TENDERMINT_URL=http://127.0.0.1:27657
+  ```
+  (Change the values to match your setup)
+- For `webserver` only, you may also add the following to the `.env` file:
+  ```env
+  CACHE_URL=redis://redis@0.0.0.0:6379
+  PORT=5000
+  ```
+  (Change the values to match your setup)
 - Use the `run.sh` script inside each package. Keep in mind that PoS package have to be run always while other service might not
 
 ## Testing via seeder
