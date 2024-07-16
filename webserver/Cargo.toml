@@ -47,6 +47,8 @@ namada_parameters.workspace = true
 deadpool-redis = "0.13.0"
 bigdecimal.workspace = true
 shared.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

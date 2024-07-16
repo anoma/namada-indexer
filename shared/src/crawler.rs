@@ -12,41 +12,39 @@ use tokio_retry::RetryIf;
 
 use crate::error::MainError;
 
-fn indexes(
-    from_height: u32,
-    to_height: Option<u32>,
-) -> impl Stream<Item = u32> {
+fn indexes(from: u32, to: Option<u32>) -> impl Stream<Item = u32> {
     stream! {
-        for i in from_height..to_height.unwrap_or(u32::MAX) {
+        for i in from..to.unwrap_or(u32::MAX) {
             yield i;
         }
     }
 }
 
-pub async fn crawl<F, Fut>(f: F, next_index: u32) -> Result<(), MainError>
+pub async fn crawl<F, Fut>(f: F, first_index: u32) -> Result<(), MainError>
 where
     F: Fn(u32) -> Fut,
     Fut: Future<Output = Result<(), MainError>>,
 {
-    let s = indexes(next_index, None);
+    let s = indexes(first_index, None);
     pin_mut!(s);
     let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
     let must_exit = must_exit_handle();
 
-    while let Some(block_height) = s.next().await {
+    while let Some(index) = s.next().await {
         if must_exit.load(atomic::Ordering::Relaxed) {
             break;
         }
         _ = RetryIf::spawn(
             retry_strategy.clone(),
             || async {
-                f(block_height).await?;
+                f(index).await?;
                 Ok(())
             },
             |e: &MainError| {
                 !must_exit.load(atomic::Ordering::Relaxed)
                     && (e.eq(&MainError::RpcError)
-                        || e.eq(&MainError::Database))
+                        || e.eq(&MainError::Database)
+                        || e.eq(&MainError::NoAction))
             },
         )
         .await;

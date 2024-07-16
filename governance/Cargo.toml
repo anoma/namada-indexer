@@ -16,6 +16,7 @@ path = "src/main.rs"
 tokio.workspace = true 
 tracing.workspace = true
 tracing-subscriber.workspace = true
+chrono.workspace = true 
 clap.workspace = true 
 anyhow.workspace = true
 namada_sdk.workspace = true

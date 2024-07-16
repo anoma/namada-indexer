@@ -1,18 +1,34 @@
 use crate::block::{BlockHeight, Epoch};
 
-#[derive(Debug, Clone, Default)]
-pub struct CrawlerState {
-    pub height: BlockHeight,
-    pub epoch: Epoch,
+pub enum CrawlerName {
+    Chain,
+    Governance,
+    Parameters,
+    Pos,
+    Rewards,
+    Transactions,
+}
+
+#[derive(Debug)]
+pub struct ChainCrawlerState {
+    pub last_processed_block: BlockHeight,
+    pub last_processed_epoch: Epoch,
     pub timestamp: i64,
 }
 
-impl CrawlerState {
-    pub fn new(height: BlockHeight, epoch: Epoch, timestamp: i64) -> Self {
-        Self {
-            height,
-            epoch,
-            timestamp,
-        }
-    }
+#[derive(Debug)]
+pub struct BlockCrawlerState {
+    pub last_processed_block: BlockHeight,
+    pub timestamp: i64,
+}
+
+#[derive(Debug)]
+pub struct EpochCrawlerState {
+    pub last_processed_epoch: Epoch,
+    pub timestamp: i64,
+}
+
+#[derive(Debug)]
+pub struct IntervalCrawlerState {
+    pub timestamp: i64,
 }

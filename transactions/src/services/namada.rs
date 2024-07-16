@@ -1,5 +1,4 @@
 use anyhow::Context;
-use namada_core::storage::BlockHeight as NamadaSdkBlockHeight;
 use namada_sdk::hash::Hash;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
@@ -8,19 +7,18 @@ use shared::block::{BlockHeight, Epoch};
 use shared::id::Id;
 use tendermint_rpc::HttpClient;
 
-pub async fn is_block_committed(
+pub async fn get_last_block(
     client: &HttpClient,
-    block_height: BlockHeight,
-) -> anyhow::Result<bool> {
-    let block_height = to_block_height(block_height);
+) -> anyhow::Result<BlockHeight> {
     let last_block = RPC
         .shell()
         .last_block(client)
         .await
         .context("Failed to query Namada's last committed block")?;
-    Ok(last_block
-        .map(|b| block_height <= b.height)
-        .unwrap_or(false))
+
+    last_block
+        .ok_or(anyhow::anyhow!("No last block found"))
+        .map(|b| BlockHeight::from(b.height.0 as u32))
 }
 
 pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
@@ -56,8 +54,4 @@ pub async fn query_tx_code_hash(
     } else {
         None
     }
-}
-
-fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
-    NamadaSdkBlockHeight::from(block_height as u64)
 }

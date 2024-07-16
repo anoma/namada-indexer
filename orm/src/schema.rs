@@ -6,6 +6,14 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "crawler_name"))]
+    pub struct CrawlerName;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "governance_kind"))]
     pub struct GovernanceKind;
 
@@ -68,15 +76,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    block_crawler_state (id) {
-        id -> Int4,
-        height -> Int4,
-        epoch -> Int4,
-        timestamp -> Int8,
-    }
-}
-
-diesel::table! {
     bonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -103,9 +102,14 @@ diesel::table! {
 }
 
 diesel::table! {
-    epoch_crawler_state (id) {
-        id -> Int4,
-        epoch -> Int4,
+    use diesel::sql_types::*;
+    use super::sql_types::CrawlerName;
+
+    crawler_state (name) {
+        name -> CrawlerName,
+        last_processed_block -> Nullable<Int4>,
+        last_processed_epoch -> Nullable<Int4>,
+        timestamp -> Timestamp,
     }
 }
 
@@ -251,10 +255,9 @@ diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balances,
-    block_crawler_state,
     bonds,
     chain_parameters,
-    epoch_crawler_state,
+    crawler_state,
     gas,
     gas_price,
     governance_proposals,

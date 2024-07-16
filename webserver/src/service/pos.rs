@@ -75,9 +75,9 @@ impl PosService {
         address: String,
         page: u64,
     ) -> Result<(Vec<Bond>, u64, u64), PoSError> {
-        let chain_state = self
-            .chain_repo
-            .get_chain_state()
+        let pos_state = self
+            .pos_repo
+            .get_state()
             .await
             .map_err(PoSError::Database)?;
 
@@ -90,7 +90,7 @@ impl PosService {
         let bonds: Vec<Bond> = db_bonds
             .into_iter()
             .map(|(validator, bond)| {
-                let bond_status = BondStatus::from((&bond, &chain_state));
+                let bond_status = BondStatus::from((&bond, &pos_state));
                 let bond = Bond::from(bond, bond_status, validator);
 
                 Bond {
@@ -145,7 +145,7 @@ impl PosService {
 
         let chain_state = self
             .chain_repo
-            .get_chain_state()
+            .get_state()
             .await
             .map_err(PoSError::Database)?;
 
@@ -183,7 +183,13 @@ impl PosService {
     ) -> Result<(Vec<Unbond>, u64, u64), PoSError> {
         let chain_state = self
             .chain_repo
-            .get_chain_state()
+            .get_state()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let pos_state = self
+            .pos_repo
+            .get_state()
             .await
             .map_err(PoSError::Database)?;
 
@@ -191,7 +197,7 @@ impl PosService {
             .pos_repo
             .find_merged_unbonds_by_address(
                 address,
-                chain_state.epoch,
+                pos_state.last_processed_epoch,
                 page as i64,
             )
             .await
@@ -234,12 +240,12 @@ impl PosService {
             epoch as i32
         } else {
             self.chain_repo
-                .get_chain_state()
+                .get_state()
                 .await
                 .map_err(PoSError::Database)?
-                .epoch
+                .last_processed_epoch
         };
-        
+
         let (db_withdraws, total_pages, total_items) = self
             .pos_repo
             .find_withdraws_by_address(address, epoch, page as i64)

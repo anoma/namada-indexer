@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use orm::block_crawler_state::BlockCrawlerStateDb;
+use orm::crawler_state::ChainCrawlerStateDb;
 use orm::governance_proposal::{
     GovernanceProposalDb, GovernanceProposalKindDb, GovernanceProposalResultDb,
     GovernanceProposalTallyTypeDb,
@@ -114,7 +114,7 @@ pub struct ProposalVote {
 impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
-        chain_state: &BlockCrawlerStateDb,
+        chain_state: &ChainCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
@@ -123,12 +123,12 @@ impl Proposal {
         // different number of blocks than min_num_of_blocks
         // this will be off
         let epoch_progress =
-            epoch_progress(chain_state.height, min_num_of_blocks);
+            epoch_progress(chain_state.last_processed_block, min_num_of_blocks);
 
         let to_start = time_between_epochs(
             min_num_of_blocks,
             epoch_progress,
-            chain_state.epoch,
+            chain_state.last_processed_epoch,
             value.start_epoch,
             min_duration,
         );
@@ -136,12 +136,12 @@ impl Proposal {
         let to_end = time_between_epochs(
             min_num_of_blocks,
             epoch_progress,
-            chain_state.epoch,
+            chain_state.last_processed_epoch,
             value.end_epoch,
             min_duration,
         );
 
-        let time_now = chain_state.timestamp;
+        let time_now = chain_state.timestamp.and_utc().timestamp();
         let start_time = time_now + i64::from(to_start);
         let end_time = time_now + i64::from(to_end);
 

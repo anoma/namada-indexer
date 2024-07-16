@@ -57,6 +57,7 @@ impl PkRepoTrait for RevealedPkRepo {
         conn.interact(move |conn| -> Result<(), String> {
             diesel::insert_into(revealed_pk::table)
                 .values::<Vec<RevealedPkInsertDb>>(vec![revealed_pk])
+                // If pk was already revealed, do nothing
                 .on_conflict_do_nothing()
                 .execute(conn)
                 .map_err(|e| e.to_string())?;
