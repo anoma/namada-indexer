@@ -18,6 +18,7 @@ pub fn insert_inner_transactions(
                 .map(InnerTransactionInsertDb::from)
                 .collect::<Vec<_>>(),
         )
+        .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to insert inner transactions in db")?;
 
@@ -34,6 +35,7 @@ pub fn insert_wrapper_transactions(
                 .map(WrapperTransactionInsertDb::from)
                 .collect::<Vec<_>>(),
         )
+        .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to insert wrapper transactions in db")?;
 
