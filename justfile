@@ -18,3 +18,27 @@ docker-up:
 
 clean:
     cargo clean
+
+run-chain:
+    (cd chain && ./run.sh)
+
+run-governance:
+    (cd governance && ./run.sh)
+
+run-parameters:
+    (cd parameters && ./run.sh)
+
+run-pos:
+    (cd pos && ./run.sh)
+
+run-rewards:
+    (cd rewards && ./run.sh)
+
+run-seeder:
+    (cd seeder && ./run.sh)
+
+run-transactions:
+    (cd transactions && ./run.sh)
+
+run-webserver:
+    (cd webserver && ./run.sh)
