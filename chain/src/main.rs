@@ -9,7 +9,7 @@ use chain::repository;
 use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_bonds, query_last_block_height,
+    query_bonds, query_last_block_height, query_tallies,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -19,6 +19,7 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
+use namada_sdk::queries::Client;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
 use shared::block::Block;
@@ -28,7 +29,11 @@ use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
+use shared::events::{Messages, PosInitializedMsg, PubSub};
 use tendermint_rpc::HttpClient;
+use tokio::signal;
+use tokio::sync::{mpsc, oneshot};
+use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -65,7 +70,8 @@ async fn main() -> Result<(), MainError> {
 
     let client = Arc::new(client);
 
-    let app_state = AppState::new(config.database_url).into_db_error()?;
+    let config = Arc::new(config);
+    let app_state = AppState::new(&config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
     // Run migrations
@@ -74,24 +80,90 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(&client, &conn, config.initial_query_retry_time).await?;
+    let (tx, rx) = oneshot::channel();
+    let channel = String::from("channel-0");
 
-    let crawler_state = db_service::get_chain_crawler_state(&conn)
-        .await
-        .into_db_error()?;
+    let (events_tx, events_rx) = mpsc::channel::<Messages>(100);
+    let pubsub = PubSub::new(&channel, &config.queue_url);
 
-    crawl(
-        move |block_height| {
-            crawling_fn(
-                block_height,
-                client.clone(),
-                conn.clone(),
-                checksums.clone(),
-            )
-        },
-        crawler_state.last_processed_block,
-    )
-    .await
+    let open_handle = pubsub.open(rx, events_tx).unwrap();
+
+    tokio::select! {
+        _ = message_processor(events_rx, Arc::clone(&client), Arc::clone(&conn), Arc::clone(&config), checksums) => {
+            tracing::info!("Message processor exited...");
+        }
+        _ = open_handle => {
+            tracing::info!("PubSub exited...");
+        }
+        _ = must_exit_handle() => {
+            tracing::info!("Exiting...");
+            tx.send(()).unwrap();
+            // open_handle.abort();
+            // processor_handle.abort();
+        }
+    }
+
+    Ok(())
+}
+
+async fn message_processor(
+    mut rx: mpsc::Receiver<Messages>,
+    client: Arc<HttpClient>,
+    conn: Arc<Object>,
+    config: Arc<AppConfig>,
+    checksums: Checksums,
+) -> anyhow::Result<()> {
+    tracing::info!("Starting message processor...");
+    while let Some(event) = rx.recv().await {
+        tracing::info!("Received message: {:?}", event);
+        match event {
+            Messages::PosInitialized(data) => {
+                tracing::info!("Received message: {:?}", data);
+                let client = Arc::clone(&client);
+                let conn = Arc::clone(&conn);
+                let checksums = checksums.clone();
+
+                initial_query(
+                    Arc::clone(&client),
+                    Arc::clone(&conn),
+                    config.initial_query_retry_time,
+                )
+                .await
+                .context("Initial query error")?;
+
+                let crawler_state = db_service::get_chain_crawler_state(&conn)
+                    .await
+                    .into_db_error()?;
+
+                crawl(
+                    move |block_height| {
+                        crawling_fn(
+                            block_height,
+                            Arc::clone(&client),
+                            Arc::clone(&conn),
+                            checksums.clone(),
+                        )
+                    },
+                    crawler_state.last_processed_block,
+                )
+                .await
+                .context("Crawling error")?;
+            }
+            Messages::Test(_) => {
+                tracing::info!("Received test message");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn must_exit_handle() -> JoinHandle<()> {
+    tokio::spawn(async move {
+        signal::ctrl_c()
+            .await
+            .expect("Error receiving interrupt signal");
+    })
 }
 
 async fn crawling_fn(
@@ -157,9 +229,10 @@ async fn crawling_fn(
         .into_rpc_error()?;
 
     let addresses = block.addresses_with_balance_change(native_token);
-    let balances = namada_service::query_balance(&client, &addresses)
-        .await
-        .into_rpc_error()?;
+    let balances =
+        namada_service::query_balance(Arc::clone(&client), addresses.clone())
+            .await
+            .into_rpc_error()?;
     tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =
@@ -171,7 +244,7 @@ async fn crawling_fn(
     tracing::info!("Creating {} governance proposals...", proposals.len());
 
     let proposals_with_tally =
-        namada_service::query_tallies(&client, proposals)
+        namada_service::query_tallies(Arc::clone(&client), proposals)
             .await
             .into_rpc_error()?;
 
@@ -179,7 +252,9 @@ async fn crawling_fn(
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
     let addresses = block.bond_addresses();
-    let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
+    let bonds = query_bonds(Arc::clone(&client), addresses)
+        .await
+        .into_rpc_error()?;
     tracing::info!("Updating bonds for {} addresses", bonds.len());
 
     let bonds_updates = bonds
@@ -195,7 +270,7 @@ async fn crawling_fn(
         .collect::<Vec<(Id, Id)>>();
 
     let addresses = block.unbond_addresses();
-    let unbonds = namada_service::query_unbonds(&client, addresses)
+    let unbonds = namada_service::query_unbonds(client, addresses)
         .await
         .into_rpc_error()?;
     tracing::info!("Updating unbonds for {} addresses", unbonds.len());
@@ -277,22 +352,22 @@ async fn crawling_fn(
             })
     })
     .await
-    .context_db_interact_error()
-    .into_db_error()?
-    .context("Commit block db transaction error")
-    .into_db_error()
+    .unwrap()
+    .unwrap();
+
+    Ok(())
 }
 
 async fn initial_query(
-    client: &HttpClient,
-    conn: &Object,
+    client: Arc<HttpClient>,
+    conn: Arc<Object>,
     initial_query_retry_time: u64,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
     let block_height =
-        query_last_block_height(client).await.into_rpc_error()?;
+        query_last_block_height(&client).await.into_rpc_error()?;
     let mut epoch =
-        namada_service::get_epoch_at_block_height(client, block_height)
+        namada_service::get_epoch_at_block_height(&client, block_height)
             .await
             .into_rpc_error()?;
     let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
@@ -301,7 +376,7 @@ async fn initial_query(
 
     loop {
         let pos_crawler_state =
-            get_pos_crawler_state(conn).await.into_db_error();
+            get_pos_crawler_state(&conn).await.into_db_error();
 
         match pos_crawler_state {
             // >= in case epochs are really short
@@ -320,17 +395,17 @@ async fn initial_query(
         sleep(Duration::from_secs(initial_query_retry_time)).await;
     }
 
-    let balances = query_all_balances(client).await.into_rpc_error()?;
+    let balances = query_all_balances(&client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
-    let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
+    let (bonds, unbonds) = query_all_bonds_and_unbonds(&client, None, None)
         .await
         .into_rpc_error()?;
 
     tracing::info!("Querying proposals...");
-    let proposals = query_all_proposals(client).await.into_rpc_error()?;
+    let proposals = query_all_proposals(&client).await.into_rpc_error()?;
     let proposals_with_tally =
-        namada_service::query_tallies(client, proposals.clone())
+        namada_service::query_tallies(Arc::clone(&client), proposals.clone())
             .await
             .into_rpc_error()?;
 

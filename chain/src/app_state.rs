@@ -9,7 +9,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(db_url: String) -> anyhow::Result<Self> {
+    pub fn new(db_url: &String) -> anyhow::Result<Self> {
         let max_pool_size = env::var("DATABASE_POOL_SIZE")
             .unwrap_or_else(|_| 8.to_string())
             .parse::<usize>()

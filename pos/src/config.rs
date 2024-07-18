@@ -23,6 +23,9 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub database_url: String,
 
+    #[clap(long, env)]
+    pub queue_url: String,
+
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
 }
