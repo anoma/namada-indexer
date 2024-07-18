@@ -73,6 +73,7 @@ pub async fn get_epoch_at_block_height(
 pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
+    block_height: Option<BlockHeight>,
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
@@ -92,10 +93,14 @@ pub async fn query_balance(
             }
             .into();
 
-            let amount =
-                rpc::get_token_balance(client, &token_addr, &owner, None)
-                    .await
-                    .unwrap_or_default();
+            let amount = rpc::get_token_balance(
+                client,
+                &token_addr,
+                &owner,
+                block_height.map(to_block_height),
+            )
+            .await
+            .unwrap_or_default();
 
             Some(Balance {
                 owner: balance_change.address.clone(),
@@ -137,7 +142,8 @@ async fn query_ibc_tokens(
     let prefix = ibc_trace_key_prefix(None);
 
     let mut tokens: HashSet<IbcToken> = HashSet::new();
-    let ibc_traces = query_storage_prefix::<String>(client, &prefix).await?;
+    let ibc_traces =
+        query_storage_prefix::<String>(client, &prefix, None).await?;
     if let Some(ibc_traces) = ibc_traces {
         for (key, ibc_trace) in ibc_traces {
             if let Some((_, hash)) = is_ibc_trace_key(&key) {
@@ -162,12 +168,13 @@ async fn query_ibc_tokens(
 
 pub async fn query_all_balances(
     client: &HttpClient,
+    height: Option<BlockHeight>,
 ) -> anyhow::Result<Balances> {
     let tokens = query_tokens(client).await?;
     let mut all_balances: Balances = vec![];
 
     for token in tokens.into_iter() {
-        let balances = add_balance(client, token).await?;
+        let balances = add_balance(client, token, height).await?;
         all_balances.extend(balances);
     }
 
@@ -177,6 +184,7 @@ pub async fn query_all_balances(
 async fn add_balance(
     client: &HttpClient,
     token: Token,
+    height: Option<BlockHeight>,
 ) -> anyhow::Result<Vec<Balance>> {
     let mut all_balances: Vec<Balance> = vec![];
     let token_addr = match token {
@@ -189,7 +197,7 @@ async fn add_balance(
     );
 
     let balances =
-        query_storage_prefix::<token::Amount>(client, &balance_prefix)
+        query_storage_prefix::<token::Amount>(client, &balance_prefix, height)
             .await
             .context("Failed to query all balances")?;
 
@@ -688,6 +696,8 @@ pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
     Ok(pos_parameters.pipeline_len)
 }
 
-fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
+pub(super) fn to_block_height(
+    block_height: BlockHeight,
+) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
 }

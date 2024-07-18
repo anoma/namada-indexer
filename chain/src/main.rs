@@ -159,9 +159,10 @@ async fn crawling_fn(
     let ibc_tokens = block.ibc_tokens().into_iter().map(Token::Ibc).collect();
 
     let addresses = block.addresses_with_balance_change(native_token);
-    let balances = namada_service::query_balance(&client, &addresses)
-        .await
-        .into_rpc_error()?;
+    let balances =
+        namada_service::query_balance(&client, &addresses, Some(block_height))
+            .await
+            .into_rpc_error()?;
     tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =
@@ -317,7 +318,9 @@ async fn initial_query(
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
-    let balances = query_all_balances(client).await.into_rpc_error()?;
+    let balances = query_all_balances(client, Some(block_height))
+        .await
+        .into_rpc_error()?;
 
     tracing::info!("Querying validators set...");
     let pipeline_length = namada_service::query_pipeline_length(client)
