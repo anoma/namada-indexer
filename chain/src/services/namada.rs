@@ -69,6 +69,7 @@ pub async fn get_epoch_at_block_height(
 pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
+    block_height: Option<BlockHeight>,
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
@@ -86,9 +87,14 @@ pub async fn query_balance(
                     .context("Failed to parse token address")
                     .ok()?;
 
-            let amount = rpc::get_token_balance(client, &token, &owner)
-                .await
-                .unwrap_or_default();
+            let amount = rpc::get_token_balance(
+                client,
+                &token,
+                &owner,
+                block_height.map(to_block_height),
+            )
+            .await
+            .unwrap_or_default();
 
             Some(Balance {
                 owner: Id::from(owner),
@@ -104,6 +110,7 @@ pub async fn query_balance(
 
 pub async fn query_all_balances(
     client: &HttpClient,
+    height: Option<BlockHeight>,
 ) -> anyhow::Result<Balances> {
     let token_addr = RPC
         .shell()
@@ -114,7 +121,7 @@ pub async fn query_all_balances(
     let balance_prefix = namada_token::storage_key::balance_prefix(&token_addr);
 
     let balances =
-        query_storage_prefix::<token::Amount>(client, &balance_prefix)
+        query_storage_prefix::<token::Amount>(client, &balance_prefix, height)
             .await
             .context("Failed to query all balances")?;
 
@@ -522,6 +529,8 @@ pub async fn query_all_votes(
     anyhow::Ok(votes.iter().flatten().cloned().collect())
 }
 
-fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
+pub(super) fn to_block_height(
+    block_height: BlockHeight,
+) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
 }
