@@ -1,3 +1,5 @@
 -- This file should undo anything in `up.sql`
 
-DROP TABLE IF EXISTS balances;
+DROP VIEW IF EXISTS balances;
+
+DROP TABLE IF EXISTS balance_changes;

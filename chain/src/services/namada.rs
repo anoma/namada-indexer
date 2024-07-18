@@ -73,7 +73,7 @@ pub async fn get_epoch_at_block_height(
 pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
-    block_height: Option<BlockHeight>,
+    block_height: BlockHeight,
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
@@ -97,7 +97,7 @@ pub async fn query_balance(
                 client,
                 &token_addr,
                 &owner,
-                block_height.map(to_block_height),
+                Some(to_block_height(block_height)),
             )
             .await
             .unwrap_or_default();
@@ -106,6 +106,7 @@ pub async fn query_balance(
                 owner: balance_change.address.clone(),
                 token: balance_change.token.clone(),
                 amount: Amount::from(amount),
+                height: block_height,
             })
         })
         .map(futures::future::ready)
@@ -168,7 +169,7 @@ async fn query_ibc_tokens(
 
 pub async fn query_all_balances(
     client: &HttpClient,
-    height: Option<BlockHeight>,
+    height: BlockHeight,
 ) -> anyhow::Result<Balances> {
     let tokens = query_tokens(client).await?;
     let mut all_balances: Balances = vec![];
@@ -184,7 +185,7 @@ pub async fn query_all_balances(
 async fn add_balance(
     client: &HttpClient,
     token: Token,
-    height: Option<BlockHeight>,
+    height: BlockHeight,
 ) -> anyhow::Result<Vec<Balance>> {
     let mut all_balances: Vec<Balance> = vec![];
     let token_addr = match token {
@@ -196,10 +197,13 @@ async fn add_balance(
         &NamadaSdkAddress::from(token_addr),
     );
 
-    let balances =
-        query_storage_prefix::<token::Amount>(client, &balance_prefix, height)
-            .await
-            .context("Failed to query all balances")?;
+    let balances = query_storage_prefix::<token::Amount>(
+        client,
+        &balance_prefix,
+        Some(height),
+    )
+    .await
+    .context("Failed to query all balances")?;
 
     if let Some(balances) = balances {
         for (key, balance) in balances {
@@ -214,6 +218,7 @@ async fn add_balance(
                 owner: Id::from(o),
                 token: token.clone(),
                 amount: Amount::from(b),
+                height,
             })
         }
     }

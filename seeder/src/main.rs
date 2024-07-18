@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
-use orm::balances::BalancesInsertDb;
+use orm::balances::BalanceChangesInsertDb;
 use orm::bond::BondInsertDb;
 use orm::governance_proposal::{
     GovernanceProposalInsertDb, GovernanceProposalUpdateStatusDb,
@@ -10,8 +10,8 @@ use orm::governance_proposal::{
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{
-    balances, bonds, governance_proposals, governance_votes, pos_rewards,
-    unbonds, validators,
+    balance_changes, bonds, governance_proposals, governance_votes,
+    pos_rewards, unbonds, validators,
 };
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorInsertDb};
@@ -138,7 +138,7 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .execute(transaction_conn)
                     .context("Failed to remove all validators")?;
 
-                diesel::delete(balances::table)
+                diesel::delete(balance_changes::table)
                     .execute(transaction_conn)
                     .context("Failed to remove all validators")?;
 
@@ -201,12 +201,12 @@ async fn main() -> anyhow::Result<(), MainError> {
                     .execute(transaction_conn)
                     .context("Failed to insert pos rewards in db")?;
 
-                diesel::insert_into(balances::table)
-                    .values::<&Vec<BalancesInsertDb>>(
+                diesel::insert_into(balance_changes::table)
+                    .values::<&Vec<BalanceChangesInsertDb>>(
                         &balances
                             .into_iter()
                             .map(|balance| {
-                                BalancesInsertDb::from_balance(balance)
+                                BalanceChangesInsertDb::from_balance(balance)
                             })
                             .collect::<Vec<_>>(),
                     )

@@ -1,11 +1,8 @@
 use anyhow::Context;
 use diesel::sql_types::BigInt;
-use diesel::upsert::excluded;
-use diesel::{
-    sql_query, ExpressionMethods, PgConnection, QueryableByName, RunQueryDsl,
-};
-use orm::balances::BalancesInsertDb;
-use orm::schema::{balances, ibc_token, token};
+use diesel::{sql_query, PgConnection, QueryableByName, RunQueryDsl};
+use orm::balances::BalanceChangesInsertDb;
+use orm::schema::{balance_changes, ibc_token, token};
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
 use shared::balance::Balances;
 use shared::token::Token;
@@ -21,19 +18,19 @@ pub fn insert_balance(
     transaction_conn: &mut PgConnection,
     balances: Balances,
 ) -> anyhow::Result<()> {
-    diesel::insert_into(balances::table)
-        .values::<&Vec<BalancesInsertDb>>(
+    diesel::insert_into(balance_changes::table)
+        .values::<&Vec<BalanceChangesInsertDb>>(
             &balances
                 .into_iter()
-                .map(BalancesInsertDb::from_balance)
+                .map(BalanceChangesInsertDb::from_balance)
                 .collect::<Vec<_>>(),
         )
-        .on_conflict((balances::columns::owner, balances::columns::token))
-        .do_update()
-        .set(
-            balances::columns::raw_amount
-                .eq(excluded(balances::columns::raw_amount)),
-        )
+        .on_conflict((
+            balance_changes::columns::owner,
+            balance_changes::columns::token,
+            balance_changes::columns::height,
+        ))
+        .do_nothing()
         .execute(transaction_conn)
         .context("Failed to update balances in db")?;
 
@@ -99,10 +96,13 @@ pub fn insert_tokens(
 mod tests {
 
     use anyhow::Context;
-    use diesel::{BoolExpressionMethods, QueryDsl, SelectableHelper};
+    use diesel::{
+        BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper,
+    };
     use namada_sdk::token::Amount as NamadaAmount;
     use namada_sdk::uint::MAX_SIGNED_VALUE;
     use orm::balances::BalanceDb;
+    use orm::views::balances;
     use shared::balance::{Amount, Balance};
     use shared::id::Id;
     use test_helpers::db::TestDb;
@@ -140,11 +140,13 @@ mod tests {
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
             ));
             let amount = Amount::from(NamadaAmount::from_u64(100));
+            let height = 42;
 
             let balance = Balance {
                 owner: owner.clone(),
                 token: token.clone(),
                 amount: amount.clone(),
+                height,
             };
 
             insert_tokens(conn, vec![token.clone()])?;
@@ -174,19 +176,23 @@ mod tests {
             "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
         ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
 
         let balance = Balance {
             owner: owner.clone(),
             token: token.clone(),
             amount: amount.clone(),
+            height,
         };
 
         db.run_test(move |conn| {
             seed_balance(conn, vec![balance.clone()])?;
 
             let new_amount = Amount::from(NamadaAmount::from_u64(200));
+            let new_height = 43;
             let new_balance = Balance {
                 amount: new_amount.clone(),
+                height: new_height,
                 ..(balance.clone())
             };
 
@@ -216,11 +222,13 @@ mod tests {
             "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
         ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
 
         let balance = Balance {
             owner: owner.clone(),
             token: token.clone(),
             amount: amount.clone(),
+            height,
         };
 
         db.run_test(move |conn| {
@@ -260,11 +268,13 @@ mod tests {
             "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
         ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
 
         let balance = Balance {
             owner: owner.clone(),
             token: token.clone(),
             amount: amount.clone(),
+            height,
         };
 
         db.run_test(move |conn| {
@@ -342,11 +352,13 @@ mod tests {
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
             ));
             let max_amount = Amount::from(NamadaAmount::from(MAX_SIGNED_VALUE));
+            let height = 42;
 
             let balance = Balance {
                 owner: owner.clone(),
                 token: token.clone(),
                 amount: max_amount.clone(),
+                height,
             };
 
             insert_tokens(conn, vec![token.clone()])?;
@@ -447,11 +459,11 @@ mod tests {
     ) -> anyhow::Result<()> {
         seed_tokens_from_balance(conn, balances.clone())?;
 
-        diesel::insert_into(balances::table)
-            .values::<&Vec<BalancesInsertDb>>(
+        diesel::insert_into(balance_changes::table)
+            .values::<&Vec<BalanceChangesInsertDb>>(
                 &balances
                     .into_iter()
-                    .map(BalancesInsertDb::from_balance)
+                    .map(BalanceChangesInsertDb::from_balance)
                     .collect::<Vec<_>>(),
             )
             .execute(conn)

@@ -75,12 +75,13 @@ pub mod sql_types {
 }
 
 diesel::table! {
-    balances (id) {
+    balance_changes (id) {
         id -> Int4,
         owner -> Varchar,
         #[max_length = 64]
         token -> Varchar,
         raw_amount -> Numeric,
+        height -> Int4,
     }
 }
 
@@ -278,7 +279,7 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(balances -> token (token));
+diesel::joinable!(balance_changes -> token (token));
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(ibc_token -> token (address));
@@ -287,7 +288,7 @@ diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    balances,
+    balance_changes,
     bonds,
     chain_parameters,
     crawler_state,
