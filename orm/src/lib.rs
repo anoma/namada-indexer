@@ -13,3 +13,4 @@ pub mod schema;
 pub mod transactions;
 pub mod unbond;
 pub mod validators;
+pub mod views;

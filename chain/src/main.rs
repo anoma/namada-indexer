@@ -151,7 +151,7 @@ async fn crawling_fn(
 
     let addresses = block.addresses_with_balance_change(native_token);
     let balances =
-        namada_service::query_balance(&client, &addresses, Some(block_height))
+        namada_service::query_balance(&client, &addresses, block_height)
             .await
             .into_rpc_error()?;
     tracing::info!("Updating balance for {} addresses...", addresses.len());
@@ -292,7 +292,7 @@ async fn initial_query(
         sleep(Duration::from_secs(initial_query_retry_time)).await;
     }
 
-    let balances = query_all_balances(client, Some(block_height))
+    let balances = query_all_balances(client, block_height)
         .await
         .into_rpc_error()?;
 
