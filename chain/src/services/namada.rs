@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
@@ -55,34 +56,40 @@ pub async fn get_epoch_at_block_height(
 }
 
 pub async fn query_balance(
-    client: &HttpClient,
-    balance_changes: &HashSet<BalanceChange>,
+    client: Arc<HttpClient>,
+    balance_changes: HashSet<BalanceChange>,
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
-        .filter_map(|balance_change| async move {
-            tracing::info!(
-                "Fetching balance change for {} ...",
-                balance_change.address
-            );
+        .filter_map(|balance_change| {
+            let client = Arc::clone(&client);
+            async move {
+                tracing::info!(
+                    "Fetching balance change for {} ...",
+                    balance_change.address
+                );
 
-            let owner =
-                NamadaSdkAddress::from_str(&balance_change.address.to_string())
-                    .context("Failed to parse owner address")
-                    .ok()?;
-            let token =
-                NamadaSdkAddress::from_str(&balance_change.token.to_string())
-                    .context("Failed to parse token address")
-                    .ok()?;
+                let owner = NamadaSdkAddress::from_str(
+                    &balance_change.address.to_string(),
+                )
+                .context("Failed to parse owner address")
+                .ok()?;
+                let token = NamadaSdkAddress::from_str(
+                    &balance_change.token.to_string(),
+                )
+                .context("Failed to parse token address")
+                .ok()?;
 
-            let amount = rpc::get_token_balance(client, &token, &owner)
-                .await
-                .unwrap_or_default();
+                let client: &HttpClient = &client;
+                let amount = rpc::get_token_balance(client, &token, &owner)
+                    .await
+                    .unwrap_or_default();
 
-            Some(Balance {
-                owner: Id::from(owner),
-                token: Id::from(token),
-                amount: Amount::from(amount),
-            })
+                Some(Balance {
+                    owner: Id::from(owner),
+                    token: Id::from(token),
+                    amount: Amount::from(amount),
+                })
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
@@ -307,19 +314,26 @@ pub async fn query_next_governance_id(
 }
 
 pub async fn query_bonds(
-    client: &HttpClient,
+    client: Arc<HttpClient>,
     addresses: Vec<BondAddresses>,
 ) -> anyhow::Result<Bonds> {
     let nested_bonds = futures::stream::iter(addresses)
-        .filter_map(|BondAddresses { source, target }| async move {
-            // TODO: if this is too slow do not use query_all_bonds_and_unbonds
-            let (bonds, _) =
-                query_all_bonds_and_unbonds(client, Some(source), Some(target))
-                    .await
-                    .context("Failed to query all bonds and unbonds")
-                    .ok()?;
+        .filter_map(|BondAddresses { source, target }| {
+            let client = Arc::clone(&client);
+            async move {
+                let client: &HttpClient = &client;
+                // TODO: if this is too slow do not use query_all_bonds_and_unbonds
+                let (bonds, _) = query_all_bonds_and_unbonds(
+                    client,
+                    Some(source),
+                    Some(target),
+                )
+                .await
+                .context("Failed to query all bonds and unbonds")
+                .ok()?;
 
-            Some(bonds)
+                Some(bonds)
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
@@ -332,7 +346,7 @@ pub async fn query_bonds(
 }
 
 pub async fn query_unbonds(
-    client: &HttpClient,
+    client: Arc<HttpClient>,
     addresses: Vec<UnbondAddresses>,
 ) -> anyhow::Result<Unbonds> {
     let nested_unbonds = futures::stream::iter(addresses)
@@ -342,7 +356,9 @@ pub async fn query_unbonds(
             let validator = NamadaSdkAddress::from_str(&validator.to_string())
                 .expect("Failed to parse validator address");
 
+            let client = Arc::clone(&client);
             async move {
+                let client: &HttpClient = &client;
                 let unbonds = RPC
                     .vp()
                     .pos()
@@ -436,6 +452,7 @@ pub async fn is_steward(
 ) -> anyhow::Result<bool> {
     let address = NamadaSdkAddress::from_str(&address.to_string())
         .context("Failed to parse address")?;
+    let client: &HttpClient = &client;
 
     let is_steward = rpc::is_steward(client, &address).await;
 
@@ -443,16 +460,21 @@ pub async fn is_steward(
 }
 
 pub async fn query_tallies(
-    client: &HttpClient,
+    client: Arc<HttpClient>,
     proposals: Vec<GovernanceProposal>,
 ) -> anyhow::Result<Vec<(GovernanceProposal, TallyType)>> {
     let proposals = futures::stream::iter(proposals)
-        .filter_map(|proposal| async move {
-            let is_steward = is_steward(client, &proposal.author).await.ok()?;
+        .filter_map(|proposal| {
+            let client = Arc::clone(&client);
+            async move {
+                let proposal = proposal.clone();
+                let is_steward =
+                    is_steward(&client, &proposal.author).await.ok()?;
 
-            let tally_type = TallyType::from(&proposal.r#type, is_steward);
+                let tally_type = TallyType::from(&proposal.r#type, is_steward);
 
-            Some((proposal, tally_type))
+                Some((proposal, tally_type))
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
@@ -463,24 +485,31 @@ pub async fn query_tallies(
 }
 
 pub async fn query_all_votes(
-    client: &HttpClient,
+    client: Arc<HttpClient>,
     proposals_ids: Vec<u64>,
 ) -> anyhow::Result<Vec<GovernanceVote>> {
     let votes = futures::stream::iter(proposals_ids)
-        .filter_map(|proposal_id| async move {
-            let votes =
-                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
+        .filter_map(|proposal_id| {
+            let client = Arc::clone(&client);
+            async move {
+                let proposal_id = proposal_id.clone();
+                let client: &HttpClient = &client;
 
-            let votes = votes
-                .into_iter()
-                .map(|vote| GovernanceVote {
-                    proposal_id,
-                    vote: ProposalVoteKind::from(vote.data),
-                    address: Id::from(vote.delegator),
-                })
-                .collect::<Vec<_>>();
+                let votes = rpc::query_proposal_votes(client, proposal_id)
+                    .await
+                    .ok()?;
 
-            Some(votes)
+                let votes = votes
+                    .into_iter()
+                    .map(|vote| GovernanceVote {
+                        proposal_id,
+                        vote: ProposalVoteKind::from(vote.data),
+                        address: Id::from(vote.delegator),
+                    })
+                    .collect::<Vec<_>>();
+
+                Some(votes)
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)

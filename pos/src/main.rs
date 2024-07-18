@@ -1,5 +1,6 @@
 use std::convert::identity;
 use std::sync::Arc;
+use std::time::Duration;
 
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
@@ -16,7 +17,9 @@ use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::events::{Messages, PosInitializedMsg, PubSub};
 use tendermint_rpc::HttpClient;
+use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -54,6 +57,19 @@ async fn main() -> Result<(), MainError> {
     let next_epoch = namada_service::get_current_epoch(&client.clone())
         .await
         .into_rpc_error()?;
+
+    let channel = String::from("channel-0");
+    let pubsub = PubSub::new(&channel, &config.queue_url);
+
+    async {
+        sleep(Duration::from_secs(5)).await;
+        let asd = Messages::PosInitialized(PosInitializedMsg {
+            data: "Hello, world!".to_string(),
+        });
+
+        pubsub.publish_message(asd).unwrap();
+    }
+    .await;
 
     crawler::crawl(
         move |epoch| crawling_fn(epoch, conn.clone(), client.clone()),

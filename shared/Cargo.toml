@@ -37,3 +37,5 @@ tokio.workspace = true
 tracing.workspace = true
 fake.workspace = true
 rand.workspace = true
+deadpool-redis = "0.15.1"
+async-trait = {version = "0.1.51"}

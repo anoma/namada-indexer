@@ -15,13 +15,16 @@ impl Display for CargoEnv {
     }
 }
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Clone)]
 pub struct AppConfig {
     #[clap(long, env)]
     pub tendermint_url: String,
 
     #[clap(long, env)]
     pub database_url: String,
+
+    #[clap(long, env)]
+    pub queue_url: String,
 
     #[clap(long, env)]
     pub initial_query_retry_time: u64,
