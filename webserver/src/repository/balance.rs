@@ -1,7 +1,7 @@
 use axum::async_trait;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalanceDb;
-use orm::schema::balances;
+use orm::views::balances;
 
 use crate::appstate::AppState;
 
