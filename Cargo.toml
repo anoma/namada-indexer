@@ -85,3 +85,13 @@ rand = "0.8.5"
 bigdecimal = "0.4.5"
 strum = "0.26.3"
 strum_macros = "0.26.3"
+
+[patch.'https://github.com/anoma/namada']
+namada_core = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_sdk = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_tx = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_governance = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_ibc = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_token = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_parameters = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
+namada_proof_of_stake = { git = "https://github.com/joel-u410/namada.git", tag = "v0.40.0-u410" }
