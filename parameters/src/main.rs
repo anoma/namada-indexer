@@ -116,6 +116,8 @@ async fn crawling_fn(
         .await
         .into_rpc_error()?;
 
+    let checksums = namada_service::query_checksums(&client).await;
+
     let gas_price = namada_service::get_gas_price(&client).await;
 
     let timestamp = DateTimeUtc::now().0.timestamp();
@@ -130,6 +132,7 @@ async fn crawling_fn(
                     ParametersInsertDb::from((
                         parameters,
                         genesis,
+                        checksums,
                         EPOCH_SWITCH_BLOCKS_DELAY,
                     )),
                 )?;

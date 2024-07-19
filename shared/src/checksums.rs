@@ -5,9 +5,9 @@ use namada_sdk::tx::{
     TX_TRANSPARENT_TRANSFER_WASM, TX_UNBOND_WASM, TX_VOTE_PROPOSAL,
     TX_WITHDRAW_WASM,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Checksums(BiMap<String, String>);
 
 impl Checksums {
@@ -21,6 +21,10 @@ impl Checksums {
 
     pub fn add(&mut self, key: String, value: String) {
         let key = key.strip_suffix(".wasm").unwrap().to_owned();
+        self.0.insert(key, value);
+    }
+
+    pub fn add_with_ext(&mut self, key: String, value: String) {
         self.0.insert(key, value);
     }
 

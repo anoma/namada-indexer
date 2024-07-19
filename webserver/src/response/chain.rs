@@ -1,5 +1,6 @@
 use orm::parameters::ParametersDb;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as SerdeJSONValue;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,6 +14,7 @@ pub struct Parameters {
     pub genesis_time: String,
     pub min_duration: String,
     pub min_num_of_blocks: String,
+    pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: String,
 }
 
@@ -28,6 +30,7 @@ impl From<ParametersDb> for Parameters {
             genesis_time: parameters.genesis_time.to_string(),
             min_duration: parameters.min_duration.to_string(),
             min_num_of_blocks: parameters.min_num_of_blocks.to_string(),
+            checksums: parameters.checksums,
             epoch_switch_blocks_delay: parameters
                 .epoch_switch_blocks_delay
                 .to_string(),

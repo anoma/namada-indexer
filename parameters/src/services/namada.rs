@@ -6,17 +6,54 @@ use namada_parameters::EpochDuration;
 use namada_sdk::address::Address as NamadaAddress;
 use namada_sdk::arith::checked;
 use namada_sdk::dec::Dec;
+use namada_sdk::hash::Hash;
 use namada_sdk::proof_of_stake::storage_key as pos_storage_key;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     self, get_token_total_supply, get_total_staked_tokens, query_storage_value,
 };
+use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use shared::balance::Amount;
 use shared::block::Epoch;
+use shared::checksums::Checksums;
 use shared::gas::GasPrice;
 use shared::parameters::Parameters;
 use tendermint_rpc::HttpClient;
+
+async fn query_tx_code_hash(
+    client: &HttpClient,
+    tx_code_path: &str,
+) -> Option<String> {
+    let hash_key = Key::wasm_hash(tx_code_path);
+    let (tx_code_res, _) =
+        rpc::query_storage_value_bytes(client, &hash_key, None, false)
+            .await
+            .ok()?;
+    if let Some(tx_code_bytes) = tx_code_res {
+        let tx_code =
+            Hash::try_from(&tx_code_bytes[..]).expect("Invalid code hash");
+        Some(tx_code.to_string())
+    } else {
+        None
+    }
+}
+
+pub async fn query_checksums(client: &HttpClient) -> Checksums {
+    let mut checksums = Checksums::default();
+    for code_path in Checksums::code_paths() {
+        let code =
+            query_tx_code_hash(client, &code_path)
+                .await
+                .unwrap_or_else(|| {
+                    panic!("{} must be defined in namada storage.", code_path)
+                });
+
+        checksums.add_with_ext(code_path, code.to_lowercase());
+    }
+
+    checksums
+}
 
 pub async fn get_parameters(
     client: &HttpClient,

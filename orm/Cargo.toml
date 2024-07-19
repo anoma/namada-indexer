@@ -21,3 +21,4 @@ serde.workspace = true
 shared.workspace = true
 bigdecimal.workspace = true
 chrono.workspace = true
+serde_json.workspace = true
