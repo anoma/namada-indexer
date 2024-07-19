@@ -60,7 +60,7 @@ pub struct BatchResults {
 impl From<TxResult<String>> for BatchResults {
     fn from(value: TxResult<String>) -> Self {
         Self {
-            batch_results: value.batch_results.0.iter().fold(
+            batch_results: value.batch_results.iter().fold(
                 BTreeMap::default(),
                 |mut acc, (tx_hash, result)| {
                     let tx_id = Id::from(*tx_hash);
@@ -73,16 +73,18 @@ impl From<TxResult<String>> for BatchResults {
                     acc
                 },
             ),
-            batch_errors: value.batch_results.0.into_iter().fold(
+            batch_errors: value.batch_results.iter().fold(
                 BTreeMap::default(),
                 |mut acc, (tx_hash, result)| {
-                    let tx_id = Id::from(tx_hash);
+                    let tx_id = Id::from(*tx_hash);
                     let result = if let Ok(result) = result {
                         result
                             .vps_result
                             .errors
-                            .into_iter()
-                            .map(|(address, error)| (Id::from(address), error))
+                            .iter()
+                            .map(|(address, error)| {
+                                (Id::from(address.clone()), error.clone())
+                            })
                             .collect()
                     } else {
                         BTreeMap::default()

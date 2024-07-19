@@ -14,6 +14,7 @@ pub mod parameters;
 pub mod proposal;
 pub mod public_key;
 pub mod rewards;
+pub mod ser;
 pub mod transaction;
 pub mod unbond;
 pub mod utils;

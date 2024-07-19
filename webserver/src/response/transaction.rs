@@ -13,7 +13,7 @@ pub enum TransactionResult {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionKind {
-    TransparentTransfer,
+    Transfer,
     ShieldedTransfer,
     ShieldingTransfer,
     UnshieldingTransfer,
@@ -88,9 +88,7 @@ impl From<TransactionResultDb> for TransactionResult {
 impl From<TransactionKindDb> for TransactionKind {
     fn from(value: TransactionKindDb) -> Self {
         match value {
-            TransactionKindDb::TransparentTransfer => {
-                TransactionKind::TransparentTransfer
-            }
+            TransactionKindDb::Transfer => TransactionKind::Transfer,
             TransactionKindDb::ShieldedTransfer => {
                 TransactionKind::ShieldedTransfer
             }
