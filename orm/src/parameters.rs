@@ -2,6 +2,8 @@ use diesel::prelude::Insertable;
 use diesel::query_builder::AsChangeset;
 use diesel::{Queryable, Selectable};
 use serde::Serialize;
+use serde_json::Value as SerdeJSONValue;
+use shared::checksums::Checksums;
 use shared::genesis::Genesis;
 use shared::parameters::{EpochSwitchBlocksDelay, Parameters};
 
@@ -20,6 +22,7 @@ pub struct ParametersInsertDb {
     pub native_token_address: String,
     pub chain_id: String,
     pub genesis_time: i64,
+    pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: i32,
 }
 
@@ -37,16 +40,18 @@ pub struct ParametersDb {
     pub native_token_address: String,
     pub chain_id: String,
     pub genesis_time: i64,
+    pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: i32,
 }
 
-impl From<(Parameters, Genesis, EpochSwitchBlocksDelay)>
+impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
     for ParametersInsertDb
 {
     fn from(
-        (parameters, genesis, epoch_switch_blocks_delay): (
+        (parameters, genesis, checksums, epoch_switch_blocks_delay): (
             Parameters,
             Genesis,
+            Checksums,
             EpochSwitchBlocksDelay,
         ),
     ) -> Self {
@@ -60,6 +65,8 @@ impl From<(Parameters, Genesis, EpochSwitchBlocksDelay)>
             native_token_address: parameters.native_token_address,
             chain_id: genesis.chain_id,
             genesis_time: genesis.genesis_time,
+            checksums: serde_json::to_value(checksums)
+                .expect("Failed to serialize checksums"),
             epoch_switch_blocks_delay: epoch_switch_blocks_delay as i32,
         }
     }
