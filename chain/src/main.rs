@@ -7,9 +7,10 @@ use chain::app_state::AppState;
 use chain::config::AppConfig;
 use chain::repository;
 use chain::services::db::get_pos_crawler_state;
+// TODO remove imports
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_bonds, query_last_block_height, query_tallies,
+    query_bonds, query_last_block_height,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -19,7 +20,7 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use namada_sdk::queries::Client;
+use deadpool_redis::redis;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
 use shared::block::Block;
@@ -28,11 +29,11 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::events::{self, TestMsg};
 use shared::id::Id;
-use shared::events::{Messages, PosInitializedMsg, PubSub};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tracing::Level;
@@ -41,10 +42,9 @@ use tracing_subscriber::FmtSubscriber;
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
-
     let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
-
     let mut checksums = Checksums::default();
+
     for code_path in Checksums::code_paths() {
         let code = namada_service::query_tx_code_hash(&client, &code_path)
             .await
@@ -62,6 +62,7 @@ async fn main() -> Result<(), MainError> {
         LevelFilter::Debug => Some(Level::DEBUG),
         LevelFilter::Trace => Some(Level::TRACE),
     };
+
     if let Some(log_level) = log_level {
         let subscriber =
             FmtSubscriber::builder().with_max_level(log_level).finish();
@@ -69,10 +70,15 @@ async fn main() -> Result<(), MainError> {
     }
 
     let client = Arc::new(client);
-
     let config = Arc::new(config);
     let app_state = AppState::new(&config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+    let redis_conn = Arc::new(Mutex::new(
+        redis::Client::open(config.queue_url.clone())
+            .expect("failed")
+            .get_connection()
+            .expect("failed"),
+    ));
 
     // Run migrations
     run_migrations(&conn)
@@ -81,25 +87,42 @@ async fn main() -> Result<(), MainError> {
         .into_db_error()?;
 
     let (tx, rx) = oneshot::channel();
-    let channel = String::from("channel-0");
+    let (events_tx, events_rx) = mpsc::channel::<events::Messages>(100);
 
-    let (events_tx, events_rx) = mpsc::channel::<Messages>(100);
-    let pubsub = PubSub::new(&channel, &config.queue_url);
+    let pos_subscriber = tokio::spawn({
+        let redis_conn = Arc::clone(&redis_conn);
+        async move {
+            let mut redis_conn = redis_conn.lock().await;
+            let pubsub = redis_conn.as_pubsub();
 
-    let open_handle = pubsub.open(rx, events_tx).unwrap();
+            events::subscribe(rx, events_tx, pubsub, "chain_channel")
+                .await
+                .unwrap();
+        }
+    });
+
+    {
+        let mut redis_conn = redis_conn.lock().await;
+        events::publish(
+            &mut redis_conn,
+            "pos_channel",
+            events::Messages::ChainReady(TestMsg {
+                data: String::from(""),
+            }),
+        )
+        .unwrap();
+    }
 
     tokio::select! {
+        _ = pos_subscriber => {
+            tracing::info!("Subscriber exited...");
+        }
         _ = message_processor(events_rx, Arc::clone(&client), Arc::clone(&conn), Arc::clone(&config), checksums) => {
             tracing::info!("Message processor exited...");
-        }
-        _ = open_handle => {
-            tracing::info!("PubSub exited...");
         }
         _ = must_exit_handle() => {
             tracing::info!("Exiting...");
             tx.send(()).unwrap();
-            // open_handle.abort();
-            // processor_handle.abort();
         }
     }
 
@@ -107,7 +130,7 @@ async fn main() -> Result<(), MainError> {
 }
 
 async fn message_processor(
-    mut rx: mpsc::Receiver<Messages>,
+    mut rx: mpsc::Receiver<events::Messages>,
     client: Arc<HttpClient>,
     conn: Arc<Object>,
     config: Arc<AppConfig>,
@@ -117,7 +140,7 @@ async fn message_processor(
     while let Some(event) = rx.recv().await {
         tracing::info!("Received message: {:?}", event);
         match event {
-            Messages::PosInitialized(data) => {
+            events::Messages::PosInitialized(data) => {
                 tracing::info!("Received message: {:?}", data);
                 let client = Arc::clone(&client);
                 let conn = Arc::clone(&conn);
@@ -149,9 +172,7 @@ async fn message_processor(
                 .await
                 .context("Crawling error")?;
             }
-            Messages::Test(_) => {
-                tracing::info!("Received test message");
-            }
+            _ => {}
         }
     }
 

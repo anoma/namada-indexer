@@ -6,6 +6,7 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
+use deadpool_redis::redis;
 use namada_sdk::time::DateTimeUtc;
 use orm::crawler_state::EpochStateInsertDb;
 use orm::migrations::run_migrations;
@@ -17,8 +18,11 @@ use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
-use shared::events::{Messages, PosInitializedMsg, PubSub};
+use shared::events::{self, Messages, PosInitializedMsg};
 use tendermint_rpc::HttpClient;
+use tokio::signal;
+use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -46,6 +50,12 @@ async fn main() -> Result<(), MainError> {
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
+    let redis_conn = Arc::new(Mutex::new(
+        redis::Client::open(config.queue_url.clone())
+            .expect("failed")
+            .get_connection()
+            .expect("failed"),
+    ));
 
     // Run migrations
     run_migrations(&conn)
@@ -53,29 +63,98 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    // We always start from the current epoch
-    let next_epoch = namada_service::get_current_epoch(&client.clone())
-        .await
-        .into_rpc_error()?;
+    let (tx, rx) = oneshot::channel();
+    let (events_tx, events_rx) = mpsc::channel::<events::Messages>(100);
 
-    let channel = String::from("channel-0");
-    let pubsub = PubSub::new(&channel, &config.queue_url);
+    let pos_subscriber = tokio::spawn({
+        let redis_conn = Arc::clone(&redis_conn);
 
-    async {
-        sleep(Duration::from_secs(5)).await;
-        let asd = Messages::PosInitialized(PosInitializedMsg {
-            data: "Hello, world!".to_string(),
-        });
+        async move {
+            let mut redis_conn = redis_conn.lock().await;
+            let pubsub = redis_conn.as_pubsub();
 
-        pubsub.publish_message(asd).unwrap();
+            events::subscribe(rx, events_tx, pubsub, "pos_channel")
+                .await
+                .unwrap();
+        }
+    });
+
+    tokio::select! {
+        _ = pos_subscriber => {
+            tracing::info!("Subscriber exited...");
+        }
+        _ = message_processor(events_rx, client, conn, redis_conn) => {
+            tracing::info!("Message processor exited...");
+        }
+        _ = must_exit_handle() => {
+            tracing::info!("Exiting...");
+            tx.send(()).unwrap();
+        }
     }
-    .await;
 
-    crawler::crawl(
-        move |epoch| crawling_fn(epoch, conn.clone(), client.clone()),
-        next_epoch,
-    )
-    .await
+    Ok(())
+}
+
+fn must_exit_handle() -> JoinHandle<()> {
+    tokio::spawn(async move {
+        signal::ctrl_c()
+            .await
+            .expect("Error receiving interrupt signal");
+    })
+}
+
+async fn message_processor(
+    mut rx: mpsc::Receiver<events::Messages>,
+    client: Arc<HttpClient>,
+    conn: Arc<Object>,
+    redis_conn: Arc<Mutex<redis::Connection>>,
+) -> anyhow::Result<()> {
+    tracing::info!("Starting message processor...");
+    while let Some(event) = rx.recv().await {
+        tracing::info!("Received message: {:?}", event);
+        match event {
+            events::Messages::ChainReady(_) => {
+                tracing::info!("Chain is ready to process...");
+                let client = Arc::clone(&client);
+                let conn = Arc::clone(&conn);
+
+                tracing::info!("Starting crawler...");
+                // We always start from the current epoch
+                let next_epoch =
+                    namada_service::get_current_epoch(&client.clone())
+                        .await
+                        .into_rpc_error()?;
+
+                {
+                    tracing::info!("Next epoch to process: {}", next_epoch);
+                    let mut redis_conn = redis_conn.lock().await;
+                    tracing::info!("Publishing PosInitialized message...");
+                    // TODO: we should wait for first crawl iteration to finish
+                    events::publish(
+                        &mut redis_conn,
+                        "chain_channel",
+                        Messages::PosInitialized(PosInitializedMsg {
+                            data: String::from(""),
+                        }),
+                    )
+                    .unwrap();
+                }
+                tracing::info!("Published PosInitialized message 222...");
+
+                crawler::crawl(
+                    move |epoch| {
+                        crawling_fn(epoch, conn.clone(), client.clone())
+                    },
+                    next_epoch,
+                )
+                .await
+                .expect("failed");
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
 }
 
 async fn crawling_fn(
