@@ -750,7 +750,7 @@ components:
             type: number
           txKind:
             type: string
-            enum: [transparentTransfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, unknown]
+            enum: [transfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, unknown]
     GasPriceTable:
       type: array
       items:
@@ -819,7 +819,7 @@ components:
                 type: string
               kind:
                 type: string
-                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+                enum: ["transfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
               exitCode:
                 type: string
                 enum: [applied, rejected]
@@ -842,7 +842,7 @@ components:
           type: string
         kind:
           type: string
-          enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+          enum: ["transfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
         exitCode:
           type: string
           enum: [applied, rejected]
