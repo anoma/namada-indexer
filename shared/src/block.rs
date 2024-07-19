@@ -283,23 +283,20 @@ impl Block {
                 let mut balance_changes = vec![];
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
-                        TransactionKind::TransparentTransfer(data) => {
-                            let transfer_data = data.clone();
-                            let transfer_source =
-                                Id::from(transfer_data.source);
-                            let transfer_target =
-                                Id::from(transfer_data.target);
-                            let transfer_token = Id::from(transfer_data.token);
-                            vec![
-                                BalanceChange::new(
-                                    transfer_source,
-                                    transfer_token.clone(),
-                                ),
-                                BalanceChange::new(
-                                    transfer_target,
-                                    transfer_token,
-                                ),
-                            ]
+                        TransactionKind::Transfer(data) => {
+                            vec![&data.sources, &data.targets]
+                                .iter()
+                                .flat_map(|transfer_changes| {
+                                    transfer_changes.0.iter().map(
+                                        |(account, _)| {
+                                            BalanceChange::new(
+                                                Id::from(account.owner.clone()),
+                                                Id::from(account.token.clone()),
+                                            )
+                                        },
+                                    )
+                                })
+                                .collect()
                         }
                         TransactionKind::Bond(data) => {
                             let bond_data = data.clone();
