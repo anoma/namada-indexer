@@ -7,7 +7,7 @@ use diesel::{
     SelectableHelper,
 };
 use orm::bond::BondDb;
-use orm::crawler_state::EpochCrawlerStateDb;
+use orm::crawler_state::{CrawlerNameDb, EpochCrawlerStateDb};
 use orm::pos_rewards::PoSRewardDb;
 use orm::schema::{bonds, crawler_state, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
@@ -310,6 +310,7 @@ impl PosRepositoryTrait for PosRepository {
 
         conn.interact(move |conn| {
             crawler_state::table
+                .filter(crawler_state::dsl::name.eq(CrawlerNameDb::Pos))
                 .select((
                     crawler_state::dsl::last_processed_epoch,
                     crawler_state::dsl::timestamp,

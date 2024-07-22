@@ -1,10 +1,7 @@
 use axum::async_trait;
 use diesel::dsl::max;
-use diesel::{
-    ExpressionMethods, NullableExpressionMethods, QueryDsl, RunQueryDsl,
-    SelectableHelper,
-};
-use orm::crawler_state::ChainCrawlerStateDb;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use orm::crawler_state::{ChainCrawlerStateDb, CrawlerNameDb};
 use orm::parameters::ParametersDb;
 use orm::schema::{chain_parameters, crawler_state};
 
@@ -64,27 +61,14 @@ impl ChainRepositoryTrait for ChainRepository {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            let (state1, state2) = diesel::alias!(
-                crawler_state as state1,
-                crawler_state as state2
-            );
-            let subquery = state1
-                .select(max(state1.field(crawler_state::last_processed_block)))
-                .single_value();
-
-            state2
-                .filter(
-                    state2
-                        .field(crawler_state::last_processed_block)
-                        .nullable()
-                        .eq(subquery),
-                )
-                .select(state2.fields((
-                    crawler_state::last_processed_block,
-                    crawler_state::last_processed_epoch,
-                    crawler_state::timestamp,
-                )))
-                .first::<ChainCrawlerStateDb>(conn)
+            crawler_state::table
+                .filter(crawler_state::dsl::name.eq(CrawlerNameDb::Chain))
+                .select((
+                    crawler_state::dsl::last_processed_block,
+                    crawler_state::dsl::last_processed_epoch,
+                    crawler_state::dsl::timestamp,
+                ))
+                .first(conn)
         })
         .await
         .map_err(|e| e.to_string())?
