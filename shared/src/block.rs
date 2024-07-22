@@ -283,7 +283,7 @@ impl Block {
                 let mut balance_changes = vec![];
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
-                        TransactionKind::Transfer(data) => {
+                        TransactionKind::TransparentTransfer(data) => {
                             vec![&data.sources, &data.targets]
                                 .iter()
                                 .flat_map(|transfer_changes| {

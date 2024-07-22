@@ -10,7 +10,7 @@ use crate::schema::{inner_transactions, wrapper_transactions};
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::TransactionKind"]
 pub enum TransactionKindDb {
-    Transfer,
+    TransparentTransfer,
     ShieldedTransfer,
     ShieldingTransfer,
     UnshieldingTransfer,
@@ -30,7 +30,9 @@ pub enum TransactionKindDb {
 impl From<TransactionKind> for TransactionKindDb {
     fn from(value: TransactionKind) -> Self {
         match value {
-            TransactionKind::Transfer(_) => TransactionKindDb::Transfer,
+            TransactionKind::TransparentTransfer(_) => {
+                TransactionKindDb::TransparentTransfer
+            }
             TransactionKind::ShieldedTransfer(_) => {
                 TransactionKindDb::ShieldedTransfer
             }
