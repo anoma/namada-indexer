@@ -38,9 +38,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Validator'
@@ -108,9 +108,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Bond'
@@ -139,9 +139,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/MergedBond'
@@ -170,9 +170,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Unbond'
@@ -201,9 +201,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Unbond'
@@ -237,9 +237,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Withdraw'
@@ -289,9 +289,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Proposal'
@@ -363,9 +363,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data, pagination]
+                required: [results, pagination]
                 properties:
-                  data:
+                  results:
                     type: array
                     items:
                       $ref: '#/components/schemas/Vote'
