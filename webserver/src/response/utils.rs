@@ -5,7 +5,7 @@ use crate::constant::ITEM_PER_PAGE;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PaginatedResponse<T: Serialize> {
-    pub data: T,
+    pub results: T,
     pub pagination: Pagination,
 }
 
@@ -22,9 +22,14 @@ impl<T> PaginatedResponse<T>
 where
     T: Serialize,
 {
-    pub fn new(data: T, page: u64, total_pages: u64, total_items: u64) -> Self {
+    pub fn new(
+        results: T,
+        page: u64,
+        total_pages: u64,
+        total_items: u64,
+    ) -> Self {
         Self {
-            data,
+            results,
             pagination: Pagination {
                 page,
                 per_page: ITEM_PER_PAGE,
