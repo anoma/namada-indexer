@@ -136,6 +136,12 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
+    tracing::info!("Query first block in epoch...");
+    let first_block_in_epoch =
+        namada_service::get_first_block_in_epoch(&client)
+            .await
+            .into_rpc_error()?;
+
     let block = Block::from(
         tm_block_response,
         &block_results,
@@ -198,6 +204,7 @@ async fn crawling_fn(
     let crawler_state = ChainCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
+        first_block_in_epoch,
         timestamp: timestamp_in_sec,
     };
 
@@ -269,6 +276,9 @@ async fn initial_query(
         namada_service::get_epoch_at_block_height(client, block_height)
             .await
             .into_rpc_error()?;
+    let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
+        .await
+        .into_rpc_error()?;
 
     loop {
         let pos_crawler_state =
@@ -317,6 +327,7 @@ async fn initial_query(
     let crawler_state = ChainCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
+        first_block_in_epoch,
         timestamp,
     };
 

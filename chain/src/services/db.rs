@@ -19,6 +19,7 @@ pub async fn get_chain_crawler_state(
                 .select((
                     crawler_state::dsl::last_processed_block,
                     crawler_state::dsl::last_processed_epoch,
+                    crawler_state::dsl::first_block_in_epoch,
                     crawler_state::dsl::timestamp,
                 ))
                 .first(conn)
@@ -30,6 +31,7 @@ pub async fn get_chain_crawler_state(
     Ok(ChainCrawlerState {
         last_processed_block: crawler_state.last_processed_block as BlockHeight,
         last_processed_epoch: crawler_state.last_processed_epoch as Epoch,
+        first_block_in_epoch: crawler_state.first_block_in_epoch as BlockHeight,
         timestamp: crawler_state.timestamp.and_utc().timestamp(),
     })
 }

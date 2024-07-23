@@ -178,8 +178,11 @@ impl Unbond {
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
-        let epoch_progress =
-            epoch_progress(chain_state.last_processed_block, min_num_of_blocks);
+        let epoch_progress = epoch_progress(
+            chain_state.last_processed_block,
+            chain_state.first_block_in_epoch,
+            min_num_of_blocks,
+        );
 
         let to_withdraw = time_between_epochs(
             min_num_of_blocks,

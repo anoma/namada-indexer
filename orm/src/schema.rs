@@ -109,6 +109,7 @@ diesel::table! {
     crawler_state (name) {
         name -> CrawlerName,
         last_processed_block -> Nullable<Int4>,
+        first_block_in_epoch -> Nullable<Int4>,
         last_processed_epoch -> Nullable<Int4>,
         timestamp -> Timestamp,
     }

@@ -13,6 +13,7 @@ pub enum CrawlerName {
 pub struct ChainCrawlerState {
     pub last_processed_block: BlockHeight,
     pub last_processed_epoch: Epoch,
+    pub first_block_in_epoch: Epoch,
     pub timestamp: i64,
 }
 
