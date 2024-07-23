@@ -54,7 +54,7 @@ impl<'de> Deserialize<'de> for AccountsMap {
                                 token: Address::decode(token)
                                     .expect("Cannot parse Address for token"),
                             },
-                            NamadaDenominatedAmount::from_str(&amount)
+                            NamadaDenominatedAmount::from_str(amount)
                                 .expect("Cannot parse DenominatedAmount"),
                         )
                     })
