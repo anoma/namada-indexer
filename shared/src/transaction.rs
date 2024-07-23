@@ -5,7 +5,7 @@ use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
-use namada_sdk::token::TransparentTransfer;
+use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
     Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation, Unbond,
@@ -19,6 +19,7 @@ use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
+use crate::ser::TransparentTransfer;
 
 // We wrap public key in a struct so we serialize data as object instead of
 // string
@@ -54,10 +55,12 @@ impl TransactionKind {
 
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
-            "tx_transparent_transfer" => TransactionKind::TransparentTransfer(
-                TransparentTransfer::try_from_slice(data)
-                    .expect("Cannot deserialize TransparentTransfer"),
-            ),
+            "tx_transfer" => {
+                TransactionKind::TransparentTransfer(TransparentTransfer::from(
+                    Transfer::try_from_slice(data)
+                        .expect("Cannot deserialize Transfer"),
+                ))
+            }
             "tx_bond" => TransactionKind::Bond(
                 Bond::try_from_slice(data).expect("Cannot deserialize Bond"),
             ),
