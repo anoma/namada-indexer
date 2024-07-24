@@ -38,6 +38,18 @@ pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
     Ok(Id::from(native_token))
 }
 
+pub async fn get_first_block_in_epoch(
+    client: &HttpClient,
+) -> anyhow::Result<BlockHeight> {
+    let block_height = RPC
+        .shell()
+        .first_block_height_of_current_epoch(client)
+        .await
+        .context("Failed to query native token")?;
+
+    Ok(block_height.0 as BlockHeight)
+}
+
 pub async fn get_epoch_at_block_height(
     client: &HttpClient,
     block_height: BlockHeight,

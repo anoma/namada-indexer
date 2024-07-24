@@ -22,6 +22,8 @@ pub fn upsert_crawler_state(
                 .eq(excluded(crawler_state::last_processed_block)),
             crawler_state::last_processed_epoch
                 .eq(excluded(crawler_state::last_processed_epoch)),
+            crawler_state::first_block_in_epoch
+                .eq(excluded(crawler_state::first_block_in_epoch)),
         ))
         .execute(transaction_conn)
         .context("Failed to update crawler state in db")?;

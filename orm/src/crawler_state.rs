@@ -55,6 +55,7 @@ pub struct CrawlerStateDb {
     pub name: CrawlerNameDb,
     pub last_processed_block: Option<i32>,
     pub last_processed_epoch: Option<i32>,
+    pub first_block_in_epoch: Option<i32>,
     pub timestamp: chrono::NaiveDateTime,
 }
 
@@ -62,6 +63,7 @@ pub struct CrawlerStateDb {
 pub struct ChainCrawlerStateDb {
     pub last_processed_block: i32,
     pub last_processed_epoch: i32,
+    pub first_block_in_epoch: i32,
     pub timestamp: chrono::NaiveDateTime,
 }
 impl
@@ -69,22 +71,25 @@ impl
         (
             Nullable<diesel::sql_types::Integer>,
             Nullable<diesel::sql_types::Integer>,
+            Nullable<diesel::sql_types::Integer>,
             diesel::sql_types::Timestamp,
         ),
         Pg,
     > for ChainCrawlerStateDb
 {
-    type Row = (Option<i32>, Option<i32>, chrono::NaiveDateTime);
+    type Row = (Option<i32>, Option<i32>, Option<i32>, chrono::NaiveDateTime);
 
     fn build(row: Self::Row) -> diesel::deserialize::Result<Self> {
         match row {
             (
                 Some(last_processed_block),
                 Some(last_processed_epoch),
+                Some(first_block_in_epoch),
                 timestamp,
             ) => Ok(Self {
                 last_processed_block,
                 last_processed_epoch,
+                first_block_in_epoch,
                 timestamp,
             }),
             _ => Err("last_processed_block or last_processed_epoch missing \
@@ -167,6 +172,7 @@ pub struct ChainStateInsertDb {
     pub name: CrawlerNameDb,
     pub last_processed_block: i32,
     pub last_processed_epoch: i32,
+    pub first_block_in_epoch: i32,
     pub timestamp: chrono::NaiveDateTime,
 }
 
@@ -219,6 +225,7 @@ impl From<(CrawlerName, ChainCrawlerState)> for ChainStateInsertDb {
             name: crawler_name.into(),
             last_processed_block: state.last_processed_block as i32,
             last_processed_epoch: state.last_processed_epoch as i32,
+            first_block_in_epoch: state.first_block_in_epoch as i32,
             timestamp,
         }
     }

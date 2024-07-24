@@ -35,9 +35,11 @@ where
     }
 }
 
-pub fn epoch_progress(current_block: i32, min_num_of_blocks: i32) -> f64 {
-    // Not sure why but real min number of blocks is usually 2 more what is in
-    // store
+pub fn epoch_progress(
+    current_block: i32,
+    first_block_in_epoch: i32,
+    min_num_of_blocks: i32,
+) -> f64 {
     let min_num_of_blocks =
         min_num_of_blocks + (EPOCH_SWITCH_BLOCKS_DELAY as i32);
 
@@ -46,7 +48,7 @@ pub fn epoch_progress(current_block: i32, min_num_of_blocks: i32) -> f64 {
     let current_block = current_block - 1;
 
     // Calculate the block in the current epoch
-    let block_in_current_epoch = current_block % min_num_of_blocks;
+    let block_in_current_epoch = current_block - first_block_in_epoch;
 
     // Calculate how much into the epoch we are
     block_in_current_epoch as f64 / min_num_of_blocks as f64

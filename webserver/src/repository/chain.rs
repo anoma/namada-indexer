@@ -66,6 +66,7 @@ impl ChainRepositoryTrait for ChainRepository {
                 .select((
                     crawler_state::dsl::last_processed_block,
                     crawler_state::dsl::last_processed_epoch,
+                    crawler_state::dsl::first_block_in_epoch,
                     crawler_state::dsl::timestamp,
                 ))
                 .first(conn)

@@ -118,12 +118,11 @@ impl Proposal {
         min_num_of_blocks: i32,
         min_duration: i32,
     ) -> Self {
-        // TODO: It would be better to save first block height of current epoch
-        // in state and use that here, otherwise if any epoch had
-        // different number of blocks than min_num_of_blocks
-        // this will be off
-        let epoch_progress =
-            epoch_progress(chain_state.last_processed_block, min_num_of_blocks);
+        let epoch_progress = epoch_progress(
+            chain_state.last_processed_block,
+            chain_state.first_block_in_epoch,
+            min_num_of_blocks,
+        );
 
         let to_start = time_between_epochs(
             min_num_of_blocks,
