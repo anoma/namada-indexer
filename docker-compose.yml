@@ -8,7 +8,6 @@ x-defaults: &defaults
     args: &build-args
       DATABASE_URL: ${DATABASE_URL}
       TENDERMINT_URL: ${TENDERMINT_URL}
-      CHAIN_ID: ${CHAIN_ID}
       CACHE_URL: ${CACHE_URL}
       WEBSERVER_PORT: ${WEBSERVER_PORT}
   environment: &env-vars

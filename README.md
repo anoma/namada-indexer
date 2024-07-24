@@ -31,7 +31,6 @@ cp .env_sample .env
 - Get a Namada RPC url
   - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
   - Or use a Public RPC
-- Change `CHAIN_ID`
 - Install [just](https://github.com/casey/just)
 - Run `just docker-run`
 
@@ -41,7 +40,6 @@ cp .env_sample .env
 - Get a Namada RPC url
   - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
   - Or use a Public RPC
-- Get a network `CHAIN_ID`
 - Create a `.env` file in the root of the project with the following content:
   ```env
   DATABASE_URL=postgres://postgres:password@0.0.0.0:5435/namada-indexer
