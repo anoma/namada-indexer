@@ -97,6 +97,7 @@ pub struct Proposal {
     pub start_time: String,
     pub end_time: String,
     pub current_time: String,
+    pub activation_time: String,
     pub status: ProposalStatus,
     pub yay_votes: String,
     pub nay_votes: String,
@@ -140,9 +141,18 @@ impl Proposal {
             min_duration,
         );
 
+        let to_activation = time_between_epochs(
+            min_num_of_blocks,
+            epoch_progress,
+            chain_state.last_processed_epoch,
+            value.activation_epoch,
+            min_duration,
+        );
+
         let time_now = chain_state.timestamp.and_utc().timestamp();
         let start_time = time_now + i64::from(to_start);
         let end_time = time_now + i64::from(to_end);
+        let activation_time = time_now + i64::from(to_activation);
 
         Self {
             id: value.id.to_string(),
@@ -179,6 +189,7 @@ impl Proposal {
             start_time: start_time.to_string(),
             end_time: end_time.to_string(),
             current_time: time_now.to_string(),
+            activation_time: activation_time.to_string(),
 
             status: match value.result {
                 GovernanceProposalResultDb::Passed => ProposalStatus::Passed,
