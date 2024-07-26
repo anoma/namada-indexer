@@ -15,7 +15,7 @@ ARG PACKAGE
 RUN cargo build --release --bin ${PACKAGE}
 
 FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y libpq5
+RUN apt-get update && apt-get install -y libpq5 ca-certificates
 WORKDIR /app
 ARG PACKAGE
 COPY --from=builder /app/target/release/${PACKAGE} ./
