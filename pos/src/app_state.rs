@@ -2,14 +2,16 @@ use std::env;
 
 use anyhow::Context;
 use deadpool_diesel::postgres::{Object, Pool as DbPool};
+use deadpool_redis::{Config, Pool as RedisPool, Runtime};
 
 #[derive(Clone)]
 pub struct AppState {
     db: DbPool,
+    redis: RedisPool,
 }
 
 impl AppState {
-    pub fn new(db_url: String) -> anyhow::Result<Self> {
+    pub fn new(db_url: String, redis_url: String) -> anyhow::Result<Self> {
         let max_pool_size = env::var("DATABASE_POOL_SIZE")
             .unwrap_or_else(|_| 8.to_string())
             .parse::<usize>()
@@ -23,7 +25,13 @@ impl AppState {
             .build()
             .context("Failed to build Postgres db pool")?;
 
-        Ok(Self { db: pool })
+        let cfg = Config::from_url(redis_url);
+        let redis_pool = cfg.create_pool(Some(Runtime::Tokio1)).unwrap();
+
+        Ok(Self {
+            db: pool,
+            redis: redis_pool,
+        })
     }
 
     pub async fn get_db_connection(&self) -> anyhow::Result<Object> {
@@ -31,5 +39,14 @@ impl AppState {
             .get()
             .await
             .context("Failed to get db connection handle from deadpool")
+    }
+
+    pub async fn get_redis_connection(
+        &self,
+    ) -> anyhow::Result<deadpool_redis::Connection> {
+        self.redis
+            .get()
+            .await
+            .context("Failed to get redis connection handle from deadpool")
     }
 }

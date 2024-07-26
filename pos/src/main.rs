@@ -1,12 +1,11 @@
 use std::convert::identity;
 use std::sync::Arc;
-use std::time::Duration;
 
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use deadpool_redis::redis;
+use deadpool_redis::redis::{self, RedisResult};
 use namada_sdk::time::DateTimeUtc;
 use orm::crawler_state::EpochStateInsertDb;
 use orm::migrations::run_migrations;
@@ -15,9 +14,16 @@ use pos::app_state::AppState;
 use pos::config::AppConfig;
 use pos::repository::{self};
 use pos::services::namada as namada_service;
+use redis::aio::MultiplexedConnection;
+use redis::streams::{StreamRangeReply, StreamReadOptions};
+use redis::AsyncCommands;
+use redis::{streams::StreamReadReply, Cmd};
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::event_store::{
+    publish, subscribe, Event, PosInitializedEventV1, SupportedEvents,
+};
 use shared::events::{self, Messages, PosInitializedMsg};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
@@ -48,14 +54,11 @@ async fn main() -> Result<(), MainError> {
     let client =
         Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
 
-    let app_state = AppState::new(config.database_url).into_db_error()?;
+    let app_state = Arc::new(
+        AppState::new(config.database_url, config.queue_url).into_db_error()?,
+    );
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
-    let redis_conn = Arc::new(Mutex::new(
-        redis::Client::open(config.queue_url.clone())
-            .expect("failed")
-            .get_connection()
-            .expect("failed"),
-    ));
+    let (tx, mut rx) = oneshot::channel::<()>();
 
     // Run migrations
     run_migrations(&conn)
@@ -63,32 +66,43 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    let (tx, rx) = oneshot::channel();
-    let (events_tx, events_rx) = mpsc::channel::<events::Messages>(100);
+    let (events_tx, mut events_rx) = mpsc::channel::<SupportedEvents>(100);
 
-    let pos_subscriber = tokio::spawn({
-        let redis_conn = Arc::clone(&redis_conn);
+    let mut redis_conn =
+        app_state.get_redis_connection().await.into_db_error()?;
 
-        async move {
-            let mut redis_conn = redis_conn.lock().await;
-            let pubsub = redis_conn.as_pubsub();
+    let last_processed_id: String = redis_conn
+        .get("last_processed_id")
+        .await
+        .context_db_interact_error()
+        .into_db_error()?;
 
-            events::subscribe(rx, events_tx, pubsub, "pos_channel")
-                .await
-                .unwrap();
+    tracing::info!("Last processed id: {}", last_processed_id);
+
+    let subscriber =
+        tokio::spawn(subscribe(redis_conn, last_processed_id, events_tx, rx));
+
+    let handler = tokio::spawn(async move {
+        while let Some(event) = events_rx.recv().await {
+            tracing::info!("Received event: {}", event);
         }
     });
 
+    let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
+    publish(redis_conn, PosInitializedEventV1)
+        .await
+        .into_db_error()?;
+
     tokio::select! {
-        _ = pos_subscriber => {
-            tracing::info!("Subscriber exited...");
-        }
-        _ = message_processor(events_rx, client, conn, redis_conn) => {
-            tracing::info!("Message processor exited...");
-        }
         _ = must_exit_handle() => {
-            tracing::info!("Exiting...");
+            tracing::info!("Received interrupt signal, shutting down...");
             tx.send(()).unwrap();
+        }
+        _ = handler => {
+            tracing::info!("Handler finished...");
+        }
+        _ = subscriber => {
+            tracing::info!("Subscriber finished...");
         }
     }
 
