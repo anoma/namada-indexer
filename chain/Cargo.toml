@@ -36,6 +36,7 @@ futures.workspace = true
 futures-util.workspace = true
 serde.workspace = true
 deadpool-redis = "0.15.1"
+redis =  {version = "0.25.0", features = ["streams"]}
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

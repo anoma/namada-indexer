@@ -22,7 +22,8 @@ use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::event_store::{
-    publish, subscribe, Event, PosInitializedEventV1, SupportedEvents,
+    publish, subscribe, Event, PosEvents, PosInitializedEventV1,
+    SupportedEvents,
 };
 use shared::events::{self, Messages, PosInitializedMsg};
 use tendermint_rpc::HttpClient;
@@ -57,8 +58,8 @@ async fn main() -> Result<(), MainError> {
     let app_state = Arc::new(
         AppState::new(config.database_url, config.queue_url).into_db_error()?,
     );
-    let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
-    let (tx, mut rx) = oneshot::channel::<()>();
+    let conn = app_state.get_db_connection().await.into_db_error()?;
+    let (tx, rx) = oneshot::channel::<()>();
 
     // Run migrations
     run_migrations(&conn)
@@ -66,32 +67,37 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    let (events_tx, mut events_rx) = mpsc::channel::<SupportedEvents>(100);
+    let (events_tx, events_rx) = mpsc::channel::<PosEvents>(100);
 
     let mut redis_conn =
         app_state.get_redis_connection().await.into_db_error()?;
 
     let last_processed_id: String = redis_conn
-        .get("last_processed_id")
+        .get("pos_last_processed_id")
         .await
-        .context_db_interact_error()
-        .into_db_error()?;
+        .ok()
+        .unwrap_or("0".to_string());
 
-    tracing::info!("Last processed id: {}", last_processed_id);
+    let subscriber = tokio::spawn(subscribe(
+        redis_conn,
+        ("pos_last_processed_id".to_string(), last_processed_id),
+        events_tx,
+        rx,
+    ));
 
-    let subscriber =
-        tokio::spawn(subscribe(redis_conn, last_processed_id, events_tx, rx));
+    let handler = tokio::spawn(message_processor(
+        events_rx,
+        Arc::clone(&client),
+        Arc::clone(&app_state),
+    ));
 
-    let handler = tokio::spawn(async move {
-        while let Some(event) = events_rx.recv().await {
-            tracing::info!("Received event: {}", event);
-        }
-    });
-
-    let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
-    publish(redis_conn, PosInitializedEventV1)
-        .await
-        .into_db_error()?;
+    // let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
+    // publish(
+    //     redis_conn,
+    //     PosEvents::PosInitializedEventV1(PosInitializedEventV1),
+    // )
+    // .await
+    // .into_db_error()?;
 
     tokio::select! {
         _ = must_exit_handle() => {
@@ -118,19 +124,19 @@ fn must_exit_handle() -> JoinHandle<()> {
 }
 
 async fn message_processor(
-    mut rx: mpsc::Receiver<events::Messages>,
+    mut rx: mpsc::Receiver<PosEvents>,
     client: Arc<HttpClient>,
-    conn: Arc<Object>,
-    redis_conn: Arc<Mutex<redis::Connection>>,
+    app_state: Arc<AppState>,
 ) -> anyhow::Result<()> {
     tracing::info!("Starting message processor...");
     while let Some(event) = rx.recv().await {
         tracing::info!("Received message: {:?}", event);
         match event {
-            events::Messages::ChainReady(_) => {
+            PosEvents::ChainInitializedEventV1(_) => {
                 tracing::info!("Chain is ready to process...");
                 let client = Arc::clone(&client);
-                let conn = Arc::clone(&conn);
+                let conn = Arc::new(app_state.get_db_connection().await?);
+                let redis_conn = app_state.get_redis_connection().await?;
 
                 tracing::info!("Starting crawler...");
                 // We always start from the current epoch
@@ -140,33 +146,28 @@ async fn message_processor(
                         .into_rpc_error()?;
 
                 {
-                    tracing::info!("Next epoch to process: {}", next_epoch);
-                    let mut redis_conn = redis_conn.lock().await;
-                    tracing::info!("Publishing PosInitialized message...");
                     // TODO: we should wait for first crawl iteration to finish
-                    events::publish(
-                        &mut redis_conn,
-                        "chain_channel",
-                        Messages::PosInitialized(PosInitializedMsg {
-                            data: String::from(""),
-                        }),
+                    publish(
+                        redis_conn,
+                        PosEvents::PosInitializedEventV1(PosInitializedEventV1),
                     )
-                    .unwrap();
+                    .await?;
                 }
-                tracing::info!("Published PosInitialized message 222...");
 
-                crawler::crawl(
+                tokio::spawn(crawler::crawl(
                     move |epoch| {
                         crawling_fn(epoch, conn.clone(), client.clone())
                     },
                     next_epoch,
-                )
-                .await
-                .expect("failed");
+                ));
+            }
+            PosEvents::Test(_) => {
+                tracing::info!("!!!!!Test message received...!!!!!");
             }
             _ => {}
         }
     }
+    tracing::info!("Message processor finished...");
 
     Ok(())
 }

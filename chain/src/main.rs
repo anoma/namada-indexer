@@ -20,7 +20,7 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use deadpool_redis::redis;
+use deadpool_redis::redis::{self, AsyncCommands};
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
 use shared::block::Block;
@@ -29,6 +29,9 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::event_store::{
+    publish, subscribe, ChainInitializedEventV1, PosEvents, Test,
+};
 use shared::events::{self, TestMsg};
 use shared::id::Id;
 use tendermint_rpc::HttpClient;
@@ -70,15 +73,10 @@ async fn main() -> Result<(), MainError> {
     }
 
     let client = Arc::new(client);
-    let config = Arc::new(config);
-    let app_state = AppState::new(&config.database_url).into_db_error()?;
-    let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
-    let redis_conn = Arc::new(Mutex::new(
-        redis::Client::open(config.queue_url.clone())
-            .expect("failed")
-            .get_connection()
-            .expect("failed"),
-    ));
+    let app_state = Arc::new(
+        AppState::new(config.database_url, config.queue_url).into_db_error()?,
+    );
+    let conn = app_state.get_db_connection().await.into_db_error()?;
 
     // Run migrations
     run_migrations(&conn)
@@ -87,42 +85,50 @@ async fn main() -> Result<(), MainError> {
         .into_db_error()?;
 
     let (tx, rx) = oneshot::channel();
-    let (events_tx, events_rx) = mpsc::channel::<events::Messages>(100);
+    let (events_tx, events_rx) = mpsc::channel::<PosEvents>(100);
 
-    let pos_subscriber = tokio::spawn({
-        let redis_conn = Arc::clone(&redis_conn);
-        async move {
-            let mut redis_conn = redis_conn.lock().await;
-            let pubsub = redis_conn.as_pubsub();
+    let mut redis_conn =
+        app_state.get_redis_connection().await.into_db_error()?;
 
-            events::subscribe(rx, events_tx, pubsub, "chain_channel")
-                .await
-                .unwrap();
-        }
-    });
+    let last_processed_id: String = redis_conn
+        .get("chain_last_processed_id")
+        .await
+        .ok()
+        .unwrap_or("0".to_string());
 
-    {
-        let mut redis_conn = redis_conn.lock().await;
-        events::publish(
-            &mut redis_conn,
-            "pos_channel",
-            events::Messages::ChainReady(TestMsg {
-                data: String::from(""),
-            }),
-        )
-        .unwrap();
-    }
+    let subscriber = tokio::spawn(subscribe(
+        redis_conn,
+        ("chain_last_processed_id".to_string(), last_processed_id),
+        events_tx,
+        rx,
+    ));
+
+    let handler = tokio::spawn(message_processor(
+        events_rx,
+        Arc::clone(&client),
+        Arc::clone(&app_state),
+        config.initial_query_retry_time,
+        checksums.clone(),
+    ));
+
+    let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
+    publish(
+        redis_conn,
+        PosEvents::ChainInitializedEventV1(ChainInitializedEventV1),
+    )
+    .await
+    .into_db_error()?;
 
     tokio::select! {
-        _ = pos_subscriber => {
-            tracing::info!("Subscriber exited...");
-        }
-        _ = message_processor(events_rx, Arc::clone(&client), Arc::clone(&conn), Arc::clone(&config), checksums) => {
-            tracing::info!("Message processor exited...");
-        }
         _ = must_exit_handle() => {
-            tracing::info!("Exiting...");
+            tracing::info!("Received interrupt signal, shutting down...");
             tx.send(()).unwrap();
+        }
+        _ = handler => {
+            tracing::info!("Handler finished...");
+        }
+        _ = subscriber => {
+            tracing::info!("Subscriber finished...");
         }
     }
 
@@ -130,31 +136,36 @@ async fn main() -> Result<(), MainError> {
 }
 
 async fn message_processor(
-    mut rx: mpsc::Receiver<events::Messages>,
+    mut rx: mpsc::Receiver<PosEvents>,
     client: Arc<HttpClient>,
-    conn: Arc<Object>,
-    config: Arc<AppConfig>,
+    app_state: Arc<AppState>,
+    initial_query_retry_time: u64,
     checksums: Checksums,
 ) -> anyhow::Result<()> {
     tracing::info!("Starting message processor...");
     while let Some(event) = rx.recv().await {
         tracing::info!("Received message: {:?}", event);
         match event {
-            events::Messages::PosInitialized(data) => {
+            PosEvents::PosInitializedEventV1(data) => {
                 tracing::info!("Received message: {:?}", data);
                 let client = Arc::clone(&client);
-                let conn = Arc::clone(&conn);
+                let conn = Arc::new(app_state.get_db_connection().await?);
+                let redis_conn = app_state.get_redis_connection().await?;
                 let checksums = checksums.clone();
 
                 initial_query(
                     Arc::clone(&client),
                     Arc::clone(&conn),
-                    config.initial_query_retry_time,
+                    initial_query_retry_time,
                 )
                 .await
                 .context("Initial query error")?;
 
                 let crawler_state = db_service::get_chain_crawler_state(&conn)
+                    .await
+                    .into_db_error()?;
+
+                publish(redis_conn, PosEvents::Test(Test))
                     .await
                     .into_db_error()?;
 
