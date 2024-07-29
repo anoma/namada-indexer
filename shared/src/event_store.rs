@@ -13,12 +13,15 @@ const EVENT: &str = "event";
 
 pub async fn subscribe<T>(
     mut redis_conn: Connection,
-    last_processed_id: String,
+    (last_processed_key, last_processed_val): (String, String),
     tx: mpsc::Sender<T>,
     mut exit_rx: oneshot::Receiver<()>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<()>
+where
+    T: SupportedEvents,
+{
     let opts = StreamReadOptions::default().count(1).block(0);
-    let mut last_processed_id = last_processed_id;
+    let mut last_processed_id = last_processed_val.clone();
 
     loop {
         let result: Option<StreamReadReply> = redis_conn
@@ -27,7 +30,8 @@ pub async fn subscribe<T>(
 
         if let Some(reply) = result {
             for stream_key in reply.keys {
-                for stream_id in stream_key.ids {
+                for stream_id in stream_key.clone().ids {
+                    tracing::info!("Processing event: {:?}", stream_key);
                     let event =
                         stream_id.map.get(EVENT).expect("event key not found");
 
@@ -39,11 +43,11 @@ pub async fn subscribe<T>(
                             let event = T::from_stored(event_str);
 
                             redis_conn
-                                .set("last_processed_id", stream_id.id.clone())
+                                .set(&last_processed_key, stream_id.id.clone())
                                 .await?;
                             last_processed_id = stream_id.id;
 
-                            tx.send(event).await?;
+                            tx.send(event).await.expect("send failed");
                         }
                         _ => {}
                     }
@@ -64,7 +68,7 @@ pub async fn publish<T>(
     event: T,
 ) -> anyhow::Result<()>
 where
-    T: Event,
+    T: SupportedEvents,
 {
     let stored_event = event.to_stored();
     redis_conn.xadd(EVENT_STORE, "*", &[stored_event]).await?;
@@ -80,12 +84,6 @@ macro_rules! define_event {
         pub struct $name {
             $(pub $field_name: $field_type),*
         }
-
-        impl Event for $name {
-            fn from_stored(value: &str) -> Self {
-                serde_json::from_str(value).unwrap()
-            }
-        }
     };
 
 
@@ -94,17 +92,7 @@ macro_rules! define_event {
         #[derive(Debug, Clone, Serialize, Deserialize)]
         pub struct $name;
 
-        impl Event for $name {
-            fn to_stored(&self) -> (String, String) {
-                let key = self.name().to_string();
-                let value = String::new(); // Return an empty string for structs without fields
-                (key, value)
-            }
-
-            fn from_stored(value: &str) -> Self {
-                serde_json::from_str(value).unwrap()
-            }
-        }
+        impl Event for $name {}
     };
 }
 
@@ -123,26 +111,30 @@ pub trait Event: Clone + Serialize + Send + Sync {
     fn payload(&self) -> Self {
         self.clone()
     }
-
-    fn to_stored(&self) -> (String, String) {
-        let key = self.name().to_string();
-        let value = serde_json::to_string(&self).unwrap();
-
-        (key, value)
-    }
-
-    // Factory method to create an event from stored data
-    fn from_stored(value: &str) -> Self
-    where
-        Self: Sized;
 }
 
 define_event!(PosInitializedEventV1);
 define_event!(ChainInitializedEventV1);
+define_event!(Test);
 
-trait Support
+pub trait SupportedEvents: for<'a> Deserialize<'a> + Serialize {
+    fn from_stored(value: &str) -> Self {
+        serde_json::from_str(value).unwrap()
+    }
 
-pub enum SupportedEvents {
+    fn to_stored(&self) -> (String, String) {
+        let value = serde_json::to_string(&self).unwrap();
+
+        ("event".to_string(), value)
+    }
+}
+
+// TODO: move this to POS module
+#[derive(Serialize, Deserialize, Debug)]
+pub enum PosEvents {
     PosInitializedEventV1(PosInitializedEventV1),
     ChainInitializedEventV1(ChainInitializedEventV1),
+    Test(Test),
 }
+
+impl SupportedEvents for PosEvents {}
