@@ -118,6 +118,14 @@ impl ApplicationServer {
                 .route("/chain/sync", get(chain_handlers::sync_height))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route(
+                    "/chain/block",
+                    get(chain_handlers::get_last_processed_block),
+                )
+                .route(
+                    "/chain/epoch",
+                    get(chain_handlers::get_last_processed_epoch),
+                )
+                .route(
                     "/crawlers/timestamps",
                     get(crawler_state_handlers::get_crawlers_timestamps),
                 )

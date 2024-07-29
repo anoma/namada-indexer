@@ -506,6 +506,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RpcUrl'
+  /api/v1/chain/block:
+    get:
+      summary: Get the latest block processed by the chain crawler
+      responses:
+        '200':
+          description: Block height
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [height]
+                properties:
+                  height:
+                    type: string
+  /api/v1/chain/epoch:
+    get:
+      summary: Get the latest epoch processed by the chain crawler
+      responses:
+        '200':
+          description: Epoch
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [epoch]
+                properties:
+                  height:
+                    type: string
   /api/v1/chain/wrapper/{tx_id}:
     get:
       summary: Get the wrapper transaction by hash

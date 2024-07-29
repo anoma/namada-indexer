@@ -16,9 +16,9 @@ pub struct ChainRepository {
 pub trait ChainRepositoryTrait {
     fn new(app_state: AppState) -> Self;
 
-    async fn find_latest_height(&self) -> Result<Option<i32>, String>;
+    async fn find_latest_height(&self) -> Result<i32, String>;
 
-    async fn find_latest_epoch(&self) -> Result<Option<i32>, String>;
+    async fn find_latest_epoch(&self) -> Result<i32, String>;
 
     async fn find_chain_parameters(&self) -> Result<ParametersDb, String>;
 
@@ -31,30 +31,34 @@ impl ChainRepositoryTrait for ChainRepository {
         Self { app_state }
     }
 
-    async fn find_latest_height(&self) -> Result<Option<i32>, String> {
+    async fn find_latest_height(&self) -> Result<i32, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             crawler_state::dsl::crawler_state
+                .filter(crawler_state::dsl::name.eq(CrawlerNameDb::Chain))
                 .select(max(crawler_state::dsl::last_processed_block))
                 .first::<Option<i32>>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
+        .and_then(|x| x.ok_or("No block processed".to_string()))
     }
 
-    async fn find_latest_epoch(&self) -> Result<Option<i32>, String> {
+    async fn find_latest_epoch(&self) -> Result<i32, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             crawler_state::dsl::crawler_state
+                .filter(crawler_state::dsl::name.eq(CrawlerNameDb::Chain))
                 .select(max(crawler_state::dsl::last_processed_epoch))
                 .first::<Option<i32>>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
+        .and_then(|x| x.ok_or("No epoch processed".to_string()))
     }
 
     async fn get_state(&self) -> Result<ChainCrawlerStateDb, String> {

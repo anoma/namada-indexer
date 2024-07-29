@@ -15,14 +15,6 @@ impl ChainService {
         }
     }
 
-    pub async fn find_latest_height(&self) -> u64 {
-        self.chain_repo
-            .find_latest_height()
-            .await
-            .unwrap()
-            .unwrap_or_default() as u64
-    }
-
     pub async fn find_latest_parameters(
         &self,
     ) -> Result<Parameters, ChainError> {
@@ -34,5 +26,19 @@ impl ChainService {
             .map_err(ChainError::Database)?;
 
         Ok(parameters)
+    }
+
+    pub async fn find_last_processed_block(&self) -> Result<i32, ChainError> {
+        self.chain_repo
+            .find_latest_height()
+            .await
+            .map_err(ChainError::Database)
+    }
+
+    pub async fn find_last_processed_epoch(&self) -> Result<i32, ChainError> {
+        self.chain_repo
+            .find_latest_epoch()
+            .await
+            .map_err(ChainError::Database)
     }
 }
