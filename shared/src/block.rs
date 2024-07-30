@@ -166,9 +166,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::InitProposal(data) => {
-                    let init_proposal_data = data.clone();
+                    let init_proposal_data = data.clone().unwrap(); // safe as we filter before (not the best pattern)
 
                     let proposal_content_bytes = tx
                         .get_section_data_by_id(Id::from(
@@ -242,9 +243,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ClaimRewards(data) => {
-                    let data = data.clone();
+                    let data = data.clone().unwrap();
                     let source = data.source.unwrap_or(data.validator);
 
                     Some(Id::from(source))
@@ -258,9 +260,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ProposalVote(data) => {
-                    let vote_proposal_data = data.clone();
+                    let vote_proposal_data = data.clone().unwrap();
 
                     Some(GovernanceVote {
                         proposal_id: vote_proposal_data.id,
@@ -284,6 +287,12 @@ impl Block {
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
                         TransactionKind::TransparentTransfer(data) => {
+                            let data = if let Some(data) = data {
+                                data
+                            } else {
+                                continue;
+                            };
+
                             [&data.sources, &data.targets]
                                 .iter()
                                 .flat_map(|transfer_changes| {
@@ -297,6 +306,12 @@ impl Block {
                                 .collect()
                         }
                         TransactionKind::Bond(data) => {
+                            let data = if let Some(data) = data {
+                                data
+                            } else {
+                                continue;
+                            };
+
                             let bond_data = data.clone();
                             let address =
                                 bond_data.source.unwrap_or(bond_data.validator);
@@ -307,6 +322,12 @@ impl Block {
                             )]
                         }
                         TransactionKind::Withdraw(data) => {
+                            let data = if let Some(data) = data {
+                                data
+                            } else {
+                                continue;
+                            };
+
                             let withdraw_data = data.clone();
                             let address = withdraw_data
                                 .source
@@ -319,6 +340,12 @@ impl Block {
                             )]
                         }
                         TransactionKind::ClaimRewards(data) => {
+                            let data = if let Some(data) = data {
+                                data
+                            } else {
+                                continue;
+                            };
+
                             let claim_rewards_data = data.clone();
                             let address = claim_rewards_data
                                 .source
@@ -331,6 +358,12 @@ impl Block {
                             )]
                         }
                         TransactionKind::InitProposal(data) => {
+                            let data = if let Some(data) = data {
+                                data
+                            } else {
+                                continue;
+                            };
+
                             let init_proposal_data = data.clone();
                             let author = Id::from(init_proposal_data.author);
 
@@ -357,9 +390,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Bond(data) => {
-                    let bond_data = data.clone();
+                    let bond_data = data.clone().unwrap();
                     let source_address =
                         bond_data.source.unwrap_or(bond_data.validator.clone());
                     let target_address = bond_data.validator;
@@ -370,7 +404,7 @@ impl Block {
                     }])
                 }
                 TransactionKind::Unbond(data) => {
-                    let unbond_data = data.clone();
+                    let unbond_data = data.clone().unwrap();
                     let source_address = unbond_data
                         .source
                         .unwrap_or(unbond_data.validator.clone());
@@ -382,7 +416,7 @@ impl Block {
                     }])
                 }
                 TransactionKind::Redelegation(data) => {
-                    let redelegation_data = data.clone();
+                    let redelegation_data = data.clone().unwrap();
                     let owner = redelegation_data.owner;
                     let source_validator = redelegation_data.src_validator;
                     let destination_validator =
@@ -409,9 +443,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Unbond(data) => {
-                    let unbond_data = data.clone();
+                    let unbond_data = data.clone().unwrap();
 
                     let source_address = unbond_data
                         .source
@@ -432,9 +467,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Withdraw(data) => {
-                    let withdraw_data = data.clone();
+                    let withdraw_data = data.clone().unwrap();
 
                     let source_address = withdraw_data
                         .source
@@ -455,9 +491,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::MetadataChange(data) => {
-                    let metadata_change_data = data.clone();
+                    let metadata_change_data = data.clone().unwrap();
 
                     let source_address = metadata_change_data.validator;
 
@@ -475,7 +512,7 @@ impl Block {
                     })
                 }
                 TransactionKind::CommissionChange(data) => {
-                    let commission_change = data.clone();
+                    let commission_change = data.clone().unwrap();
 
                     let source_address = commission_change.validator;
 
@@ -501,9 +538,11 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some())
+            .filter(|tx| tx.data.is_some())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::RevealPk(data) => {
-                    let namada_public_key = data.public_key.clone();
+                    let namada_public_key = data.clone().unwrap().public_key;
 
                     Some((
                         PublicKey::from(namada_public_key.clone()),
