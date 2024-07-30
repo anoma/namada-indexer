@@ -2,7 +2,10 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
-use shared::balance::Balance;
+use shared::{
+    balance::{Amount, Balance},
+    id::Id,
+};
 
 use crate::schema::balances;
 
@@ -24,6 +27,16 @@ impl BalancesInsertDb {
             token: balance.token.to_string(),
             raw_amount: BigDecimal::from_str(&balance.amount.to_string())
                 .expect("Invalid amount"),
+        }
+    }
+}
+
+impl From<BalanceDb> for Balance {
+    fn from(balance: BalanceDb) -> Self {
+        Self {
+            owner: Id::from_account_str(&balance.owner),
+            token: Id::from_account_str(&balance.token),
+            amount: Amount::from(balance.raw_amount),
         }
     }
 }
