@@ -506,7 +506,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RpcUrl'
-  /api/v1/chain/block:
+  /api/v1/chain/block/latest:
     get:
       summary: Get the latest block processed by the chain crawler
       responses:
@@ -520,7 +520,7 @@ paths:
                 properties:
                   height:
                     type: string
-  /api/v1/chain/epoch:
+  /api/v1/chain/epoch/latest:
     get:
       summary: Get the latest epoch processed by the chain crawler
       responses:
