@@ -2,10 +2,8 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
-use shared::{
-    balance::{Amount, Balance},
-    id::Id,
-};
+use shared::balance::{Amount, Balance};
+use shared::id::Id;
 
 use crate::schema::balances;
 

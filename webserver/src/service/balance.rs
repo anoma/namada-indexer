@@ -1,4 +1,4 @@
-use shared::balance::{Amount, Balance, DenominatedAmount};
+use shared::balance::Balance;
 
 use crate::appstate::AppState;
 use crate::error::balance::BalanceError;
