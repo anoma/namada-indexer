@@ -1,5 +1,5 @@
-use orm::balances::BalanceDb;
 use serde::{Deserialize, Serialize};
+use shared::balance::{Balance, DenominatedAmount};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -8,11 +8,13 @@ pub struct AddressBalance {
     pub balance: String,
 }
 
-impl From<BalanceDb> for AddressBalance {
-    fn from(value: BalanceDb) -> Self {
+impl From<Balance> for AddressBalance {
+    fn from(value: Balance) -> Self {
         Self {
-            token_address: value.token,
-            balance: value.raw_amount.to_string(),
+            token_address: value.token.to_string(),
+            // TODO: temporary solution as we only store NAM balances
+            balance: DenominatedAmount::native(value.amount.clone())
+                .to_string_precise(),
         }
     }
 }
