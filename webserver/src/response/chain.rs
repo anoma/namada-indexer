@@ -43,3 +43,15 @@ impl From<ParametersDb> for Parameters {
 pub struct RpcUrl {
     pub url: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LastProcessedBlock {
+    pub block: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LastProcessedEpoch {
+    pub epoch: String,
+}
