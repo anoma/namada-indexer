@@ -31,20 +31,20 @@ pub struct RevealPkData {
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
-    TransparentTransfer(TransparentTransfer),
+    TransparentTransfer(Option<TransparentTransfer>),
     // TODO: remove once ShieldedTransfer can be serialized
     #[serde(skip)]
-    ShieldedTransfer(ShieldedTransfer),
-    Bond(Bond),
-    Redelegation(Redelegation),
-    Unbond(Unbond),
-    Withdraw(Withdraw),
-    ClaimRewards(ClaimRewards),
-    ProposalVote(VoteProposalData),
-    InitProposal(InitProposalData),
-    MetadataChange(MetaDataChange),
-    CommissionChange(CommissionChange),
-    RevealPk(RevealPkData),
+    ShieldedTransfer(Option<ShieldedTransfer>),
+    Bond(Option<Bond>),
+    Redelegation(Option<Redelegation>),
+    Unbond(Option<Unbond>),
+    Withdraw(Option<Withdraw>),
+    ClaimRewards(Option<ClaimRewards>),
+    ProposalVote(Option<VoteProposalData>),
+    InitProposal(Option<InitProposalData>),
+    MetadataChange(Option<MetaDataChange>),
+    CommissionChange(Option<CommissionChange>),
+    RevealPk(Option<RevealPkData>),
     Unknown,
 }
 
@@ -56,50 +56,99 @@ impl TransactionKind {
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
             "tx_transfer" => {
-                TransactionKind::TransparentTransfer(TransparentTransfer::from(
-                    Transfer::try_from_slice(data)
-                        .expect("Cannot deserialize Transfer"),
-                ))
+                let data = if let Ok(data) = Transfer::try_from_slice(data) {
+                    Some(TransparentTransfer::from(data))
+                } else {
+                    None
+                };
+                TransactionKind::TransparentTransfer(data)
             }
-            "tx_bond" => TransactionKind::Bond(
-                Bond::try_from_slice(data).expect("Cannot deserialize Bond"),
-            ),
-            "tx_redelegation" => TransactionKind::Redelegation(
-                Redelegation::try_from_slice(data)
-                    .expect("Cannot deserialize Redelegation"),
-            ),
-            "tx_unbond" => TransactionKind::Unbond(
-                Unbond::try_from_slice(data)
-                    .expect("Cannot deserialize Unbond"),
-            ),
-            "tx_withdraw" => TransactionKind::Withdraw(
-                Withdraw::try_from_slice(data)
-                    .expect("Cannot deserialize Withdraw"),
-            ),
-            "tx_claim_rewards" => TransactionKind::ClaimRewards(
-                ClaimRewards::try_from_slice(data)
-                    .expect("Cannot deserialize ClaimRewards"),
-            ),
-            "tx_init_proposal" => TransactionKind::InitProposal(
-                InitProposalData::try_from_slice(data)
-                    .expect("Cannot deserialize InitProposal"),
-            ),
-            "tx_vote_proposal" => TransactionKind::ProposalVote(
-                VoteProposalData::try_from_slice(data)
-                    .expect("Cannot deserialize VoteProposal"),
-            ),
-            "tx_metadata_change" => TransactionKind::MetadataChange(
-                MetaDataChange::try_from_slice(data)
-                    .expect("Cannot deserialize MetaDataChange"),
-            ),
-            "tx_commission_change" => TransactionKind::CommissionChange(
-                CommissionChange::try_from_slice(data)
-                    .expect("Cannot deserialize CommissionChange"),
-            ),
-            "tx_reveal_pk" => TransactionKind::RevealPk(RevealPkData {
-                public_key: PublicKey::try_from_slice(data)
-                    .expect("Cannot deserialize PublicKey"),
-            }),
+            "tx_bond" => {
+                let data = if let Ok(data) = Bond::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::Bond(data)
+            }
+            "tx_redelegation" => {
+                let data = if let Ok(data) = Redelegation::try_from_slice(data)
+                {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::Redelegation(data)
+            }
+            "tx_unbond" => {
+                let data = if let Ok(data) = Unbond::try_from_slice(data) {
+                    Some(Unbond::from(data))
+                } else {
+                    None
+                };
+                TransactionKind::Unbond(data)
+            }
+            "tx_withdraw" => {
+                let data = if let Ok(data) = Withdraw::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::Withdraw(data)
+            }
+            "tx_claim_rewards" => {
+                let data = if let Ok(data) = ClaimRewards::try_from_slice(data)
+                {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::ClaimRewards(data)
+            }
+            "tx_init_proposal" => {
+                let data =
+                    if let Ok(data) = InitProposalData::try_from_slice(data) {
+                        Some(data)
+                    } else {
+                        None
+                    };
+                TransactionKind::InitProposal(data)
+            }
+            "tx_vote_proposal" => {
+                let data =
+                    if let Ok(data) = VoteProposalData::try_from_slice(data) {
+                        Some(data)
+                    } else {
+                        None
+                    };
+                TransactionKind::ProposalVote(data)
+            }
+            "tx_metadata_change" => {
+                let data =
+                    if let Ok(data) = MetaDataChange::try_from_slice(data) {
+                        Some(data)
+                    } else {
+                        None
+                    };
+                TransactionKind::MetadataChange(data)
+            }
+            "tx_commission_change" => {
+                let data =
+                    if let Ok(data) = CommissionChange::try_from_slice(data) {
+                        Some(data)
+                    } else {
+                        None
+                    };
+                TransactionKind::CommissionChange(data)
+            }
+            "tx_reveal_pk" => {
+                let data = if let Ok(data) = PublicKey::try_from_slice(data) {
+                    Some(RevealPkData { public_key: data })
+                } else {
+                    None
+                };
+                TransactionKind::RevealPk(data)
+            }
             _ => TransactionKind::Unknown,
         }
     }
