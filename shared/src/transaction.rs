@@ -71,7 +71,7 @@ impl TransactionKind {
                 };
                 TransactionKind::Bond(data)
             }
-            "tx_redelegation" => {
+            "tx_redelegate" => {
                 let data = if let Ok(data) = Redelegation::try_from_slice(data)
                 {
                     Some(data)
@@ -254,7 +254,7 @@ impl Transaction {
                         .fee
                         .amount_per_gas_unit
                         .to_string_precise(),
-                    gas_payer: Id::from(wrapper.pk),
+                    gas_payer: Id::from(wrapper.fee_payer()),
                     gas_token: Id::from(wrapper.fee.token),
                 };
 
