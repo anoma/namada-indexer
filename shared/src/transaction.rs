@@ -11,7 +11,8 @@ use namada_tx::data::pos::{
     Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation, Unbond,
     Withdraw,
 };
-use namada_tx::data::TxType;
+use namada_tx::data::{compute_inner_tx_hash, TxType};
+use namada_tx::either::Either;
 use namada_tx::{Section, Tx};
 use serde::Serialize;
 
@@ -274,7 +275,10 @@ impl Transaction {
                 for (index, tx_commitment) in
                     transaction.header().batch.into_iter().enumerate()
                 {
-                    let inner_tx_id = Id::from(tx_commitment.get_hash());
+                    let inner_tx_id = Id::from(compute_inner_tx_hash(
+                        Some(&transaction.header_hash()),
+                        Either::Right(&tx_commitment),
+                    ));
 
                     let memo =
                         transaction.memo(&tx_commitment).map(|memo_bytes| {
