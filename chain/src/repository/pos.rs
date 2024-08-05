@@ -96,7 +96,7 @@ pub fn insert_unbonds(
 pub fn remove_withdraws(
     transaction_conn: &mut PgConnection,
     current_epoch: Epoch,
-    unbond_addresses: Vec<UnbondAddresses>,
+    unbond_addresses: HashSet<UnbondAddresses>,
 ) -> anyhow::Result<()> {
     let sources = unbond_addresses
         .iter()

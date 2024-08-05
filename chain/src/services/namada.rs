@@ -328,7 +328,7 @@ pub async fn query_next_governance_id(
 
 pub async fn query_bonds(
     client: &HttpClient,
-    addresses: Vec<BondAddresses>,
+    addresses: HashSet<BondAddresses>,
 ) -> anyhow::Result<Bonds> {
     let nested_bonds = futures::stream::iter(addresses)
         .filter_map(|BondAddresses { source, target }| async move {
@@ -353,7 +353,7 @@ pub async fn query_bonds(
 
 pub async fn query_unbonds(
     client: &HttpClient,
-    addresses: Vec<UnbondAddresses>,
+    addresses: HashSet<UnbondAddresses>,
 ) -> anyhow::Result<Unbonds> {
     let nested_unbonds = futures::stream::iter(addresses)
         .filter_map(|UnbondAddresses { source, validator }| {

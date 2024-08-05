@@ -386,7 +386,7 @@ impl Block {
             .collect()
     }
 
-    pub fn bond_addresses(&self) -> Vec<BondAddresses> {
+    pub fn bond_addresses(&self) -> HashSet<BondAddresses> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
@@ -439,7 +439,7 @@ impl Block {
             .collect()
     }
 
-    pub fn unbond_addresses(&self) -> Vec<UnbondAddresses> {
+    pub fn unbond_addresses(&self) -> HashSet<UnbondAddresses> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
@@ -463,7 +463,7 @@ impl Block {
             .collect()
     }
 
-    pub fn withdraw_addresses(&self) -> Vec<UnbondAddresses> {
+    pub fn withdraw_addresses(&self) -> HashSet<UnbondAddresses> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
