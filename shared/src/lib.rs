@@ -1,7 +1,6 @@
 pub mod balance;
 pub mod block;
 pub mod block_result;
-pub mod bond;
 pub mod checksums;
 pub mod crawler;
 pub mod crawler_state;
@@ -15,6 +14,7 @@ pub mod log_config;
 pub mod masp;
 pub mod parameters;
 pub mod pgf;
+pub mod pos;
 pub mod proposal;
 pub mod public_key;
 pub mod rewards;

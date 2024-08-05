@@ -182,6 +182,7 @@ diesel::table! {
         cubic_slashing_window_length -> Int4,
         duplicate_vote_min_slash_rate -> Numeric,
         light_client_attack_min_slash_rate -> Numeric,
+        slash_processing_epoch_offset -> Int4,
     }
 }
 
@@ -378,6 +379,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    redelegation (id) {
+        id -> Int4,
+        delegator -> Varchar,
+        validator_id -> Int4,
+        epoch -> Int4,
+    }
+}
+
+diesel::table! {
     revealed_pk (id) {
         id -> Int4,
         address -> Varchar,
@@ -479,9 +489,13 @@ diesel::joinable!(ibc_token_flows -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(masp_pool -> inner_transactions (inner_tx_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
+<<<<<<< HEAD
 diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
 diesel::joinable!(token_supplies_per_epoch -> token (address));
 diesel::joinable!(transaction_history -> inner_transactions (inner_tx_id));
+=======
+diesel::joinable!(redelegation -> validators (validator_id));
+>>>>>>> 2de97947 (feat: add redelegation info)
 diesel::joinable!(unbonds -> validators (validator_id));
 diesel::joinable!(wrapper_transactions -> blocks (block_height));
 
@@ -503,7 +517,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     masp_pool,
     masp_pool_aggregate,
     pos_rewards,
+<<<<<<< HEAD
     public_good_funding,
+=======
+    redelegation,
+>>>>>>> 2de97947 (feat: add redelegation info)
     revealed_pk,
     token,
     token_supplies_per_epoch,

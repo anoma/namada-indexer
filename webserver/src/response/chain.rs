@@ -21,6 +21,7 @@ pub struct Parameters {
     pub cubic_slashing_window_length: String,
     pub duplicate_vote_min_slash_rate: String,
     pub light_client_attack_min_slash_rate: String,
+    pub slash_processing_epoch_offset: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -48,6 +49,9 @@ impl From<ParametersDb> for Parameters {
                 .to_string(),
             light_client_attack_min_slash_rate: parameters
                 .light_client_attack_min_slash_rate
+                .to_string(),
+            slash_processing_epoch_offset: parameters
+                .slash_processing_epoch_offset
                 .to_string(),
         }
     }

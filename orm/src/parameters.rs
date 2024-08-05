@@ -30,6 +30,7 @@ pub struct ParametersInsertDb {
     pub cubic_slashing_window_length: i32,
     pub duplicate_vote_min_slash_rate: BigDecimal,
     pub light_client_attack_min_slash_rate: BigDecimal,
+    pub slash_processing_epoch_offset: i32,
 }
 
 #[derive(Queryable, Selectable, Clone)]
@@ -52,6 +53,7 @@ pub struct ParametersDb {
     pub cubic_slashing_window_length: i32,
     pub duplicate_vote_min_slash_rate: BigDecimal,
     pub light_client_attack_min_slash_rate: BigDecimal,
+    pub slash_processing_epoch_offset: i32,
 }
 
 impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
@@ -90,6 +92,9 @@ impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
                 &parameters.light_client_attack_min_slash_rate,
             )
             .expect("Invalid light_client_attack_min_slash_rate"),
+            slash_processing_epoch_offset: parameters
+                .slash_processing_epoch_offset
+                as i32,
         }
     }
 }

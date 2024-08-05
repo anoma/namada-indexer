@@ -72,9 +72,17 @@ pub struct Bond {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RedelegationInfo {
+    pub epoch: String,
+    pub time: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MergedBond {
     pub min_denom_amount: String,
     pub validator: ValidatorWithId,
+    pub redelegation_info: Option<RedelegationInfo>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -171,10 +179,50 @@ impl Bond {
 }
 
 impl MergedBond {
-    pub fn from(amount: BigDecimal, db_validator: ValidatorDb) -> Self {
-        Self {
-            min_denom_amount: amount.to_string(),
-            validator: ValidatorWithId::from(db_validator, None),
+    pub fn from(
+        amount: BigDecimal,
+        db_validator: ValidatorDb,
+        redelegation_epoch: Option<i32>,
+        chain_state: &ChainCrawlerStateDb,
+        min_num_of_blocks: i32,
+        min_duration: i32,
+    ) -> Self {
+        match redelegation_epoch {
+            Some(redelegation_epoch) => {
+                let epoch_progress = epoch_progress(
+                    chain_state.last_processed_block,
+                    chain_state.first_block_in_epoch,
+                    min_num_of_blocks,
+                );
+
+                let to_allowed_redelegation = time_between_epochs(
+                    min_num_of_blocks,
+                    epoch_progress,
+                    chain_state.last_processed_epoch,
+                    redelegation_epoch,
+                    min_duration,
+                );
+
+                let time_now = chain_state.timestamp.and_utc().timestamp();
+                let redelegation_time =
+                    time_now + i64::from(to_allowed_redelegation);
+
+                let redelegation_info = RedelegationInfo {
+                    epoch: redelegation_epoch.to_string(),
+                    time: redelegation_time.to_string(),
+                };
+
+                Self {
+                    min_denom_amount: amount.to_string(),
+                    validator: ValidatorWithId::from(db_validator),
+                    redelegation_info: Some(redelegation_info),
+                }
+            }
+            None => Self {
+                min_denom_amount: amount.to_string(),
+                validator: ValidatorWithId::from(db_validator),
+                redelegation_info: None,
+            },
         }
     }
 }

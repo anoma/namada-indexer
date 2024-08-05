@@ -1102,6 +1102,14 @@ components:
           enum: [active, inactive]
         startEpoch:
           type: string
+    RedelegationInfo:
+      type: object
+      required: [epoch, time]
+      properties:
+        epoch:
+          type: string
+        time:
+          type: string
     MergedBond:
       type: object
       required: [validator, minDenomAmount]
@@ -1110,6 +1118,8 @@ components:
           $ref: "#/components/schemas/Validator"
         minDenomAmount:
           type: string
+        redelegationInfo:
+          $ref: '#/components/schemas/RedelegationInfo'
     Unbond:
       type: object
       required:

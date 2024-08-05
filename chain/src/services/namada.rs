@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::convert::identity;
 use std::str::FromStr;
 
 use anyhow::{Context, anyhow};
@@ -11,17 +12,21 @@ use namada_sdk::collections::HashMap;
 use namada_sdk::hash::Hash;
 use namada_sdk::ibc::IbcTokenHash;
 use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
+use namada_sdk::proof_of_stake::storage_key;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_native_token, query_proposal_by_id,
 };
 use namada_sdk::state::Key;
+use namada_sdk::storage::DbKeySeg;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances, TokenSupply};
 use shared::block::{BlockHeight, Epoch};
-use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
+use shared::pos::{
+    Bond, BondAddresses, Bonds, Redelegation, Unbond, UnbondAddresses, Unbonds,
+};
 use shared::proposal::{GovernanceProposal, TallyType};
 use shared::token::{IbcRateLimit, IbcToken, Token};
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
@@ -570,6 +575,35 @@ pub async fn query_unbonds(
     anyhow::Ok(unbonds)
 }
 
+pub async fn query_redelegations(
+    client: &HttpClient,
+    addresses: HashSet<BondAddresses>,
+) -> anyhow::Result<Vec<Redelegation>> {
+    let redelegations = futures::stream::iter(addresses)
+        .filter_map(|BondAddresses { source, target }| async move {
+            let epoch = rpc::query_incoming_redelegations(
+                client,
+                &NamadaSdkAddress::from(target.clone()),
+                &NamadaSdkAddress::from(source.clone()),
+            )
+            .await
+            .ok()
+            .and_then(identity)?;
+
+            Some(Redelegation {
+                delegator: source,
+                validator: target,
+                epoch: epoch.0 as Epoch,
+            })
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
+
+    Ok(redelegations)
+}
+
 pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
     let operation = || async {
         rpc::query_epoch(client)
@@ -964,4 +998,79 @@ where
     }
 
     Ok(buffer)
+}
+
+pub async fn query_all_redelegations(
+    client: &HttpClient,
+    validator_addresses: Vec<Id>,
+) -> anyhow::Result<Vec<Redelegation>> {
+    let nested_delegations = futures::stream::iter(validator_addresses.clone())
+        .filter_map(|validator_address| async move {
+            let key = storage_key::validator_incoming_redelegations_key(
+                &validator_address.clone().into(),
+            );
+
+            let delegations_iter =
+                query_storage_prefix::<NamadaSdkEpoch>(client, &key)
+                    .await
+                    .context("Failed to query all delegations")
+                    // TODO:
+                    .unwrap()?;
+
+            let delegations = delegations_iter
+                .filter_map(|a| {
+                    let (key, epoch) = a;
+                    let delegator =
+                        key.segments.last().expect("Delegator address");
+
+                    let delegator = match delegator {
+                        DbKeySeg::AddressSeg(delegator) => Some(delegator),
+                        _ => None,
+                    };
+
+                    delegator.map(|delegator| Redelegation {
+                        delegator: Id::from(delegator.clone()),
+                        validator: validator_address.clone(),
+                        epoch: epoch.0 as Epoch,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            Some(delegations)
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
+
+    let delegations = nested_delegations.iter().flatten().cloned().collect();
+
+    Ok(delegations)
+}
+
+pub async fn get_validator_addresses_at_epoch(
+    client: &HttpClient,
+    epoch: Epoch,
+) -> anyhow::Result<Vec<Id>> {
+    let namada_epoch = to_epoch(epoch);
+    let validator_set = rpc::get_all_validators(client, namada_epoch)
+        .await
+        .with_context(|| {
+            format!(
+                "Failed to query Namada's consensus validators at epoch \
+                 {epoch}"
+            )
+        })?;
+
+    let validators = validator_set.into_iter().map(Id::from).collect();
+
+    Ok(validators)
+}
+
+fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
+    NamadaSdkBlockHeight::from(block_height as u64)
+}
+
+fn to_epoch(epoch: u32) -> NamadaSdkEpoch {
+    NamadaSdkEpoch::from(epoch as u64)
 }
