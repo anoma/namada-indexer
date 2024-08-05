@@ -6,16 +6,15 @@ use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
 use crate::block_result::BlockResult;
-use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
+use crate::pos::{BondAddresses, UnbondAddresses};
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::transaction::{
     InnerTransaction, Transaction, TransactionKind, WrapperTransaction,
 };
-use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
 use crate::validator::ValidatorMetadataChange;
 use crate::vote::GovernanceVote;

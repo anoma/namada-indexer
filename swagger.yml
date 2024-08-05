@@ -702,6 +702,14 @@ components:
         status:
           type: string
           enum: [active, inactive]
+    RedelegationInfo:
+      type: object
+      required: [epoch, time]
+      properties:
+        epoch:
+          type: string
+        time:
+          type: string
     MergedBond:
       type: object
       required: [validator, amount]
@@ -710,6 +718,8 @@ components:
           $ref: '#/components/schemas/Validator'
         amount:
           type: string
+        redelegationInfo:
+          $ref: '#/components/schemas/RedelegationInfo'
     Unbond:
       type: object
       required: [validator, amount, withdrawEpoch, withdrawTime, canWithdraw]

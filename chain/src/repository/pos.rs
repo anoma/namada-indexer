@@ -7,13 +7,13 @@ use diesel::{
     RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondInsertDb;
-use orm::schema::{bonds, pos_rewards, unbonds, validators};
+use orm::redelegation::RedelegationInsertDb;
+use orm::schema::{bonds, pos_rewards, redelegation, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorUpdateMetadataDb};
 use shared::block::Epoch;
-use shared::bond::Bonds;
 use shared::id::Id;
-use shared::unbond::{UnbondAddresses, Unbonds};
+use shared::pos::{Bonds, Redelegations, UnbondAddresses, Unbonds};
 use shared::validator::ValidatorMetadataChange;
 
 pub fn insert_bonds(
@@ -90,6 +90,58 @@ pub fn insert_unbonds(
         ))
         .execute(transaction_conn)
         .context("Failed to update unbonds in db")?;
+    anyhow::Ok(())
+}
+
+pub fn insert_redelegations(
+    transaction_conn: &mut PgConnection,
+    redelegations: Redelegations,
+) -> anyhow::Result<()> {
+    diesel::insert_into(redelegation::table)
+        .values::<&Vec<RedelegationInsertDb>>(
+            &redelegations
+                .into_iter()
+                .map(|redelegation| {
+                    let validator: ValidatorDb = validators::table
+                        .filter(
+                            validators::namada_address
+                                .eq(&redelegation.validator.to_string()),
+                        )
+                        .select(ValidatorDb::as_select())
+                        .first(transaction_conn)
+                        .expect("Failed to get validator");
+
+                    RedelegationInsertDb::from_redelegation(
+                        redelegation,
+                        validator.id,
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
+        .on_conflict((
+            redelegation::columns::delegator,
+            redelegation::columns::validator_id,
+        ))
+        .do_update()
+        .set((redelegation::columns::epoch
+            .eq(excluded(redelegation::columns::epoch)),))
+        .execute(transaction_conn)
+        .context("Failed to update redelegation in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn delete_old_redelegations(
+    transaction_conn: &mut PgConnection,
+    current_epoch: Epoch,
+) -> anyhow::Result<()> {
+    diesel::delete(
+        redelegation::table
+            .filter(redelegation::columns::epoch.le(current_epoch as i32)),
+    )
+    .execute(transaction_conn)
+    .context("Failed to remove withdraws from db")?;
+
     anyhow::Ok(())
 }
 
