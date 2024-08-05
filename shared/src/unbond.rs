@@ -4,7 +4,7 @@ use crate::balance::Amount;
 use crate::block::Epoch;
 use crate::id::Id;
 
-#[derive(Debug, Clone)]
+#[derive(Hash, Debug, Clone, PartialEq, Eq)]
 pub struct UnbondAddresses {
     pub source: Id,
     pub validator: Id,
