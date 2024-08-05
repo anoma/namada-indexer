@@ -100,6 +100,7 @@ diesel::table! {
         genesis_time -> Int8,
         epoch_switch_blocks_delay -> Int4,
         checksums -> Jsonb,
+        slash_processing_epoch_offset -> Int4,
     }
 }
 
@@ -197,6 +198,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    redelegation (id) {
+        id -> Int4,
+        delegator -> Varchar,
+        validator_id -> Int4,
+        epoch -> Int4,
+    }
+}
+
+diesel::table! {
     revealed_pk (id) {
         id -> Int4,
         address -> Varchar,
@@ -254,6 +264,7 @@ diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
+diesel::joinable!(redelegation -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
@@ -267,6 +278,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     governance_votes,
     inner_transactions,
     pos_rewards,
+    redelegation,
     revealed_pk,
     unbonds,
     validators,

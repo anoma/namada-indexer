@@ -8,6 +8,7 @@ pub mod group_by_macros;
 pub mod migrations;
 pub mod parameters;
 pub mod pos_rewards;
+pub mod redelegation;
 pub mod revealed_pk;
 pub mod schema;
 pub mod transactions;
