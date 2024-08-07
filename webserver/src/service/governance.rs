@@ -58,7 +58,7 @@ impl GovernanceService {
                     Proposal::from_proposal_db(
                         p,
                         &chain_state,
-                        parameters.min_num_of_blocks,
+                        parameters.max_block_time,
                         parameters.min_duration,
                     )
                 })
@@ -101,7 +101,7 @@ impl GovernanceService {
                 Proposal::from_proposal_db(
                     p,
                     &chain_state,
-                    parameters.min_num_of_blocks,
+                    parameters.max_block_time,
                     parameters.min_duration,
                 )
             })
@@ -134,7 +134,7 @@ impl GovernanceService {
             Proposal::from_proposal_db(
                 p,
                 &chain_state,
-                parameters.min_num_of_blocks,
+                parameters.max_block_time,
                 parameters.min_duration,
             )
         }))
