@@ -86,7 +86,8 @@ pub async fn get_parameters(
         .native_token(client)
         .await
         .context("Failed to query native token")?;
-    tracing::info!("Native token address: {:?}", native_token_address);
+
+    let max_block_time = RPC.shell().max_block_time(client).await?;
 
     let apr = calc_apr(
         client,
@@ -102,6 +103,7 @@ pub async fn get_parameters(
         epochs_per_year,
         min_num_of_blocks: epoch_duration.min_num_of_blocks,
         min_duration: epoch_duration.min_duration.0,
+        max_block_time: max_block_time.0,
         apr,
         native_token_address: native_token_address.to_string(),
     })
