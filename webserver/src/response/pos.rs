@@ -77,7 +77,7 @@ pub struct Unbond {
     pub validator: ValidatorWithId,
     pub withdraw_epoch: String,
     pub withdraw_time: String,
-    pub current_time: String,
+    pub can_withdraw: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -200,7 +200,7 @@ impl Unbond {
             validator: ValidatorWithId::from(db_validator),
             withdraw_epoch: withdraw_epoch.to_string(),
             withdraw_time: withdraw_time.to_string(),
-            current_time: time_now.to_string(),
+            can_withdraw: chain_state.last_processed_epoch >= withdraw_epoch,
         }
     }
 }
