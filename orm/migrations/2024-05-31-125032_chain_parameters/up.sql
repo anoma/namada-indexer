@@ -5,6 +5,7 @@ CREATE TABLE chain_parameters (
   epochs_per_year INT NOT NULL,
   min_num_of_blocks INT NOT NULL,
   min_duration INT NOT NULL,
+  max_block_time INT NOT NULL,
   apr VARCHAR NOT NULL,
   native_token_address VARCHAR NOT NULL,
   chain_id VARCHAR NOT NULL,

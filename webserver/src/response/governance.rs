@@ -116,9 +116,11 @@ impl Proposal {
     pub fn from_proposal_db(
         value: GovernanceProposalDb,
         chain_state: &ChainCrawlerStateDb,
-        min_num_of_blocks: i32,
+        max_block_time: i32,
         min_duration: i32,
     ) -> Self {
+        let min_num_of_blocks = min_duration / max_block_time;
+
         let epoch_progress = epoch_progress(
             chain_state.last_processed_block,
             chain_state.first_block_in_epoch,
