@@ -15,5 +15,8 @@ pub async fn get_address_balance(
 ) -> Result<Json<Vec<AddressBalance>>, ApiError> {
     let balances = state.balance_service.get_address_balances(address).await?;
 
-    Ok(Json(balances))
+    let balances_response: Vec<AddressBalance> =
+        balances.iter().cloned().map(AddressBalance::from).collect();
+
+    Ok(Json(balances_response))
 }
