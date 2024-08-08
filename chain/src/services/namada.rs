@@ -1013,30 +1013,35 @@ pub async fn query_all_redelegations(
             let delegations_iter =
                 query_storage_prefix::<NamadaSdkEpoch>(client, &key)
                     .await
-                    .context("Failed to query all delegations")
-                    // TODO:
-                    .unwrap()?;
+                    .expect("Failed to query all delegations");
 
-            let delegations = delegations_iter
-                .filter_map(|a| {
-                    let (key, epoch) = a;
-                    let delegator =
-                        key.segments.last().expect("Delegator address");
+            match delegations_iter {
+                Some(delegations_iter) => {
+                    let delegations = delegations_iter
+                        .filter_map(|a| {
+                            let (key, epoch) = a;
+                            let delegator =
+                                key.segments.last().expect("Delegator address");
 
-                    let delegator = match delegator {
-                        DbKeySeg::AddressSeg(delegator) => Some(delegator),
-                        _ => None,
-                    };
+                            let delegator = match delegator {
+                                DbKeySeg::AddressSeg(delegator) => {
+                                    Some(delegator)
+                                }
+                                _ => None,
+                            };
 
-                    delegator.map(|delegator| Redelegation {
-                        delegator: Id::from(delegator.clone()),
-                        validator: validator_address.clone(),
-                        epoch: epoch.0 as Epoch,
-                    })
-                })
-                .collect::<Vec<_>>();
+                            delegator.map(|delegator| Redelegation {
+                                delegator: Id::from(delegator.clone()),
+                                validator: validator_address.clone(),
+                                epoch: epoch.0 as Epoch,
+                            })
+                        })
+                        .collect::<Vec<_>>();
 
-            Some(delegations)
+                    Some(delegations)
+                }
+                None => None,
+            }
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
