@@ -3,7 +3,7 @@ use std::str::FromStr;
 use bigdecimal::BigDecimal;
 use diesel::associations::Associations;
 use diesel::{Identifiable, Insertable, Queryable, Selectable};
-use shared::unbond::Unbond;
+use shared::pos::Unbond;
 
 use crate::schema::unbonds;
 use crate::validators::ValidatorDb;

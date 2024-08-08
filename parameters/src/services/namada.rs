@@ -104,6 +104,8 @@ pub async fn get_parameters(
         min_duration: epoch_duration.min_duration.0,
         apr,
         native_token_address: native_token_address.to_string(),
+        slash_processing_epoch_offset: pos_parameters
+            .slash_processing_epoch_offset(),
     })
 }
 
