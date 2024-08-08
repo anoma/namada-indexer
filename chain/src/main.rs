@@ -183,7 +183,7 @@ async fn crawling_fn(
     let redelegations = query_redelegations(&client, addresses)
         .await
         .into_rpc_error()?;
-    tracing::info!("Updating bonds for {} addresses", bonds.len());
+    tracing::info!("Updating redelegations for {} addresses", bonds.len());
 
     let addresses = block.unbond_addresses();
     let unbonds = namada_service::query_unbonds(&client, addresses)
