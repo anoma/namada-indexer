@@ -329,15 +329,27 @@ pub async fn query_next_governance_id(
 pub async fn query_bonds(
     client: &HttpClient,
     addresses: HashSet<BondAddresses>,
-) -> anyhow::Result<Bonds> {
+) -> anyhow::Result<Vec<(Id, Option<Bond>)>> {
     let nested_bonds = futures::stream::iter(addresses)
         .filter_map(|BondAddresses { source, target }| async move {
             // TODO: if this is too slow do not use query_all_bonds_and_unbonds
-            let (bonds, _) =
-                query_all_bonds_and_unbonds(client, Some(source), Some(target))
-                    .await
-                    .context("Failed to query all bonds and unbonds")
-                    .ok()?;
+            let (bonds_res, _) = query_all_bonds_and_unbonds(
+                client,
+                Some(source.clone()),
+                Some(target),
+            )
+            .await
+            .context("Failed to query all bonds and unbonds")
+            .ok()?;
+
+            let bonds = if !bonds_res.is_empty() {
+                bonds_res
+                    .into_iter()
+                    .map(|bond| (source.clone(), Some(bond)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![(source, None)]
+            };
 
             Some(bonds)
         })
