@@ -27,6 +27,7 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::id::Id;
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
 use tracing::Level;
@@ -181,6 +182,20 @@ async fn crawling_fn(
     let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
     tracing::info!("Updating bonds for {} addresses", bonds.len());
 
+    let bonds_updates = bonds
+        .iter()
+        .cloned()
+        .filter_map(|(_, bond)| bond)
+        .collect::<Vec<_>>();
+
+    let removed_bonds_addresses = bonds
+        .iter()
+        .cloned()
+        .filter_map(|(addr, bond)| match bond {
+            Some(_) => None,
+            None => Some(addr),
+        })
+        .collect::<Vec<Id>>();
     let addresses = block.unbond_addresses();
     let unbonds = namada_service::query_unbonds(&client, addresses)
         .await
@@ -226,7 +241,14 @@ async fn crawling_fn(
                     proposals_votes,
                 )?;
 
-                repository::pos::insert_bonds(transaction_conn, bonds)?;
+                // We first remove all the bonds that are not in the storage
+                // anymore
+                repository::pos::clear_bonds(
+                    transaction_conn,
+                    removed_bonds_addresses,
+                )?;
+                repository::pos::insert_bonds(transaction_conn, bonds_updates)?;
+
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
                 repository::pos::remove_withdraws(
                     transaction_conn,

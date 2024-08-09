@@ -16,6 +16,23 @@ use shared::id::Id;
 use shared::unbond::{UnbondAddresses, Unbonds};
 use shared::validator::ValidatorMetadataChange;
 
+pub fn clear_bonds(
+    transaction_conn: &mut PgConnection,
+    addresses: Vec<Id>,
+) -> anyhow::Result<()> {
+    let addresses = addresses
+        .into_iter()
+        .map(|a| a.to_string())
+        .collect::<Vec<_>>();
+
+    diesel::delete(bonds::table)
+        .filter(bonds::address.eq_any(addresses))
+        .execute(transaction_conn)
+        .context("Failed to remove bonds from db")?;
+
+    anyhow::Ok(())
+}
+
 pub fn insert_bonds(
     transaction_conn: &mut PgConnection,
     bonds: Bonds,
