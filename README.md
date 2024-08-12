@@ -22,13 +22,13 @@ The `webserver` is responsible to serve the data via a REST API, which are descr
 
 ### Prerequisites
 
-- Create the `.env` file in the root of the project. You can use the `.env_sample` as a reference:
+- Create the `.env` file in the root of the project. You can use the `.env_sample` file as a reference:
 
 ```sh
 cp .env_sample .env
 ```
 
-- Set the `TENDERMINT_URL` with the Namada RPC url
+- Set the `TENDERMINT_URL` with the Namada RPC url:
   - [Either create a local chain](https://docs.namada.net/operators/networks/local-network)
   - Or use a Public RPC
 
