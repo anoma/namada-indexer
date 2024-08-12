@@ -20,38 +20,33 @@ The `webserver` is responsible to serve the data via a REST API, which are descr
 
 ## How to run
 
-Create the `.env` file. You can use the `.env_sample` as a reference
+### Prerequisites
 
-```
+- Create the `.env` file in the root of the project. You can use the `.env_sample` as a reference:
+
+```sh
 cp .env_sample .env
 ```
 
+- Set the `TENDERMINT_URL` with the Namada RPC url
+  - [Either create a local chain](https://docs.namada.net/operators/networks/local-network)
+  - Or use a Public RPC
+
 ### With docker
 
-- Get a Namada RPC url
-  - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
-  - Or use a Public RPC
 - Install [just](https://github.com/casey/just)
-- Run `just docker-run`
+- Run `just docker-up`
 
 ### Without docker
 
 - Install rust/cargo
-- Get a Namada RPC url
-  - [Either create a local chain ](https://github.com/anoma/namada/blob/main/scripts/gen_localnet.py)
-  - Or use a Public RPC
-- Create a `.env` file in the root of the project with the following content:
+- Update the `.env` values to match your setup, for example:
   ```env
   DATABASE_URL=postgres://postgres:password@0.0.0.0:5435/namada-indexer
   TENDERMINT_URL=http://127.0.0.1:27657
-  ```
-  (Change the values to match your setup)
-- For `webserver` only, you may also add the following to the `.env` file:
-  ```env
   CACHE_URL=redis://redis@0.0.0.0:6379
   PORT=5000
   ```
-  (Change the values to match your setup)
 - Use the `run.sh` script inside each package. Keep in mind that PoS package have to be run always while other service might not
 
 ## Testing via seeder
