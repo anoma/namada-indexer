@@ -185,17 +185,18 @@ async fn crawling_fn(
     let bonds_updates = bonds
         .iter()
         .cloned()
-        .filter_map(|(_, bond)| bond)
+        .filter_map(|(_, _, bond)| bond)
         .collect::<Vec<_>>();
 
     let removed_bonds_addresses = bonds
         .iter()
         .cloned()
-        .filter_map(|(addr, bond)| match bond {
+        .filter_map(|(source, validator, bond)| match bond {
             Some(_) => None,
-            None => Some(addr),
+            None => Some((source, validator)),
         })
-        .collect::<Vec<Id>>();
+        .collect::<Vec<(Id, Id)>>();
+
     let addresses = block.unbond_addresses();
     let unbonds = namada_service::query_unbonds(&client, addresses)
         .await

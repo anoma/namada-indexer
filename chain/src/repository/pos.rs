@@ -18,15 +18,21 @@ use shared::validator::ValidatorMetadataChange;
 
 pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
-    addresses: Vec<Id>,
+    addresses: Vec<(Id, Id)>,
 ) -> anyhow::Result<()> {
-    let addresses = addresses
+    let (sources, validators): (Vec<String>, Vec<String>) = addresses
         .into_iter()
-        .map(|a| a.to_string())
-        .collect::<Vec<_>>();
+        .map(|(source, validator)| (source.to_string(), validator.to_string()))
+        .unzip();
 
     diesel::delete(bonds::table)
-        .filter(bonds::address.eq_any(addresses))
+        .filter(bonds::address.eq_any(sources).and(
+            bonds::validator_id.eq_any(
+                validators::table.select(validators::columns::id).filter(
+                    validators::columns::namada_address.eq_any(validators),
+                ),
+            ),
+        ))
         .execute(transaction_conn)
         .context("Failed to remove bonds from db")?;
 
