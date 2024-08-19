@@ -20,19 +20,22 @@ pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
     addresses: Vec<(Id, Id)>,
 ) -> anyhow::Result<()> {
-    let (sources, validators): (Vec<String>, Vec<String>) = addresses
-        .into_iter()
-        .map(|(source, validator)| (source.to_string(), validator.to_string()))
-        .unzip();
+    let mut query = diesel::delete(bonds::table).into_boxed();
 
-    diesel::delete(bonds::table)
-        .filter(bonds::address.eq_any(sources).and(
-            bonds::validator_id.eq_any(
-                validators::table.select(validators::columns::id).filter(
-                    validators::columns::namada_address.eq_any(validators),
+    for (source, validator) in addresses {
+        query = query.filter(
+            bonds::address.eq(source.to_string()).and(
+                bonds::validator_id.eq_any(
+                    validators::table.select(validators::columns::id).filter(
+                        validators::columns::namada_address
+                            .eq(validator.to_string()),
+                    ),
                 ),
             ),
-        ))
+        );
+    }
+
+    query
         .execute(transaction_conn)
         .context("Failed to remove bonds from db")?;
 
