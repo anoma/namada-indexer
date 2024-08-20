@@ -1,7 +1,8 @@
 use deadpool_diesel::postgres::Pool;
 use diesel::{sql_query, Connection, PgConnection, RunQueryDsl};
-use futures::future::BoxFuture;
 use orm::migrations::run_migrations;
+use shared::error::{AsDbError, ContextDbInteractError};
+use std::convert::identity;
 use std::sync::atomic::AtomicU32;
 use std::{env, thread};
 
@@ -55,17 +56,26 @@ impl TestDb {
 
     pub async fn run_test(
         &self,
-        test: impl Fn(Pool) -> BoxFuture<'static, anyhow::Result<()>>,
+        test: impl Fn(&mut PgConnection) -> anyhow::Result<()>
+            + namada_sdk::MaybeSend
+            + 'static,
     ) -> anyhow::Result<()> {
         let conn = &mut self.pool.get().await.unwrap();
 
         run_migrations(conn).await.unwrap();
 
-        // seeds(conn).expect("Unable to seed the test database");
+        conn.interact(move |conn| {
+            conn.build_transaction().read_write().run(test)
+        })
+        .await
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?;
 
-        test(self.pool.clone()).await
+        anyhow::Ok(())
     }
 }
+
 impl Drop for TestDb {
     fn drop(&mut self) {
         if thread::panicking() {

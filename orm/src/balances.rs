@@ -19,11 +19,18 @@ pub type BalanceDb = BalancesInsertDb;
 
 impl BalancesInsertDb {
     pub fn from_balance(balance: Balance) -> Self {
-        Self {
+        let asd = Self {
             owner: balance.owner.to_string(),
             token: balance.token.to_string(),
             raw_amount: BigDecimal::from_str(&balance.amount.to_string())
                 .expect("Invalid amount"),
-        }
+        };
+
+        println!(
+            "Balance_test: {:?}",
+            BigDecimal::from_str(&balance.amount.to_string())
+        );
+
+        asd
     }
 }
