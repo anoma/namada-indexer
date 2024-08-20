@@ -244,10 +244,12 @@ async fn crawling_fn(
 
                 // We first remove all the bonds that are not in the storage
                 // anymore
-                repository::pos::clear_bonds(
-                    transaction_conn,
-                    removed_bonds_addresses,
-                )?;
+                if !removed_bonds_addresses.is_empty() {
+                    repository::pos::clear_bonds(
+                        transaction_conn,
+                        removed_bonds_addresses,
+                    )?;
+                }
                 repository::pos::insert_bonds(transaction_conn, bonds_updates)?;
 
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
