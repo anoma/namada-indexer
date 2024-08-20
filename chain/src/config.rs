@@ -29,3 +29,15 @@ pub struct AppConfig {
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
 }
+
+#[derive(clap::Parser)]
+pub struct TestConfig {
+    #[clap(long, env)]
+    pub tendermint_url: String,
+
+    #[clap(long, env)]
+    pub database_url: String,
+
+    #[command(flatten)]
+    pub verbosity: Verbosity<InfoLevel>,
+}

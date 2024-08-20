@@ -6,7 +6,7 @@ use shared::balance::Balance;
 
 use crate::schema::balances;
 
-#[derive(Insertable, Clone, Queryable, Selectable)]
+#[derive(Insertable, Clone, Queryable, Selectable, Debug)]
 #[diesel(table_name = balances)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct BalancesInsertDb {

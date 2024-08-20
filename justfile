@@ -22,6 +22,9 @@ clean:
 run-chain:
     (cd chain && ./run.sh)
 
+test-chain:
+    (cd chain && ./run-test.sh)
+
 run-governance:
     (cd governance && ./run.sh)
 

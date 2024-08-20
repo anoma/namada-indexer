@@ -1,0 +1,85 @@
+use deadpool_diesel::postgres::Pool;
+use diesel::{sql_query, Connection, PgConnection, RunQueryDsl};
+use futures::future::BoxFuture;
+use orm::migrations::run_migrations;
+use std::sync::atomic::AtomicU32;
+use std::{env, thread};
+
+use crate::config::TestConfig;
+
+static TEST_DB_COUNTER: AtomicU32 = AtomicU32::new(0);
+
+pub struct TestDb {
+    default_db_url: String,
+    name: String,
+    pool: Pool,
+}
+impl TestDb {
+    pub fn new(config: &TestConfig) -> Self {
+        let name = format!(
+            "test_db_{}_{}",
+            std::process::id(),
+            TEST_DB_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        );
+        let default_db_url = &config.database_url;
+        let mut conn = PgConnection::establish(&default_db_url).unwrap();
+
+        sql_query(format!("CREATE DATABASE {};", name))
+            .execute(&mut conn)
+            .unwrap();
+
+        // TODO: this pool stuff is copied from AppState
+        let max_pool_size = env::var("DATABASE_POOL_SIZE")
+            .unwrap_or_else(|_| 8.to_string())
+            .parse::<usize>()
+            .unwrap_or(8_usize);
+
+        let db_path = format!("{}/{}", default_db_url, name);
+
+        let pool_manager = deadpool_diesel::Manager::new(
+            db_path,
+            deadpool_diesel::Runtime::Tokio1,
+        );
+
+        let pool = Pool::builder(pool_manager)
+            .max_size(max_pool_size)
+            .build()
+            .expect("Failed to build Postgres db pool");
+
+        Self {
+            default_db_url: default_db_url.to_string(),
+            name,
+            pool,
+        }
+    }
+
+    pub async fn run_test(
+        &self,
+        test: impl Fn(Pool) -> BoxFuture<'static, anyhow::Result<()>>,
+    ) -> anyhow::Result<()> {
+        let conn = &mut self.pool.get().await.unwrap();
+
+        run_migrations(conn).await.unwrap();
+
+        // seeds(conn).expect("Unable to seed the test database");
+
+        test(self.pool.clone()).await
+    }
+}
+impl Drop for TestDb {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            eprintln!("TestDb leaking database {}", self.name);
+            return;
+        }
+        let mut conn = PgConnection::establish(&self.default_db_url).unwrap();
+        sql_query(format!(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{}'",
+            self.name
+        )).execute(&mut conn)
+            .unwrap();
+        sql_query(format!("DROP DATABASE {}", self.name))
+            .execute(&mut conn)
+            .unwrap();
+    }
+}
