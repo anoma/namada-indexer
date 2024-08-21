@@ -163,7 +163,7 @@ impl PosService {
                     unbond.withdraw_epoch,
                     validator,
                     &chain_state,
-                    parameters.min_num_of_blocks,
+                    parameters.max_block_time,
                     parameters.min_duration,
                 );
                 Unbond {

@@ -119,16 +119,16 @@ impl Proposal {
         max_block_time: i32,
         min_duration: i32,
     ) -> Self {
-        let min_num_of_blocks = min_duration / max_block_time;
+        let blocks_per_epoch = min_duration / max_block_time;
 
         let epoch_progress = epoch_progress(
             chain_state.last_processed_block,
             chain_state.first_block_in_epoch,
-            min_num_of_blocks,
+            blocks_per_epoch,
         );
 
         let to_start = time_between_epochs(
-            min_num_of_blocks,
+            blocks_per_epoch,
             epoch_progress,
             chain_state.last_processed_epoch,
             value.start_epoch,
@@ -136,7 +136,7 @@ impl Proposal {
         );
 
         let to_end = time_between_epochs(
-            min_num_of_blocks,
+            blocks_per_epoch,
             epoch_progress,
             chain_state.last_processed_epoch,
             value.end_epoch,
@@ -144,7 +144,7 @@ impl Proposal {
         );
 
         let to_activation = time_between_epochs(
-            min_num_of_blocks,
+            blocks_per_epoch,
             epoch_progress,
             chain_state.last_processed_epoch,
             value.activation_epoch,
