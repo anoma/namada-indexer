@@ -673,9 +673,9 @@ components:
           type: string
     Vote:
       type: object
-      required: [proposal_id, vote, voterAddress]
+      required: [proposalId, vote, voterAddress]
       properties:
-        proposal_id:
+        proposalId:
           type: string
         vote:
           type: string
@@ -793,7 +793,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, checksums, epochSwitchBlocksDelay]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, maxBlockTime, checksums, epochSwitchBlocksDelay]
       properties:
         unbondingLength:
           type: string
@@ -812,6 +812,8 @@ components:
         minDuration:
           type: string
         minNumOfBlocks:
+          type: string
+        maxBlockTime:
           type: string
         checksums:
           type: object

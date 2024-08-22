@@ -256,7 +256,7 @@ impl Block {
             .collect()
     }
 
-    pub fn governance_votes(&self) -> Vec<GovernanceVote> {
+    pub fn governance_votes(&self) -> HashSet<GovernanceVote> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)

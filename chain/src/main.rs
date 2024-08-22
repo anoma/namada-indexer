@@ -191,10 +191,7 @@ async fn crawling_fn(
     let removed_bonds_addresses = bonds
         .iter()
         .cloned()
-        .filter_map(|(source, validator, bond)| match bond {
-            Some(_) => None,
-            None => Some((source, validator)),
-        })
+        .map(|(source, validator, _)| (source, validator))
         .collect::<Vec<(Id, Id)>>();
 
     let addresses = block.unbond_addresses();
@@ -242,8 +239,7 @@ async fn crawling_fn(
                     proposals_votes,
                 )?;
 
-                // We first remove all the bonds that are not in the storage
-                // anymore
+                // We first remove all the bonds and then insert the new ones
                 if !removed_bonds_addresses.is_empty() {
                     repository::pos::clear_bonds(
                         transaction_conn,

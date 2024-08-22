@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
@@ -42,7 +44,7 @@ pub fn insert_proposals(
 
 pub fn insert_votes(
     transaction_conn: &mut PgConnection,
-    proposals_votes: Vec<GovernanceVote>,
+    proposals_votes: HashSet<GovernanceVote>,
 ) -> anyhow::Result<()> {
     diesel::insert_into(governance_votes::table)
         .values::<&Vec<GovernanceProposalVoteInsertDb>>(
