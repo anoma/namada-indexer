@@ -13,7 +13,8 @@ use crate::id::Id;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::transaction::{
-    InnerTransaction, Transaction, TransactionKind, WrapperTransaction,
+    InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
+    WrapperTransaction,
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
@@ -166,7 +167,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::InitProposal(data) => {
                     let init_proposal_data = data.clone().unwrap(); // safe as we filter before (not the best pattern)
@@ -243,7 +247,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ClaimRewards(data) => {
                     let data = data.clone().unwrap();
@@ -260,7 +267,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ProposalVote(data) => {
                     let vote_proposal_data = data.clone().unwrap();
@@ -283,6 +293,8 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(wrapper_tx, inners_txs)| {
+                // TODO: filter out rejected transactions
+
                 let mut balance_changes = vec![];
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
@@ -390,7 +402,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Bond(data) => {
                     let bond_data = data.clone().unwrap();
@@ -443,7 +458,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Unbond(data) => {
                     let unbond_data = data.clone().unwrap();
@@ -467,7 +485,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Withdraw(data) => {
                     let withdraw_data = data.clone().unwrap();
@@ -491,7 +512,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::MetadataChange(data) => {
                     let metadata_change_data = data.clone().unwrap();
@@ -538,8 +562,10 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| tx.data.is_some())
-            .filter(|tx| tx.data.is_some())
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::RevealPk(data) => {
                     let namada_public_key = data.clone().unwrap().public_key;

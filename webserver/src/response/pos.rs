@@ -61,6 +61,7 @@ pub struct Bond {
     pub amount: String,
     pub validator: ValidatorWithId,
     pub status: BondStatus,
+    pub start_epoch: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -156,6 +157,7 @@ impl Bond {
             amount: db_bond.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
             status,
+            start_epoch: db_bond.start.to_string(),
         }
     }
 }

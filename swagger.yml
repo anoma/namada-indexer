@@ -693,7 +693,7 @@ components:
           minimum: 0
     Bond:
       type: object
-      required: [validator, amount, start]
+      required: [validator, amount, status, startEpoch]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
@@ -702,6 +702,8 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        startEpoch:
+          type: string
     MergedBond:
       type: object
       required: [validator, amount]
