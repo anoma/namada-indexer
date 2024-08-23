@@ -497,27 +497,29 @@ pub async fn query_tallies(
 pub async fn query_all_votes(
     client: &HttpClient,
     proposals_ids: Vec<u64>,
-) -> anyhow::Result<Vec<GovernanceVote>> {
-    let votes = futures::stream::iter(proposals_ids)
-        .filter_map(|proposal_id| async move {
-            let votes =
-                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
+) -> anyhow::Result<HashSet<GovernanceVote>> {
+    let votes: Vec<HashSet<GovernanceVote>> =
+        futures::stream::iter(proposals_ids)
+            .filter_map(|proposal_id| async move {
+                let votes = rpc::query_proposal_votes(client, proposal_id)
+                    .await
+                    .ok()?;
 
-            let votes = votes
-                .into_iter()
-                .map(|vote| GovernanceVote {
-                    proposal_id,
-                    vote: ProposalVoteKind::from(vote.data),
-                    address: Id::from(vote.delegator),
-                })
-                .collect::<Vec<_>>();
+                let votes = votes
+                    .into_iter()
+                    .map(|vote| GovernanceVote {
+                        proposal_id,
+                        vote: ProposalVoteKind::from(vote.data),
+                        address: Id::from(vote.delegator),
+                    })
+                    .collect::<HashSet<_>>();
 
-            Some(votes)
-        })
-        .map(futures::future::ready)
-        .buffer_unordered(20)
-        .collect::<Vec<_>>()
-        .await;
+                Some(votes)
+            })
+            .map(futures::future::ready)
+            .buffer_unordered(20)
+            .collect::<Vec<_>>()
+            .await;
 
     anyhow::Ok(votes.iter().flatten().cloned().collect())
 }

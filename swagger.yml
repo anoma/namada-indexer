@@ -673,9 +673,9 @@ components:
           type: string
     Vote:
       type: object
-      required: [proposal_id, vote, voterAddress]
+      required: [proposalId, vote, voterAddress]
       properties:
-        proposal_id:
+        proposalId:
           type: string
         vote:
           type: string
@@ -693,7 +693,7 @@ components:
           minimum: 0
     Bond:
       type: object
-      required: [validator, amount, start]
+      required: [validator, amount, status, startEpoch]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
@@ -702,6 +702,8 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        startEpoch:
+          type: string
     MergedBond:
       type: object
       required: [validator, amount]
@@ -793,7 +795,7 @@ components:
             type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, checksums, epochSwitchBlocksDelay]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, maxBlockTime, checksums, epochSwitchBlocksDelay]
       properties:
         unbondingLength:
           type: string
@@ -812,6 +814,8 @@ components:
         minDuration:
           type: string
         minNumOfBlocks:
+          type: string
+        maxBlockTime:
           type: string
         checksums:
           type: object

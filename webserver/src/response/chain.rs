@@ -14,6 +14,7 @@ pub struct Parameters {
     pub genesis_time: String,
     pub min_duration: String,
     pub min_num_of_blocks: String,
+    pub max_block_time: String,
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: String,
 }
@@ -30,6 +31,7 @@ impl From<ParametersDb> for Parameters {
             genesis_time: parameters.genesis_time.to_string(),
             min_duration: parameters.min_duration.to_string(),
             min_num_of_blocks: parameters.min_num_of_blocks.to_string(),
+            max_block_time: parameters.max_block_time.to_string(),
             checksums: parameters.checksums,
             epoch_switch_blocks_delay: parameters
                 .epoch_switch_blocks_delay

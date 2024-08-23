@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::id::Id;
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Hash, PartialEq, Eq)]
 pub enum ProposalVoteKind {
     Nay,
     Yay,
@@ -21,7 +21,7 @@ impl From<ProposalVote> for ProposalVoteKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GovernanceVote {
     pub proposal_id: u64,
     pub vote: ProposalVoteKind,

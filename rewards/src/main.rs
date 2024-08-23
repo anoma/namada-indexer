@@ -156,7 +156,7 @@ async fn crawling_fn(
 }
 
 fn can_process(instant: &MutexGuard<Instant>, sleep_for: u64) -> bool {
-    tracing::info!("Attempting to process goverance data");
+    tracing::info!("Attempting to process rewards data");
 
     let time_elapsed = instant.elapsed().as_secs();
     time_elapsed >= sleep_for

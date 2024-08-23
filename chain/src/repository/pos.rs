@@ -23,7 +23,7 @@ pub fn clear_bonds(
     let mut query = diesel::delete(bonds::table).into_boxed();
 
     for (source, validator) in addresses {
-        query = query.filter(
+        query = query.or_filter(
             bonds::address.eq(source.to_string()).and(
                 bonds::validator_id.eq_any(
                     validators::table.select(validators::columns::id).filter(

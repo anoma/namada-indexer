@@ -43,10 +43,10 @@ where
 pub fn epoch_progress(
     current_block: i32,
     first_block_in_epoch: i32,
-    min_num_of_blocks: i32,
+    blocks_per_epoch: i32,
 ) -> f64 {
-    let min_num_of_blocks =
-        min_num_of_blocks + (EPOCH_SWITCH_BLOCKS_DELAY as i32);
+    let blocks_per_epoch =
+        blocks_per_epoch + (EPOCH_SWITCH_BLOCKS_DELAY as i32);
 
     // We remove 1 to the current_block so progress resets to 0 when new epoch
     // starts
@@ -56,22 +56,22 @@ pub fn epoch_progress(
     let block_in_current_epoch = current_block - first_block_in_epoch;
 
     // Calculate how much into the epoch we are
-    block_in_current_epoch as f64 / min_num_of_blocks as f64
+    block_in_current_epoch as f64 / blocks_per_epoch as f64
 }
 
 // Calculate the time between current epoch and arbitrary epoch
 pub fn time_between_epochs(
-    min_num_of_blocks: i32,
+    blocks_per_epoch: i32,
     current_epoch_progress: f64,
     current_epoch: i32,
     to_epoch: i32,
     epoch_duration: i32,
 ) -> i32 {
     // This should always return whole number
-    let time_per_block = epoch_duration / min_num_of_blocks;
+    let time_per_block = epoch_duration / blocks_per_epoch;
 
     // But we warn just in case parameters are wrong
-    let rest = epoch_duration % min_num_of_blocks;
+    let rest = epoch_duration % blocks_per_epoch;
     if rest != 0 {
         tracing::warn!(
             "Time per block is not a whole number of seconds, time between \

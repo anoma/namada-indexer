@@ -61,6 +61,7 @@ pub struct Bond {
     pub amount: String,
     pub validator: ValidatorWithId,
     pub status: BondStatus,
+    pub start_epoch: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -156,6 +157,7 @@ impl Bond {
             amount: db_bond.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator),
             status,
+            start_epoch: db_bond.start.to_string(),
         }
     }
 }
@@ -175,17 +177,19 @@ impl Unbond {
         withdraw_epoch: i32,
         db_validator: ValidatorDb,
         chain_state: &ChainCrawlerStateDb,
-        min_num_of_blocks: i32,
+        max_block_time: i32,
         min_duration: i32,
     ) -> Self {
+        let blocks_per_epoch = min_duration / max_block_time;
+
         let epoch_progress = epoch_progress(
             chain_state.last_processed_block,
             chain_state.first_block_in_epoch,
-            min_num_of_blocks,
+            blocks_per_epoch,
         );
 
         let to_withdraw = time_between_epochs(
-            min_num_of_blocks,
+            blocks_per_epoch,
             epoch_progress,
             chain_state.last_processed_epoch,
             withdraw_epoch,

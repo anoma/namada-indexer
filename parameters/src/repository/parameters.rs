@@ -13,7 +13,11 @@ pub fn upsert_chain_parameters(
         .values(&parameters)
         .on_conflict(chain_parameters::chain_id)
         .do_update()
-        .set(chain_parameters::apr.eq(excluded(chain_parameters::apr)))
+        .set((
+            chain_parameters::apr.eq(excluded(chain_parameters::apr)),
+            chain_parameters::max_block_time
+                .eq(excluded(chain_parameters::max_block_time)),
+        ))
         .execute(transaction_conn)
         .context("Failed to update chain_parameters state in db")?;
 
