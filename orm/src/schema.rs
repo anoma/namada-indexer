@@ -67,11 +67,12 @@ pub mod sql_types {
 }
 
 diesel::table! {
-    balances (id) {
+    balance_changes (id) {
         id -> Int4,
         owner -> Varchar,
         token -> Varchar,
         raw_amount -> Numeric,
+        height -> Int4,
     }
 }
 
@@ -257,7 +258,7 @@ diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    balances,
+    balance_changes,
     bonds,
     chain_parameters,
     crawler_state,

@@ -4,26 +4,38 @@ use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use shared::balance::Balance;
 
-use crate::schema::balances;
+use crate::schema::balance_changes;
+use crate::views::balances;
 
 #[derive(Insertable, Clone, Queryable, Selectable)]
+#[diesel(table_name = balance_changes)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct BalanceChangesInsertDb {
+    pub owner: String,
+    pub token: String,
+    pub raw_amount: BigDecimal,
+    pub height: i32,
+}
+
+pub type BalanceChangeDb = BalanceChangesInsertDb;
+
+#[derive(Clone, Queryable, Selectable)]
 #[diesel(table_name = balances)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct BalancesInsertDb {
+pub struct BalanceDb {
     pub owner: String,
     pub token: String,
     pub raw_amount: BigDecimal,
 }
 
-pub type BalanceDb = BalancesInsertDb;
-
-impl BalancesInsertDb {
+impl BalanceChangesInsertDb {
     pub fn from_balance(balance: Balance) -> Self {
         Self {
             owner: balance.owner.to_string(),
             token: balance.token.to_string(),
             raw_amount: BigDecimal::from_str(&balance.amount.to_string())
                 .expect("Invalid amount"),
+            height: balance.height as i32,
         }
     }
 }

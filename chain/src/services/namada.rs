@@ -69,6 +69,7 @@ pub async fn get_epoch_at_block_height(
 pub async fn query_balance(
     client: &HttpClient,
     balance_changes: &HashSet<BalanceChange>,
+    block_height: BlockHeight,
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
@@ -86,14 +87,20 @@ pub async fn query_balance(
                     .context("Failed to parse token address")
                     .ok()?;
 
-            let amount = rpc::get_token_balance(client, &token, &owner)
-                .await
-                .unwrap_or_default();
+            let amount = rpc::get_token_balance(
+                client,
+                &token,
+                &owner,
+                Some(to_block_height(block_height)),
+            )
+            .await
+            .unwrap_or_default();
 
             Some(Balance {
                 owner: Id::from(owner),
                 token: Id::from(token),
                 amount: Amount::from(amount),
+                height: block_height,
             })
         })
         .map(futures::future::ready)
@@ -104,6 +111,7 @@ pub async fn query_balance(
 
 pub async fn query_all_balances(
     client: &HttpClient,
+    height: BlockHeight,
 ) -> anyhow::Result<Balances> {
     let token_addr = RPC
         .shell()
@@ -113,10 +121,13 @@ pub async fn query_all_balances(
 
     let balance_prefix = namada_token::storage_key::balance_prefix(&token_addr);
 
-    let balances =
-        query_storage_prefix::<token::Amount>(client, &balance_prefix)
-            .await
-            .context("Failed to query all balances")?;
+    let balances = query_storage_prefix::<token::Amount>(
+        client,
+        &balance_prefix,
+        Some(height),
+    )
+    .await
+    .context("Failed to query all balances")?;
 
     let mut all_balances: Balances = vec![];
 
@@ -133,6 +144,7 @@ pub async fn query_all_balances(
                 owner: Id::from(o),
                 token: Id::from(t),
                 amount: Amount::from(b),
+                height,
             });
         }
     }
@@ -524,6 +536,8 @@ pub async fn query_all_votes(
     anyhow::Ok(votes.iter().flatten().cloned().collect())
 }
 
-fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
+pub(super) fn to_block_height(
+    block_height: BlockHeight,
+) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
 }
