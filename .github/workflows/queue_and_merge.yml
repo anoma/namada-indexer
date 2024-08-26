@@ -53,7 +53,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5435:5432
+          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +67,8 @@ jobs:
         with:
           cache: true
       - run: just test
+        env:
+          DATABASE_URL_TEST: postgres://postgres:password@0.0.0.0:5432
 
   validate-swagger:
     runs-on: ubuntu-latest
