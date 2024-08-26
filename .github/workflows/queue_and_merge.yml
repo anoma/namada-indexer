@@ -35,6 +35,39 @@ jobs:
           cache: true
       - run: just clippy
 
+  test:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+    name: Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          PGUSER: postgres
+          POSTGRES_DB: namada-indexer
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5435:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - uses: rui314/setup-mold@v1
+      - uses: heliaxdev/setup-protoc@v2
+        with:
+          version: "25.0"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: true
+      - run: just test
+
   validate-swagger:
     runs-on: ubuntu-latest
     name: Validate Swagger

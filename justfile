@@ -7,6 +7,9 @@ check:
 fmt:
     cargo +nightly fmt --all
 
+test:
+    cargo test
+
 clippy:
     cargo clippy
 
