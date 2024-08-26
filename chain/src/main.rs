@@ -362,7 +362,7 @@ async fn initial_query(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                repository::balance::insert_balance(
+                repository::balance::insert_balance_in_chunks(
                     transaction_conn,
                     balances,
                 )?;

@@ -1,8 +1,18 @@
+use diesel::sql_types::{BigInt, Integer};
 use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use diesel::{
+    sql_query, ExpressionMethods, PgConnection, QueryableByName, RunQueryDsl,
+};
 use orm::balances::BalancesInsertDb;
 use orm::schema::balances;
 use shared::balance::Balances;
+pub const MAX_PARAM_SIZE: u16 = u16::MAX;
+
+#[derive(QueryableByName)]
+struct BalanceColCount {
+    #[diesel(sql_type = BigInt)]
+    count: i64,
+}
 
 pub fn insert_balance(
     transaction_conn: &mut PgConnection,
@@ -21,8 +31,30 @@ pub fn insert_balance(
             balances::columns::raw_amount
                 .eq(excluded(balances::columns::raw_amount)),
         )
-        .execute(transaction_conn)
-        .unwrap();
+        .execute(transaction_conn)?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_balance_in_chunks(
+    transaction_conn: &mut PgConnection,
+    balances: Balances,
+) -> anyhow::Result<()> {
+    let balances_col_count = sql_query(
+        "SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'balances';",
+    )
+    .get_result::<BalanceColCount>(transaction_conn)?;
+
+    for chunk in balances
+        // We have to devide MAX_PARAM_SIZE by the number of columns in the balances table to get
+        // the correct number of rows in the chunk.
+        .chunks((MAX_PARAM_SIZE as i64 / balances_col_count.count) as usize)
+    {
+        insert_balance(transaction_conn, chunk.to_vec())?
+    }
 
     anyhow::Ok(())
 }
@@ -296,6 +328,48 @@ mod tests {
             let queried_balance = query_balance_by_address(conn, owner, token)?;
 
             assert_eq!(Amount::from(queried_balance.raw_amount), max_amount);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that we can insert more than u16::MAX balances
+    #[tokio::test]
+    async fn test_insert_balance_in_chunks_with_max_param_size_plus_one() {
+        let config = TestConfig::parse();
+        let db = TestDb::new(&config);
+
+        db.run_test(|conn| {
+            let mps = MAX_PARAM_SIZE as u32;
+
+            let balances =
+                (0..mps + 1).map(|_| Balance::fake()).collect::<Vec<_>>();
+
+            let res = insert_balance_in_chunks(conn, balances)?;
+
+            assert_eq!(res, ());
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that we can insert less than u16::MAX balances using chunks
+    #[tokio::test]
+    async fn test_insert_balance_in_chunks_with_1000_params() {
+        let config = TestConfig::parse();
+        let db = TestDb::new(&config);
+
+        db.run_test(|conn| {
+            let balances =
+                (0..1000).map(|_| Balance::fake()).collect::<Vec<_>>();
+
+            let res = insert_balance_in_chunks(conn, balances)?;
+
+            assert_eq!(res, ());
 
             anyhow::Ok(())
         })
