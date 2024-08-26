@@ -2,5 +2,5 @@
 
 CREATE TABLE gas_price (
     token VARCHAR PRIMARY KEY NOT NULL,
-    amount NUMERIC(78) NOT NULL
+    amount NUMERIC(78, 0) NOT NULL
 );
