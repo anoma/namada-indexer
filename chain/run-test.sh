@@ -1,4 +1,3 @@
 . ../.env
-export TENDERMINT_URL
-export DATABASE_URL
+export DATABASE_URL_TEST
 cargo test

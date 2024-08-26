@@ -1,4 +1,5 @@
-use diesel::sql_types::{BigInt, Integer};
+use anyhow::Context;
+use diesel::sql_types::BigInt;
 use diesel::upsert::excluded;
 use diesel::{
     sql_query, ExpressionMethods, PgConnection, QueryableByName, RunQueryDsl,
@@ -31,7 +32,8 @@ pub fn insert_balance(
             balances::columns::raw_amount
                 .eq(excluded(balances::columns::raw_amount)),
         )
-        .execute(transaction_conn)?;
+        .execute(transaction_conn)
+        .context("Failed to update balances in db")?;
 
     anyhow::Ok(())
 }
@@ -49,8 +51,9 @@ pub fn insert_balance_in_chunks(
     .get_result::<BalanceColCount>(transaction_conn)?;
 
     for chunk in balances
-        // We have to devide MAX_PARAM_SIZE by the number of columns in the balances table to get
-        // the correct number of rows in the chunk.
+        // We have to divide MAX_PARAM_SIZE by the number of columns in the
+        // balances table to get the correct number of rows in the
+        // chunk.
         .chunks((MAX_PARAM_SIZE as i64 / balances_col_count.count) as usize)
     {
         insert_balance(transaction_conn, chunk.to_vec())?
@@ -65,17 +68,15 @@ mod tests {
     use anyhow::Context;
     use clap::Parser;
     use diesel::{BoolExpressionMethods, QueryDsl, SelectableHelper};
+    use namada_sdk::token::Amount as NamadaAmount;
+    use namada_sdk::uint::MAX_SIGNED_VALUE;
     use orm::balances::BalanceDb;
-    use shared::{
-        balance::{Amount, Balance},
-        id::Id,
-    };
-
-    use namada_sdk::{token::Amount as NamadaAmount, uint::MAX_SIGNED_VALUE};
-
-    use crate::{config::TestConfig, test_db::TestDb};
+    use shared::balance::{Amount, Balance};
+    use shared::id::Id;
 
     use super::*;
+    use crate::config::TestConfig;
+    use crate::test_db::TestDb;
 
     /// Test that the function correctly handles an empty `balances` input.
     #[tokio::test]
@@ -129,7 +130,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the function updates existing balances when there is a conflict.
+    /// Test that the function updates existing balances when there is a
+    /// conflict.
     #[tokio::test]
     async fn test_insert_balance_with_existing_balances_update() {
         let config = TestConfig::parse();
@@ -171,7 +173,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test the function's behavior when inserting balances that cause a conflict.
+    /// Test the function's behavior when inserting balances that cause a
+    /// conflict.
     #[tokio::test]
     async fn test_insert_balance_with_conflicting_owners() {
         let config = TestConfig::parse();
@@ -226,7 +229,8 @@ mod tests {
         .await
         .expect("Failed to run test");
     }
-    /// Test the function's behavior when inserting balances that cause a conflict.
+    /// Test the function's behavior when inserting balances that cause a
+    /// conflict.
     #[tokio::test]
     async fn test_insert_balance_with_conflicting_tokens() {
         let config = TestConfig::parse();
@@ -282,7 +286,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test the function's ability to handle a large number of balance inserts efficiently.
+    /// Test the function's ability to handle a large number of balance inserts
+    /// efficiently.
     #[tokio::test]
     async fn test_insert_balance_with_large_number_of_balances() {
         let config = TestConfig::parse();

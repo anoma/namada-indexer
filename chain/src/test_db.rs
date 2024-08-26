@@ -1,10 +1,11 @@
+use std::convert::identity;
+use std::sync::atomic::AtomicU32;
+use std::{env, thread};
+
 use deadpool_diesel::postgres::Pool;
 use diesel::{sql_query, Connection, PgConnection, RunQueryDsl};
 use orm::migrations::run_migrations;
 use shared::error::{AsDbError, ContextDbInteractError};
-use std::convert::identity;
-use std::sync::atomic::AtomicU32;
-use std::{env, thread};
 
 use crate::config::TestConfig;
 
@@ -22,12 +23,12 @@ impl TestDb {
             std::process::id(),
             TEST_DB_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
         );
-        let default_db_url = &config.database_url;
-        let mut conn = PgConnection::establish(&default_db_url).unwrap();
+        let default_db_url = &config.database_url_test;
+        let mut conn = PgConnection::establish(default_db_url).unwrap();
 
         sql_query(format!("CREATE DATABASE {};", name))
             .execute(&mut conn)
-            .unwrap();
+            .expect("Failed to create test db");
 
         // TODO: this pool stuff is copied from AppState
         let max_pool_size = env::var("DATABASE_POOL_SIZE")
@@ -57,12 +58,14 @@ impl TestDb {
     pub async fn run_test(
         &self,
         test: impl Fn(&mut PgConnection) -> anyhow::Result<()>
-            + namada_sdk::MaybeSend
-            + 'static,
+        + namada_sdk::MaybeSend
+        + 'static,
     ) -> anyhow::Result<()> {
-        let conn = &mut self.pool.get().await.unwrap();
+        let conn = &mut self.pool.get().await?;
 
-        run_migrations(conn).await.unwrap();
+        run_migrations(conn)
+            .await
+            .expect("Failed to run migrations");
 
         conn.interact(move |conn| {
             conn.build_transaction().read_write().run(test)
@@ -82,14 +85,17 @@ impl Drop for TestDb {
             eprintln!("TestDb leaking database {}", self.name);
             return;
         }
-        let mut conn = PgConnection::establish(&self.default_db_url).unwrap();
+        let mut conn = PgConnection::establish(&self.default_db_url)
+            .expect("Failed to connect to default db");
         sql_query(format!(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{}'",
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE \
+             datname = '{}'",
             self.name
-        )).execute(&mut conn)
-            .unwrap();
+        ))
+        .execute(&mut conn)
+        .expect("Failed to terminate connections to test db");
         sql_query(format!("DROP DATABASE {}", self.name))
             .execute(&mut conn)
-            .unwrap();
+            .expect("Failed to drop test db");
     }
 }
