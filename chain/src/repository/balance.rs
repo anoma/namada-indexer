@@ -73,14 +73,14 @@ mod tests {
     use orm::balances::BalanceDb;
     use shared::balance::{Amount, Balance};
     use shared::id::Id;
+    use test_helpers::config::TestConfig;
+    use test_helpers::db::TestDb;
 
     use super::*;
-    use crate::config::TestConfig;
-    use crate::test_db::TestDb;
 
     /// Test that the function correctly handles an empty `balances` input.
     #[tokio::test]
-    async fn test_insert_balance_with_empty_balances_new() {
+    async fn test_insert_balance_with_empty_balances() {
         let config = TestConfig::parse();
         let db = TestDb::new(&config);
 

@@ -1,6 +1,6 @@
 [package]
-name = "orm"
-description = "Namada indexer orm."
+name = "test_helpers"
+description = "Namada indexer test_helpers."
 resolver = "2"
 authors.workspace = true
 edition.workspace = true
@@ -9,18 +9,14 @@ readme.workspace = true
 version.workspace = true
 
 [lib]
-name = "orm"
+name = "test_helpers"
 path = "src/lib.rs"
 
 [dependencies]
+orm.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 deadpool-diesel.workspace = true
-diesel-derive-enum.workspace = true
 diesel.workspace = true
-diesel_migrations.workspace = true
 serde.workspace = true
 shared.workspace = true
-bigdecimal.workspace = true
-chrono.workspace = true
-serde_json.workspace = true

@@ -43,3 +43,151 @@ pub fn update_crawler_timestamp(
 
     anyhow::Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+
+    use anyhow::Context;
+    use clap::Parser;
+    use diesel::QueryDsl;
+    use orm::crawler_state::ChainCrawlerStateDb;
+    use shared::block::{BlockHeight, Epoch};
+    use test_helpers::config::TestConfig;
+    use test_helpers::db::TestDb;
+
+    use super::*;
+
+    // Test case for successfully inserting a new crawler state
+    #[tokio::test]
+    async fn test_upsert_crawler_state_insert_success() {
+        let config = TestConfig::parse();
+        let db = TestDb::new(&config);
+
+        db.run_test(|conn| {
+            let crawler_state = ChainCrawlerState {
+                last_processed_block: 1,
+                last_processed_epoch: 1,
+                first_block_in_epoch: 1,
+                timestamp: 1,
+            };
+            upsert_crawler_state(conn, crawler_state.clone())?;
+
+            let queried_state = query_chain_state(conn)?;
+
+            assert_eq!(queried_state, crawler_state);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    // Test case for successfully updating an existing crawler state
+    #[tokio::test]
+    async fn test_upsert_crawler_state_update_success() {
+        let config = TestConfig::parse();
+        let db = TestDb::new(&config);
+
+        db.run_test(|conn| {
+            let initial_crawler_state = ChainCrawlerState {
+                last_processed_block: 1,
+                last_processed_epoch: 1,
+                first_block_in_epoch: 1,
+                timestamp: 1,
+            };
+
+            let crawler_state = ChainCrawlerState {
+                last_processed_block: 2,
+                last_processed_epoch: 2,
+                first_block_in_epoch: 2,
+                timestamp: 2,
+            };
+            seed_chain_state(conn, initial_crawler_state.clone())?;
+
+            upsert_crawler_state(conn, crawler_state.clone())?;
+
+            let queried_state = query_chain_state(conn)?;
+
+            assert_eq!(queried_state, crawler_state);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    // Test case for successfully updating an existing crawler timestamp
+    #[tokio::test]
+    async fn test_update_crawler_timestamp_success() {
+        let config = TestConfig::parse();
+        let db = TestDb::new(&config);
+
+        db.run_test(|conn| {
+            let initial_crawler_state = ChainCrawlerState {
+                last_processed_block: 1,
+                last_processed_epoch: 1,
+                first_block_in_epoch: 1,
+                timestamp: 1,
+            };
+
+            seed_chain_state(conn, initial_crawler_state.clone())?;
+
+            let new_timestamp = chrono::Utc::now().naive_utc();
+            update_crawler_timestamp(conn, new_timestamp)?;
+
+            let queried_state = query_chain_state(conn)?;
+
+            assert_eq!(
+                queried_state,
+                ChainCrawlerState {
+                    timestamp: new_timestamp.and_utc().timestamp(),
+                    ..initial_crawler_state
+                }
+            );
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    fn seed_chain_state(
+        conn: &mut PgConnection,
+        crawler_state: ChainCrawlerState,
+    ) -> anyhow::Result<()> {
+        let crawler_state_db = ChainStateInsertDb::from((
+            CrawlerName::Chain,
+            crawler_state.clone(),
+        ));
+        diesel::insert_into(crawler_state::table)
+            .values::<ChainStateInsertDb>(crawler_state_db)
+            .execute(conn)
+            .context("Failed to update crawler_state in db")?;
+
+        anyhow::Ok(())
+    }
+
+    fn query_chain_state(
+        conn: &mut PgConnection,
+    ) -> anyhow::Result<ChainCrawlerState> {
+        let crawler_state: ChainCrawlerStateDb = crawler_state::table
+            .filter(crawler_state::name.eq(CrawlerNameDb::Chain))
+            .select((
+                crawler_state::dsl::last_processed_block,
+                crawler_state::dsl::last_processed_epoch,
+                crawler_state::dsl::first_block_in_epoch,
+                crawler_state::dsl::timestamp,
+            ))
+            .first(conn)
+            .context("Failed to query all balances")?;
+
+        Ok(ChainCrawlerState {
+            last_processed_block: crawler_state.last_processed_block
+                as BlockHeight,
+            last_processed_epoch: crawler_state.last_processed_epoch as Epoch,
+            first_block_in_epoch: crawler_state.first_block_in_epoch
+                as BlockHeight,
+            timestamp: crawler_state.timestamp.and_utc().timestamp(),
+        })
+    }
+}

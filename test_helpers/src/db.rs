@@ -16,6 +16,7 @@ pub struct TestDb {
     name: String,
     pool: Pool,
 }
+
 impl TestDb {
     pub fn new(config: &TestConfig) -> Self {
         let name = format!(
@@ -57,9 +58,7 @@ impl TestDb {
 
     pub async fn run_test(
         &self,
-        test: impl Fn(&mut PgConnection) -> anyhow::Result<()>
-        + namada_sdk::MaybeSend
-        + 'static,
+        test: impl Fn(&mut PgConnection) -> anyhow::Result<()> + Send + 'static,
     ) -> anyhow::Result<()> {
         let conn = &mut self.pool.get().await?;
 
