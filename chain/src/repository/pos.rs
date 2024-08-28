@@ -201,6 +201,7 @@ pub fn update_validator_metadata(
 mod tests {
     use orm::bond::BondDb;
     use orm::validators::ValidatorInsertDb;
+    use shared::balance::Amount;
     use shared::bond::Bond;
     use shared::validator::Validator;
     use test_helpers::db::TestDb;
@@ -334,6 +335,116 @@ mod tests {
         .expect("Failed to run test");
     }
 
+    /// Test that the insert_bonds function correctly handles empty bonds input.
+    #[tokio::test]
+    async fn test_insert_bonds_with_empty_bonds() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_bonds: Vec<Bond> = (0..10)
+                .map(|_| Bond::fake(fake_validator.clone().address))
+                .collect();
+            let fake_bonds_len = fake_bonds.len();
+            seed_bonds(conn, fake_validator, fake_bonds)?;
+
+            insert_bonds(conn, vec![])?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), fake_bonds_len);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_bonds function panics if validator is not in db.
+    #[tokio::test]
+    #[should_panic]
+    async fn test_insert_bonds_with_missing_validator() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_bonds: Vec<Bond> = (0..10)
+                .map(|_| Bond::fake(fake_validator.clone().address))
+                .collect();
+
+            insert_bonds(conn, fake_bonds)?;
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_bonds function correctly inserts bonds into the empty db.
+    #[tokio::test]
+    async fn test_insert_bonds_with_empty_db() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_bonds: Vec<Bond> = (0..10)
+                .map(|_| Bond::fake(fake_validator.clone().address))
+                .collect();
+            let fake_bonds_len = fake_bonds.len();
+
+            seed_validator(conn, fake_validator)?;
+
+            insert_bonds(conn, fake_bonds)?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), fake_bonds_len);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_bonds function updates the raw_amount on conflict
+    #[tokio::test]
+    async fn test_insert_bonds_with_conflict() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_bonds_len = 10;
+            let fake_bonds: Vec<Bond> = (0..fake_bonds_len)
+                .map(|_| Bond::fake(fake_validator.clone().address))
+                .collect();
+
+            seed_bonds(conn, fake_validator.clone(), fake_bonds.clone())?;
+
+            let mut updated_bonds = fake_bonds.clone();
+            let new_amount = Amount::fake();
+            updated_bonds.iter_mut().for_each(|bond| {
+                bond.amount = new_amount.clone();
+            });
+
+            insert_bonds(conn, updated_bonds)?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), fake_bonds_len);
+            assert_eq!(
+                queried_bonds
+                    .into_iter()
+                    .map(|b| Amount::from(b.raw_amount))
+                    .collect::<Vec<_>>(),
+                vec![new_amount; fake_bonds_len]
+            );
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
     fn seed_bonds(
         conn: &mut PgConnection,
         validator: Validator,
@@ -353,6 +464,18 @@ mod tests {
             )
             .execute(conn)
             .context("Failed to update balances in db")?;
+
+        anyhow::Ok(())
+    }
+
+    fn seed_validator(
+        conn: &mut PgConnection,
+        validator: Validator,
+    ) -> anyhow::Result<()> {
+        diesel::insert_into(validators::table)
+            .values(ValidatorInsertDb::from_validator(validator))
+            .execute(conn)
+            .context("Failed to insert validator")?;
 
         anyhow::Ok(())
     }
