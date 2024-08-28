@@ -20,6 +20,12 @@ pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
     addresses: Vec<(Id, Id)>,
 ) -> anyhow::Result<()> {
+    // If there are no addresses to clear, return early.
+    // Without this check, the query would delete all bonds in the table.
+    if addresses.is_empty() {
+        return Ok(());
+    }
+
     let mut query = diesel::delete(bonds::table).into_boxed();
 
     for (source, validator) in addresses {
@@ -189,4 +195,172 @@ pub fn update_validator_metadata(
             .context("Failed to update unbonds in db")?;
     }
     anyhow::Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use orm::bond::BondDb;
+    use orm::validators::ValidatorInsertDb;
+    use shared::bond::Bond;
+    use shared::validator::Validator;
+    use test_helpers::db::TestDb;
+
+    use super::*;
+
+    /// Test that the function correctly handles an empty `addresses` input.
+    #[tokio::test]
+    async fn test_clear_bonds_with_empty_addresses() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let validator = Validator::fake();
+            let bonds = (0..10)
+                .map(|_| Bond::fake(validator.clone().address))
+                .collect();
+
+            seed_bonds(conn, validator, bonds)?;
+            clear_bonds(conn, vec![])?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), 10);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the clear_bonds function does nothing when there are not bonds
+    /// in the db.
+    #[tokio::test]
+    async fn test_clear_bonds_with_no_bonds() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            clear_bonds(conn, vec![])?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), 0);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the clear_bonds function removes the correct bonds from the
+    /// db.
+    #[tokio::test]
+    async fn test_clear_bonds() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let validator = Validator::fake();
+            let bonds: Vec<Bond> = (0..10)
+                .map(|_| Bond::fake(validator.clone().address))
+                .collect();
+
+            seed_bonds(conn, validator.clone(), bonds.clone())?;
+
+            let bonds_to_clear = bonds
+                .iter()
+                .take(5)
+                .map(|bond| (bond.source.clone(), bond.target.clone()))
+                .collect();
+
+            clear_bonds(conn, bonds_to_clear)?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), 5);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the clear_bonds function correctly clears pairs when there are
+    /// addresses duplicates
+    #[tokio::test]
+    async fn test_clear_bonds_with_duplicates() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let validator1 = Validator::fake();
+            let validator2 = Validator::fake();
+            let validator3 = Validator::fake();
+            let bond1 = Bond::fake(validator1.clone().address);
+            let bond2 = Bond::fake(validator2.clone().address);
+            let bond3 = Bond::fake(validator2.clone().address);
+            let bond4 = Bond::fake(validator3.clone().address);
+            let bond5 = Bond::fake(validator3.clone().address);
+            let bond6 = Bond::fake(validator1.clone().address);
+
+            seed_bonds(
+                conn,
+                validator1.clone(),
+                vec![bond1.clone(), bond6.clone()],
+            )?;
+            seed_bonds(
+                conn,
+                validator2.clone(),
+                vec![bond2.clone(), bond3.clone()],
+            )?;
+            seed_bonds(
+                conn,
+                validator3.clone(),
+                vec![bond4.clone(), bond5.clone()],
+            )?;
+
+            let bonds_to_clear = vec![
+                (bond1.source, validator1.address),
+                (bond3.source, validator2.address),
+                (bond5.source, validator3.address),
+            ];
+
+            clear_bonds(conn, bonds_to_clear)?;
+
+            let queried_bonds = query_bonds(conn);
+
+            assert_eq!(queried_bonds.len(), 3);
+            // TODO: later compare whole bonds
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    fn seed_bonds(
+        conn: &mut PgConnection,
+        validator: Validator,
+        balances: Bonds,
+    ) -> anyhow::Result<()> {
+        let validator: ValidatorDb = diesel::insert_into(validators::table)
+            .values(ValidatorInsertDb::from_validator(validator))
+            .get_result(conn)
+            .context("Failed to insert validator")?;
+
+        diesel::insert_into(bonds::table)
+            .values::<&Vec<BondInsertDb>>(
+                &balances
+                    .into_iter()
+                    .map(|bond| BondInsertDb::from_bond(bond, validator.id))
+                    .collect::<Vec<_>>(),
+            )
+            .execute(conn)
+            .context("Failed to update balances in db")?;
+
+        anyhow::Ok(())
+    }
+
+    fn query_bonds(conn: &mut PgConnection) -> Vec<BondDb> {
+        bonds::table
+            .select(BondDb::as_select())
+            .load::<BondDb>(conn)
+            .expect("Failed to query bonds")
+    }
 }

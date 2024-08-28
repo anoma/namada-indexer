@@ -10,7 +10,7 @@ pub struct BondAddresses {
     pub target: Id,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Bond {
     pub source: Id,
     pub target: Id,

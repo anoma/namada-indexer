@@ -7,8 +7,6 @@ use diesel::{sql_query, Connection, PgConnection, RunQueryDsl};
 use orm::migrations::run_migrations;
 use shared::error::{AsDbError, ContextDbInteractError};
 
-use crate::config::TestConfig;
-
 static TEST_DB_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 pub struct TestDb {
@@ -18,14 +16,15 @@ pub struct TestDb {
 }
 
 impl TestDb {
-    pub fn new(config: &TestConfig) -> Self {
+    pub fn new() -> Self {
         let name = format!(
             "test_db_{}_{}",
             std::process::id(),
             TEST_DB_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
         );
-        let default_db_url = &config.database_url_test;
-        let mut conn = PgConnection::establish(default_db_url).unwrap();
+        let default_db_url =
+            env::var("DATABASE_URL_TEST").expect("DATABASE_URL_TEST not set");
+        let mut conn = PgConnection::establish(&default_db_url).unwrap();
 
         sql_query(format!("CREATE DATABASE {};", name))
             .execute(&mut conn)
@@ -96,5 +95,11 @@ impl Drop for TestDb {
         sql_query(format!("DROP DATABASE {}", self.name))
             .execute(&mut conn)
             .expect("Failed to drop test db");
+    }
+}
+
+impl Default for TestDb {
+    fn default() -> Self {
+        Self::new()
     }
 }

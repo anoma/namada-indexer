@@ -48,11 +48,9 @@ pub fn update_crawler_timestamp(
 mod tests {
 
     use anyhow::Context;
-    use clap::Parser;
     use diesel::QueryDsl;
     use orm::crawler_state::ChainCrawlerStateDb;
     use shared::block::{BlockHeight, Epoch};
-    use test_helpers::config::TestConfig;
     use test_helpers::db::TestDb;
 
     use super::*;
@@ -60,8 +58,7 @@ mod tests {
     // Test case for successfully inserting a new crawler state
     #[tokio::test]
     async fn test_upsert_crawler_state_insert_success() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let crawler_state = ChainCrawlerState {
@@ -85,8 +82,7 @@ mod tests {
     // Test case for successfully updating an existing crawler state
     #[tokio::test]
     async fn test_upsert_crawler_state_update_success() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let initial_crawler_state = ChainCrawlerState {
@@ -119,8 +115,7 @@ mod tests {
     // Test case for successfully updating an existing crawler timestamp
     #[tokio::test]
     async fn test_update_crawler_timestamp_success() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let initial_crawler_state = ChainCrawlerState {
