@@ -117,6 +117,8 @@ pub fn insert_unbonds(
         .set((
             unbonds::columns::raw_amount
                 .eq(excluded(unbonds::columns::raw_amount)),
+            //TODO: it's weird that we update the withdraw_epoch as it's a part of on_conflict,
+            //it's most likely redundant
             unbonds::columns::withdraw_epoch
                 .eq(excluded(unbonds::columns::withdraw_epoch)),
         ))
@@ -200,9 +202,11 @@ pub fn update_validator_metadata(
 #[cfg(test)]
 mod tests {
     use orm::bond::BondDb;
+    use orm::unbond::UnbondDb;
     use orm::validators::ValidatorInsertDb;
     use shared::balance::Amount;
     use shared::bond::Bond;
+    use shared::unbond::Unbond;
     use shared::validator::Validator;
     use test_helpers::db::TestDb;
 
@@ -445,6 +449,117 @@ mod tests {
         .expect("Failed to run test");
     }
 
+    /// Test that the insert_unbonds function correctly handles empty unbonds input.
+    #[tokio::test]
+    async fn test_insert_unbonds_with_empty_unbonds() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_unbonds_len = 10;
+            let fake_validator = Validator::fake();
+            let fake_unbonds: Vec<Unbond> = (0..fake_unbonds_len)
+                .map(|_| Unbond::fake(fake_validator.clone().address))
+                .collect();
+            seed_unbonds(conn, fake_validator, fake_unbonds)?;
+
+            insert_unbonds(conn, vec![])?;
+
+            let queried_bonds = query_unbonds(conn);
+
+            assert_eq!(queried_bonds.len(), fake_unbonds_len);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_unbonds function panics if validator is not in db.
+    #[tokio::test]
+    #[should_panic]
+    async fn test_insert_unbonds_with_missing_validator() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_unbonds: Vec<Unbond> = (0..10)
+                .map(|_| Unbond::fake(fake_validator.clone().address))
+                .collect();
+
+            insert_unbonds(conn, fake_unbonds)?;
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_unbonds function correctly inserts unbonds into the empty db.
+    #[tokio::test]
+    async fn test_insert_unbonds_with_empty_db() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_unbonds_len = 10;
+            let fake_unbonds: Vec<Unbond> = (0..fake_unbonds_len)
+                .map(|_| Unbond::fake(fake_validator.clone().address))
+                .collect();
+
+            seed_validator(conn, fake_validator)?;
+
+            insert_unbonds(conn, fake_unbonds)?;
+
+            let queried_unbonds = query_unbonds(conn);
+
+            assert_eq!(queried_unbonds.len(), fake_unbonds_len);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_unbonds function updates the raw_amount on conflict
+    #[tokio::test]
+    async fn test_insert_unbonds_with_conflict() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_unbonds_len = 10;
+            let fake_unbonds: Vec<Unbond> = (0..fake_unbonds_len)
+                .map(|_| Unbond::fake(fake_validator.clone().address))
+                .collect();
+
+            seed_unbonds(conn, fake_validator.clone(), fake_unbonds.clone())?;
+
+            let mut updated_unbonds = fake_unbonds.clone();
+            let new_amount = Amount::fake();
+            updated_unbonds.iter_mut().for_each(|unbond| {
+                unbond.amount = new_amount.clone();
+            });
+
+            insert_unbonds(conn, updated_unbonds)?;
+
+            let queried_unbonds = query_unbonds(conn);
+            let queried_unbonds_len = queried_unbonds.len();
+
+            assert_eq!(queried_unbonds_len, fake_unbonds_len);
+            assert_eq!(
+                queried_unbonds
+                    .into_iter()
+                    .map(|b| Amount::from(b.raw_amount))
+                    .collect::<Vec<_>>(),
+                vec![new_amount; queried_unbonds_len]
+            );
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
     fn seed_bonds(
         conn: &mut PgConnection,
         validator: Validator,
@@ -460,6 +575,31 @@ mod tests {
                 &balances
                     .into_iter()
                     .map(|bond| BondInsertDb::from_bond(bond, validator.id))
+                    .collect::<Vec<_>>(),
+            )
+            .execute(conn)
+            .context("Failed to update balances in db")?;
+
+        anyhow::Ok(())
+    }
+
+    fn seed_unbonds(
+        conn: &mut PgConnection,
+        validator: Validator,
+        balances: Unbonds,
+    ) -> anyhow::Result<()> {
+        let validator: ValidatorDb = diesel::insert_into(validators::table)
+            .values(ValidatorInsertDb::from_validator(validator))
+            .get_result(conn)
+            .context("Failed to insert validator")?;
+
+        diesel::insert_into(unbonds::table)
+            .values::<&Vec<UnbondInsertDb>>(
+                &balances
+                    .into_iter()
+                    .map(|unbond| {
+                        UnbondInsertDb::from_unbond(unbond, validator.id)
+                    })
                     .collect::<Vec<_>>(),
             )
             .execute(conn)
@@ -484,6 +624,13 @@ mod tests {
         bonds::table
             .select(BondDb::as_select())
             .load::<BondDb>(conn)
+            .expect("Failed to query bonds")
+    }
+
+    fn query_unbonds(conn: &mut PgConnection) -> Vec<UnbondDb> {
+        unbonds::table
+            .select(UnbondDb::as_select())
+            .load::<UnbondDb>(conn)
             .expect("Failed to query bonds")
     }
 }
