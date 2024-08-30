@@ -66,23 +66,20 @@ pub fn insert_balance_in_chunks(
 mod tests {
 
     use anyhow::Context;
-    use clap::Parser;
     use diesel::{BoolExpressionMethods, QueryDsl, SelectableHelper};
     use namada_sdk::token::Amount as NamadaAmount;
     use namada_sdk::uint::MAX_SIGNED_VALUE;
     use orm::balances::BalanceDb;
     use shared::balance::{Amount, Balance};
     use shared::id::Id;
+    use test_helpers::db::TestDb;
 
     use super::*;
-    use crate::config::TestConfig;
-    use crate::test_db::TestDb;
 
     /// Test that the function correctly handles an empty `balances` input.
     #[tokio::test]
-    async fn test_insert_balance_with_empty_balances_new() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+    async fn test_insert_balance_with_empty_balances() {
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             insert_balance(conn, vec![])?;
@@ -100,8 +97,7 @@ mod tests {
     /// Test the basic functionality of inserting a single balance.
     #[tokio::test]
     async fn test_insert_balance_with_single_balance() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let owner = Id::Account(
@@ -134,8 +130,7 @@ mod tests {
     /// conflict.
     #[tokio::test]
     async fn test_insert_balance_with_existing_balances_update() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         let owner = Id::Account(
             "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
@@ -177,8 +172,7 @@ mod tests {
     /// conflict.
     #[tokio::test]
     async fn test_insert_balance_with_conflicting_owners() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         let owner = Id::Account(
             "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
@@ -233,8 +227,7 @@ mod tests {
     /// conflict.
     #[tokio::test]
     async fn test_insert_balance_with_conflicting_tokens() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         let owner = Id::Account(
             "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
@@ -290,8 +283,7 @@ mod tests {
     /// efficiently.
     #[tokio::test]
     async fn test_insert_balance_with_large_number_of_balances() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(move |conn| {
             let fake_balances =
@@ -310,8 +302,7 @@ mod tests {
     /// Test how the function handles extremely large balance values.
     #[tokio::test]
     async fn test_insert_balance_with_extremely_large_balance_value() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let owner = Id::Account(
@@ -343,8 +334,7 @@ mod tests {
     /// Test that we can insert more than u16::MAX balances
     #[tokio::test]
     async fn test_insert_balance_in_chunks_with_max_param_size_plus_one() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let mps = MAX_PARAM_SIZE as u32;
@@ -365,8 +355,7 @@ mod tests {
     /// Test that we can insert less than u16::MAX balances using chunks
     #[tokio::test]
     async fn test_insert_balance_in_chunks_with_1000_params() {
-        let config = TestConfig::parse();
-        let db = TestDb::new(&config);
+        let db = TestDb::new();
 
         db.run_test(|conn| {
             let balances =

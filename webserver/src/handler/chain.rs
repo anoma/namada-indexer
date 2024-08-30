@@ -15,7 +15,13 @@ use crate::response::chain::{
 };
 use crate::state::common::CommonState;
 
-pub async fn sync_height(
+#[derive(serde::Serialize)]
+struct ChainStatusEvent {
+    pub height: i32,
+    pub epoch: i32,
+}
+
+pub async fn chain_status(
     State(state): State<CommonState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = tokio_stream::wrappers::IntervalStream::new(
@@ -31,7 +37,17 @@ pub async fn sync_height(
                 .await
                 .expect("Failed to get last processed block");
 
-            Ok(Event::default().data(height.to_string()))
+            let epoch = state
+                .chain_service
+                .find_last_processed_epoch()
+                .await
+                .expect("Failed to get last processed epoch");
+
+            let event =
+                serde_json::to_string(&ChainStatusEvent { height, epoch })
+                    .expect("Failed to serialize event");
+
+            Ok(Event::default().data(event))
         }
     });
 

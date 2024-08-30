@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver", "seeder", "parameters", "transactions"]
+members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver", "seeder", "parameters", "transactions", "test_helpers"]
 
 [workspace.package]
 authors = ["Heliax <hello@heliax.dev>"]
@@ -74,6 +74,7 @@ diesel = { version = "2.1.0", features = [
 ] }
 diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 orm = { path = "orm" }
+test_helpers = { path = "test_helpers" }
 shared = { path = "shared" }
 lazy_static = "1.4.0"
 validator = { version = "0.16.0", features = ["derive"] }

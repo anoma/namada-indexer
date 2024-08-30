@@ -115,7 +115,6 @@ impl ApplicationServer {
                     get(transaction_handlers::get_inner_tx),
                 )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
-                .route("/chain/sync", get(chain_handlers::sync_height))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route(
                     "/chain/block/latest",
@@ -129,6 +128,8 @@ impl ApplicationServer {
                     "/crawlers/timestamps",
                     get(crawler_state_handlers::get_crawlers_timestamps),
                 )
+                // Server sent events endpoints
+                .route("/chain/status", get(chain_handlers::chain_status))
                 .with_state(common_state)
         };
 
