@@ -17,6 +17,7 @@ pub struct Parameters {
     pub max_block_time: String,
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: String,
+    pub slash_processing_epoch_offset: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -35,6 +36,9 @@ impl From<ParametersDb> for Parameters {
             checksums: parameters.checksums,
             epoch_switch_blocks_delay: parameters
                 .epoch_switch_blocks_delay
+                .to_string(),
+            slash_processing_epoch_offset: parameters
+                .slash_processing_epoch_offset
                 .to_string(),
         }
     }

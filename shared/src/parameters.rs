@@ -8,6 +8,7 @@ pub struct Parameters {
     pub min_duration: u64,
     pub apr: String,
     pub native_token_address: String,
+    pub slash_processing_epoch_offset: u64,
 }
 
 pub type EpochSwitchBlocksDelay = u32;

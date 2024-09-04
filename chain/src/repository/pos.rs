@@ -7,13 +7,13 @@ use diesel::{
     RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondInsertDb;
-use orm::schema::{bonds, pos_rewards, unbonds, validators};
+use orm::redelegation::RedelegationInsertDb;
+use orm::schema::{bonds, pos_rewards, redelegation, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorUpdateMetadataDb};
 use shared::block::Epoch;
-use shared::bond::Bonds;
 use shared::id::Id;
-use shared::unbond::{UnbondAddresses, Unbonds};
+use shared::pos::{Bonds, Redelegations, UnbondAddresses, Unbonds};
 use shared::validator::ValidatorMetadataChange;
 
 pub fn clear_bonds(
@@ -127,6 +127,58 @@ pub fn insert_unbonds(
     anyhow::Ok(())
 }
 
+pub fn insert_redelegations(
+    transaction_conn: &mut PgConnection,
+    redelegations: Redelegations,
+) -> anyhow::Result<()> {
+    diesel::insert_into(redelegation::table)
+        .values::<&Vec<RedelegationInsertDb>>(
+            &redelegations
+                .into_iter()
+                .map(|redelegation| {
+                    let validator: ValidatorDb = validators::table
+                        .filter(
+                            validators::namada_address
+                                .eq(&redelegation.validator.to_string()),
+                        )
+                        .select(ValidatorDb::as_select())
+                        .first(transaction_conn)
+                        .expect("Failed to get validator");
+
+                    RedelegationInsertDb::from_redelegation(
+                        redelegation,
+                        validator.id,
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
+        .on_conflict((
+            redelegation::columns::delegator,
+            redelegation::columns::validator_id,
+        ))
+        .do_update()
+        .set((redelegation::columns::epoch
+            .eq(excluded(redelegation::columns::epoch)),))
+        .execute(transaction_conn)
+        .context("Failed to update redelegation in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn clear_redelegations(
+    transaction_conn: &mut PgConnection,
+    current_epoch: Epoch,
+) -> anyhow::Result<()> {
+    diesel::delete(
+        redelegation::table
+            .filter(redelegation::columns::epoch.le(current_epoch as i32)),
+    )
+    .execute(transaction_conn)
+    .context("Failed to remove withdraws from db")?;
+
+    anyhow::Ok(())
+}
+
 pub fn remove_withdraws(
     transaction_conn: &mut PgConnection,
     current_epoch: Epoch,
@@ -202,11 +254,11 @@ pub fn update_validator_metadata(
 #[cfg(test)]
 mod tests {
     use orm::bond::BondDb;
+    use orm::redelegation::RedelegationDb;
     use orm::unbond::UnbondDb;
     use orm::validators::ValidatorInsertDb;
     use shared::balance::Amount;
-    use shared::bond::Bond;
-    use shared::unbond::Unbond;
+    use shared::pos::{Bond, Redelegation, Unbond};
     use shared::validator::Validator;
     use test_helpers::db::TestDb;
 
@@ -560,6 +612,200 @@ mod tests {
         .expect("Failed to run test");
     }
 
+    /// Test that the insert_redelegations function panics if validator is not in db.
+    #[tokio::test]
+    #[should_panic]
+    async fn test_insert_redelegations_with_missing_validator() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_redelegations: Vec<Redelegation> = (0..10)
+                .map(|_| Redelegation::fake(fake_validator.clone().address))
+                .collect();
+
+            insert_redelegations(conn, fake_redelegations)?;
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_redelegations function correctly inserts redelegations into the empty db.
+    #[tokio::test]
+    async fn test_insert_redelegations_with_empty_db() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_redelegations_len = 10;
+            let fake_redelegations: Vec<Redelegation> = (0
+                ..fake_redelegations_len)
+                .map(|_| Redelegation::fake(fake_validator.clone().address))
+                .collect();
+
+            seed_validator(conn, fake_validator)?;
+
+            insert_redelegations(conn, fake_redelegations)?;
+
+            let queried_redelegations = query_redelegations(conn);
+
+            assert_eq!(queried_redelegations.len(), fake_redelegations_len);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_redelegations function updates the raw_amount on conflict
+    #[tokio::test]
+    async fn test_insert_redelegations_with_conflict() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_validator = Validator::fake();
+            let fake_redelegations_len = 10;
+            let fake_redelegations: Vec<Redelegation> = (0
+                ..fake_redelegations_len)
+                .map(|_| Redelegation::fake(fake_validator.clone().address))
+                .collect();
+
+            seed_redelegations(
+                conn,
+                fake_validator.clone(),
+                fake_redelegations.clone(),
+            )?;
+
+            let new_epoch = 123 as Epoch;
+            let mut updated_redelegations = fake_redelegations.clone();
+            updated_redelegations
+                .iter_mut()
+                .for_each(|unbond| unbond.epoch = new_epoch);
+
+            insert_redelegations(conn, updated_redelegations)?;
+
+            let queried_redelegations = query_redelegations(conn);
+            let queried_redelegations_len = queried_redelegations.len();
+
+            assert_eq!(queried_redelegations_len, fake_redelegations_len);
+            assert_eq!(
+                queried_redelegations
+                    .into_iter()
+                    .map(|b| b.epoch as Epoch)
+                    .collect::<Vec<_>>(),
+                vec![new_epoch; queried_redelegations_len]
+            );
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the insert_redelegations function correctly handles empty redelegations input.
+    #[tokio::test]
+    async fn test_insert_redelegations_with_empty_redelegations() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let fake_redelegations_len = 10;
+            let fake_validator = Validator::fake();
+            let fake_redelegations: Vec<Redelegation> = (0
+                ..fake_redelegations_len)
+                .map(|_| Redelegation::fake(fake_validator.clone().address))
+                .collect();
+            seed_redelegations(conn, fake_validator, fake_redelegations)?;
+
+            insert_redelegations(conn, vec![])?;
+
+            let queried_bonds = query_redelegations(conn);
+
+            assert_eq!(queried_bonds.len(), fake_redelegations_len);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the function correctly handles epoch 0 input.
+    #[tokio::test]
+    async fn test_clear_redelegations_with_empty_addresses() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let validator = Validator::fake();
+            let redelegations = (0..10)
+                .map(|_| Redelegation::fake(validator.clone().address))
+                .collect();
+
+            seed_redelegations(conn, validator, redelegations)?;
+            clear_redelegations(conn, 0)?;
+
+            let queried_redelegations = query_redelegations(conn);
+
+            assert_eq!(queried_redelegations.len(), 10);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the clear_redelegations function does nothing when there are not redelegations
+    /// in the db.
+    #[tokio::test]
+    async fn test_clear_redelegations_with_no_redelegations() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            clear_redelegations(conn, 99999)?;
+
+            let queried_redelegations = query_redelegations(conn);
+
+            assert_eq!(queried_redelegations.len(), 0);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test that the clear_redelegations function removes the correct redelegations from the
+    /// db.
+    #[tokio::test]
+    async fn test_clear_redelegations() {
+        let db = TestDb::new();
+
+        db.run_test(|conn| {
+            let validator = Validator::fake();
+            let redelegations: Vec<Redelegation> = (0..10)
+                .map(|i| {
+                    let red = Redelegation::fake(validator.clone().address);
+                    Redelegation {
+                        epoch: i as Epoch,
+                        ..red
+                    }
+                })
+                .collect();
+
+            seed_redelegations(conn, validator.clone(), redelegations.clone())?;
+
+            clear_redelegations(conn, 5)?;
+
+            let queried_redelegations = query_redelegations(conn);
+
+            // We removed all redelegations with epoch <= 5, so we have 6,7,8,9 left
+            assert_eq!(queried_redelegations.len(), 4);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
     fn seed_bonds(
         conn: &mut PgConnection,
         validator: Validator,
@@ -608,6 +854,34 @@ mod tests {
         anyhow::Ok(())
     }
 
+    fn seed_redelegations(
+        conn: &mut PgConnection,
+        validator: Validator,
+        redelegations: Redelegations,
+    ) -> anyhow::Result<()> {
+        let validator: ValidatorDb = diesel::insert_into(validators::table)
+            .values(ValidatorInsertDb::from_validator(validator))
+            .get_result(conn)
+            .context("Failed to insert validator")?;
+
+        diesel::insert_into(redelegation::table)
+            .values::<&Vec<RedelegationInsertDb>>(
+                &redelegations
+                    .into_iter()
+                    .map(|unbond| {
+                        RedelegationInsertDb::from_redelegation(
+                            unbond,
+                            validator.id,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .execute(conn)
+            .context("Failed to update balances in db")?;
+
+        anyhow::Ok(())
+    }
+
     fn seed_validator(
         conn: &mut PgConnection,
         validator: Validator,
@@ -631,6 +905,13 @@ mod tests {
         unbonds::table
             .select(UnbondDb::as_select())
             .load::<UnbondDb>(conn)
+            .expect("Failed to query bonds")
+    }
+
+    fn query_redelegations(conn: &mut PgConnection) -> Vec<RedelegationDb> {
+        redelegation::table
+            .select(RedelegationDb::as_select())
+            .load::<RedelegationDb>(conn)
             .expect("Failed to query bonds")
     }
 }

@@ -1,15 +1,13 @@
 use std::convert::identity;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Context;
 use chain::app_state::AppState;
 use chain::config::AppConfig;
 use chain::repository;
-use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_bonds, query_last_block_height,
+    query_bonds, query_last_block_height, query_redelegations,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -29,7 +27,6 @@ use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use tendermint_rpc::HttpClient;
-use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -74,7 +71,7 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(&client, &conn, config.initial_query_retry_time).await?;
+    initial_query(&client, &conn).await?;
 
     let crawler_state = db_service::get_chain_crawler_state(&conn)
         .await
@@ -179,8 +176,15 @@ async fn crawling_fn(
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
     let addresses = block.bond_addresses();
-    let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
+    let bonds = query_bonds(&client, addresses.clone())
+        .await
+        .into_rpc_error()?;
     tracing::info!("Updating bonds for {} addresses", bonds.len());
+
+    let redelegations = query_redelegations(&client, addresses)
+        .await
+        .into_rpc_error()?;
+    tracing::info!("Updating redelegations for {} addresses", bonds.len());
 
     let bonds_updates = bonds
         .iter()
@@ -247,6 +251,11 @@ async fn crawling_fn(
                 repository::pos::insert_bonds(transaction_conn, bonds_updates)?;
 
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+                repository::pos::insert_redelegations(
+                    transaction_conn,
+                    redelegations,
+                )?;
+                repository::pos::clear_redelegations(transaction_conn, epoch)?;
                 repository::pos::remove_withdraws(
                     transaction_conn,
                     epoch,
@@ -286,41 +295,29 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
-    initial_query_retry_time: u64,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
     let block_height =
         query_last_block_height(client).await.into_rpc_error()?;
-    let mut epoch =
-        namada_service::get_epoch_at_block_height(client, block_height)
-            .await
-            .into_rpc_error()?;
+    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
+        .await
+        .into_rpc_error()?;
     let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
         .await
         .into_rpc_error()?;
 
-    loop {
-        let pos_crawler_state =
-            get_pos_crawler_state(conn).await.into_db_error();
-
-        match pos_crawler_state {
-            // >= in case epochs are really short
-            Ok(pos_crawler_state)
-                if pos_crawler_state.last_processed_epoch >= epoch =>
-            {
-                // We assign pos crawler epoch as epoch to process
-                epoch = pos_crawler_state.last_processed_epoch;
-                break;
-            }
-            _ => {}
-        }
-
-        tracing::info!("Waiting for PoS service update...");
-
-        sleep(Duration::from_secs(initial_query_retry_time)).await;
-    }
-
     let balances = query_all_balances(client).await.into_rpc_error()?;
+
+    let validators_set =
+        namada_service::get_validator_addresses_at_epoch(client, epoch)
+            .await
+            .into_rpc_error()?;
+
+    tracing::info!("Querying redelegations...");
+    let redelegations =
+        namada_service::query_all_redelegations(client, validators_set)
+            .await
+            .into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
     let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
@@ -373,6 +370,10 @@ async fn initial_query(
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
                 repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+                repository::pos::insert_redelegations(
+                    transaction_conn,
+                    redelegations,
+                )?;
 
                 repository::crawler_state::upsert_crawler_state(
                     transaction_conn,
