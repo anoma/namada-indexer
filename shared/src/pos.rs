@@ -72,15 +72,13 @@ pub struct Redelegation {
 }
 
 impl Redelegation {
-    pub fn fake() -> Self {
+    pub fn fake(validator_address: Id) -> Self {
         let delegator =
             namada_core::address::gen_established_address("delegator");
-        let validator =
-            namada_core::address::gen_established_address("validator");
 
         Self {
             delegator: Id::from(delegator),
-            validator: Id::from(validator),
+            validator: validator_address,
             epoch: (1..1000).fake::<u32>(),
         }
     }
