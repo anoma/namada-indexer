@@ -25,7 +25,6 @@ use shared::event_store::{
     publish, subscribe, Event, PosEvents, PosInitializedEventV1,
     SupportedEvents,
 };
-use shared::events::{self, Messages, PosInitializedMsg};
 use tendermint_rpc::HttpClient;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot, Mutex};

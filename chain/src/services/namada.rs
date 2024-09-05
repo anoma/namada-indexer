@@ -343,7 +343,7 @@ pub async fn query_bonds(
             async move {
                 let client: &HttpClient = &client;
                 // TODO: if this is too slow do not use query_all_bonds_and_unbonds
-                let (bonds, _) = query_all_bonds_and_unbonds(
+                let (bonds_res, _) = query_all_bonds_and_unbonds(
                     client,
                     Some(source),
                     Some(target),
@@ -352,14 +352,16 @@ pub async fn query_bonds(
                 .context("Failed to query all bonds and unbonds")
                 .ok()?;
 
-            let bonds = if !bonds_res.is_empty() {
-                bonds_res
-                    .into_iter()
-                    .map(|bond| (source.clone(), target.clone(), Some(bond)))
-                    .collect::<Vec<_>>()
-            } else {
-                vec![(source, target, None)]
-            };
+                let bonds = if !bonds_res.is_empty() {
+                    bonds_res
+                        .into_iter()
+                        .map(|bond| {
+                            (source.clone(), target.clone(), Some(bond))
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    vec![(source, target, None)]
+                };
 
                 Some(bonds)
             }
@@ -369,7 +371,7 @@ pub async fn query_bonds(
         .collect::<Vec<_>>()
         .await;
 
-    let bonds = nested_bonds.iter().flatten().cloned().collect();
+    let bonds = nested_bonds.iter().flatten().collect();
 
     anyhow::Ok(bonds)
 }
@@ -516,7 +518,7 @@ pub async fn query_tallies(
 pub async fn query_all_votes(
     client: Arc<HttpClient>,
     proposals_ids: Vec<u64>,
-) -> anyhow::Result<Hashset<GovernanceVote>> {
+) -> anyhow::Result<HashSet<GovernanceVote>> {
     let votes = futures::stream::iter(proposals_ids)
         .filter_map(|proposal_id| {
             let client = Arc::clone(&client);

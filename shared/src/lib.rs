@@ -7,7 +7,6 @@ pub mod crawler;
 pub mod crawler_state;
 pub mod error;
 pub mod event_store;
-pub mod events;
 pub mod gas;
 pub mod genesis;
 pub mod header;
