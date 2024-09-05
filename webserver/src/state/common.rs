@@ -1,4 +1,9 @@
+use std::sync::Arc;
+
 use namada_sdk::tendermint_rpc::HttpClient;
+use shared::event_store::PosEvents;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::Mutex;
 
 use crate::appstate::AppState;
 use crate::config::AppConfig;
@@ -23,10 +28,16 @@ pub struct CommonState {
     pub crawler_state_service: CrawlerStateService,
     pub client: HttpClient,
     pub config: AppConfig,
+    pub events_rx: Arc<Mutex<Receiver<PosEvents>>>,
 }
 
 impl CommonState {
-    pub fn new(client: HttpClient, config: AppConfig, data: AppState) -> Self {
+    pub fn new(
+        client: HttpClient,
+        config: AppConfig,
+        data: AppState,
+        events_rx: Arc<Mutex<Receiver<PosEvents>>>,
+    ) -> Self {
         Self {
             pos_service: PosService::new(data.clone()),
             gov_service: GovernanceService::new(data.clone()),
@@ -38,6 +49,7 @@ impl CommonState {
             crawler_state_service: CrawlerStateService::new(data.clone()),
             client,
             config,
+            events_rx,
         }
     }
 }

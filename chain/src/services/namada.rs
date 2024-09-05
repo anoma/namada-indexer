@@ -333,10 +333,47 @@ pub async fn query_next_governance_id(
         .context("Failed to deserialize proposal id")
 }
 
+pub async fn query_bonds_old(
+    client: &HttpClient,
+    addresses: HashSet<BondAddresses>,
+) -> anyhow::Result<Vec<(Id, Id, Option<Bond>)>> {
+    let nested_bonds = futures::stream::iter(addresses)
+        .filter_map(|BondAddresses { source, target }| async move {
+            // TODO: if this is too slow do not use query_all_bonds_and_unbonds
+            let (bonds_res, _) = query_all_bonds_and_unbonds(
+                client,
+                Some(source.clone()),
+                Some(target.clone()),
+            )
+            .await
+            .context("Failed to query all bonds and unbonds")
+            .ok()?;
+
+            let bonds = if !bonds_res.is_empty() {
+                bonds_res
+                    .into_iter()
+                    .map(|bond| (source.clone(), target.clone(), Some(bond)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![(source, target, None)]
+            };
+
+            Some(bonds)
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(20)
+        .collect::<Vec<_>>()
+        .await;
+
+    let bonds = nested_bonds.iter().flatten().cloned().collect();
+
+    anyhow::Ok(bonds)
+}
+
 pub async fn query_bonds(
     client: Arc<HttpClient>,
     addresses: HashSet<BondAddresses>,
-) -> anyhow::Result<Bonds> {
+) -> anyhow::Result<Vec<(Id, Id, Option<Bond>)>> {
     let nested_bonds = futures::stream::iter(addresses)
         .filter_map(|BondAddresses { source, target }| {
             let client = Arc::clone(&client);
@@ -345,8 +382,8 @@ pub async fn query_bonds(
                 // TODO: if this is too slow do not use query_all_bonds_and_unbonds
                 let (bonds_res, _) = query_all_bonds_and_unbonds(
                     client,
-                    Some(source),
-                    Some(target),
+                    Some(source.clone()),
+                    Some(target.clone()),
                 )
                 .await
                 .context("Failed to query all bonds and unbonds")
@@ -371,7 +408,7 @@ pub async fn query_bonds(
         .collect::<Vec<_>>()
         .await;
 
-    let bonds = nested_bonds.iter().flatten().collect();
+    let bonds = nested_bonds.iter().flatten().cloned().collect();
 
     anyhow::Ok(bonds)
 }
@@ -483,7 +520,6 @@ pub async fn is_steward(
 ) -> anyhow::Result<bool> {
     let address = NamadaSdkAddress::from_str(&address.to_string())
         .context("Failed to parse address")?;
-    let client: &HttpClient = &client;
 
     let is_steward = rpc::is_steward(client, &address).await;
 
@@ -523,7 +559,6 @@ pub async fn query_all_votes(
         .filter_map(|proposal_id| {
             let client = Arc::clone(&client);
             async move {
-                let proposal_id = proposal_id.clone();
                 let client: &HttpClient = &client;
 
                 let votes = rpc::query_proposal_votes(client, proposal_id)

@@ -20,9 +20,10 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use deadpool_redis::redis::{self, AsyncCommands};
+use deadpool_redis::redis::AsyncCommands;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use redis::aio::MultiplexedConnection;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -30,13 +31,12 @@ use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::event_store::{
-    publish, subscribe, ChainInitializedEventV1, PosEvents, Test,
+    publish, subscribe, ChainInitializedEventV1, ChainProcessed, PosEvents,
 };
-use shared::events::{self, TestMsg};
 use shared::id::Id;
 use tendermint_rpc::HttpClient;
 use tokio::signal;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 use tracing::Level;
@@ -112,6 +112,7 @@ async fn main() -> Result<(), MainError> {
     ));
 
     let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
+
     publish(
         redis_conn,
         PosEvents::ChainInitializedEventV1(ChainInitializedEventV1),
@@ -142,30 +143,25 @@ async fn message_processor(
     initial_query_retry_time: u64,
     checksums: Checksums,
 ) -> anyhow::Result<()> {
-    tracing::info!("Starting message processor...");
     while let Some(event) = rx.recv().await {
-        tracing::info!("Received message: {:?}", event);
+        let app_state = Arc::clone(&app_state);
+
         match event {
-            PosEvents::PosInitializedEventV1(data) => {
-                tracing::info!("Received message: {:?}", data);
+            PosEvents::PosInitializedEventV1(_data) => {
                 let client = Arc::clone(&client);
-                let conn = Arc::new(app_state.get_db_connection().await?);
-                let redis_conn = app_state.get_redis_connection().await?;
                 let checksums = checksums.clone();
+                let conn = app_state.get_db_connection().await?;
 
                 initial_query(
                     Arc::clone(&client),
-                    Arc::clone(&conn),
+                    conn,
                     initial_query_retry_time,
                 )
                 .await
                 .context("Initial query error")?;
 
+                let conn = app_state.get_db_connection().await?;
                 let crawler_state = db_service::get_chain_crawler_state(&conn)
-                    .await
-                    .into_db_error()?;
-
-                publish(redis_conn, PosEvents::Test(Test))
                     .await
                     .into_db_error()?;
 
@@ -174,8 +170,8 @@ async fn message_processor(
                         crawling_fn(
                             block_height,
                             Arc::clone(&client),
-                            Arc::clone(&conn),
                             checksums.clone(),
+                            app_state.clone(),
                         )
                     },
                     crawler_state.last_processed_block,
@@ -183,9 +179,13 @@ async fn message_processor(
                 .await
                 .context("Crawling error")?;
             }
+            PosEvents::Test(_) => {
+                tracing::info!("Received test event");
+            }
             _ => {}
         }
     }
+    tracing::info!("Message processor finished...");
 
     Ok(())
 }
@@ -201,10 +201,12 @@ fn must_exit_handle() -> JoinHandle<()> {
 async fn crawling_fn(
     block_height: u32,
     client: Arc<HttpClient>,
-    conn: Arc<Object>,
     checksums: Checksums,
+    app_state: Arc<AppState>,
 ) -> Result<(), MainError> {
     let should_process = can_process(block_height, client.clone()).await?;
+
+    let conn = app_state.get_db_connection().await.into_db_error()?;
 
     if !should_process {
         let timestamp = Utc::now().naive_utc();
@@ -387,12 +389,23 @@ async fn crawling_fn(
     .unwrap()
     .unwrap();
 
+    let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
+
+    publish(
+        redis_conn,
+        PosEvents::ChainProcessed(ChainProcessed {
+            block: block_height,
+        }),
+    )
+    .await
+    .into_db_error()?;
+
     Ok(())
 }
 
 async fn initial_query(
     client: Arc<HttpClient>,
-    conn: Arc<Object>,
+    conn: Object,
     initial_query_retry_time: u64,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
@@ -402,9 +415,10 @@ async fn initial_query(
         namada_service::get_epoch_at_block_height(&client, block_height)
             .await
             .into_rpc_error()?;
-    let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
-        .await
-        .into_rpc_error()?;
+    let first_block_in_epoch =
+        namada_service::get_first_block_in_epoch(&client)
+            .await
+            .into_rpc_error()?;
 
     loop {
         let pos_crawler_state =

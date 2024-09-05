@@ -1,5 +1,6 @@
 use std::convert::Infallible;
-use std::time::Duration;
+use std::ops::{Deref, DerefMut};
+use std::pin::Pin;
 
 use axum::extract::State;
 use axum::http::HeaderMap;
@@ -24,34 +25,50 @@ struct ChainStatusEvent {
 pub async fn chain_status(
     State(state): State<CommonState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let stream = tokio_stream::wrappers::IntervalStream::new(
-        tokio::time::interval(Duration::from_secs(3)),
-    )
-    .then(move |_| {
-        let state = state.clone();
+    // let stream = state.events_rx.map(|event| {
+    //     let event =
+    //         serde_json::to_string(&event).expect("Failed to serialize event");
 
-        async move {
-            let height = state
-                .chain_service
-                .find_last_processed_block()
-                .await
-                .expect("Failed to get last processed block");
+    //     Ok(Event::default().data(event))
+    // });
+    // let stream = tokio_stream::wrappers::IntervalStream::new(
+    //     tokio::time::interval(Duration::from_secs(3)),
+    // )
+    // .then(move |_| {
+    //     let state = state.clone();
 
-            let epoch = state
-                .chain_service
-                .find_last_processed_epoch()
-                .await
-                .expect("Failed to get last processed epoch");
+    //     async move {
+    //         let height = state
+    //             .chain_service
+    //             .find_last_processed_block()
+    //             .await
+    //             .expect("Failed to get last processed block");
 
+    //         let epoch = state
+    //             .chain_service
+    //             .find_last_processed_epoch()
+    //             .await
+    //             .expect("Failed to get last processed epoch");
+
+    //         let event =
+    //             serde_json::to_string(&ChainStatusEvent { height, epoch })
+    //                 .expect("Failed to serialize event");
+
+    //         Ok(Event::default().data(event))
+    //     }
+    // });
+    // Convert the channels to a `Stream`.
+    let rx1 = async_stream::stream! {
+        let mut events_rx = state.events_rx.lock().await;
+
+        while let Some(event) = events_rx.recv().await {
             let event =
-                serde_json::to_string(&ChainStatusEvent { height, epoch })
-                    .expect("Failed to serialize event");
-
-            Ok(Event::default().data(event))
+                serde_json::to_string(&event).expect("Failed to serialize event");
+            yield Ok(Event::default().data(event));
         }
-    });
+    };
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Sse::new(rx1).keep_alive(KeepAlive::default())
 }
 
 pub async fn get_parameters(

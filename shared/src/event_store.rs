@@ -35,21 +35,18 @@ where
                     let event =
                         stream_id.map.get(EVENT).expect("event key not found");
 
-                    match event {
-                        Value::Data(data) => {
-                            let event_str = std::str::from_utf8(data)
-                                .expect("event is not valid utf8");
+                    if let Value::Data(data) = event {
+                        let event_str = std::str::from_utf8(data)
+                            .expect("event is not valid utf8");
 
-                            let event = T::from_stored(event_str);
+                        let event = T::from_stored(event_str);
 
-                            redis_conn
-                                .set(&last_processed_key, stream_id.id.clone())
-                                .await?;
-                            last_processed_id = stream_id.id;
+                        redis_conn
+                            .set(&last_processed_key, stream_id.id.clone())
+                            .await?;
+                        last_processed_id = stream_id.id;
 
-                            tx.send(event).await.expect("send failed");
-                        }
-                        _ => {}
+                        tx.send(event).await.expect("send failed");
                     }
                 }
             }
@@ -115,6 +112,7 @@ pub trait Event: Clone + Serialize + Send + Sync {
 
 define_event!(PosInitializedEventV1);
 define_event!(ChainInitializedEventV1);
+define_event!(ChainProcessed, block: u32);
 define_event!(Test);
 
 pub trait SupportedEvents: for<'a> Deserialize<'a> + Serialize {
@@ -130,10 +128,11 @@ pub trait SupportedEvents: for<'a> Deserialize<'a> + Serialize {
 }
 
 // TODO: move this to POS module
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum PosEvents {
     PosInitializedEventV1(PosInitializedEventV1),
     ChainInitializedEventV1(ChainInitializedEventV1),
+    ChainProcessed(ChainProcessed),
     Test(Test),
 }
 

@@ -1,14 +1,19 @@
 use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::error_handling::HandleErrorLayer;
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::get;
+use axum::Extension;
 use axum::{BoxError, Json, Router};
 use lazy_static::lazy_static;
 use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
+use shared::event_store::PosEvents;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::Mutex;
 use tower::buffer::BufferLayer;
 use tower::limit::RateLimitLayer;
 use tower::ServiceBuilder;
@@ -33,16 +38,25 @@ lazy_static! {
 pub struct ApplicationServer;
 
 impl ApplicationServer {
-    pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
+    pub async fn serve(
+        config: AppConfig,
+        events_rx: Receiver<PosEvents>,
+    ) -> anyhow::Result<()> {
         let db_url = config.database_url.clone();
         let cache_url = config.cache_url.clone();
 
         let app_state = AppState::new(db_url, cache_url);
         let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
+        // let events_stream =
+        //     tokio_stream::wrappers::ReceiverStream::new(events_rx);
 
         let routes = {
-            let common_state =
-                CommonState::new(client, config.clone(), app_state.clone());
+            let common_state = CommonState::new(
+                client,
+                config.clone(),
+                app_state.clone(),
+                Arc::new(Mutex::new(events_rx)),
+            );
 
             Router::new()
                 .route("/pos/validator", get(pos_handlers::get_validators))

@@ -5,7 +5,7 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use deadpool_redis::redis::{self, RedisResult};
+use deadpool_redis::redis::{self};
 use namada_sdk::time::DateTimeUtc;
 use orm::crawler_state::EpochStateInsertDb;
 use orm::migrations::run_migrations;
@@ -14,22 +14,17 @@ use pos::app_state::AppState;
 use pos::config::AppConfig;
 use pos::repository::{self};
 use pos::services::namada as namada_service;
-use redis::aio::MultiplexedConnection;
-use redis::streams::{StreamRangeReply, StreamReadOptions};
 use redis::AsyncCommands;
-use redis::{streams::StreamReadReply, Cmd};
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::event_store::{
-    publish, subscribe, Event, PosEvents, PosInitializedEventV1,
-    SupportedEvents,
+    publish, subscribe, PosEvents, PosInitializedEventV1,
 };
 use tendermint_rpc::HttpClient;
 use tokio::signal;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -89,14 +84,6 @@ async fn main() -> Result<(), MainError> {
         Arc::clone(&client),
         Arc::clone(&app_state),
     ));
-
-    // let redis_conn = app_state.get_redis_connection().await.into_db_error()?;
-    // publish(
-    //     redis_conn,
-    //     PosEvents::PosInitializedEventV1(PosInitializedEventV1),
-    // )
-    // .await
-    // .into_db_error()?;
 
     tokio::select! {
         _ = must_exit_handle() => {

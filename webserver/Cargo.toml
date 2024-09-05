@@ -44,11 +44,13 @@ tokio-stream.workspace = true
 namada_core.workspace = true
 namada_sdk.workspace = true
 namada_parameters.workspace = true
-deadpool-redis = "0.13.0"
+deadpool-redis = "0.15.1"
+redis =  {version = "0.25.0", features = ["streams"]}
 bigdecimal.workspace = true
 shared.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+async-stream = "0.3.5"
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }
