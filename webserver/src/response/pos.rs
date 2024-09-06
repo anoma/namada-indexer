@@ -126,13 +126,15 @@ pub struct ValidatorWithId {
     #[serde(flatten)]
     pub validator: Validator,
     pub validator_id: String,
+    pub rank: Option<i32>,
 }
 
 impl ValidatorWithId {
-    pub fn from(db_validator: ValidatorDb) -> Self {
+    pub fn from(db_validator: ValidatorDb, rank: Option<i32>) -> Self {
         Self {
             validator_id: db_validator.id.to_string(),
             validator: Validator::from(db_validator),
+            rank,
         }
     }
 }
@@ -155,7 +157,7 @@ impl Bond {
     ) -> Self {
         Self {
             amount: db_bond.raw_amount.to_string(),
-            validator: ValidatorWithId::from(db_validator),
+            validator: ValidatorWithId::from(db_validator, None),
             status,
             start_epoch: db_bond.start.to_string(),
         }
@@ -166,7 +168,7 @@ impl MergedBond {
     pub fn from(amount: BigDecimal, db_validator: ValidatorDb) -> Self {
         Self {
             amount: amount.to_string(),
-            validator: ValidatorWithId::from(db_validator),
+            validator: ValidatorWithId::from(db_validator, None),
         }
     }
 }
@@ -201,7 +203,7 @@ impl Unbond {
 
         Self {
             amount: raw_amount.to_string(),
-            validator: ValidatorWithId::from(db_validator),
+            validator: ValidatorWithId::from(db_validator, None),
             withdraw_epoch: withdraw_epoch.to_string(),
             withdraw_time: withdraw_time.to_string(),
             can_withdraw: chain_state.last_processed_epoch >= withdraw_epoch,
@@ -213,7 +215,7 @@ impl Withdraw {
     pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
         Self {
             amount: db_unbond.raw_amount.to_string(),
-            validator: ValidatorWithId::from(db_validator),
+            validator: ValidatorWithId::from(db_validator, None),
             withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
         }
     }
@@ -223,7 +225,7 @@ impl Reward {
     pub fn from(db_reward: PoSRewardDb, db_validator: ValidatorDb) -> Self {
         Self {
             amount: db_reward.raw_amount.to_string(),
-            validator: ValidatorWithId::from(db_validator),
+            validator: ValidatorWithId::from(db_validator, None),
         }
     }
 }

@@ -36,6 +36,8 @@ pub trait PosRepositoryTrait {
         states: Vec<ValidatorStateDb>,
     ) -> Result<Vec<ValidatorDb>, String>;
 
+    async fn get_validators_rank(&self) -> Result<Vec<i32>, String>;
+
     async fn find_validator_by_id(
         &self,
         id: i32,
@@ -124,6 +126,23 @@ impl PosRepositoryTrait for PosRepository {
             validators::table
                 .filter(validators::dsl::state.eq_any(states))
                 .select(ValidatorDb::as_select())
+                .load(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    /// Returns the ids of validators in consensus in descending order of voting
+    /// power
+    async fn get_validators_rank(&self) -> Result<Vec<i32>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            validators::table
+                .filter(validators::dsl::state.eq(ValidatorStateDb::Consensus))
+                .order(validators::dsl::voting_power.desc())
+                .select(validators::id)
                 .load(conn)
         })
         .await
