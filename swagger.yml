@@ -35,14 +35,14 @@ paths:
           name: sortField
           schema:
             type: string
-            enum: [votingPower, commission]
+            enum: [votingPower, commission, rank]
           description: Sort field
         - in: query
           name: sortOrder
           schema:
             type: string
             enum: [asc, desc]
-          description: Sort order
+          description: Sort order - ignored if sortField is not provided
       responses:
         '200':
           description: A list of validator.

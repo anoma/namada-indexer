@@ -38,6 +38,7 @@ pub enum OrderByDto {
 pub enum ValidatorSortFieldDto {
     VotingPower,
     Commission,
+    Rank,
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]

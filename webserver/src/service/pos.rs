@@ -368,6 +368,7 @@ impl PosService {
                 ValidatorSortFieldDto::Commission => {
                     ValidatorSortByDb::Commission
                 }
+                ValidatorSortFieldDto::Rank => ValidatorSortByDb::Rank,
             },
             match order {
                 OrderByDto::Asc => OrderByDb::Asc,

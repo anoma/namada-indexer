@@ -9,14 +9,15 @@ use diesel::{
 use serde::{Deserialize, Serialize};
 use shared::validator::{Validator, ValidatorState};
 
-use crate::asc_desc;
 use crate::helpers::OrderByDb;
 use crate::schema::validators;
+use crate::{asc_desc, rev_asc_desc};
 
 #[derive(Debug)]
 pub enum ValidatorSortByDb {
     VotingPower,
     Commission,
+    Rank,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
@@ -114,6 +115,9 @@ pub fn validator_sort_by(
         }
         ValidatorSortByDb::Commission => {
             asc_desc!(order, validators::columns::commission)
+        }
+        ValidatorSortByDb::Rank => {
+            rev_asc_desc!(order, validators::columns::voting_power)
         }
     }
 }
