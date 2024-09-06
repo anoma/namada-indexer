@@ -117,8 +117,8 @@ pub fn insert_unbonds(
         .set((
             unbonds::columns::raw_amount
                 .eq(excluded(unbonds::columns::raw_amount)),
-            //TODO: it's weird that we update the withdraw_epoch as it's a part of on_conflict,
-            //it's most likely redundant
+            // TODO: it's weird that we update the withdraw_epoch as it's a
+            // part of on_conflict, it's most likely redundant
             unbonds::columns::withdraw_epoch
                 .eq(excluded(unbonds::columns::withdraw_epoch)),
         ))
@@ -384,7 +384,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_bonds function correctly inserts bonds into the empty db.
+    /// Test that the insert_bonds function correctly inserts bonds into the
+    /// empty db.
     #[tokio::test]
     async fn test_insert_bonds_with_empty_db() {
         let db = TestDb::new();
@@ -449,7 +450,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_unbonds function correctly handles empty unbonds input.
+    /// Test that the insert_unbonds function correctly handles empty unbonds
+    /// input.
     #[tokio::test]
     async fn test_insert_unbonds_with_empty_unbonds() {
         let db = TestDb::new();
@@ -494,7 +496,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_unbonds function correctly inserts unbonds into the empty db.
+    /// Test that the insert_unbonds function correctly inserts unbonds into the
+    /// empty db.
     #[tokio::test]
     async fn test_insert_unbonds_with_empty_db() {
         let db = TestDb::new();

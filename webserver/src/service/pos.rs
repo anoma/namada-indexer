@@ -40,14 +40,24 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
-        Ok((
-            db_validators
-                .into_iter()
-                .map(ValidatorWithId::from)
-                .collect(),
-            total_pages as u64,
-            total_items as u64,
-        ))
+        let validators_rank = self
+            .pos_repo
+            .get_validators_rank()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let validators = db_validators
+            .into_iter()
+            .map(|v| {
+                let rank = validators_rank
+                    .iter()
+                    .position(|v_id| v_id == &v.id)
+                    .map(|r| (r + 1) as i32);
+                ValidatorWithId::from(v, rank)
+            })
+            .collect();
+
+        Ok((validators, total_pages as u64, total_items as u64))
     }
 
     pub async fn get_all_validators(
@@ -63,11 +73,23 @@ impl PosService {
             .find_all_validators(validator_states)
             .await
             .map_err(PoSError::Database)?;
-
-        Ok(db_validators
+        let validators_rank = self
+            .pos_repo
+            .get_validators_rank()
+            .await
+            .map_err(PoSError::Database)?;
+        let validators = db_validators
             .into_iter()
-            .map(ValidatorWithId::from)
-            .collect())
+            .map(|v| {
+                let rank = validators_rank
+                    .iter()
+                    .position(|v_id| v_id == &v.id)
+                    .map(|r| (r + 1) as i32);
+                ValidatorWithId::from(v, rank)
+            })
+            .collect();
+
+        Ok(validators)
     }
 
     pub async fn get_bonds_by_address(

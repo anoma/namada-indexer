@@ -605,6 +605,8 @@ components:
       properties:
         validatorId:
           type: string
+        rank:
+          type: number
         address:
           type: string
         votingPower:
