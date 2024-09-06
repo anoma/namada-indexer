@@ -8,10 +8,13 @@ use diesel::{
 };
 use orm::bond::BondDb;
 use orm::crawler_state::{CrawlerNameDb, EpochCrawlerStateDb};
+use orm::helpers::OrderByDb;
 use orm::pos_rewards::PoSRewardDb;
 use orm::schema::{bonds, crawler_state, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
-use orm::validators::{ValidatorDb, ValidatorStateDb};
+use orm::validators::{
+    validator_sort_by, ValidatorDb, ValidatorSortByDb, ValidatorStateDb,
+};
 
 use super::utils::{Paginate, PaginatedResponseDb};
 use crate::appstate::AppState;
@@ -29,6 +32,7 @@ pub trait PosRepositoryTrait {
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
+        sort_by: Option<(ValidatorSortByDb, OrderByDb)>,
     ) -> Result<PaginatedResponseDb<ValidatorDb>, String>;
 
     async fn find_all_validators(
@@ -101,12 +105,20 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         page: i64,
         states: Vec<ValidatorStateDb>,
+        sort_by: Option<(ValidatorSortByDb, OrderByDb)>,
     ) -> Result<PaginatedResponseDb<ValidatorDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            validators::table
+            let mut boxed = validators::table
                 .filter(validators::dsl::state.eq_any(states))
+                .into_boxed();
+
+            if let Some((sort_by, order_by)) = sort_by {
+                boxed = boxed.order(validator_sort_by(sort_by, order_by));
+            }
+
+            boxed
                 .select(ValidatorDb::as_select())
                 .paginate(page)
                 .load_and_count_pages(conn)
