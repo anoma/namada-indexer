@@ -74,3 +74,29 @@ impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
         }
     }
 }
+
+impl From<ParametersDb>
+    for (Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)
+{
+    fn from(parameters: ParametersDb) -> Self {
+        (
+            Parameters {
+                unbonding_length: parameters.unbonding_length as u64,
+                pipeline_length: parameters.pipeline_length as u64,
+                epochs_per_year: parameters.epochs_per_year as u64,
+                min_num_of_blocks: parameters.min_num_of_blocks as u64,
+                min_duration: parameters.min_duration as u64,
+                max_block_time: parameters.max_block_time as u64,
+                apr: parameters.apr,
+                native_token_address: parameters.native_token_address,
+            },
+            Genesis {
+                chain_id: parameters.chain_id,
+                genesis_time: parameters.genesis_time,
+            },
+            serde_json::from_value(parameters.checksums)
+                .expect("Failed to deserialize checksums"),
+            parameters.epoch_switch_blocks_delay as u32,
+        )
+    }
+}

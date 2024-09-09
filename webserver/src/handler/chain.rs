@@ -60,7 +60,7 @@ pub async fn get_parameters(
 ) -> Result<Json<Parameters>, ApiError> {
     let parameters = state.chain_service.find_latest_parameters().await?;
 
-    Ok(Json(parameters))
+    Ok(Json(Parameters::from(parameters)))
 }
 
 pub async fn get_rpc_url(State(state): State<CommonState>) -> Json<RpcUrl> {
