@@ -5,8 +5,8 @@ use diesel::sql_types::Nullable;
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::crawler_state::{
-    BlockCrawlerState, ChainCrawlerState, CrawlerName, EpochCrawlerState,
-    IntervalCrawlerState,
+    BlockCrawlerState, ChainCrawlerState, CrawlerName, CrawlerTimestamp,
+    EpochCrawlerState, IntervalCrawlerState,
 };
 
 use crate::schema::crawler_state;
@@ -270,6 +270,15 @@ impl From<(CrawlerName, IntervalCrawlerState)> for IntervalStateInsertDb {
         Self {
             name: crawler_name.into(),
             timestamp,
+        }
+    }
+}
+
+impl From<CrawlerStateDb> for CrawlerTimestamp {
+    fn from(value: CrawlerStateDb) -> Self {
+        Self {
+            name: value.name.to_string(),
+            timestamp: value.timestamp.and_utc().timestamp(),
         }
     }
 }

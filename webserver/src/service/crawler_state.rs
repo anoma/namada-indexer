@@ -1,11 +1,11 @@
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use orm::crawler_state::{CrawlerNameDb, CrawlerStateDb};
 use orm::schema::crawler_state;
+use shared::crawler_state::CrawlerTimestamp;
 
 use crate::appstate::AppState;
 use crate::dto::crawler_state::CrawlerNameDto;
 use crate::error::crawler_state::CrawlerStateError;
-use crate::response::crawler_state::CrawlersTimestamps;
 
 #[derive(Clone)]
 pub struct CrawlerStateService {
@@ -20,7 +20,7 @@ impl CrawlerStateService {
     pub async fn get_timestamps(
         &self,
         names: Vec<CrawlerNameDto>,
-    ) -> Result<Vec<CrawlersTimestamps>, CrawlerStateError> {
+    ) -> Result<Vec<CrawlerTimestamp>, CrawlerStateError> {
         let conn = self.app_state.get_db_connection().await;
         let names_db = names
             .iter()
@@ -46,11 +46,8 @@ impl CrawlerStateService {
         crawlers_db.map(|crawlers| {
             crawlers
                 .into_iter()
-                .map(|crawler| CrawlersTimestamps {
-                    name: crawler.name.to_string(),
-                    timestamp: crawler.timestamp.and_utc().timestamp(),
-                })
-                .collect::<Vec<CrawlersTimestamps>>()
+                .map(CrawlerTimestamp::from)
+                .collect::<Vec<_>>()
         })
     }
 

@@ -6,14 +6,14 @@ use strum::VariantArray;
 
 use crate::dto::crawler_state::{CrawlerNameDto, CrawlerStateQueryParams};
 use crate::error::api::ApiError;
-use crate::response::crawler_state::CrawlersTimestamps;
+use crate::response::crawler_state::CrawlerTimestamp;
 use crate::state::common::CommonState;
 
 pub async fn get_crawlers_timestamps(
     _headers: HeaderMap,
     Query(query): Query<CrawlerStateQueryParams>,
     State(state): State<CommonState>,
-) -> Result<Json<Vec<CrawlersTimestamps>>, ApiError> {
+) -> Result<Json<Vec<CrawlerTimestamp>>, ApiError> {
     let crawler_names = query.crawler_names.unwrap_or(vec![]);
 
     let timestamps = state
@@ -38,11 +38,8 @@ pub async fn get_crawlers_timestamps(
                 .iter()
                 .find(|timestamp| timestamp.name == variant.to_string())
                 .map_or_else(
-                    || CrawlersTimestamps {
-                        name: variant.to_string(),
-                        timestamp: 0,
-                    },
-                    |ct| ct.clone(),
+                    || CrawlerTimestamp::empty(variant.to_string()),
+                    CrawlerTimestamp::from,
                 )
         })
         .collect::<Vec<_>>();
