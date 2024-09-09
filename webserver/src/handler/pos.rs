@@ -24,8 +24,10 @@ pub async fn get_validators(
 ) -> Result<Json<PaginatedResponse<Vec<ValidatorWithId>>>, ApiError> {
     let page = query.page.unwrap_or(1);
     let states = query.state.unwrap_or_else(ValidatorStateDto::all);
-    let (validators, total_pages, total_validators) =
-        state.pos_service.get_validators(page, states).await?;
+    let (validators, total_pages, total_validators) = state
+        .pos_service
+        .get_validators(page, states, query.sort_field, query.sort_order)
+        .await?;
 
     let response =
         PaginatedResponse::new(validators, page, total_pages, total_validators);

@@ -1,9 +1,10 @@
 use bigdecimal::{BigDecimal, Zero};
-use orm::validators::ValidatorStateDb;
+use orm::helpers::OrderByDb;
+use orm::validators::{ValidatorSortByDb, ValidatorStateDb};
 
 use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
-use crate::dto::pos::ValidatorStateDto;
+use crate::dto::pos::{OrderByDto, ValidatorSortFieldDto, ValidatorStateDto};
 use crate::error::pos::PoSError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
@@ -29,14 +30,20 @@ impl PosService {
         &self,
         page: u64,
         states: Vec<ValidatorStateDto>,
+        sort_field: Option<ValidatorSortFieldDto>,
+        sort_order: Option<OrderByDto>,
     ) -> Result<(Vec<ValidatorWithId>, u64, u64), PoSError> {
         let validator_states = states
             .into_iter()
             .map(Self::to_validator_state_db)
             .collect();
+        let validator_sort_by = sort_field.map(|field| {
+            let order = sort_order.unwrap_or(OrderByDto::Asc);
+            Self::to_validator_sort_by_db(field, order)
+        });
         let (db_validators, total_pages, total_items) = self
             .pos_repo
-            .find_validators(page as i64, validator_states)
+            .find_validators(page as i64, validator_states, validator_sort_by)
             .await
             .map_err(PoSError::Database)?;
 
@@ -347,5 +354,26 @@ impl PosService {
             ValidatorStateDto::Jailed => ValidatorStateDb::Jailed,
             ValidatorStateDto::Unknown => ValidatorStateDb::Unknown,
         }
+    }
+
+    fn to_validator_sort_by_db(
+        field: ValidatorSortFieldDto,
+        order: OrderByDto,
+    ) -> (ValidatorSortByDb, OrderByDb) {
+        (
+            match field {
+                ValidatorSortFieldDto::VotingPower => {
+                    ValidatorSortByDb::VotingPower
+                }
+                ValidatorSortFieldDto::Commission => {
+                    ValidatorSortByDb::Commission
+                }
+                ValidatorSortFieldDto::Rank => ValidatorSortByDb::Rank,
+            },
+            match order {
+                OrderByDto::Asc => OrderByDb::Asc,
+                OrderByDto::Desc => OrderByDb::Desc,
+            },
+        )
     }
 }

@@ -26,11 +26,29 @@ impl ValidatorStateDto {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OrderByDto {
+    Asc,
+    Desc,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ValidatorSortFieldDto {
+    VotingPower,
+    Commission,
+    Rank,
+}
+
 #[derive(Clone, Serialize, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct ValidatorQueryParams {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
     pub state: Option<Vec<ValidatorStateDto>>,
+    pub sort_field: Option<ValidatorSortFieldDto>,
+    pub sort_order: Option<OrderByDto>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]

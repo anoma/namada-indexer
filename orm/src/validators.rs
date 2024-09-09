@@ -1,11 +1,24 @@
 use std::str::FromStr;
 
+use diesel::expression::expression_types::NotSelectable;
 use diesel::sql_types::Nullable;
-use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use diesel::{
+    AsChangeset, BoxableExpression, ExpressionMethods, Insertable, Queryable,
+    Selectable,
+};
 use serde::{Deserialize, Serialize};
 use shared::validator::{Validator, ValidatorState};
 
+use crate::helpers::OrderByDb;
 use crate::schema::validators;
+use crate::{asc_desc, rev_asc_desc};
+
+#[derive(Debug)]
+pub enum ValidatorSortByDb {
+    VotingPower,
+    Commission,
+    Rank,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::ValidatorState"]
@@ -82,6 +95,29 @@ impl ValidatorInsertDb {
             max_commission: validator.max_commission.clone(),
             commission: validator.commission.clone(),
             state: validator.state.into(),
+        }
+    }
+}
+
+pub fn validator_sort_by(
+    validator_sort_by: ValidatorSortByDb,
+    order: OrderByDb,
+) -> Box<
+    dyn BoxableExpression<
+            validators::table,
+            diesel::pg::Pg,
+            SqlType = NotSelectable,
+        >,
+> {
+    match validator_sort_by {
+        ValidatorSortByDb::VotingPower => {
+            asc_desc!(order, validators::columns::voting_power)
+        }
+        ValidatorSortByDb::Commission => {
+            asc_desc!(order, validators::columns::commission)
+        }
+        ValidatorSortByDb::Rank => {
+            rev_asc_desc!(order, validators::columns::voting_power)
         }
     }
 }
