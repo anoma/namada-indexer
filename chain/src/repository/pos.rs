@@ -58,7 +58,6 @@ pub fn insert_bonds(
                 .into_iter()
                 .map(|bond| {
                     let validator: ValidatorDb = validators::table
-                        // Epoch for validators is problematic?
                         .filter(
                             validators::namada_address
                                 .eq(&bond.target.to_string()),

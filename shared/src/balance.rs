@@ -38,6 +38,10 @@ impl Amount {
         self.0.checked_add(other.0).map(Self)
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+
     pub fn fake() -> Self {
         Self(NamadaAmount::from_u64((0..10000000).fake::<u64>()))
     }
