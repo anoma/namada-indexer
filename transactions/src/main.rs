@@ -64,16 +64,14 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    // let crawler_state = db_service::get_crawler_state(&conn).await;
+    let crawler_state = db_service::get_crawler_state(&conn).await;
 
-    // let next_block = std::cmp::max(
-    //     crawler_state
-    //         .map(|cs| cs.last_processed_block + 1)
-    //         .unwrap_or(1),
-    //     config.from_block_height,
-    // );
-
-    let next_block = config.from_block_height;
+    let next_block = std::cmp::max(
+        crawler_state
+            .map(|cs| cs.last_processed_block + 1)
+            .unwrap_or(1),
+        config.from_block_height,
+    );
 
     crawl(
         move |block_height| {

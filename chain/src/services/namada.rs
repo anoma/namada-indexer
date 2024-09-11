@@ -104,6 +104,7 @@ pub async fn query_balance(
         .await)
 }
 
+/// Copied from the namada_sdk as namada_sdk version uses Context
 pub async fn query_ibc_tokens(
     client: &HttpClient,
 ) -> anyhow::Result<BTreeMap<String, NamadaSdkAddress>> {
@@ -116,18 +117,10 @@ pub async fn query_ibc_tokens(
             query_storage_prefix::<String>(client, &prefix).await?;
         if let Some(ibc_traces) = ibc_traces {
             for (key, ibc_trace) in ibc_traces {
-                if let Some((a, hash)) = is_ibc_trace_key(&key) {
-                    tracing::info!(
-                        "Found IBC trace: {} {} {} {}",
-                        ibc_trace,
-                        key,
-                        hash,
-                        a
-                    );
+                if let Some((_, hash)) = is_ibc_trace_key(&key) {
                     let hash: IbcTokenHash = hash.parse().expect(
                         "Parsing an IBC token hash from storage shouldn't fail",
                     );
-                    tracing::info!("Found IBC token: {}", hash);
                     let ibc_token = NamadaSdkAddress::Internal(
                         InternalAddress::IbcToken(hash),
                     );
@@ -142,9 +135,11 @@ pub async fn query_ibc_tokens(
 pub async fn query_all_balances(
     client: &HttpClient,
 ) -> anyhow::Result<Balances> {
-    let ibc_tokens = query_ibc_tokens(client).await?;
-
-    let mut ibc_addresses = ibc_tokens.values().cloned().collect::<Vec<_>>();
+    let mut ibc_addresses = query_ibc_tokens(client)
+        .await?
+        .values()
+        .cloned()
+        .collect::<Vec<_>>();
 
     let token_addr = RPC
         .shell()
@@ -152,8 +147,8 @@ pub async fn query_all_balances(
         .await
         .context("Failed to query native token")?;
 
-    // TODO: this sucks
-    ibc_addresses.push(token_addr.clone());
+    let all_token_addresses = &mut ibc_addresses;
+    all_token_addresses.push(token_addr);
 
     let mut all_balances: Balances = vec![];
     for token_addr in ibc_addresses.iter() {

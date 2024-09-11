@@ -166,40 +166,53 @@ impl TransactionKind {
                     tracing::warn!("Cannot deserialize IBC transfer");
                     None
                 };
-                let wtf = data
-                    .map(|msg| match msg {
-                        IbcMessage::Envelope(e) => match *e {
-                            MsgEnvelope::Packet(msg) => {
-                                if let PacketMsg::Recv(msg) = msg {
-                                    let packet_data =
-                                        serde_json::from_slice::<PacketData>(
-                                            &msg.packet.data,
-                                        )
-                                        .ok();
+                let ibc_msg = data.map(Self::unpack_ibc_msg).and_then(identity);
 
-                                    let channel_id =
-                                        msg.packet.chan_id_on_b.clone();
-                                    let port_id =
-                                        msg.packet.port_id_on_b.clone();
-
-                                    packet_data
-                                        .map(|data| (data, channel_id, port_id))
-                                } else {
-                                    None
-                                }
-                            }
-                            _ => None,
-                        },
-                        _ => None,
-                    })
-                    .and_then(identity);
-
-                TransactionKind::IbcMsgTransfer(wtf)
+                TransactionKind::IbcMsgTransfer(ibc_msg)
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
                 TransactionKind::Unknown
             }
+        }
+    }
+
+    /// We allow this as we might handle more IBC messages in the future
+    #[allow(clippy::collapsible_match)]
+    pub fn unpack_ibc_msg(
+        msg: IbcMessage<Transfer>,
+    ) -> Option<(PacketData, ChannelId, PortId)> {
+        match msg {
+            // Handle the Envelope case
+            IbcMessage::Envelope(e) => match *e {
+                MsgEnvelope::Packet(packet_msg) => match packet_msg {
+                    PacketMsg::Recv(recv_msg) => {
+                        // Attempt to parse the packet data
+                        if let Ok(packet_data) =
+                            serde_json::from_slice::<PacketData>(
+                                &recv_msg.packet.data,
+                            )
+                        {
+                            let channel_id =
+                                recv_msg.packet.chan_id_on_b.clone();
+                            let port_id = recv_msg.packet.port_id_on_b.clone();
+
+                            Some((packet_data, channel_id, port_id))
+                        } else {
+                            tracing::warn!(
+                                "Cannot deserialize IBC packet data. Message will be ignored."
+                            );
+                            None
+                        }
+                    }
+                    // Add more PacketMsg cases here if needed in the future
+                    _ => None,
+                },
+                // Add more MsgEnvelope cases here if needed
+                _ => None,
+            },
+            // Add more IbcMessage cases here if needed
+            _ => None,
         }
     }
 }
@@ -351,7 +364,6 @@ impl Transaction {
                     let tx_data =
                         transaction.data(&tx_commitment).unwrap_or_default();
 
-                    tracing::info!("Transaction id: {:?}", tx_code_id);
                     let tx_kind = if let Some(id) = tx_code_id {
                         if let Some(tx_kind_name) =
                             checksums.get_name_by_id(&id)

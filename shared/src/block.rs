@@ -307,18 +307,18 @@ impl Block {
                                     continue;
                                 };
 
-                            let asd = String::from(packet.receiver.as_ref());
                             let ibc_trace = format!(
                                 "{}/{}/{}",
                                 port, channel, packet.token.denom
                             );
-                            tracing::info!("Trace: {}", ibc_trace);
                             let address = convert_to_address(ibc_trace).expect(
                                 "Couldn't convert IBC trace to address",
                             );
 
                             vec![BalanceChange::new(
-                                Id::Account(asd),
+                                Id::Account(String::from(
+                                    packet.receiver.as_ref(),
+                                )),
                                 Id::Account(address.to_string()),
                             )]
                         }
