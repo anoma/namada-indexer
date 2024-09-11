@@ -7,6 +7,9 @@ use namada_sdk::token::{
     Account as NamadaAccount, DenominatedAmount as NamadaDenominatedAmount,
     Transfer as NamadaTransfer,
 };
+
+use namada_ibc::MsgTransfer as NamadaMsgTransfer;
+use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -84,5 +87,22 @@ impl From<NamadaTransfer> for TransparentTransfer {
             targets,
             shielded_section_hash,
         }
+    }
+}
+#[derive(Debug, Clone)]
+pub struct MsgTransfer(pub NamadaMsgTransfer<NamadaTransfer>);
+
+impl Serialize for MsgTransfer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("MsgTransfer", 3)?;
+        state.serialize_field("token", &self.0.message.packet_data.token)?;
+        state.serialize_field("sender", &self.0.message.packet_data.sender)?;
+        state
+            .serialize_field("receiver", &self.0.message.packet_data.sender)?;
+
+        state.end()
     }
 }

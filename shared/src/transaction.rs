@@ -1,7 +1,13 @@
 use std::collections::HashMap;
+use std::convert::identity;
 use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
+use namada_ibc::apps::transfer::types::packet::PacketData;
+use namada_ibc::core::channel::types::msgs::PacketMsg;
+use namada_ibc::core::handler::types::msgs::MsgEnvelope;
+use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
+use namada_ibc::IbcMessage;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
@@ -36,6 +42,7 @@ pub enum TransactionKind {
     // TODO: remove once ShieldedTransfer can be serialized
     #[serde(skip)]
     ShieldedTransfer(Option<ShieldedTransfer>),
+    IbcMsgTransfer(Option<(PacketData, ChannelId, PortId)>),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
     Unbond(Option<Unbond>),
@@ -124,7 +131,7 @@ impl TransactionKind {
                     };
                 TransactionKind::ProposalVote(data)
             }
-            "tx_metadata_change" => {
+            "tx_change_validator_metadata" => {
                 let data =
                     if let Ok(data) = MetaDataChange::try_from_slice(data) {
                         Some(data)
@@ -150,7 +157,49 @@ impl TransactionKind {
                 };
                 TransactionKind::RevealPk(data)
             }
-            _ => TransactionKind::Unknown,
+            "tx_ibc" => {
+                let data = if let Ok(data) =
+                    namada_ibc::decode_message::<Transfer>(data)
+                {
+                    Some(data)
+                } else {
+                    tracing::warn!("Cannot deserialize IBC transfer");
+                    None
+                };
+                let wtf = data
+                    .map(|msg| match msg {
+                        IbcMessage::Envelope(e) => match *e {
+                            MsgEnvelope::Packet(msg) => {
+                                if let PacketMsg::Recv(msg) = msg {
+                                    let packet_data =
+                                        serde_json::from_slice::<PacketData>(
+                                            &msg.packet.data,
+                                        )
+                                        .ok();
+
+                                    let channel_id =
+                                        msg.packet.chan_id_on_b.clone();
+                                    let port_id =
+                                        msg.packet.port_id_on_b.clone();
+
+                                    packet_data
+                                        .map(|data| (data, channel_id, port_id))
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .and_then(identity);
+
+                TransactionKind::IbcMsgTransfer(wtf)
+            }
+            _ => {
+                tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
+                TransactionKind::Unknown
+            }
         }
     }
 }
@@ -302,6 +351,7 @@ impl Transaction {
                     let tx_data =
                         transaction.data(&tx_commitment).unwrap_or_default();
 
+                    tracing::info!("Transaction id: {:?}", tx_code_id);
                     let tx_kind = if let Some(id) = tx_code_id {
                         if let Some(tx_kind_name) =
                             checksums.get_name_by_id(&id)

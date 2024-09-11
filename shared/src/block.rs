@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
+use namada_ibc::trace::convert_to_address;
 use namada_sdk::borsh::BorshDeserialize;
 use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
@@ -298,6 +299,29 @@ impl Block {
                 let mut balance_changes = vec![];
                 for tx in inners_txs {
                     let mut balance_change = match &tx.kind {
+                        TransactionKind::IbcMsgTransfer(data) => {
+                            let (packet, channel, port) =
+                                if let Some(data) = data {
+                                    data
+                                } else {
+                                    continue;
+                                };
+
+                            let asd = String::from(packet.receiver.as_ref());
+                            let ibc_trace = format!(
+                                "{}/{}/{}",
+                                port, channel, packet.token.denom
+                            );
+                            tracing::info!("Trace: {}", ibc_trace);
+                            let address = convert_to_address(ibc_trace).expect(
+                                "Couldn't convert IBC trace to address",
+                            );
+
+                            vec![BalanceChange::new(
+                                Id::Account(asd),
+                                Id::Account(address.to_string()),
+                            )]
+                        }
                         TransactionKind::TransparentTransfer(data) => {
                             let data = if let Some(data) = data {
                                 data

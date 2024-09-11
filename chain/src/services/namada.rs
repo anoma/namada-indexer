@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -6,9 +6,11 @@ use futures::StreamExt;
 use namada_core::storage::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
-use namada_sdk::address::Address as NamadaSdkAddress;
+use namada_sdk::address::{Address as NamadaSdkAddress, InternalAddress};
 use namada_sdk::collections::HashMap;
 use namada_sdk::hash::Hash;
+use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
+use namada_sdk::ibc::IbcTokenHash;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
@@ -102,38 +104,85 @@ pub async fn query_balance(
         .await)
 }
 
+pub async fn query_ibc_tokens(
+    client: &HttpClient,
+) -> anyhow::Result<BTreeMap<String, NamadaSdkAddress>> {
+    // Check the base token
+    let prefixes = vec![ibc_trace_key_prefix(None)];
+
+    let mut tokens = BTreeMap::new();
+    for prefix in prefixes {
+        let ibc_traces =
+            query_storage_prefix::<String>(client, &prefix).await?;
+        if let Some(ibc_traces) = ibc_traces {
+            for (key, ibc_trace) in ibc_traces {
+                if let Some((a, hash)) = is_ibc_trace_key(&key) {
+                    tracing::info!(
+                        "Found IBC trace: {} {} {} {}",
+                        ibc_trace,
+                        key,
+                        hash,
+                        a
+                    );
+                    let hash: IbcTokenHash = hash.parse().expect(
+                        "Parsing an IBC token hash from storage shouldn't fail",
+                    );
+                    tracing::info!("Found IBC token: {}", hash);
+                    let ibc_token = NamadaSdkAddress::Internal(
+                        InternalAddress::IbcToken(hash),
+                    );
+                    tokens.insert(ibc_trace, ibc_token);
+                }
+            }
+        }
+    }
+    Ok(tokens)
+}
+
 pub async fn query_all_balances(
     client: &HttpClient,
 ) -> anyhow::Result<Balances> {
+    let ibc_tokens = query_ibc_tokens(client).await?;
+
+    let mut ibc_addresses = ibc_tokens.values().cloned().collect::<Vec<_>>();
+
     let token_addr = RPC
         .shell()
         .native_token(client)
         .await
         .context("Failed to query native token")?;
 
-    let balance_prefix = namada_token::storage_key::balance_prefix(&token_addr);
-
-    let balances =
-        query_storage_prefix::<token::Amount>(client, &balance_prefix)
-            .await
-            .context("Failed to query all balances")?;
+    // TODO: this sucks
+    ibc_addresses.push(token_addr.clone());
 
     let mut all_balances: Balances = vec![];
+    for token_addr in ibc_addresses.iter() {
+        let balance_prefix =
+            namada_token::storage_key::balance_prefix(token_addr);
 
-    if let Some(balances) = balances {
-        for (key, balance) in balances {
-            let (t, o, b) =
-                match namada_token::storage_key::is_any_token_balance_key(&key)
-                {
-                    Some([tok, owner]) => (tok.clone(), owner.clone(), balance),
-                    None => continue,
-                };
+        let balances =
+            query_storage_prefix::<token::Amount>(client, &balance_prefix)
+                .await
+                .context("Failed to query all balances")?;
 
-            all_balances.push(Balance {
-                owner: Id::from(o),
-                token: Id::from(t),
-                amount: Amount::from(b),
-            });
+        if let Some(balances) = balances {
+            for (key, balance) in balances {
+                let (t, o, b) =
+                    match namada_token::storage_key::is_any_token_balance_key(
+                        &key,
+                    ) {
+                        Some([tok, owner]) => {
+                            (tok.clone(), owner.clone(), balance)
+                        }
+                        None => continue,
+                    };
+
+                all_balances.push(Balance {
+                    owner: Id::from(o),
+                    token: Id::from(t),
+                    amount: Amount::from(b),
+                });
+            }
         }
     }
 
