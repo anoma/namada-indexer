@@ -14,6 +14,7 @@ use tendermint::{AppHash as TendermintAppHash, Hash as TendermintHash};
 )]
 pub enum Id {
     Account(String),
+    IbcTrace(String),
     Hash(String),
 }
 
@@ -28,6 +29,7 @@ impl Display for Id {
         match self {
             Id::Account(id) => write!(f, "{}", id.to_lowercase()),
             Id::Hash(id) => write!(f, "{}", id.to_lowercase()),
+            Id::IbcTrace(id) => write!(f, "{}", id.to_lowercase()),
         }
     }
 }
@@ -73,6 +75,9 @@ impl From<Id> for NamadaAddress {
         match value {
             Id::Account(account) => NamadaAddress::from_str(&account).unwrap(),
             Id::Hash(_) => panic!(),
+            Id::IbcTrace(s) => {
+                namada_ibc::trace::convert_to_address(s).unwrap()
+            }
         }
     }
 }

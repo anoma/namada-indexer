@@ -8,7 +8,6 @@ use namada_sdk::token::{
     Account as NamadaAccount, DenominatedAmount as NamadaDenominatedAmount,
     Transfer as NamadaTransfer,
 };
-
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 

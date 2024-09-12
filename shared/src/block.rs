@@ -4,7 +4,6 @@ use std::str::FromStr;
 use namada_ibc::apps::transfer::types::packet::PacketData;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
-use namada_ibc::trace::convert_to_address;
 use namada_ibc::IbcMessage;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::token::Transfer;
@@ -342,11 +341,9 @@ impl Block {
                     packet_data.token.denom
                 );
 
-                let address = convert_to_address(ibc_trace).unwrap();
-
                 vec![BalanceChange::new(
                     Id::Account(String::from(packet_data.receiver.as_ref())),
-                    Id::Account(address.to_string()),
+                    Id::IbcTrace(ibc_trace),
                 )]
             }
             TransactionKind::TransparentTransfer(data) => {

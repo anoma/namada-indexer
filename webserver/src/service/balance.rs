@@ -1,4 +1,4 @@
-use shared::balance::{Amount, DenominatedAmount};
+use shared::balance::Amount;
 
 use crate::appstate::AppState;
 use crate::error::balance::BalanceError;
@@ -33,11 +33,7 @@ impl BalanceService {
             .cloned()
             .map(|balance| AddressBalance {
                 token_address: balance.token,
-                // TODO: change native to new once we support multiple tokens
-                balance: DenominatedAmount::native(Amount::from(
-                    balance.raw_amount,
-                ))
-                .to_string_precise(),
+                balance: Amount::from(balance.raw_amount).to_string(),
             })
             .collect();
 
