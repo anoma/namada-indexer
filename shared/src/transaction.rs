@@ -1,13 +1,7 @@
 use std::collections::HashMap;
-use std::convert::identity;
 use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
-use namada_ibc::apps::transfer::types::packet::PacketData;
-use namada_ibc::core::channel::types::msgs::PacketMsg;
-use namada_ibc::core::handler::types::msgs::MsgEnvelope;
-use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
-use namada_ibc::IbcMessage;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
@@ -26,7 +20,7 @@ use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
-use crate::ser::TransparentTransfer;
+use crate::ser::{IbcMessage, TransparentTransfer};
 
 // We wrap public key in a struct so we serialize data as object instead of
 // string
@@ -42,7 +36,7 @@ pub enum TransactionKind {
     // TODO: remove once ShieldedTransfer can be serialized
     #[serde(skip)]
     ShieldedTransfer(Option<ShieldedTransfer>),
-    IbcMsgTransfer(Option<(PacketData, ChannelId, PortId)>),
+    IbcMsgTransfer(Option<IbcMessage<Transfer>>),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
     Unbond(Option<Unbond>),
@@ -166,53 +160,12 @@ impl TransactionKind {
                     tracing::warn!("Cannot deserialize IBC transfer");
                     None
                 };
-                let ibc_msg = data.map(Self::unpack_ibc_msg).and_then(identity);
-
-                TransactionKind::IbcMsgTransfer(ibc_msg)
+                TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
                 TransactionKind::Unknown
             }
-        }
-    }
-
-    /// We allow this as we might handle more IBC messages in the future
-    #[allow(clippy::collapsible_match)]
-    pub fn unpack_ibc_msg(
-        msg: IbcMessage<Transfer>,
-    ) -> Option<(PacketData, ChannelId, PortId)> {
-        match msg {
-            // Handle the Envelope case
-            IbcMessage::Envelope(e) => match *e {
-                MsgEnvelope::Packet(packet_msg) => match packet_msg {
-                    PacketMsg::Recv(recv_msg) => {
-                        // Attempt to parse the packet data
-                        if let Ok(packet_data) =
-                            serde_json::from_slice::<PacketData>(
-                                &recv_msg.packet.data,
-                            )
-                        {
-                            let channel_id =
-                                recv_msg.packet.chan_id_on_b.clone();
-                            let port_id = recv_msg.packet.port_id_on_b.clone();
-
-                            Some((packet_data, channel_id, port_id))
-                        } else {
-                            tracing::warn!(
-                                "Cannot deserialize IBC packet data. Message will be ignored."
-                            );
-                            None
-                        }
-                    }
-                    // Add more PacketMsg cases here if needed in the future
-                    _ => None,
-                },
-                // Add more MsgEnvelope cases here if needed
-                _ => None,
-            },
-            // Add more IbcMessage cases here if needed
-            _ => None,
         }
     }
 }

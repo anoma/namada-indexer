@@ -1,8 +1,13 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
+use namada_ibc::apps::transfer::types::packet::PacketData;
+use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
+use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::trace::convert_to_address;
+use namada_ibc::IbcMessage;
 use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::token::Transfer;
 use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
@@ -287,6 +292,7 @@ impl Block {
             .collect()
     }
 
+    // TODO: move this and process_inner_tx_for_balance to a separate module
     pub fn addresses_with_balance_change(
         &self,
         native_token: Id,
@@ -294,132 +300,134 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(wrapper_tx, inners_txs)| {
-                // TODO: filter out rejected transactions
-
-                let mut balance_changes = vec![];
-                for tx in inners_txs {
-                    let mut balance_change = match &tx.kind {
-                        TransactionKind::IbcMsgTransfer(data) => {
-                            let (packet, channel, port) =
-                                if let Some(data) = data {
-                                    data
-                                } else {
-                                    continue;
-                                };
-
-                            let ibc_trace = format!(
-                                "{}/{}/{}",
-                                port, channel, packet.token.denom
-                            );
-                            let address = convert_to_address(ibc_trace).expect(
-                                "Couldn't convert IBC trace to address",
-                            );
-
-                            vec![BalanceChange::new(
-                                Id::Account(String::from(
-                                    packet.receiver.as_ref(),
-                                )),
-                                Id::Account(address.to_string()),
-                            )]
-                        }
-                        TransactionKind::TransparentTransfer(data) => {
-                            let data = if let Some(data) = data {
-                                data
-                            } else {
-                                continue;
-                            };
-
-                            [&data.sources, &data.targets]
-                                .iter()
-                                .flat_map(|transfer_changes| {
-                                    transfer_changes.0.keys().map(|account| {
-                                        BalanceChange::new(
-                                            Id::from(account.owner.clone()),
-                                            Id::from(account.token.clone()),
-                                        )
-                                    })
-                                })
-                                .collect()
-                        }
-                        TransactionKind::Bond(data) => {
-                            let data = if let Some(data) = data {
-                                data
-                            } else {
-                                continue;
-                            };
-
-                            let bond_data = data.clone();
-                            let address =
-                                bond_data.source.unwrap_or(bond_data.validator);
-                            let source = Id::from(address);
-                            vec![BalanceChange::new(
-                                source,
-                                native_token.clone(),
-                            )]
-                        }
-                        TransactionKind::Withdraw(data) => {
-                            let data = if let Some(data) = data {
-                                data
-                            } else {
-                                continue;
-                            };
-
-                            let withdraw_data = data.clone();
-                            let address = withdraw_data
-                                .source
-                                .unwrap_or(withdraw_data.validator);
-                            let source = Id::from(address);
-
-                            vec![BalanceChange::new(
-                                source,
-                                native_token.clone(),
-                            )]
-                        }
-                        TransactionKind::ClaimRewards(data) => {
-                            let data = if let Some(data) = data {
-                                data
-                            } else {
-                                continue;
-                            };
-
-                            let claim_rewards_data = data.clone();
-                            let address = claim_rewards_data
-                                .source
-                                .unwrap_or(claim_rewards_data.validator);
-                            let source = Id::from(address);
-
-                            vec![BalanceChange::new(
-                                source,
-                                native_token.clone(),
-                            )]
-                        }
-                        TransactionKind::InitProposal(data) => {
-                            let data = if let Some(data) = data {
-                                data
-                            } else {
-                                continue;
-                            };
-
-                            let init_proposal_data = data.clone();
-                            let author = Id::from(init_proposal_data.author);
-
-                            vec![BalanceChange::new(
-                                author,
-                                native_token.clone(),
-                            )]
-                        }
-                        _ => vec![],
-                    };
-                    balance_changes.append(&mut balance_change);
-                }
+                let mut balance_changes: Vec<BalanceChange> = inners_txs
+                    .iter()
+                    .filter_map(|tx| {
+                        self.process_inner_tx_for_balance(tx, &native_token)
+                    })
+                    .flatten()
+                    .collect();
 
                 balance_changes.push(BalanceChange::new(
                     wrapper_tx.fee.gas_payer.clone(),
                     wrapper_tx.fee.gas_token.clone(),
                 ));
+
                 balance_changes
             })
             .collect()
+    }
+
+    pub fn process_inner_tx_for_balance(
+        &self,
+        tx: &InnerTransaction,
+        native_token: &Id,
+    ) -> Option<Vec<BalanceChange>> {
+        let change = match &tx.kind {
+            TransactionKind::IbcMsgTransfer(data) => {
+                let data = data.clone().and_then(|d| {
+                    Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
+                        serde_json::from_slice::<PacketData>(&msg.packet.data)
+                            .map(|p| (msg, p))
+                            .ok()
+                    })
+                });
+
+                let (msg, packet_data) = data?;
+
+                let ibc_trace = format!(
+                    "{}/{}/{}",
+                    msg.packet.port_id_on_b,
+                    msg.packet.chan_id_on_b,
+                    packet_data.token.denom
+                );
+
+                let address = convert_to_address(ibc_trace).unwrap();
+
+                vec![BalanceChange::new(
+                    Id::Account(String::from(packet_data.receiver.as_ref())),
+                    Id::Account(address.to_string()),
+                )]
+            }
+            TransactionKind::TransparentTransfer(data) => {
+                let data = data.as_ref()?;
+
+                [&data.sources, &data.targets]
+                    .iter()
+                    .flat_map(|transfer_changes| {
+                        transfer_changes.0.keys().map(|account| {
+                            BalanceChange::new(
+                                Id::from(account.owner.clone()),
+                                Id::from(account.token.clone()),
+                            )
+                        })
+                    })
+                    .collect()
+            }
+            TransactionKind::Bond(data) => {
+                let data = data.as_ref()?;
+
+                let bond_data = data.clone();
+                let address = bond_data.source.unwrap_or(bond_data.validator);
+                let source = Id::from(address);
+
+                vec![BalanceChange::new(source, native_token.clone())]
+            }
+            TransactionKind::Withdraw(data) => {
+                let data = data.as_ref()?;
+
+                let withdraw_data = data.clone();
+                let address =
+                    withdraw_data.source.unwrap_or(withdraw_data.validator);
+                let source = Id::from(address);
+
+                vec![BalanceChange::new(source, native_token.clone())]
+            }
+            TransactionKind::ClaimRewards(data) => {
+                let data = data.as_ref()?;
+
+                let claim_rewards_data = data.clone();
+                let address = claim_rewards_data
+                    .source
+                    .unwrap_or(claim_rewards_data.validator);
+                let source = Id::from(address);
+
+                vec![BalanceChange::new(source, native_token.clone())]
+            }
+            TransactionKind::InitProposal(data) => {
+                let data = data.as_ref()?;
+
+                let init_proposal_data = data.clone();
+                let author = Id::from(init_proposal_data.author);
+
+                vec![BalanceChange::new(author, native_token.clone())]
+            }
+            _ => vec![],
+        };
+
+        Some(change)
+    }
+
+    pub fn ibc_msg_recv_packet(
+        // TODO: not sure if token::Transfer is the right type here
+        msg: IbcMessage<Transfer>,
+    ) -> Option<MsgRecvPacket> {
+        // Early return if the message is not an Envelope
+        let IbcMessage::Envelope(e) = msg else {
+            return None;
+        };
+
+        // Early return if the envelope is not a Packet
+        let MsgEnvelope::Packet(packet_msg) = *e else {
+            return None;
+        };
+
+        // Early return if it's not a Recv message
+        let PacketMsg::Recv(recv_msg) = packet_msg else {
+            return None;
+        };
+
+        Some(recv_msg)
     }
 
     pub fn bond_addresses(&self) -> HashSet<BondAddresses> {
