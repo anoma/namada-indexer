@@ -90,6 +90,7 @@ async fn main() -> Result<(), MainError> {
             )
         },
         crawler_state.last_processed_block,
+        Some(1000),
     )
     .await
 }

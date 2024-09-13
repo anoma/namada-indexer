@@ -58,6 +58,7 @@ async fn main() -> Result<(), MainError> {
     crawler::crawl(
         move |epoch| crawling_fn(epoch, conn.clone(), client.clone()),
         next_epoch,
+        None,
     )
     .await
 }

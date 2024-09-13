@@ -20,14 +20,19 @@ fn indexes(from: u32, to: Option<u32>) -> impl Stream<Item = u32> {
     }
 }
 
-pub async fn crawl<F, Fut>(f: F, first_index: u32) -> Result<(), MainError>
+pub async fn crawl<F, Fut>(
+    f: F,
+    first_index: u32,
+    interval: Option<u64>,
+) -> Result<(), MainError>
 where
     F: Fn(u32) -> Fut,
     Fut: Future<Output = Result<(), MainError>>,
 {
+    let interval = interval.unwrap_or(5000);
     let s = indexes(first_index, None);
     pin_mut!(s);
-    let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
+    let retry_strategy = FixedInterval::from_millis(interval).map(jitter);
     let must_exit = must_exit_handle();
 
     while let Some(index) = s.next().await {
