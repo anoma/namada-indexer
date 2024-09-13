@@ -27,7 +27,7 @@ where
 {
     let s = indexes(first_index, None);
     pin_mut!(s);
-    let retry_strategy = FixedInterval::from_millis(5000).map(jitter);
+    let retry_strategy = FixedInterval::from_millis(1000).map(jitter);
     let must_exit = must_exit_handle();
 
     while let Some(index) = s.next().await {
