@@ -83,6 +83,7 @@ async fn main() -> Result<(), MainError> {
             )
         },
         next_block,
+        None,
     )
     .await
 }
