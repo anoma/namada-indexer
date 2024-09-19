@@ -3,6 +3,7 @@ CREATE TYPE TRANSACTION_KIND AS ENUM (
     'shielded_transfer', 
     'shielding_transfer', 
     'unshielding_transfer', 
+    'ibc_msg_transfer',
     'bond',
     'redelegation',
     'unbond',

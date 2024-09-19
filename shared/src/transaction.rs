@@ -20,7 +20,7 @@ use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
-use crate::ser::TransparentTransfer;
+use crate::ser::{IbcMessage, TransparentTransfer};
 
 // We wrap public key in a struct so we serialize data as object instead of
 // string
@@ -36,6 +36,7 @@ pub enum TransactionKind {
     // TODO: remove once ShieldedTransfer can be serialized
     #[serde(skip)]
     ShieldedTransfer(Option<ShieldedTransfer>),
+    IbcMsgTransfer(Option<IbcMessage<Transfer>>),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
     Unbond(Option<Unbond>),
@@ -124,7 +125,7 @@ impl TransactionKind {
                     };
                 TransactionKind::ProposalVote(data)
             }
-            "tx_metadata_change" => {
+            "tx_change_validator_metadata" => {
                 let data =
                     if let Ok(data) = MetaDataChange::try_from_slice(data) {
                         Some(data)
@@ -150,7 +151,21 @@ impl TransactionKind {
                 };
                 TransactionKind::RevealPk(data)
             }
-            _ => TransactionKind::Unknown,
+            "tx_ibc" => {
+                let data = if let Ok(data) =
+                    namada_ibc::decode_message::<Transfer>(data)
+                {
+                    Some(data)
+                } else {
+                    tracing::warn!("Cannot deserialize IBC transfer");
+                    None
+                };
+                TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
+            }
+            _ => {
+                tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
+                TransactionKind::Unknown
+            }
         }
     }
 }

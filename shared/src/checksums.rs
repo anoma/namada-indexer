@@ -1,8 +1,9 @@
 use bimap::BiMap;
 use namada_sdk::tx::{
     TX_BOND_WASM, TX_CHANGE_COMMISSION_WASM, TX_CHANGE_METADATA_WASM,
-    TX_CLAIM_REWARDS_WASM, TX_INIT_PROPOSAL, TX_REDELEGATE_WASM, TX_REVEAL_PK,
-    TX_TRANSFER_WASM, TX_UNBOND_WASM, TX_VOTE_PROPOSAL, TX_WITHDRAW_WASM,
+    TX_CLAIM_REWARDS_WASM, TX_IBC_WASM, TX_INIT_PROPOSAL, TX_REDELEGATE_WASM,
+    TX_REVEAL_PK, TX_TRANSFER_WASM, TX_UNBOND_WASM, TX_VOTE_PROPOSAL,
+    TX_WITHDRAW_WASM,
 };
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +41,7 @@ impl Checksums {
             TX_INIT_PROPOSAL.to_string(),
             TX_CHANGE_METADATA_WASM.to_string(),
             TX_CHANGE_COMMISSION_WASM.to_string(),
+            TX_IBC_WASM.to_string(),
         ]
     }
 }

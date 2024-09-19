@@ -3,10 +3,12 @@ use std::str::FromStr;
 
 use namada_core::address::Address;
 use namada_core::masp::TxId;
+use namada_sdk::ibc::IbcMessage as NamadaIbcMessage;
 use namada_sdk::token::{
     Account as NamadaAccount, DenominatedAmount as NamadaDenominatedAmount,
     Transfer as NamadaTransfer,
 };
+use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -83,6 +85,48 @@ impl From<NamadaTransfer> for TransparentTransfer {
             sources,
             targets,
             shielded_section_hash,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IbcMessage<Transfer>(pub NamadaIbcMessage<Transfer>);
+
+impl Serialize for IbcMessage<NamadaTransfer> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match &self.0 {
+            NamadaIbcMessage::Transfer(ibc_transfer) => {
+                let mut state =
+                    serializer.serialize_struct("IbcTransfer", 2)?;
+
+                state.serialize_field("message", &ibc_transfer.message)?;
+                state.serialize_field("transfer", &ibc_transfer.transfer)?;
+
+                state.end()
+            }
+            NamadaIbcMessage::NftTransfer(ibc_nft_transfer) => {
+                let mut state =
+                    serializer.serialize_struct("IbcNftTransfer", 2)?;
+
+                state.serialize_field(
+                    "nft_message",
+                    &ibc_nft_transfer.message,
+                )?;
+                state
+                    .serialize_field("transfer", &ibc_nft_transfer.transfer)?;
+
+                state.end()
+            }
+            NamadaIbcMessage::Envelope(_) => {
+                let state = serializer.serialize_struct("IbcEnvelope", 0)?;
+
+                // TODO: serialize envelope message correctly
+
+                state.end()
+            }
         }
     }
 }

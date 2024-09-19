@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -6,9 +6,11 @@ use futures::StreamExt;
 use namada_core::storage::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
-use namada_sdk::address::Address as NamadaSdkAddress;
+use namada_sdk::address::{Address as NamadaSdkAddress, InternalAddress};
 use namada_sdk::collections::HashMap;
 use namada_sdk::hash::Hash;
+use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
+use namada_sdk::ibc::IbcTokenHash;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
@@ -81,18 +83,16 @@ pub async fn query_balance(
                 NamadaSdkAddress::from_str(&balance_change.address.to_string())
                     .context("Failed to parse owner address")
                     .ok()?;
-            let token =
-                NamadaSdkAddress::from_str(&balance_change.token.to_string())
-                    .context("Failed to parse token address")
-                    .ok()?;
+
+            let token = NamadaSdkAddress::from(balance_change.token.clone());
 
             let amount = rpc::get_token_balance(client, &token, &owner)
                 .await
                 .unwrap_or_default();
 
             Some(Balance {
-                owner: Id::from(owner),
-                token: Id::from(token),
+                owner: balance_change.address.clone(),
+                token: balance_change.token.clone(),
                 amount: Amount::from(amount),
             })
         })
@@ -102,23 +102,64 @@ pub async fn query_balance(
         .await)
 }
 
+/// Copied from the namada_sdk as namada_sdk version uses Context
+pub async fn query_ibc_tokens(
+    client: &HttpClient,
+) -> anyhow::Result<BTreeMap<String, NamadaSdkAddress>> {
+    let prefix = ibc_trace_key_prefix(None);
+
+    let mut tokens = BTreeMap::new();
+    let ibc_traces = query_storage_prefix::<String>(client, &prefix).await?;
+    if let Some(ibc_traces) = ibc_traces {
+        for (key, ibc_trace) in ibc_traces {
+            if let Some((_, hash)) = is_ibc_trace_key(&key) {
+                let hash: IbcTokenHash = hash.parse().expect(
+                    "Parsing an IBC token hash from storage shouldn't fail",
+                );
+                let ibc_token =
+                    NamadaSdkAddress::Internal(InternalAddress::IbcToken(hash));
+                tokens.insert(ibc_trace, ibc_token);
+            }
+        }
+    }
+
+    Ok(tokens)
+}
+
 pub async fn query_all_balances(
     client: &HttpClient,
 ) -> anyhow::Result<Balances> {
+    let ibc_tokens = query_ibc_tokens(client).await?;
+
     let token_addr = RPC
         .shell()
         .native_token(client)
         .await
         .context("Failed to query native token")?;
+    let mut all_balances: Balances = vec![];
 
-    let balance_prefix = namada_token::storage_key::balance_prefix(&token_addr);
+    all_balances.extend(add_balance(client, &token_addr, None).await?);
+
+    for (trace, address) in ibc_tokens.iter() {
+        let balances = add_balance(client, address, Some(trace)).await?;
+        all_balances.extend(balances);
+    }
+
+    anyhow::Ok(all_balances)
+}
+
+async fn add_balance(
+    client: &HttpClient,
+    token_addr: &NamadaSdkAddress,
+    ibc_trace: Option<&str>,
+) -> anyhow::Result<Vec<Balance>> {
+    let mut all_balances: Vec<Balance> = vec![];
+    let balance_prefix = namada_token::storage_key::balance_prefix(token_addr);
 
     let balances =
         query_storage_prefix::<token::Amount>(client, &balance_prefix)
             .await
             .context("Failed to query all balances")?;
-
-    let mut all_balances: Balances = vec![];
 
     if let Some(balances) = balances {
         for (key, balance) in balances {
@@ -129,15 +170,19 @@ pub async fn query_all_balances(
                     None => continue,
                 };
 
+            let token = ibc_trace
+                .map(|trace| Id::IbcTrace(trace.to_string()))
+                .unwrap_or_else(|| Id::from(t));
+
             all_balances.push(Balance {
                 owner: Id::from(o),
-                token: Id::from(t),
+                token,
                 amount: Amount::from(b),
-            });
+            })
         }
     }
 
-    anyhow::Ok(all_balances)
+    Ok(all_balances)
 }
 
 pub async fn query_last_block_height(

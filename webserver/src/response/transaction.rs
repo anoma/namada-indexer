@@ -27,6 +27,7 @@ pub enum TransactionKind {
     ChangeMetadata,
     ChangeCommission,
     RevealPk,
+    IbcMsgTransfer,
     Unknown,
 }
 
@@ -115,6 +116,9 @@ impl From<TransactionKindDb> for TransactionKind {
             }
             TransactionKindDb::RevealPk => TransactionKind::RevealPk,
             TransactionKindDb::Unknown => TransactionKind::Unknown,
+            TransactionKindDb::IbcMsgTransfer => {
+                TransactionKind::IbcMsgTransfer
+            }
         }
     }
 }
