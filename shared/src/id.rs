@@ -82,3 +82,11 @@ impl From<common::PublicKey> for Id {
         Id::Account(value.to_string())
     }
 }
+
+impl Id {
+    pub fn from_account_str(address: &str) -> Self {
+        let account =
+            NamadaAddress::from_str(address).expect("Invalid address");
+        Self::from(account)
+    }
+}

@@ -33,3 +33,9 @@ pub struct EpochCrawlerState {
 pub struct IntervalCrawlerState {
     pub timestamp: i64,
 }
+
+#[derive(Debug)]
+pub struct CrawlerTimestamp {
+    pub name: String,
+    pub timestamp: i64,
+}

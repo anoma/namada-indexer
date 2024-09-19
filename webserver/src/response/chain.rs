@@ -1,6 +1,7 @@
-use orm::parameters::ParametersDb;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SerdeJSONValue;
+
+use crate::service::chain::LatestParameters;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,23 +20,24 @@ pub struct Parameters {
     pub epoch_switch_blocks_delay: String,
 }
 
-impl From<ParametersDb> for Parameters {
-    fn from(parameters: ParametersDb) -> Self {
+impl From<LatestParameters> for Parameters {
+    fn from(
+        (parameters, genesis, checksums, epoch_switch_blocks_delay): LatestParameters,
+    ) -> Parameters {
         Self {
             unbonding_length: parameters.unbonding_length.to_string(),
             pipeline_length: parameters.pipeline_length.to_string(),
             epochs_per_year: parameters.epochs_per_year.to_string(),
-            apr: parameters.apr,
-            native_token_address: parameters.native_token_address,
-            chain_id: parameters.chain_id,
-            genesis_time: parameters.genesis_time.to_string(),
+            apr: parameters.apr.to_string(),
+            native_token_address: parameters.native_token_address.to_string(),
+            chain_id: genesis.chain_id.to_string(),
+            genesis_time: genesis.genesis_time.to_string(),
             min_duration: parameters.min_duration.to_string(),
             min_num_of_blocks: parameters.min_num_of_blocks.to_string(),
             max_block_time: parameters.max_block_time.to_string(),
-            checksums: parameters.checksums,
-            epoch_switch_blocks_delay: parameters
-                .epoch_switch_blocks_delay
-                .to_string(),
+            checksums: serde_json::to_value(checksums)
+                .expect("Failed to serialize checksums"),
+            epoch_switch_blocks_delay: epoch_switch_blocks_delay.to_string(),
         }
     }
 }

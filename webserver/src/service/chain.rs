@@ -1,12 +1,18 @@
+use shared::checksums::Checksums;
+use shared::genesis::Genesis;
+use shared::parameters::{EpochSwitchBlocksDelay, Parameters};
+
 use crate::appstate::AppState;
 use crate::error::chain::ChainError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::response::chain::Parameters;
 
 #[derive(Clone)]
 pub struct ChainService {
     chain_repo: ChainRepository,
 }
+
+pub type LatestParameters =
+    (Parameters, Genesis, Checksums, EpochSwitchBlocksDelay);
 
 impl ChainService {
     pub fn new(app_state: AppState) -> Self {
@@ -17,12 +23,12 @@ impl ChainService {
 
     pub async fn find_latest_parameters(
         &self,
-    ) -> Result<Parameters, ChainError> {
+    ) -> Result<LatestParameters, ChainError> {
         let parameters = self
             .chain_repo
             .find_chain_parameters()
             .await
-            .map(Parameters::from)
+            .map(LatestParameters::from)
             .map_err(ChainError::Database)?;
 
         Ok(parameters)
