@@ -30,6 +30,7 @@ impl Checksums {
 
     pub fn code_paths() -> Vec<String> {
         vec![
+            TX_IBC_WASM.to_string(),
             TX_REVEAL_PK.to_string(),
             TX_TRANSFER_WASM.to_string(),
             TX_BOND_WASM.to_string(),
