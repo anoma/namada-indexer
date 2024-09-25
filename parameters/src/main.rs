@@ -100,16 +100,7 @@ async fn crawling_fn(
         return Err(MainError::NoAction);
     }
 
-    let current_epoch = namada_service::get_current_epoch(&client.clone())
-        .await
-        .into_rpc_error()?;
-
-    tracing::info!(
-        "Attempting to process chain parameters: {}...",
-        current_epoch
-    );
-
-    let parameters = namada_service::get_parameters(&client, current_epoch)
+    let parameters = namada_service::get_parameters(&client)
         .await
         .into_rpc_error()?;
 

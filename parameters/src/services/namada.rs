@@ -55,10 +55,7 @@ pub async fn query_checksums(client: &HttpClient) -> Checksums {
     checksums
 }
 
-pub async fn get_parameters(
-    client: &HttpClient,
-    epoch: Epoch,
-) -> anyhow::Result<Parameters> {
+pub async fn get_parameters(client: &HttpClient) -> anyhow::Result<Parameters> {
     let pos_parameters = rpc::get_pos_params(client)
         .await
         .with_context(|| "Failed to query pos parameters".to_string())?;
@@ -89,13 +86,7 @@ pub async fn get_parameters(
 
     let max_block_time = RPC.shell().max_block_time(client).await?;
 
-    let apr = calc_apr(
-        client,
-        NamadaEpoch::from(epoch as u64),
-        &native_token_address,
-        epochs_per_year,
-    )
-    .await?;
+    let apr = rpc::get_staking_rewards_rate(client).await?;
 
     Ok(Parameters {
         unbonding_length: pos_parameters.unbonding_len,
@@ -104,7 +95,7 @@ pub async fn get_parameters(
         min_num_of_blocks: epoch_duration.min_num_of_blocks,
         min_duration: epoch_duration.min_duration.0,
         max_block_time: max_block_time.0,
-        apr,
+        apr: apr.to_string(),
         native_token_address: native_token_address.to_string(),
     })
 }
@@ -138,7 +129,7 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
     Ok(epoch.0 as Epoch)
 }
 
-async fn calc_apr(
+async fn _calc_apr(
     client: &HttpClient,
     epoch: NamadaEpoch,
     native_token_address: &NamadaAddress,
