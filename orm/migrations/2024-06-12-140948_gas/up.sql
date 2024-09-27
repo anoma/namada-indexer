@@ -50,4 +50,7 @@ INSERT INTO gas (tx_kind, token, gas_limit)
 VALUES ('reveal_pk', 'native', 100000);
 
 INSERT INTO gas (tx_kind, token, gas_limit)
+VALUES ('ibc_msg_transfer', 'native', 100000);
+
+INSERT INTO gas (tx_kind, token, gas_limit)
 VALUES ('unknown', 'native', 100000);

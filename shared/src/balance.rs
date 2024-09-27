@@ -8,6 +8,7 @@ use namada_sdk::token::{
 };
 
 use crate::id::Id;
+use crate::token::Token;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Amount(NamadaAmount);
@@ -79,7 +80,7 @@ impl From<(Amount, Denomination)> for DenominatedAmount {
 #[derive(Debug, Clone)]
 pub struct Balance {
     pub owner: Id,
-    pub token: Id,
+    pub token: Token,
     pub amount: Amount,
 }
 
@@ -94,7 +95,18 @@ impl Balance {
 
         Self {
             owner: Id::Account(address.to_string()),
-            token: Id::Account(token_address.to_string()),
+            token: Token::Native(Id::Account(token_address.to_string())),
+            amount: Amount::fake(),
+        }
+    }
+
+    pub fn fake_with_token(token: Token) -> Self {
+        let address =
+            namada_core::address::gen_established_address("namada-indexer");
+
+        Self {
+            owner: Id::Account(address.to_string()),
+            token,
             amount: Amount::fake(),
         }
     }

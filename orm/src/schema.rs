@@ -38,6 +38,14 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "token_type"))]
+    pub struct TokenType;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "transaction_kind"))]
     pub struct TransactionKind;
 
@@ -70,6 +78,7 @@ diesel::table! {
     balances (id) {
         id -> Int4,
         owner -> Varchar,
+        #[max_length = 64]
         token -> Varchar,
         raw_amount -> Numeric,
     }
@@ -171,6 +180,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    ibc_token (address) {
+        #[max_length = 45]
+        address -> Varchar,
+        ibc_trace -> Varchar,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::TransactionKind;
     use super::sql_types::TransactionResult;
@@ -201,6 +218,17 @@ diesel::table! {
         id -> Int4,
         address -> Varchar,
         pk -> Varchar,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::TokenType;
+
+    token (address) {
+        #[max_length = 45]
+        address -> Varchar,
+        token_type -> TokenType,
     }
 }
 
@@ -250,8 +278,10 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(balances -> token (token));
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
@@ -265,9 +295,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     gas_price,
     governance_proposals,
     governance_votes,
+    ibc_token,
     inner_transactions,
     pos_rewards,
     revealed_pk,
+    token,
     unbonds,
     validators,
     wrapper_transactions,

@@ -5,8 +5,10 @@ use diesel::{
     sql_query, ExpressionMethods, PgConnection, QueryableByName, RunQueryDsl,
 };
 use orm::balances::BalancesInsertDb;
-use orm::schema::balances;
+use orm::schema::{balances, ibc_token, token};
+use orm::token::{IbcTokenInsertDb, TokenInsertDb};
 use shared::balance::Balances;
+use shared::token::Token;
 pub const MAX_PARAM_SIZE: u16 = u16::MAX;
 
 #[derive(QueryableByName)]
@@ -62,6 +64,32 @@ pub fn insert_balance_in_chunks(
     anyhow::Ok(())
 }
 
+pub fn insert_tokens(
+    transaction_conn: &mut PgConnection,
+    tokens: Vec<Token>,
+) -> anyhow::Result<()> {
+    let tokens_db = tokens.iter().map(TokenInsertDb::from).collect::<Vec<_>>();
+
+    let ibc_tokens_db = tokens
+        .iter()
+        .filter_map(IbcTokenInsertDb::from_token)
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(token::table)
+        .values(tokens_db)
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update tokens in db")?;
+
+    diesel::insert_into(ibc_token::table)
+        .values(ibc_tokens_db)
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update ibc tokens in db")?;
+
+    anyhow::Ok(())
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -103,9 +131,9 @@ mod tests {
             let owner = Id::Account(
                 "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
             );
-            let token = Id::Account(
+            let token = Token::Native(Id::Account(
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
-            );
+            ));
             let amount = Amount::from(NamadaAmount::from_u64(100));
 
             let balance = Balance {
@@ -113,6 +141,8 @@ mod tests {
                 token: token.clone(),
                 amount: amount.clone(),
             };
+
+            insert_tokens(conn, vec![token.clone()])?;
 
             insert_balance(conn, vec![balance.clone()])?;
 
@@ -135,9 +165,9 @@ mod tests {
         let owner = Id::Account(
             "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
         );
-        let token = Id::Account(
+        let token = Token::Native(Id::Account(
             "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
-        );
+        ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
 
         let balance = Balance {
@@ -177,9 +207,9 @@ mod tests {
         let owner = Id::Account(
             "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
         );
-        let token = Id::Account(
+        let token = Token::Native(Id::Account(
             "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
-        );
+        ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
 
         let balance = Balance {
@@ -192,14 +222,16 @@ mod tests {
             seed_balance(conn, vec![balance.clone()])?;
 
             let new_amount = Amount::from(NamadaAmount::from_u64(200));
-            let new_token = Id::Account(
+            let new_token = Token::Native(Id::Account(
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
-            );
+            ));
             let new_balance = Balance {
                 token: new_token.clone(),
                 amount: new_amount.clone(),
                 ..(balance.clone())
             };
+
+            seed_tokens_from_balance(conn, vec![new_balance.clone()])?;
 
             insert_balance(conn, vec![new_balance])?;
 
@@ -232,9 +264,9 @@ mod tests {
         let owner = Id::Account(
             "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
         );
-        let token = Id::Account(
+        let token = Token::Native(Id::Account(
             "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
-        );
+        ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
 
         let balance = Balance {
@@ -289,6 +321,8 @@ mod tests {
             let fake_balances =
                 (0..10000).map(|_| Balance::fake()).collect::<Vec<_>>();
 
+            seed_tokens_from_balance(conn, fake_balances.clone())?;
+
             insert_balance(conn, fake_balances.clone())?;
 
             assert_eq!(query_all_balances(conn)?.len(), fake_balances.len());
@@ -308,9 +342,9 @@ mod tests {
             let owner = Id::Account(
                 "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
             );
-            let token = Id::Account(
+            let token = Token::Native(Id::Account(
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
-            );
+            ));
             let max_amount = Amount::from(NamadaAmount::from(MAX_SIGNED_VALUE));
 
             let balance = Balance {
@@ -318,6 +352,8 @@ mod tests {
                 token: token.clone(),
                 amount: max_amount.clone(),
             };
+
+            insert_tokens(conn, vec![token.clone()])?;
 
             insert_balance(conn, vec![balance.clone()])?;
 
@@ -339,12 +375,21 @@ mod tests {
         db.run_test(|conn| {
             let mps = MAX_PARAM_SIZE as u32;
 
-            let balances =
-                (0..mps + 1).map(|_| Balance::fake()).collect::<Vec<_>>();
+            let token = Token::Native(Id::Account(
+                "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
+            ));
 
-            let res = insert_balance_in_chunks(conn, balances)?;
+            // We have to fake_with_token otherwise we won't be able to seed
+            // MAX_PARAM_SIZE + 1 tokens and test will panic
+            let balances = (0..mps + 1)
+                .map(|_| Balance::fake_with_token(token.clone()))
+                .collect::<Vec<_>>();
 
-            assert_eq!(res, ());
+            insert_tokens(conn, vec![token])?;
+
+            let res = insert_balance_in_chunks(conn, balances);
+
+            assert!(res.is_ok());
 
             anyhow::Ok(())
         })
@@ -361,9 +406,19 @@ mod tests {
             let balances =
                 (0..1000).map(|_| Balance::fake()).collect::<Vec<_>>();
 
-            let res = insert_balance_in_chunks(conn, balances)?;
+            insert_tokens(
+                conn,
+                balances
+                    .iter()
+                    .map(|balance| balance.token.clone())
+                    .collect::<Vec<_>>(),
+            )?;
 
-            assert_eq!(res, ());
+            seed_tokens_from_balance(conn, balances.clone())?;
+
+            let res = insert_balance_in_chunks(conn, balances);
+
+            assert!(res.is_ok());
 
             anyhow::Ok(())
         })
@@ -371,10 +426,27 @@ mod tests {
         .expect("Failed to run test");
     }
 
+    fn seed_tokens_from_balance(
+        conn: &mut PgConnection,
+        balance: Vec<Balance>,
+    ) -> anyhow::Result<()> {
+        insert_tokens(
+            conn,
+            balance
+                .iter()
+                .map(|balance| balance.token.clone())
+                .collect::<Vec<_>>(),
+        )?;
+
+        anyhow::Ok(())
+    }
+
     fn seed_balance(
         conn: &mut PgConnection,
         balances: Vec<Balance>,
     ) -> anyhow::Result<()> {
+        seed_tokens_from_balance(conn, balances.clone())?;
+
         diesel::insert_into(balances::table)
             .values::<&Vec<BalancesInsertDb>>(
                 &balances
@@ -391,13 +463,18 @@ mod tests {
     fn query_balance_by_address(
         conn: &mut PgConnection,
         owner: Id,
-        token: Id,
+        token: Token,
     ) -> anyhow::Result<BalanceDb> {
+        let token = match token {
+            Token::Native(token) => token.to_string(),
+            Token::Ibc(token) => token.address.to_string(),
+        };
+
         balances::table
             .filter(
                 balances::dsl::owner
                     .eq(owner.to_string())
-                    .and(balances::dsl::token.eq(token.to_string())),
+                    .and(balances::dsl::token.eq(token)),
             )
             .select(BalanceDb::as_select())
             .first(conn)
