@@ -11,7 +11,7 @@ use tokio_stream::StreamExt;
 
 use crate::error::api::ApiError;
 use crate::response::chain::{
-    LastProcessedBlock, LastProcessedEpoch, Parameters, RpcUrl,
+    LastProcessedBlock, LastProcessedEpoch, Parameters, RpcUrl, Token,
 };
 use crate::state::common::CommonState;
 
@@ -67,6 +67,15 @@ pub async fn get_rpc_url(State(state): State<CommonState>) -> Json<RpcUrl> {
     Json(RpcUrl {
         url: state.config.tendermint_url,
     })
+}
+
+pub async fn get_tokens(
+    State(state): State<CommonState>,
+) -> Result<Json<Vec<Token>>, ApiError> {
+    let tokens = state.chain_service.find_tokens().await?;
+    let res = tokens.into_iter().map(Token::from).collect();
+
+    Ok(Json(res))
 }
 
 pub async fn get_last_processed_block(

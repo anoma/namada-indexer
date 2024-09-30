@@ -1,3 +1,6 @@
+use shared::id::Id;
+use shared::token::{IbcToken, Token};
+
 use crate::appstate::AppState;
 use crate::error::chain::ChainError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
@@ -40,5 +43,26 @@ impl ChainService {
             .find_latest_epoch()
             .await
             .map_err(ChainError::Database)
+    }
+
+    pub async fn find_tokens(&self) -> Result<Vec<Token>, ChainError> {
+        let tokens_db = self
+            .chain_repo
+            .find_tokens()
+            .await
+            .map_err(ChainError::Database)?;
+
+        let tokens = tokens_db
+            .into_iter()
+            .map(|(token, ibc_token)| match ibc_token {
+                Some(ibc_token) => Token::Ibc(IbcToken {
+                    address: Id::Account(ibc_token.address),
+                    trace: Id::IbcTrace(ibc_token.ibc_trace),
+                }),
+                None => Token::Native(Id::Account(token.address)),
+            })
+            .collect::<Vec<Token>>();
+
+        Ok(tokens)
     }
 }

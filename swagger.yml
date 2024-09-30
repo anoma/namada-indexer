@@ -498,6 +498,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GasPriceTable'
+  /api/v1/chain/token:
+    get:
+      summary: Get chain tokens
+      responses:
+        '200':
+          description: Chain tokens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/NativeToken'
+                    - $ref: '#/components/schemas/IbcToken'
+              examples:
+                native:
+                  summary: An example of native token
+                  value: 
+                   - address: tnam1qqg0jc68dx69d7klxg6n39qtcc6qnhc93senzthk]
+                ibc:
+                  summary: An example of ibc token
+                  value:
+                    - address: tnam1pkg30gnt4q0zn7j00r6hms4ajrxn6f5ysyyl7w9m
+                      trace: transfer/channel-2/uatom
   /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
@@ -807,6 +831,20 @@ components:
             type: string
           amount:
             type: string
+    NativeToken:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+    IbcToken:
+      type: object
+      required: [address, trace]
+      properties:
+        address:
+          type: string
+        trace:
+          type: string
     Parameters:
       type: object
       required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, maxBlockTime, checksums, epochSwitchBlocksDelay]

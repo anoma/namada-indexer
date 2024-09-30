@@ -1,9 +1,12 @@
 use axum::async_trait;
 use diesel::dsl::max;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use diesel::{
+    ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper,
+};
 use orm::crawler_state::{ChainCrawlerStateDb, CrawlerNameDb};
 use orm::parameters::ParametersDb;
-use orm::schema::{chain_parameters, crawler_state};
+use orm::schema::{chain_parameters, crawler_state, ibc_token, token};
+use orm::token::{IbcTokenDb, TokenDb};
 
 use crate::appstate::AppState;
 
@@ -23,6 +26,10 @@ pub trait ChainRepositoryTrait {
     async fn find_chain_parameters(&self) -> Result<ParametersDb, String>;
 
     async fn get_state(&self) -> Result<ChainCrawlerStateDb, String>;
+
+    async fn find_tokens(
+        &self,
+    ) -> Result<Vec<(TokenDb, Option<IbcTokenDb>)>, String>;
 }
 
 #[async_trait]
@@ -87,6 +94,27 @@ impl ChainRepositoryTrait for ChainRepository {
             chain_parameters::table
                 .select(ParametersDb::as_select())
                 .first(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_tokens(
+        &self,
+    ) -> Result<Vec<(TokenDb, Option<IbcTokenDb>)>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            token::table
+                .left_join(
+                    ibc_token::table.on(token::address.eq(ibc_token::address)),
+                )
+                .select((
+                    TokenDb::as_select(),
+                    Option::<IbcTokenDb>::as_select(),
+                ))
+                .load::<(TokenDb, Option<IbcTokenDb>)>(conn)
         })
         .await
         .map_err(|e| e.to_string())?
