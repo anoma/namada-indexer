@@ -17,6 +17,7 @@ use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
+use crate::token::{IbcToken, Token};
 use crate::transaction::{
     InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
     WrapperTransaction,
@@ -291,6 +292,49 @@ impl Block {
             .collect()
     }
 
+    pub fn ibc_tokens(&self) -> HashSet<IbcToken> {
+        self.transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::IbcMsgTransfer(data) => {
+                    let data = data.clone().and_then(|d| {
+                        Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
+                            serde_json::from_slice::<PacketData>(
+                                &msg.packet.data,
+                            )
+                            .map(|p| (msg, p))
+                            .ok()
+                        })
+                    });
+
+                    let (msg, packet_data) = data?;
+
+                    let ibc_trace = format!(
+                        "{}/{}/{}",
+                        msg.packet.port_id_on_b,
+                        msg.packet.chan_id_on_b,
+                        packet_data.token.denom
+                    );
+
+                    let trace = Id::IbcTrace(ibc_trace.clone());
+                    let address =
+                        namada_ibc::trace::convert_to_address(ibc_trace)
+                            .expect("Failed to convert IBC trace to address");
+                    Some(IbcToken {
+                        address: Id::from(address.clone()),
+                        trace,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     // TODO: move this and process_inner_tx_for_balance to a separate module
     pub fn addresses_with_balance_change(
         &self,
@@ -309,7 +353,7 @@ impl Block {
 
                 balance_changes.push(BalanceChange::new(
                     wrapper_tx.fee.gas_payer.clone(),
-                    wrapper_tx.fee.gas_token.clone(),
+                    Token::Native(wrapper_tx.fee.gas_token.clone()),
                 ));
 
                 balance_changes
@@ -341,9 +385,16 @@ impl Block {
                     packet_data.token.denom
                 );
 
+                let trace = Id::IbcTrace(ibc_trace.clone());
+                let address = namada_ibc::trace::convert_to_address(ibc_trace)
+                    .expect("Failed to convert IBC trace to address");
+
                 vec![BalanceChange::new(
                     Id::Account(String::from(packet_data.receiver.as_ref())),
-                    Id::IbcTrace(ibc_trace),
+                    Token::Ibc(IbcToken {
+                        address: Id::from(address.clone()),
+                        trace,
+                    }),
                 )]
             }
             TransactionKind::TransparentTransfer(data) => {
@@ -355,7 +406,7 @@ impl Block {
                         transfer_changes.0.keys().map(|account| {
                             BalanceChange::new(
                                 Id::from(account.owner.clone()),
-                                Id::from(account.token.clone()),
+                                Token::Native(Id::from(account.token.clone())),
                             )
                         })
                     })
@@ -368,7 +419,10 @@ impl Block {
                 let address = bond_data.source.unwrap_or(bond_data.validator);
                 let source = Id::from(address);
 
-                vec![BalanceChange::new(source, native_token.clone())]
+                vec![BalanceChange::new(
+                    source,
+                    Token::Native(native_token.clone()),
+                )]
             }
             TransactionKind::Withdraw(data) => {
                 let data = data.as_ref()?;
@@ -378,7 +432,10 @@ impl Block {
                     withdraw_data.source.unwrap_or(withdraw_data.validator);
                 let source = Id::from(address);
 
-                vec![BalanceChange::new(source, native_token.clone())]
+                vec![BalanceChange::new(
+                    source,
+                    Token::Native(native_token.clone()),
+                )]
             }
             TransactionKind::ClaimRewards(data) => {
                 let data = data.as_ref()?;
@@ -389,7 +446,10 @@ impl Block {
                     .unwrap_or(claim_rewards_data.validator);
                 let source = Id::from(address);
 
-                vec![BalanceChange::new(source, native_token.clone())]
+                vec![BalanceChange::new(
+                    source,
+                    Token::Native(native_token.clone()),
+                )]
             }
             TransactionKind::InitProposal(data) => {
                 let data = data.as_ref()?;
@@ -397,7 +457,10 @@ impl Block {
                 let init_proposal_data = data.clone();
                 let author = Id::from(init_proposal_data.author);
 
-                vec![BalanceChange::new(author, native_token.clone())]
+                vec![BalanceChange::new(
+                    author,
+                    Token::Native(native_token.clone()),
+                )]
             }
             _ => vec![],
         };

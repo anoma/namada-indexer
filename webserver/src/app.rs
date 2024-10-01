@@ -116,6 +116,7 @@ impl ApplicationServer {
                 )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
+                .route("/chain/token", get(chain_handlers::get_tokens))
                 .route(
                     "/chain/block/latest",
                     get(chain_handlers::get_last_processed_block),

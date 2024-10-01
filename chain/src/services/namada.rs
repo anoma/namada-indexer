@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -23,6 +23,7 @@ use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::proposal::{GovernanceProposal, TallyType};
+use shared::token::{IbcToken, Token};
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use shared::vote::{GovernanceVote, ProposalVoteKind};
@@ -84,11 +85,16 @@ pub async fn query_balance(
                     .context("Failed to parse owner address")
                     .ok()?;
 
-            let token = NamadaSdkAddress::from(balance_change.token.clone());
+            let token_addr = match &balance_change.token {
+                Token::Ibc(IbcToken { address, .. }) => address.clone(),
+                Token::Native(addr) => addr.clone(),
+            }
+            .into();
 
-            let amount = rpc::get_token_balance(client, &token, &owner, None)
-                .await
-                .unwrap_or_default();
+            let amount =
+                rpc::get_token_balance(client, &token_addr, &owner, None)
+                    .await
+                    .unwrap_or_default();
 
             Some(Balance {
                 owner: balance_change.address.clone(),
@@ -102,13 +108,34 @@ pub async fn query_balance(
         .await)
 }
 
-/// Copied from the namada_sdk as namada_sdk version uses Context
-pub async fn query_ibc_tokens(
+pub async fn query_tokens(client: &HttpClient) -> anyhow::Result<Vec<Token>> {
+    let ibc_tokens = query_ibc_tokens(client).await?;
+    let native_token = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+
+    let tokens = ibc_tokens
+        .into_iter()
+        .map(|ibc_token| {
+            Token::Ibc(IbcToken {
+                address: ibc_token.address,
+                trace: ibc_token.trace,
+            })
+        })
+        .chain(std::iter::once(Token::Native(Id::from(native_token))))
+        .collect::<Vec<_>>();
+
+    Ok(tokens)
+}
+
+async fn query_ibc_tokens(
     client: &HttpClient,
-) -> anyhow::Result<BTreeMap<String, NamadaSdkAddress>> {
+) -> anyhow::Result<HashSet<IbcToken>> {
     let prefix = ibc_trace_key_prefix(None);
 
-    let mut tokens = BTreeMap::new();
+    let mut tokens: HashSet<IbcToken> = HashSet::new();
     let ibc_traces = query_storage_prefix::<String>(client, &prefix).await?;
     if let Some(ibc_traces) = ibc_traces {
         for (key, ibc_trace) in ibc_traces {
@@ -116,9 +143,15 @@ pub async fn query_ibc_tokens(
                 let hash: IbcTokenHash = hash.parse().expect(
                     "Parsing an IBC token hash from storage shouldn't fail",
                 );
-                let ibc_token =
+                let ibc_token_addr =
                     NamadaSdkAddress::Internal(InternalAddress::IbcToken(hash));
-                tokens.insert(ibc_trace, ibc_token);
+
+                let token = IbcToken {
+                    address: Id::from(ibc_token_addr),
+                    trace: Id::IbcTrace(ibc_trace.clone()),
+                };
+
+                tokens.insert(token);
             }
         }
     }
@@ -129,19 +162,11 @@ pub async fn query_ibc_tokens(
 pub async fn query_all_balances(
     client: &HttpClient,
 ) -> anyhow::Result<Balances> {
-    let ibc_tokens = query_ibc_tokens(client).await?;
-
-    let token_addr = RPC
-        .shell()
-        .native_token(client)
-        .await
-        .context("Failed to query native token")?;
+    let tokens = query_tokens(client).await?;
     let mut all_balances: Balances = vec![];
 
-    all_balances.extend(add_balance(client, &token_addr, None).await?);
-
-    for (trace, address) in ibc_tokens.iter() {
-        let balances = add_balance(client, address, Some(trace)).await?;
+    for token in tokens.into_iter() {
+        let balances = add_balance(client, token).await?;
         all_balances.extend(balances);
     }
 
@@ -150,11 +175,17 @@ pub async fn query_all_balances(
 
 async fn add_balance(
     client: &HttpClient,
-    token_addr: &NamadaSdkAddress,
-    ibc_trace: Option<&str>,
+    token: Token,
 ) -> anyhow::Result<Vec<Balance>> {
     let mut all_balances: Vec<Balance> = vec![];
-    let balance_prefix = namada_token::storage_key::balance_prefix(token_addr);
+    let token_addr = match token {
+        Token::Ibc(IbcToken { ref address, .. }) => address.clone(),
+        Token::Native(ref addr) => addr.clone(),
+    };
+
+    let balance_prefix = namada_token::storage_key::balance_prefix(
+        &NamadaSdkAddress::from(token_addr),
+    );
 
     let balances =
         query_storage_prefix::<token::Amount>(client, &balance_prefix)
@@ -163,20 +194,16 @@ async fn add_balance(
 
     if let Some(balances) = balances {
         for (key, balance) in balances {
-            let (t, o, b) =
+            let (o, b) =
                 match namada_token::storage_key::is_any_token_balance_key(&key)
                 {
-                    Some([tok, owner]) => (tok.clone(), owner.clone(), balance),
+                    Some([_, owner]) => (owner.clone(), balance),
                     None => continue,
                 };
 
-            let token = ibc_trace
-                .map(|trace| Id::IbcTrace(trace.to_string()))
-                .unwrap_or_else(|| Id::from(t));
-
             all_balances.push(Balance {
                 owner: Id::from(o),
-                token,
+                token: token.clone(),
                 amount: Amount::from(b),
             })
         }

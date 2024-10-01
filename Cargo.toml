@@ -81,7 +81,7 @@ validator = { version = "0.16.0", features = ["derive"] }
 derive_builder = "0.12.0"
 clap-verbosity-flag = "2.1.1"
 duration-str = "0.7.1"
-fake = { version = "2.9.2", features = ["derive"] }
+fake = { version = "2.10.0", features = ["derive"] }
 rand = "0.8.5"
 bigdecimal = "0.4.5"
 strum = "0.26.3"

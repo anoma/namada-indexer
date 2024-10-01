@@ -9,7 +9,7 @@ use chain::repository;
 use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_bonds, query_last_block_height,
+    query_bonds, query_last_block_height, query_tokens,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -28,6 +28,7 @@ use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
+use shared::token::Token;
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
 use tracing::Level;
@@ -157,6 +158,8 @@ async fn crawling_fn(
         .await
         .into_rpc_error()?;
 
+    let ibc_tokens = block.ibc_tokens().into_iter().map(Token::Ibc).collect();
+
     let addresses = block.addresses_with_balance_change(native_token);
     let balances = namada_service::query_balance(&client, &addresses)
         .await
@@ -226,6 +229,11 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                repository::balance::insert_tokens(
+                    transaction_conn,
+                    ibc_tokens,
+                )?;
+
                 repository::balance::insert_balance(
                     transaction_conn,
                     balances,
@@ -321,6 +329,8 @@ async fn initial_query(
         sleep(Duration::from_secs(initial_query_retry_time)).await;
     }
 
+    let tokens = query_tokens(client).await.into_rpc_error()?;
+
     let balances = query_all_balances(client).await.into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
@@ -357,6 +367,8 @@ async fn initial_query(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                repository::balance::insert_tokens(transaction_conn, tokens)?;
+
                 repository::balance::insert_balance_in_chunks(
                     transaction_conn,
                     balances,

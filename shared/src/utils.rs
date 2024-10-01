@@ -1,13 +1,14 @@
 use crate::id::Id;
+use crate::token::Token;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BalanceChange {
     pub address: Id,
-    pub token: Id,
+    pub token: Token,
 }
 
 impl BalanceChange {
-    pub fn new(address: Id, token: Id) -> Self {
+    pub fn new(address: Id, token: Token) -> Self {
         Self { address, token }
     }
 }

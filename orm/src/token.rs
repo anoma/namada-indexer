@@ -1,40 +1,59 @@
-use std::str::FromStr;
-
-use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
+use serde::{Deserialize, Serialize};
 use shared::token::Token;
 
-use crate::schema::token;
+use crate::schema::{ibc_token, token};
 
-pub type DenominationDb = i16;
+#[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::TokenType"]
+pub enum TokenTypeDb {
+    Native,
+    Ibc,
+}
 
-#[derive(Clone, Queryable, Selectable, Insertable)]
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
 #[diesel(table_name = token)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct TokenDb {
     pub address: String,
-    pub denomination: i16,
-    pub gas_price: BigDecimal,
+    pub token_type: TokenTypeDb,
 }
 
-#[derive(Clone, Queryable, Selectable)]
-#[diesel(table_name = token)]
+pub type TokenInsertDb = TokenDb;
+
+impl From<&Token> for TokenDb {
+    fn from(token: &Token) -> Self {
+        match token {
+            Token::Native(token) => TokenDb {
+                address: token.to_string(),
+                token_type: TokenTypeDb::Native,
+            },
+            Token::Ibc(token) => TokenDb {
+                address: token.address.to_string(),
+                token_type: TokenTypeDb::Ibc,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = ibc_token)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct GasPriceDb {
-    #[diesel(column_name = "address")]
-    pub token: String,
-    #[diesel(column_name = "gas_price")]
-    pub raw_amount: BigDecimal,
-    pub denomination: DenominationDb,
+pub struct IbcTokenDb {
+    pub address: String,
+    pub ibc_trace: String,
 }
 
-impl From<Token> for TokenDb {
-    fn from(value: Token) -> Self {
-        Self {
-            address: value.address,
-            denomination: value.denomination as i16,
-            gas_price: BigDecimal::from_str(&value.gas_price.to_string())
-                .expect("Invalid gas_price amount"),
+pub type IbcTokenInsertDb = IbcTokenDb;
+
+impl IbcTokenDb {
+    pub fn from_token(token: &Token) -> Option<Self> {
+        match token {
+            Token::Ibc(token) => Some(IbcTokenDb {
+                address: token.address.to_string(),
+                ibc_trace: token.trace.to_string(),
+            }),
+            Token::Native(_) => None,
         }
     }
 }

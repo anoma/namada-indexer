@@ -1,6 +1,7 @@
 use orm::parameters::ParametersDb;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SerdeJSONValue;
+use shared::token::Token as SharedToken;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,4 +57,39 @@ pub struct LastProcessedBlock {
 #[serde(rename_all = "camelCase")]
 pub struct LastProcessedEpoch {
     pub epoch: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeToken {
+    pub address: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IbcToken {
+    pub address: String,
+    pub trace: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+pub enum Token {
+    Native(NativeToken),
+    Ibc(IbcToken),
+}
+
+impl From<SharedToken> for Token {
+    fn from(value: SharedToken) -> Self {
+        match value {
+            SharedToken::Native(token) => Token::Native(NativeToken {
+                address: token.to_string(),
+            }),
+            SharedToken::Ibc(token) => Token::Ibc(IbcToken {
+                address: token.address.to_string(),
+                trace: token.trace.to_string(),
+            }),
+        }
+    }
 }
