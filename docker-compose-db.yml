@@ -1,9 +1,11 @@
 services:
   postgres:
     image: postgres:16-alpine
-    command: -c 'max_connections=200'
+    command: ["postgres", "-c", "listen_addresses=0.0.0.0", "-c", "max_connections=200", "-p", "5433"]
+    expose:
+      - "5433" # Publishes 5432 to other containers but NOT to host machine
     ports:
-      - 5435:5432
+      - "5433:5433"
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: postgres

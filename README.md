@@ -42,10 +42,10 @@ cp .env_sample .env
 - Install rust/cargo
 - Update the `.env` values to match your setup, for example:
   ```env
-  DATABASE_URL=postgres://postgres:password@0.0.0.0:5435/namada-indexer
+  DATABASE_URL=postgres://postgres:password@0.0.0.0:5433/namada-indexer
   TENDERMINT_URL=http://127.0.0.1:27657
   CACHE_URL=redis://redis@0.0.0.0:6379
-  PORT=5000
+  PORT=5001
   ```
 - Use the `run.sh` script inside each package. Keep in mind that PoS package have to be run always while other service might not
 
@@ -54,6 +54,6 @@ cp .env_sample .env
 Instead of fetching data from a running network, for testing porpuses it's also possible to populate the databse with some random data.
 
 - `cargo build`
-- `cd seeder && cargo run -- --database-url postgres://postgres:password@0.0.0.0:5435/namada-indexer`
+- `cd seeder && cargo run -- --database-url postgres://postgres:password@0.0.0.0:5433/namada-indexer`
 
 It's possible to only run the webserver and have access to the data via API.
