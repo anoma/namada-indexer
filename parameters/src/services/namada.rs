@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use anyhow::Context;
-use namada_core::storage::Epoch as NamadaEpoch;
+use namada_core::chain::Epoch as NamadaEpoch;
 use namada_parameters::EpochDuration;
 use namada_sdk::address::Address as NamadaAddress;
 use namada_sdk::arith::checked;

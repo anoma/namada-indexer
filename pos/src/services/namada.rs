@@ -1,6 +1,6 @@
 use anyhow::Context;
 use futures::{StreamExt, TryStreamExt};
-use namada_core::storage::Epoch as NamadaSdkEpoch;
+use namada_core::chain::Epoch as NamadaSdkEpoch;
 use namada_sdk::rpc;
 use shared::block::Epoch;
 use shared::id::Id;

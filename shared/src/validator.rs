@@ -1,4 +1,4 @@
-use fake::faker::company::en::{CatchPhase, CompanyName};
+use fake::faker::company::en::{CatchPhrase, CompanyName};
 use fake::faker::internet::en::{DomainSuffix, SafeEmail, Username};
 use fake::Fake;
 use namada_proof_of_stake::types::ValidatorState as NamadaValidatorState;
@@ -77,7 +77,7 @@ impl Validator {
             ((0..100).fake::<u64>() as f64 / 100_f64).to_string();
         let commission = ((0..100).fake::<u64>() as f64 / 100_f64).to_string();
         let email = Some(SafeEmail().fake());
-        let description: Option<String> = CatchPhase().fake();
+        let description: Option<String> = CatchPhrase().fake();
         let name = Some(CompanyName().fake::<String>());
         let website: Option<String> = Some(format!(
             "{}.{}",

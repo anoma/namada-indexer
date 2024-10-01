@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 
 use namada_core::address::Address;
-use namada_core::masp::TxId;
+use namada_core::masp::MaspTxId;
 use namada_sdk::ibc::IbcMessage as NamadaIbcMessage;
 use namada_sdk::token::{
     Account as NamadaAccount, DenominatedAmount as NamadaDenominatedAmount,
@@ -72,7 +72,7 @@ pub struct TransparentTransfer {
     /// Targets of this transfer
     pub targets: AccountsMap,
     /// Hash of tx section that contains the MASP transaction
-    pub shielded_section_hash: Option<TxId>,
+    pub shielded_section_hash: Option<MaspTxId>,
 }
 
 impl From<NamadaTransfer> for TransparentTransfer {

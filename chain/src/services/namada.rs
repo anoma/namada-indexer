@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
-use namada_core::storage::{
+use namada_core::chain::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
 use namada_sdk::address::{Address as NamadaSdkAddress, InternalAddress};
@@ -86,7 +86,7 @@ pub async fn query_balance(
 
             let token = NamadaSdkAddress::from(balance_change.token.clone());
 
-            let amount = rpc::get_token_balance(client, &token, &owner)
+            let amount = rpc::get_token_balance(client, &token, &owner, None)
                 .await
                 .unwrap_or_default();
 
