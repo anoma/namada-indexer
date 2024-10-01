@@ -6,7 +6,7 @@ pub enum CargoEnv {
 
 #[derive(clap::Parser, Clone)]
 pub struct AppConfig {
-    #[clap(long, env, default_value = "5000")]
+    #[clap(long, env, default_value = "5001")]
     pub port: u16,
 
     #[clap(long, env)]
