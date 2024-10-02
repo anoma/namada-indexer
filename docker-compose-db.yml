@@ -19,7 +19,7 @@ services:
 
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly
-    command: --logtostderr --cache_mode=true --port 6379 -dbnum 1 --maxmemory=2gb
+    command: --logtostderr --cache_mode=true --port 6379 -dbnum 1 --maxmemory=16gb
     ulimits:
       memlock: -1
     ports:
