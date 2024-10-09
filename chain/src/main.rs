@@ -1,12 +1,10 @@
 use std::convert::identity;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Context;
 use chain::app_state::AppState;
 use chain::config::AppConfig;
 use chain::repository;
-use chain::services::db::get_pos_crawler_state;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
     query_bonds, query_last_block_height, query_tokens,
@@ -21,6 +19,7 @@ use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use orm::validators::ValidatorInsertDb;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -30,7 +29,6 @@ use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::token::Token;
 use tendermint_rpc::HttpClient;
-use tokio::time::sleep;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -75,7 +73,7 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(&client, &conn, config.initial_query_retry_time).await?;
+    initial_query(&client, &conn).await?;
 
     let crawler_state = db_service::get_chain_crawler_state(&conn)
         .await
@@ -295,43 +293,34 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
-    initial_query_retry_time: u64,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
     let block_height =
         query_last_block_height(client).await.into_rpc_error()?;
-    let mut epoch =
-        namada_service::get_epoch_at_block_height(client, block_height)
-            .await
-            .into_rpc_error()?;
+    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
+        .await
+        .into_rpc_error()?;
     let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
         .await
         .into_rpc_error()?;
 
-    loop {
-        let pos_crawler_state =
-            get_pos_crawler_state(conn).await.into_db_error();
-
-        match pos_crawler_state {
-            // >= in case epochs are really short
-            Ok(pos_crawler_state)
-                if pos_crawler_state.last_processed_epoch >= epoch =>
-            {
-                // We assign pos crawler epoch as epoch to process
-                epoch = pos_crawler_state.last_processed_epoch;
-                break;
-            }
-            _ => {}
-        }
-
-        tracing::info!("Waiting for PoS service update...");
-
-        sleep(Duration::from_secs(initial_query_retry_time)).await;
-    }
-
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
     let balances = query_all_balances(client).await.into_rpc_error()?;
+
+    tracing::info!("Querying validators set...");
+    let pipeline_length = namada_service::query_pipeline_length(client)
+        .await
+        .into_rpc_error()?;
+    // We need to add pipeline_length to the epoch as it is possible to bond in advance
+    let validators_set = namada_service::get_validator_set_at_epoch(
+        client,
+        epoch + pipeline_length as u32,
+    )
+    .await
+    .into_rpc_error()?;
+
+    tracing::info!("Validator set length: {}", validators_set.validators.len());
 
     tracing::info!("Querying bonds and unbonds...");
     let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
@@ -382,6 +371,17 @@ async fn initial_query(
                 repository::gov::insert_votes(
                     transaction_conn,
                     proposals_votes,
+                )?;
+
+                let validators_dbo = &validators_set
+                    .validators
+                    .into_iter()
+                    .map(ValidatorInsertDb::from_validator)
+                    .collect::<Vec<_>>();
+
+                repository::pos::upsert_validators(
+                    transaction_conn,
+                    validators_dbo,
                 )?;
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;
