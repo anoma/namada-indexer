@@ -19,7 +19,6 @@ use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
-use orm::validators::ValidatorInsertDb;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -28,6 +27,7 @@ use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::token::Token;
+use shared::validator::ValidatorSet;
 use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -180,6 +180,12 @@ async fn crawling_fn(
     let proposals_votes = block.governance_votes();
     tracing::info!("Creating {} governance votes...", proposals_votes.len());
 
+    let validators = block.validators();
+    let validator_set = ValidatorSet {
+        validators: validators.clone(),
+        epoch,
+    };
+
     let addresses = block.bond_addresses();
     let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
     tracing::info!("Updating bonds for {} addresses", bonds.len());
@@ -244,6 +250,11 @@ async fn crawling_fn(
                 repository::gov::insert_votes(
                     transaction_conn,
                     proposals_votes,
+                )?;
+
+                repository::pos::upsert_validators(
+                    transaction_conn,
+                    validator_set,
                 )?;
 
                 // We first remove all the bonds and then insert the new ones
@@ -312,15 +323,14 @@ async fn initial_query(
     let pipeline_length = namada_service::query_pipeline_length(client)
         .await
         .into_rpc_error()?;
-    // We need to add pipeline_length to the epoch as it is possible to bond in advance
-    let validators_set = namada_service::get_validator_set_at_epoch(
+    // We need to add pipeline_length to the epoch as it is possible to bond in
+    // advance
+    let validator_set = namada_service::get_validator_set_at_epoch(
         client,
         epoch + pipeline_length as u32,
     )
     .await
     .into_rpc_error()?;
-
-    tracing::info!("Validator set length: {}", validators_set.validators.len());
 
     tracing::info!("Querying bonds and unbonds...");
     let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
@@ -373,15 +383,9 @@ async fn initial_query(
                     proposals_votes,
                 )?;
 
-                let validators_dbo = &validators_set
-                    .validators
-                    .into_iter()
-                    .map(ValidatorInsertDb::from_validator)
-                    .collect::<Vec<_>>();
-
                 repository::pos::upsert_validators(
                     transaction_conn,
-                    validators_dbo,
+                    validator_set,
                 )?;
 
                 repository::pos::insert_bonds(transaction_conn, bonds)?;

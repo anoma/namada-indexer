@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use fake::faker::company::en::{CatchPhrase, CompanyName};
 use fake::faker::internet::en::{DomainSuffix, SafeEmail, Username};
 use fake::Fake;
@@ -9,7 +11,7 @@ use crate::id::Id;
 
 pub type VotingPower = String;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ValidatorState {
     Consensus,
     BelowCapacity,
@@ -37,11 +39,11 @@ impl From<NamadaValidatorState> for ValidatorState {
 
 #[derive(Debug, Clone)]
 pub struct ValidatorSet {
-    pub validators: Vec<Validator>,
+    pub validators: HashSet<Validator>,
     pub epoch: Epoch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Validator {
     pub address: Id,
     pub voting_power: VotingPower,

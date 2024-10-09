@@ -16,7 +16,7 @@ use shared::block::Epoch;
 use shared::bond::Bonds;
 use shared::id::Id;
 use shared::unbond::{UnbondAddresses, Unbonds};
-use shared::validator::ValidatorMetadataChange;
+use shared::validator::{ValidatorMetadataChange, ValidatorSet};
 
 pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
@@ -202,8 +202,14 @@ pub fn update_validator_metadata(
 
 pub fn upsert_validators(
     transaction_conn: &mut PgConnection,
-    validators_db: &Vec<ValidatorInsertDb>,
+    validators_set: ValidatorSet,
 ) -> anyhow::Result<()> {
+    let validators_db = &validators_set
+        .validators
+        .into_iter()
+        .map(ValidatorInsertDb::from_validator)
+        .collect::<Vec<_>>();
+
     diesel::insert_into(validators::table)
         .values::<&Vec<ValidatorInsertDb>>(validators_db)
         .on_conflict(validators::columns::namada_address)

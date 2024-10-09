@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use futures::{StreamExt, TryStreamExt};
 use namada_core::chain::Epoch as NamadaSdkEpoch;
@@ -83,7 +85,7 @@ pub async fn get_validator_set_at_epoch(
             })
         })
         .buffer_unordered(100)
-        .try_collect::<Vec<_>>()
+        .try_collect::<HashSet<_>>()
         .await?;
 
     Ok(ValidatorSet { validators, epoch })

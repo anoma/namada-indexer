@@ -24,7 +24,7 @@ use crate::transaction::{
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
-use crate::validator::ValidatorMetadataChange;
+use crate::validator::{Validator, ValidatorMetadataChange, ValidatorState};
 use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
@@ -488,6 +488,38 @@ impl Block {
         };
 
         Some(recv_msg)
+    }
+
+    pub fn validators(&self) -> HashSet<Validator> {
+        self.transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::BecomeValidator(data) => {
+                    let data = data.clone().unwrap();
+                    Some(Validator {
+                        address: Id::from(data.address),
+                        voting_power: "0".to_string(),
+                        max_commission: data
+                            .max_commission_rate_change
+                            .to_string(),
+                        commission: data.commission_rate.to_string(),
+                        name: data.name,
+                        email: Some(data.email),
+                        description: data.description,
+                        website: data.website,
+                        discord_handler: data.discord_handle,
+                        avatar: data.avatar,
+                        state: ValidatorState::Inactive,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn bond_addresses(&self) -> HashSet<BondAddresses> {
