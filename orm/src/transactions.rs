@@ -25,6 +25,7 @@ pub enum TransactionKindDb {
     ChangeMetadata,
     ChangeCommission,
     RevealPk,
+    BecomeValidator,
     Unknown,
 }
 
@@ -54,6 +55,9 @@ impl From<TransactionKind> for TransactionKindDb {
                 TransactionKindDb::ChangeCommission
             }
             TransactionKind::RevealPk(_) => TransactionKindDb::RevealPk,
+            TransactionKind::BecomeValidator(_) => {
+                TransactionKindDb::BecomeValidator
+            }
             TransactionKind::Unknown => TransactionKindDb::Unknown,
         }
     }

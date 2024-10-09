@@ -8,8 +8,8 @@ use namada_sdk::masp::ShieldedTransfer;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
-    Bond, ClaimRewards, CommissionChange, MetaDataChange, Redelegation, Unbond,
-    Withdraw,
+    BecomeValidator, Bond, ClaimRewards, CommissionChange, MetaDataChange,
+    Redelegation, Unbond, Withdraw,
 };
 use namada_tx::data::{compute_inner_tx_hash, TxType};
 use namada_tx::either::Either;
@@ -47,6 +47,7 @@ pub enum TransactionKind {
     MetadataChange(Option<MetaDataChange>),
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
+    BecomeValidator(Option<Box<BecomeValidator>>),
     Unknown,
 }
 
@@ -161,6 +162,15 @@ impl TransactionKind {
                     None
                 };
                 TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
+            }
+            "tx_become_validator" => {
+                let data =
+                    if let Ok(data) = BecomeValidator::try_from_slice(data) {
+                        Some(data)
+                    } else {
+                        None
+                    };
+                TransactionKind::BecomeValidator(data.map(Box::new))
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use namada_core::chain::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
 };
@@ -26,6 +26,7 @@ use shared::proposal::{GovernanceProposal, TallyType};
 use shared::token::{IbcToken, Token};
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
+use shared::validator::{Validator, ValidatorSet, ValidatorState};
 use shared::vote::{GovernanceVote, ProposalVoteKind};
 use subtle_encoding::hex;
 use tendermint_rpc::HttpClient;
@@ -594,6 +595,96 @@ pub async fn query_all_votes(
             .await;
 
     anyhow::Ok(votes.iter().flatten().cloned().collect())
+}
+
+pub async fn get_validator_set_at_epoch(
+    client: &HttpClient,
+    epoch: Epoch,
+) -> anyhow::Result<ValidatorSet> {
+    let namada_epoch = NamadaSdkEpoch::from(epoch as u64);
+    let validator_set = rpc::get_all_validators(client, namada_epoch)
+        .await
+        .with_context(|| {
+            format!(
+                "Failed to query Namada's consensus validators at epoch \
+                 {epoch}"
+            )
+        })?;
+
+    let validators = futures::stream::iter(validator_set)
+        .map(|address| async move {
+            let voting_power_fut = async {
+                rpc::get_validator_stake(client, namada_epoch, &address)
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Failed to query the stake of validator {address} \
+                             at epoch {namada_epoch}"
+                        )
+                    })
+            };
+
+            let commission_fut = async {
+                rpc::query_commission_rate(client, &address, Some(namada_epoch))
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Failed to query commission of validator \
+                             {address} at epoch {namada_epoch}"
+                        )
+                    })
+            };
+
+            let validator_state_fut = async {
+                rpc::get_validator_state(client, &address, Some(namada_epoch))
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Failed to query validator {address} \
+                         state"
+                        )
+                    })
+            };
+
+            let (voting_power, commission_pair, validator_state) =
+                futures::try_join!(voting_power_fut, commission_fut, validator_state_fut)?;
+            let commission = commission_pair
+                .commission_rate
+                .expect("Commission rate has to exist")
+                .to_string();
+            let max_commission = commission_pair
+                .max_commission_change_per_epoch
+                .expect("Max commission rate change has to exist")
+                .to_string();
+            let validator_state = validator_state.0.map(ValidatorState::from).unwrap_or(ValidatorState::Unknown);
+
+            anyhow::Ok(Validator {
+                address: Id::Account(address.to_string()),
+                voting_power: voting_power.to_string_native(),
+                max_commission,
+                commission,
+                name: None,
+                email: None,
+                description: None,
+                website: None,
+                discord_handler: None,
+                avatar: None,
+                state: validator_state
+            })
+        })
+        .buffer_unordered(100)
+        .try_collect::<HashSet<_>>()
+        .await?;
+
+    Ok(ValidatorSet { validators, epoch })
+}
+
+pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
+    let pos_parameters = rpc::get_pos_params(client)
+        .await
+        .with_context(|| "Failed to query pos parameters".to_string())?;
+
+    Ok(pos_parameters.pipeline_len)
 }
 
 fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
