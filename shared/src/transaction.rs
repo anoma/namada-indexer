@@ -47,7 +47,7 @@ pub enum TransactionKind {
     MetadataChange(Option<MetaDataChange>),
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
-    BecomeValidator(Option<BecomeValidator>),
+    BecomeValidator(Option<Box<BecomeValidator>>),
     Unknown,
 }
 
@@ -170,7 +170,7 @@ impl TransactionKind {
                     } else {
                         None
                     };
-                TransactionKind::BecomeValidator(data)
+                TransactionKind::BecomeValidator(data.map(Box::new))
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
