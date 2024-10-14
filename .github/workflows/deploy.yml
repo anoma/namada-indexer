@@ -59,7 +59,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push
         id: push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.docker.context }}/Dockerfile
@@ -70,20 +70,21 @@ jobs:
           cache-to: type=gha,mode=max
 
   swagger-npm-package:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - id: get_version
         uses: battila7/get-version-action@v2
-      - name: Install swagger codegen
-        run: brew install swagger-codegen
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Authenticate with private NPM package
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-      - name: Generate client
-        run: swagger-codegen generate -i swagger.yml -l javascript -o ./code
+      - name: Generate Typescript Client
+        uses: openapi-generators/openapitools-generator-action@v1
+        with:
+          generator: typescript-axios
+          openapi-file: swagger.yml
       - name: Update package.json
-        run: python3 .github/workflows/scripts/update-package.py code/package.json ${{ steps.get_version.outputs.version-without-v }}
+        run: python3 .github/workflows/scripts/update-package.py typescript-axios/package.json ${{ steps.get_version.outputs.version-without-v }}
       - name: Publish package
-        run: npm publish --access public --verbose
+        run: cd typescript-axios && npm publish --access public --verbose
