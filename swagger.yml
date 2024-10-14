@@ -847,7 +847,7 @@ components:
           type: string
     Parameters:
       type: object
-      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, maxBlockTime, checksums, epochSwitchBlocksDelay]
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, maxBlockTime, checksums, epochSwitchBlocksDelay, cubicSlashingWindowLength]
       properties:
         unbondingLength:
           type: string
@@ -874,6 +874,8 @@ components:
           additionalProperties:
             type: string
         epochSwitchBlocksDelay:
+          type: string
+        cubicSlashingWindowLength:
           type: string
     RpcUrl:
       type: object
