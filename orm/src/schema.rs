@@ -109,6 +109,7 @@ diesel::table! {
         genesis_time -> Int8,
         epoch_switch_blocks_delay -> Int4,
         checksums -> Jsonb,
+        cubic_slashing_window_length -> Int4,
     }
 }
 

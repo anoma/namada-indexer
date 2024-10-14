@@ -97,6 +97,8 @@ pub async fn get_parameters(client: &HttpClient) -> anyhow::Result<Parameters> {
         max_block_time: max_block_time.0,
         apr: apr.to_string(),
         native_token_address: native_token_address.to_string(),
+        cubic_slashing_window_length: pos_parameters
+            .cubic_slashing_window_length,
     })
 }
 
