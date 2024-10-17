@@ -50,6 +50,9 @@ INSERT INTO gas (tx_kind, token, gas_limit)
 VALUES ('reveal_pk', 'native', 250_000);
 
 INSERT INTO gas (tx_kind, token, gas_limit)
+VALUES ('become_validator', 'native', 250_000);
+
+INSERT INTO gas (tx_kind, token, gas_limit)
 VALUES ('ibc_msg_transfer', 'native', 250_000);
 
 INSERT INTO gas (tx_kind, token, gas_limit)
