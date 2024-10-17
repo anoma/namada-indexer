@@ -18,6 +18,7 @@ pub struct Parameters {
     pub max_block_time: String,
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: String,
+    pub cubic_slashing_window_length: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -36,6 +37,9 @@ impl From<ParametersDb> for Parameters {
             checksums: parameters.checksums,
             epoch_switch_blocks_delay: parameters
                 .epoch_switch_blocks_delay
+                .to_string(),
+            cubic_slashing_window_length: parameters
+                .cubic_slashing_window_length
                 .to_string(),
         }
     }

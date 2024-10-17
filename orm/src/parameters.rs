@@ -25,6 +25,7 @@ pub struct ParametersInsertDb {
     pub genesis_time: i64,
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: i32,
+    pub cubic_slashing_window_length: i32,
 }
 
 #[derive(Serialize, Queryable, Selectable, Clone)]
@@ -44,6 +45,7 @@ pub struct ParametersDb {
     pub genesis_time: i64,
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: i32,
+    pub cubic_slashing_window_length: i32,
 }
 
 impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
@@ -71,6 +73,9 @@ impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
             checksums: serde_json::to_value(checksums)
                 .expect("Failed to serialize checksums"),
             epoch_switch_blocks_delay: epoch_switch_blocks_delay as i32,
+            cubic_slashing_window_length: parameters
+                .cubic_slashing_window_length
+                as i32,
         }
     }
 }
