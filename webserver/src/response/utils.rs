@@ -48,7 +48,7 @@ pub fn epoch_progress(
     let blocks_per_epoch =
         blocks_per_epoch + (EPOCH_SWITCH_BLOCKS_DELAY as i32);
 
-    // We remove 1 to the current_block so progress resets to 0 when new epoch
+    // We remove 1 from the current_block so progress resets to 0 when new epoch
     // starts
     let current_block = current_block - 1;
 
