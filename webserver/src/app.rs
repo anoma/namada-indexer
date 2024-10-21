@@ -6,6 +6,7 @@ use axum::http::{HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{BoxError, Json, Router};
+use axum_prometheus::PrometheusMetricLayer;
 use lazy_static::lazy_static;
 use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
@@ -36,6 +37,8 @@ impl ApplicationServer {
     pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
         let db_url = config.database_url.clone();
         let cache_url = config.cache_url.clone();
+
+        let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
         let app_state = AppState::new(db_url, cache_url);
         let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
@@ -131,6 +134,7 @@ impl ApplicationServer {
                 )
                 // Server sent events endpoints
                 .route("/chain/status", get(chain_handlers::chain_status))
+                .route("/metrics", get(|| async move { metric_handle.render() }))
                 .with_state(common_state)
         };
 
@@ -148,6 +152,7 @@ impl ApplicationServer {
             .layer(
                 ServiceBuilder::new()
                     .layer(TraceLayer::new_for_http())
+                    .layer(prometheus_layer)
                     .layer(HandleErrorLayer::new(Self::handle_timeout_error))
                     .timeout(Duration::from_secs(*HTTP_TIMEOUT))
                     .layer(cors)

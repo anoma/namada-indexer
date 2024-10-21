@@ -49,6 +49,7 @@ bigdecimal.workspace = true
 shared.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+axum-prometheus = "0.7.0"
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }
