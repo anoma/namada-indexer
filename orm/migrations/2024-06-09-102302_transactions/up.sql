@@ -14,6 +14,7 @@ CREATE TYPE TRANSACTION_KIND AS ENUM (
     'change_metadata',
     'change_commission',
     'reveal_pk',
+    'become_validator',
     'unknown'
 );
 
