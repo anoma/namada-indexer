@@ -12,3 +12,6 @@ CREATE TABLE ibc_token (
     ibc_trace VARCHAR NOT NULL,
     CONSTRAINT fk_ibc_token_token FOREIGN KEY(address) REFERENCES token(address) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX one_native_token ON token (token_type) 
+WHERE token_type = 'native';

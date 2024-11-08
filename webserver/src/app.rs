@@ -134,7 +134,10 @@ impl ApplicationServer {
                 )
                 // Server sent events endpoints
                 .route("/chain/status", get(chain_handlers::chain_status))
-                .route("/metrics", get(|| async move { metric_handle.render() }))
+                .route(
+                    "/metrics",
+                    get(|| async move { metric_handle.render() }),
+                )
                 .with_state(common_state)
         };
 
