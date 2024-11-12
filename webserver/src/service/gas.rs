@@ -15,9 +15,9 @@ impl GasService {
         }
     }
 
-    pub async fn get_gas_by_token(&self, token: String) -> Vec<Gas> {
+    pub async fn get_gas(&self) -> Vec<Gas> {
         self.gas_repo
-            .find_gas_by_token(token)
+            .get_gas()
             .await
             .unwrap_or_default()
             .into_iter()

@@ -14,9 +14,8 @@ pub struct GasRepository {
 pub trait GasRepositoryTrait {
     fn new(app_state: AppState) -> Self;
 
-    async fn find_gas_by_token(
+    async fn get_gas(
         &self,
-        token: String,
     ) -> Result<Vec<GasDb>, String>;
 
     async fn find_gas_price_by_token(
@@ -31,15 +30,13 @@ impl GasRepositoryTrait for GasRepository {
         Self { app_state }
     }
 
-    async fn find_gas_by_token(
+    async fn get_gas(
         &self,
-        token: String,
     ) -> Result<Vec<GasDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             gas::table
-                .filter(gas::dsl::token.eq(token))
                 .select(GasDb::as_select())
                 .get_results(conn)
         })

@@ -8,12 +8,11 @@ use crate::response::gas::{Gas, GasPrice};
 use crate::state::common::CommonState;
 
 #[debug_handler]
-pub async fn get_gas_by_token(
+pub async fn get_gas(
     _headers: HeaderMap,
-    Path(token): Path<String>,
     State(state): State<CommonState>,
 ) -> Result<Json<Vec<Gas>>, ApiError> {
-    let gas = state.gas_service.get_gas_by_token(token).await;
+    let gas = state.gas_service.get_gas().await;
 
     Ok(Json(gas))
 }
