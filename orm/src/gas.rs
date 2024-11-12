@@ -11,7 +11,6 @@ use crate::transactions::TransactionKindDb;
 #[diesel(table_name = gas)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct GasDb {
-    pub token: String,
     pub tx_kind: TransactionKindDb,
     pub gas_limit: i32,
 }
