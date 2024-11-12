@@ -75,15 +75,20 @@ pub fn insert_tokens(
         .filter_map(IbcTokenInsertDb::from_token)
         .collect::<Vec<_>>();
 
+    // TODO: add tests for on conflict:
+    // - inserting token with the same address twice should NOT throw an error
+    // - inserting native token with different address should throw an error
     diesel::insert_into(token::table)
         .values(tokens_db)
-        .on_conflict_do_nothing()
+        .on_conflict(token::columns::address)
+        .do_nothing()
         .execute(transaction_conn)
         .context("Failed to update tokens in db")?;
 
     diesel::insert_into(ibc_token::table)
         .values(ibc_tokens_db)
-        .on_conflict_do_nothing()
+        .on_conflict(ibc_token::columns::address)
+        .do_nothing()
         .execute(transaction_conn)
         .context("Failed to update ibc tokens in db")?;
 
@@ -222,11 +227,8 @@ mod tests {
             seed_balance(conn, vec![balance.clone()])?;
 
             let new_amount = Amount::from(NamadaAmount::from_u64(200));
-            let new_token = Token::Native(Id::Account(
-                "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
-            ));
             let new_balance = Balance {
-                token: new_token.clone(),
+                token: token.clone(),
                 amount: new_amount.clone(),
                 ..(balance.clone())
             };
@@ -238,17 +240,7 @@ mod tests {
             let queried_balance =
                 query_balance_by_address(conn, owner.clone(), token.clone())?;
 
-            let queried_balance_new = query_balance_by_address(
-                conn,
-                owner.clone(),
-                new_token.clone(),
-            )?;
-
-            assert_eq!(Amount::from(queried_balance.raw_amount), amount);
-            assert_eq!(
-                Amount::from(queried_balance_new.raw_amount),
-                new_amount
-            );
+            assert_eq!(Amount::from(queried_balance.raw_amount), new_amount);
 
             anyhow::Ok(())
         })
@@ -318,8 +310,11 @@ mod tests {
         let db = TestDb::new();
 
         db.run_test(move |conn| {
+            let token = Token::Native(Id::Account(
+                "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
+            ));
             let fake_balances =
-                (0..10000).map(|_| Balance::fake()).collect::<Vec<_>>();
+                (0..10000).map(|_| Balance::fake_with_token(token.clone())).collect::<Vec<_>>();
 
             seed_tokens_from_balance(conn, fake_balances.clone())?;
 
@@ -403,8 +398,12 @@ mod tests {
         let db = TestDb::new();
 
         db.run_test(|conn| {
-            let balances =
-                (0..1000).map(|_| Balance::fake()).collect::<Vec<_>>();
+            let token = Token::Native(Id::Account(
+                "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
+            ));
+            let balances = (0..1000)
+                .map(|_| Balance::fake_with_token(token.clone()))
+                .collect::<Vec<_>>();
 
             insert_tokens(
                 conn,

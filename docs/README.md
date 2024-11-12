@@ -44,6 +44,6 @@ At this point only by checking the state of the database. In the future we might
 
 For the API documentation, please refer to the [swagger.yml](../swagger.yml) file.
 We generate the client using [OpenApi generator](https://github.com/OpenAPITools/openapi-generator).
-You can find the published versions [here](https://www.npmjs.com/package/@anomaorg/namada-indexer-client).
+You can find the published versions [here](https://www.npmjs.com/package/@namada/indexer-client).
 
 Graphs/cards thanks to [excalidraw <3](docs_indexer_2024_09_20.excalidraw).

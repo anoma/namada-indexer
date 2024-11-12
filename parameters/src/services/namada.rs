@@ -86,7 +86,21 @@ pub async fn get_parameters(client: &HttpClient) -> anyhow::Result<Parameters> {
 
     let max_block_time = RPC.shell().max_block_time(client).await?;
 
-    let apr = rpc::get_staking_rewards_rate(client).await?;
+    let maybe_apr = rpc::get_staking_rewards_rate(client).await;
+
+    // ATM namada throws an error when epoch is 0
+    // this is a workaround to set APR to 0 in this case
+    let apr = match maybe_apr {
+        Ok(apr) => Ok(apr.staking_rewards_rate.to_string()),
+        Err(e) => {
+            let epoch = rpc::query_epoch(client).await?;
+            if epoch.0 == 0 {
+                Ok("0".to_string())
+            } else {
+                Err(e)
+            }
+        }
+    }?;
 
     Ok(Parameters {
         unbonding_length: pos_parameters.unbonding_len,
@@ -95,7 +109,7 @@ pub async fn get_parameters(client: &HttpClient) -> anyhow::Result<Parameters> {
         min_num_of_blocks: epoch_duration.min_num_of_blocks,
         min_duration: epoch_duration.min_duration.0,
         max_block_time: max_block_time.0,
-        apr: apr.to_string(),
+        apr,
         native_token_address: native_token_address.to_string(),
         cubic_slashing_window_length: pos_parameters
             .cubic_slashing_window_length,
