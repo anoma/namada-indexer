@@ -313,8 +313,9 @@ mod tests {
             let token = Token::Native(Id::Account(
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
             ));
-            let fake_balances =
-                (0..10000).map(|_| Balance::fake_with_token(token.clone())).collect::<Vec<_>>();
+            let fake_balances = (0..10000)
+                .map(|_| Balance::fake_with_token(token.clone()))
+                .collect::<Vec<_>>();
 
             seed_tokens_from_balance(conn, fake_balances.clone())?;
 

@@ -133,7 +133,6 @@ diesel::table! {
     gas (id) {
         id -> Int4,
         tx_kind -> TransactionKind,
-        token -> Varchar,
         gas_limit -> Int4,
     }
 }
