@@ -33,7 +33,7 @@ impl Display for ProposalType {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TallyType {
-    TwoThirds,
+    TwoFifths,
     OneHalfOverOneThird,
     LessOneHalfOverOneThirdNay,
 }
@@ -41,7 +41,7 @@ pub enum TallyType {
 impl Display for TallyType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TallyType::TwoThirds => write!(f, "two_thirds"),
+            TallyType::TwoFifths => write!(f, "two_thirds"),
             TallyType::OneHalfOverOneThird => {
                 write!(f, "one_half_over_one_third")
             }
@@ -172,8 +172,8 @@ impl Proposal {
                 }
             },
             tally_type: match value.tally_type {
-                GovernanceProposalTallyTypeDb::TwoThirds => {
-                    TallyType::TwoThirds
+                GovernanceProposalTallyTypeDb::TwoFifths => {
+                    TallyType::TwoFifths
                 }
                 GovernanceProposalTallyTypeDb::OneHalfOverOneThird => {
                     TallyType::OneHalfOverOneThird
