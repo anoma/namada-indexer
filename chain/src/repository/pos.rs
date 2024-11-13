@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use anyhow::Context;
 use diesel::upsert::excluded;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, PgConnection, QueryDsl,
-    RunQueryDsl, SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, OptionalEmptyChangesetExtension, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper
 };
 use orm::bond::BondInsertDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
@@ -195,6 +194,7 @@ pub fn update_validator_metadata(
             .set(metadata_change_db)
             .filter(validators::namada_address.eq(metadata.address.to_string()))
             .execute(transaction_conn)
+            .optional_empty_changeset()
             .context("Failed to update unbonds in db")?;
     }
     anyhow::Ok(())
