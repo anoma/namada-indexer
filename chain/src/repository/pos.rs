@@ -222,6 +222,7 @@ pub fn upsert_validators(
                 .eq(excluded(validators::columns::max_commission)),
             validators::columns::commission
                 .eq(excluded(validators::columns::commission)),
+            validators::columns::name.eq(excluded(validators::columns::name)),
             validators::columns::email.eq(excluded(validators::columns::email)),
             validators::columns::website
                 .eq(excluded(validators::columns::website)),
