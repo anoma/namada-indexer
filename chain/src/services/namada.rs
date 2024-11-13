@@ -624,17 +624,6 @@ pub async fn get_validator_set_at_epoch(
                     })
             };
 
-            let commission_fut = async {
-                rpc::query_commission_rate(client, &address, Some(namada_epoch))
-                    .await
-                    .with_context(|| {
-                        format!(
-                            "Failed to query commission of validator \
-                             {address} at epoch {namada_epoch}"
-                        )
-                    })
-            };
-
             let validator_state_fut = async {
                 rpc::get_validator_state(client, &address, Some(namada_epoch))
                     .await
@@ -646,29 +635,41 @@ pub async fn get_validator_set_at_epoch(
                     })
             };
 
-            let (voting_power, commission_pair, validator_state) =
-                futures::try_join!(voting_power_fut, commission_fut, validator_state_fut)?;
-            let commission = commission_pair
+            let validator_metadata_fut = async {
+                rpc::query_metadata(client, &address, Some(namada_epoch))
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Failed to query validator {address} \
+                         state"
+                        )
+                    })
+            };
+
+            let (voting_power, validator_metadata, validator_state) =
+                futures::try_join!(voting_power_fut, validator_metadata_fut, validator_state_fut)?;
+            let commission = validator_metadata.1
                 .commission_rate
                 .expect("Commission rate has to exist")
                 .to_string();
-            let max_commission = commission_pair
+            let max_commission = validator_metadata.1
                 .max_commission_change_per_epoch
                 .expect("Max commission rate change has to exist")
                 .to_string();
             let validator_state = validator_state.0.map(ValidatorState::from).unwrap_or(ValidatorState::Unknown);
+            let validator_metadata = validator_metadata.0;
 
             anyhow::Ok(Validator {
                 address: Id::Account(address.to_string()),
                 voting_power: voting_power.to_string_native(),
                 max_commission,
                 commission,
-                name: None,
-                email: None,
-                description: None,
-                website: None,
-                discord_handler: None,
-                avatar: None,
+                name: validator_metadata.clone().map(|metadata| metadata.name).unwrap_or(None),
+                email: validator_metadata.clone().map(|metadata| Some(metadata.email)).unwrap_or(None),
+                description: validator_metadata.clone().map(|metadata| metadata.description).unwrap_or(None),
+                website: validator_metadata.clone().map(|metadata| metadata.website).unwrap_or(None),
+                discord_handler: validator_metadata.clone().map(|metadata| metadata.discord_handle).unwrap_or(None),
+                avatar: validator_metadata.map(|metadata| metadata.avatar).unwrap_or(None),
                 state: validator_state
             })
         })

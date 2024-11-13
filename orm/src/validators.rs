@@ -73,6 +73,23 @@ pub struct ValidatorInsertDb {
     pub state: ValidatorStateDb,
 }
 
+#[derive(Serialize, Insertable, Clone)]
+#[diesel(table_name = validators)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ValidatorWithMetaInsertDb {
+    pub namada_address: String,
+    pub voting_power: i32,
+    pub max_commission: String,
+    pub commission: String,
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub website: Option<String>,
+    pub description: Option<String>,
+    pub discord_handle: Option<String>,
+    pub avatar: Option<String>,
+    pub state: ValidatorStateDb,
+}
+
 #[derive(Serialize, AsChangeset, Clone)]
 #[diesel(table_name = validators)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -94,6 +111,25 @@ impl ValidatorInsertDb {
                 as i32,
             max_commission: validator.max_commission.clone(),
             commission: validator.commission.clone(),
+            state: validator.state.into(),
+        }
+    }
+}
+
+impl ValidatorWithMetaInsertDb {
+    pub fn from_validator(validator: Validator) -> Self {
+        Self {
+            namada_address: validator.address.to_string(),
+            voting_power: f32::from_str(&validator.voting_power).unwrap()
+                as i32,
+            max_commission: validator.max_commission.clone(),
+            commission: validator.commission.clone(),
+            name: validator.name,
+            email: validator.email,
+            website: validator.website,
+            description: validator.description,
+            discord_handle: validator.discord_handler,
+            avatar: validator.avatar,
             state: validator.state.into(),
         }
     }

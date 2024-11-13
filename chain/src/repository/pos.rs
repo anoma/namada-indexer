@@ -10,7 +10,7 @@ use orm::bond::BondInsertDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{
-    ValidatorDb, ValidatorInsertDb, ValidatorUpdateMetadataDb,
+    ValidatorDb, ValidatorUpdateMetadataDb, ValidatorWithMetaInsertDb,
 };
 use shared::block::Epoch;
 use shared::bond::Bonds;
@@ -208,11 +208,11 @@ pub fn upsert_validators(
     let validators_db = &validators_set
         .validators
         .into_iter()
-        .map(ValidatorInsertDb::from_validator)
+        .map(ValidatorWithMetaInsertDb::from_validator)
         .collect::<Vec<_>>();
 
     diesel::insert_into(validators::table)
-        .values::<&Vec<ValidatorInsertDb>>(validators_db)
+        .values::<&Vec<ValidatorWithMetaInsertDb>>(validators_db)
         .on_conflict(validators::columns::namada_address)
         .do_update()
         .set((
