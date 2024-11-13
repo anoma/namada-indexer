@@ -41,7 +41,7 @@ pub enum TallyType {
 impl Display for TallyType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TallyType::TwoFifths => write!(f, "two_thirds"),
+            TallyType::TwoFifths => write!(f, "two_fifths"),
             TallyType::OneHalfOverOneThird => {
                 write!(f, "one_half_over_one_third")
             }
