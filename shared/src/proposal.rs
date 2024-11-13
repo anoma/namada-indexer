@@ -5,6 +5,7 @@ use namada_governance::storage::proposal::{
     AddRemove, PGFAction, PGFIbcTarget, PGFInternalTarget, PGFTarget,
     StorageProposal,
 };
+use namada_governance::utils::TallyType as NamadaTallyType;
 use namada_governance::ProposalType;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
 use namada_sdk::token::Amount;
@@ -220,7 +221,7 @@ impl Distribution<GovernanceProposalResult> for Standard {
 }
 
 pub enum TallyType {
-    TwoThirds,
+    TwoFifths,
     OneHalfOverOneThird,
     LessOneHalfOverOneThirdNay,
 }
@@ -235,19 +236,34 @@ impl TallyType {
         proposal_type: &GovernanceProposalKind,
         is_steward: bool,
     ) -> Self {
-        match (proposal_type, is_steward) {
-            (GovernanceProposalKind::Default, _) => TallyType::TwoThirds,
-            (GovernanceProposalKind::DefaultWithWasm, _) => {
-                TallyType::TwoThirds
+        let namada_proposal_type = match proposal_type {
+            GovernanceProposalKind::Default => ProposalType::Default,
+            GovernanceProposalKind::DefaultWithWasm => {
+                ProposalType::DefaultWithWasm(namada_sdk::hash::Hash([0; 32]))
             }
-            (GovernanceProposalKind::PgfSteward, _) => {
+            GovernanceProposalKind::PgfSteward => {
+                ProposalType::PGFSteward(BTreeSet::new())
+            }
+            GovernanceProposalKind::PgfFunding => {
+                ProposalType::PGFPayment(BTreeSet::new())
+            }
+        };
+
+        let tally_type =
+            NamadaTallyType::from(namada_proposal_type, is_steward);
+
+        TallyType::from_namada_tally_type(tally_type)
+    }
+
+    pub fn from_namada_tally_type(tally_type: NamadaTallyType) -> Self {
+        // With this match we couple the types which is desired
+        match tally_type {
+            NamadaTallyType::TwoFifths => TallyType::TwoFifths,
+            NamadaTallyType::OneHalfOverOneThird => {
                 TallyType::OneHalfOverOneThird
             }
-            (GovernanceProposalKind::PgfFunding, true) => {
+            NamadaTallyType::LessOneHalfOverOneThirdNay => {
                 TallyType::LessOneHalfOverOneThirdNay
-            }
-            (GovernanceProposalKind::PgfFunding, false) => {
-                TallyType::OneHalfOverOneThird
             }
         }
     }
@@ -256,7 +272,7 @@ impl TallyType {
 impl Distribution<TallyType> for Standard {
     fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> TallyType {
         match rng.gen_range(0..=2) {
-            0 => TallyType::TwoThirds,
+            0 => TallyType::TwoFifths,
             1 => TallyType::OneHalfOverOneThird,
             _ => TallyType::LessOneHalfOverOneThirdNay,
         }

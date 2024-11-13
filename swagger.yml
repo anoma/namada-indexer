@@ -674,7 +674,7 @@ components:
           enum: [default, defaultWithWasm, pgfSteward, pgfFunding]
         tallyType:
           type: string
-          enum: [twoThirds, oneHalfOverOneThird, lessOneHalfOverOneThirdNay]
+          enum: [twoFifths, oneHalfOverOneThird, lessOneHalfOverOneThirdNay]
         data:
           type: string
         author:

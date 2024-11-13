@@ -31,7 +31,7 @@ impl From<GovernanceProposalKind> for GovernanceProposalKindDb {
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::GovernanceTallyType"]
 pub enum GovernanceProposalTallyTypeDb {
-    TwoThirds,
+    TwoFifths,
     OneHalfOverOneThird,
     LessOneHalfOverOneThirdNay,
 }
@@ -39,7 +39,7 @@ pub enum GovernanceProposalTallyTypeDb {
 impl From<TallyType> for GovernanceProposalTallyTypeDb {
     fn from(value: TallyType) -> Self {
         match value {
-            TallyType::TwoThirds => Self::TwoThirds,
+            TallyType::TwoFifths => Self::TwoFifths,
             TallyType::OneHalfOverOneThird => Self::OneHalfOverOneThird,
             TallyType::LessOneHalfOverOneThirdNay => {
                 Self::LessOneHalfOverOneThirdNay
