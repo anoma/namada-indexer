@@ -28,7 +28,7 @@ INSERT INTO gas (tx_kind, gas_limit)
 VALUES ('unbond', 150_000);
 
 INSERT INTO gas (tx_kind, gas_limit)
-VALUES ('withdraw', 50_000);
+VALUES ('withdraw', 150_000);
 
 INSERT INTO gas (tx_kind, gas_limit)
 VALUES ('claim_rewards', 50_000);
