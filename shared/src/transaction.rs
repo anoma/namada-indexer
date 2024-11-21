@@ -52,8 +52,8 @@ pub enum TransactionKind {
 }
 
 impl TransactionKind {
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(&self).expect("Cannot serialize TransactionKind")
+    pub fn to_json(&self) -> Option<String> {
+        serde_json::to_string(&self).ok()
     }
 
     pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
@@ -340,7 +340,7 @@ impl Transaction {
                     };
 
                     let encoded_tx_data = if !tx_data.is_empty() {
-                        Some(tx_kind.to_json())
+                        tx_kind.to_json()
                     } else {
                         None
                     };
