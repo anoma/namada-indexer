@@ -30,6 +30,8 @@ pub trait ChainRepositoryTrait {
     async fn find_tokens(
         &self,
     ) -> Result<Vec<(TokenDb, Option<IbcTokenDb>)>, String>;
+
+    async fn get_native_token_address(&self) -> Result<String, String>;
 }
 
 #[async_trait]
@@ -93,6 +95,19 @@ impl ChainRepositoryTrait for ChainRepository {
         conn.interact(move |conn| {
             chain_parameters::table
                 .select(ParametersDb::as_select())
+                .first(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn get_native_token_address(&self) -> Result<String, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            chain_parameters::table
+                .select(chain_parameters::columns::native_token_address)
                 .first(conn)
         })
         .await
