@@ -80,6 +80,7 @@ impl GovernanceRepoTrait for GovernanceRepo {
         conn.interact(move |conn| {
             query
                 .select(GovernanceProposalDb::as_select())
+                .order(governance_proposals::dsl::id.desc())
                 .paginate(page)
                 .load_and_count_pages(conn)
         })
@@ -98,7 +99,10 @@ impl GovernanceRepoTrait for GovernanceRepo {
         let query = self.governance_proposals(status, kind, pattern);
 
         conn.interact(move |conn| {
-            query.select(GovernanceProposalDb::as_select()).load(conn)
+            query
+                .select(GovernanceProposalDb::as_select())
+                .order(governance_proposals::dsl::id.desc())
+                .load(conn)
         })
         .await
         .map_err(|e| e.to_string())?
