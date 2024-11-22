@@ -474,6 +474,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GasLimitTable'
+  /api/v1/gas-price:
+    get:
+      summary: Get all the gas prices
+      responses:
+        '200':
+          description: Gas price table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GasPriceTable'
   /api/v1/gas-price/{token}:
     get:
       parameters:

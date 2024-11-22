@@ -35,4 +35,12 @@ impl GasService {
             .map_err(GasError::Database)
             .map(|r| r.iter().cloned().map(GasPrice::from).collect())
     }
+
+    pub async fn get_all_gas_prices(&self) -> Result<Vec<GasPrice>, GasError> {
+        self.gas_repo
+            .find_all_gas_prices()
+            .await
+            .map_err(GasError::Database)
+            .map(|r| r.iter().cloned().map(GasPrice::from).collect())
+    }
 }

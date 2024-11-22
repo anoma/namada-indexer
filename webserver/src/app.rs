@@ -109,6 +109,7 @@ impl ApplicationServer {
                     "/gas-price/:token",
                     get(gas_handlers::get_gas_price_by_token),
                 )
+                .route("/gas-price", get(gas_handlers::get_all_gas_prices))
                 .route(
                     "/chain/wrapper/:id",
                     get(transaction_handlers::get_wrapper_tx),
