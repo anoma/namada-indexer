@@ -40,14 +40,14 @@ axum-extra = { version = "0.9.3", features = ["query"] }
 chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
-namada_core = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
-namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.45.1", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
-namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
-namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
-namada_token = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
-namada_parameters = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
-namada_proof_of_stake = { git = "https://github.com/anoma/namada", tag = "v0.45.1" }
+namada_core = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
+namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.46.0", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_tx = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
+namada_governance = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
+namada_ibc = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
+namada_token = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
+namada_parameters = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
+namada_proof_of_stake = { git = "https://github.com/anoma/namada", tag = "v0.46.0" }
 tendermint = "0.38.0"
 tendermint-config = "0.38.0"
 tendermint-rpc = { version = "0.38.0", features = ["http-client"] }
