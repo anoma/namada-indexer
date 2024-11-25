@@ -335,6 +335,53 @@ mod tests {
         .expect("Failed to run test");
     }
 
+    /// Test the function's behavior when inserting balances that cause a
+    /// conflict (same owner, same token, same height, different amount).
+    #[tokio::test]
+    async fn test_insert_balance_with_conflicting_heights() {
+        let db = TestDb::new();
+
+        let owner = Id::Account(
+            "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
+        );
+        let token = Token::Native(Id::Account(
+            "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
+        ));
+        let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
+
+        let balance = Balance {
+            owner: owner.clone(),
+            token: token.clone(),
+            amount: amount.clone(),
+            height,
+        };
+
+        db.run_test(move |conn| {
+            seed_balance(conn, vec![balance.clone()])?;
+
+            let new_amount = Amount::from(NamadaAmount::from_u64(200));
+            let new_balance = Balance {
+                amount: new_amount.clone(),
+                ..(balance.clone())
+            };
+
+            let res = insert_balance(conn, vec![new_balance]);
+
+            // Conflicting insert succeeds, but is ignored
+            assert!(res.is_ok());
+
+            // Balance is not updated when height is the same
+            let queried_balance =
+                query_balance_by_address(conn, owner.clone(), token.clone())?;
+            assert_eq!(Amount::from(queried_balance.raw_amount), amount);
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
     /// Test the function's ability to handle a large number of balance inserts
     /// efficiently.
     #[tokio::test]
