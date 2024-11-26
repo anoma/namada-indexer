@@ -441,3 +441,64 @@ async fn update_crawler_timestamp(
     .and_then(identity)
     .into_db_error()
 }
+
+#[cfg(test)]
+pub mod test {
+    use chain::services::{namada, tendermint};
+    use namada_sdk::ibc::core::channel::types::acknowledgement::AcknowledgementStatus;
+    use shared::{
+        block::Block, block_result::BlockResult, checksums::Checksums,
+    };
+    use tendermint_rpc::HttpClient;
+
+    #[tokio::test]
+    async fn t() {
+        let url =
+            "https://proxy.public.heliax.work/internal-devnet-45a.f0579cbb84";
+        let client = HttpClient::new(url).unwrap();
+
+        let block_height = 125954;
+
+        let mut checksums = Checksums::default();
+        for code_path in Checksums::code_paths() {
+            let code = namada::query_tx_code_hash(&client, &code_path)
+                .await
+                .unwrap_or_else(|| {
+                    panic!("{} must be defined in namada storage.", code_path)
+                });
+            checksums.add(code_path, code.to_lowercase());
+        }
+
+        let tm_block_response =
+            tendermint::query_raw_block_at_height(&client, block_height)
+                .await
+                .unwrap();
+
+        let tm_block_results_response =
+            tendermint::query_raw_block_results_at_height(
+                &client,
+                block_height,
+            )
+            .await
+            .unwrap();
+        let block_results = BlockResult::from(tm_block_results_response);
+
+        let block = Block::from(
+            tm_block_response,
+            &block_results,
+            checksums,
+            0,
+            block_height,
+        );
+
+        let a = serde_json::from_slice::<AcknowledgementStatus>(&[
+            123, 34, 114, 101, 115, 117, 108, 116, 34, 58, 34, 65, 81, 61, 61,
+            34, 125,
+        ])
+        .unwrap();
+
+        println!("{:?}", a);
+        println!("{:>?}", block_results);
+        panic!()
+    }
+}
