@@ -357,6 +357,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Proposal'
+  /api/v1/gov/proposal/{id}/data:
+    get:
+      summary: Get a governance proposal data by proposal id
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 0
+          required: true
+          description: Proposal id
+      responses:
+        '200':
+          description: A Governance proposal data.
   /api/v1/gov/proposal/{id}/votes:
     get:
       summary: Get all the votes for a governance proposal
