@@ -185,7 +185,7 @@ impl Proposal {
             },
             data: match value.kind {
                 GovernanceProposalKindDb::DefaultWithWasm => {
-                    value.data.map(|wasm| digest(&wasm))
+                    value.data.map(digest)
                 }
                 _ => value.data,
             },
