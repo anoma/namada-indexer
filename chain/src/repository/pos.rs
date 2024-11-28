@@ -163,16 +163,32 @@ pub fn remove_withdraws(
 
 pub fn delete_claimed_rewards(
     transaction_conn: &mut PgConnection,
-    reward_claimers: HashSet<Id>,
+    reward_claimers: HashSet<(Id, Id)>,
 ) -> anyhow::Result<()> {
-    diesel::delete(
-        pos_rewards::table.filter(
-            pos_rewards::dsl::owner
-                .eq_any(reward_claimers.into_iter().map(|id| id.to_string())),
-        ),
-    )
-    .execute(transaction_conn)
-    .context("Failed to update reawrds in db")?;
+
+    // If there are no rewards to claimm return early, to not clear the whole table
+    if reward_claimers.is_empty() {
+        return Ok(());
+    }
+
+    let mut query = diesel::delete(pos_rewards::table).into_boxed();
+
+    for (owner, validator_id) in reward_claimers {
+        query = query.or_filter(
+            pos_rewards::owner.eq(owner.to_string()).and(
+                pos_rewards::validator_id.eq_any(
+                    validators::table.select(validators::columns::id).filter(
+                        validators::columns::namada_address
+                            .eq(validator_id.to_string()),
+                    ),
+                ),
+            ),
+        );
+    }
+
+    query
+        .execute(transaction_conn)
+        .context("Failed to remove pos rewards from db")?;
 
     anyhow::Ok(())
 }
