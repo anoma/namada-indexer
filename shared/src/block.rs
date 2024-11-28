@@ -249,7 +249,7 @@ impl Block {
             .collect()
     }
 
-    pub fn pos_rewards(&self) -> HashSet<Id> {
+    pub fn pos_rewards(&self) -> HashSet<(Id, Id)> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
@@ -260,9 +260,10 @@ impl Block {
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ClaimRewards(data) => {
                     let data = data.clone().unwrap();
-                    let source = data.source.unwrap_or(data.validator);
+                    let validator = data.validator;
+                    let source = data.source.unwrap_or(validator.clone());
 
-                    Some(Id::from(source))
+                    Some((Id::from(source), Id::from(validator)))
                 }
                 _ => None,
             })
