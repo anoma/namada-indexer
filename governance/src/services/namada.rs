@@ -1,7 +1,9 @@
 use anyhow::Context;
 use futures::StreamExt;
+use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
 use shared::block::Epoch;
+use shared::id::Id;
 use shared::proposal::{GovernanceProposalResult, GovernanceProposalStatus};
 use shared::utils::GovernanceProposalShort;
 use tendermint_rpc::HttpClient;
@@ -11,6 +13,15 @@ pub async fn query_last_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
         .await
         .with_context(|| "Failed to query Namada's epoch epoch".to_string())?;
     Ok(epoch.0 as Epoch)
+}
+
+pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
+    let native_token = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+    Ok(Id::from(native_token))
 }
 
 pub async fn get_governance_proposals_updates(

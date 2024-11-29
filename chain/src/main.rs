@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::convert::identity;
 use std::sync::Arc;
 
@@ -164,17 +165,20 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
-    let addresses = block.addresses_with_balance_change(native_token);
+    let pgf_receipients =
+        namada_service::get_pgf_receipients(&client, native_token.clone())
+            .await;
+    let addresses = block.addresses_with_balance_change(native_token.clone());
+    let all_balance_changed_addresses = pgf_receipients
+        .union(&addresses)
+        .cloned()
+        .collect::<HashSet<_>>();
 
     let balances =
-        namada_service::query_balance(&client, &addresses, block_height)
+        namada_service::query_balance(&client, &all_balance_changed_addresses)
             .await
             .into_rpc_error()?;
-    tracing::debug!(
-        block = block_height,
-        "Updating balance for {} addresses...",
-        addresses.len()
-    );
+    tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =
         namada_service::query_next_governance_id(&client, block_height)

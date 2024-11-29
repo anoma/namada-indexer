@@ -706,3 +706,18 @@ pub(super) fn to_block_height(
 ) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
 }
+
+pub async fn get_pgf_receipients(
+    client: &HttpClient,
+    native_token: Id,
+) -> HashSet<BalanceChange> {
+    let payments = rpc::query_pgf_fundings(client).await.unwrap_or_default();
+
+    payments
+        .into_iter()
+        .map(|payment| BalanceChange {
+            address: Id::Account(payment.detail.target()),
+            token: Token::Native(native_token.clone()),
+        })
+        .collect::<HashSet<_>>()
+}

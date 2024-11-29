@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::convert::identity;
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,11 +10,15 @@ use governance::config::AppConfig;
 use governance::repository;
 use governance::services::namada as namada_service;
 use governance::state::AppState;
+use namada_governance::storage::proposal::{AddRemove, PGFAction, PGFTarget};
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use shared::balance::Amount as NamadaAmount;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::id::Id;
+use shared::pgf::{PaymentKind, PaymentRecurrence, PgfAction, PgfPayment};
 use tendermint_rpc::HttpClient;
 use tokio::sync::{Mutex, MutexGuard};
 use tokio::time::Instant;
@@ -85,6 +90,10 @@ async fn crawling_fn(
 
     tracing::info!("Starting to update proposals...");
 
+    let native_token = namada_service::get_native_token(&client)
+        .await
+        .into_rpc_error()?;
+
     tracing::info!("Query epoch...");
     let epoch = namada_service::query_last_epoch(&client)
         .await
@@ -116,6 +125,95 @@ async fn crawling_fn(
         proposals_statuses.len()
     );
 
+    let pgf_payments = conn
+        .interact(move |conn| {
+            repository::governance::get_all_pgf_executed_proposals_data(
+                conn, epoch,
+            )
+        })
+        .await
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?
+        .into_iter()
+        .filter_map(|(id, data)| {
+            if let Some(data) = data {
+                if let Ok(fundings) =
+                    serde_json::from_str::<BTreeSet<PGFAction>>(&data)
+                {
+                    Some((id, fundings))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .flat_map(|(id, data)| {
+            data.into_iter()
+                .map(|action| match action {
+                    PGFAction::Retro(target) => match target {
+                        PGFTarget::Internal(inner) => PgfPayment {
+                            proposal_id: id,
+                            recurrence: PaymentRecurrence::Retro,
+                            kind: PaymentKind::Native,
+                            receipient: Id::from(inner.target),
+                            amount: NamadaAmount::from(inner.amount),
+                            action: None,
+                        },
+                        PGFTarget::Ibc(inner) => PgfPayment {
+                            proposal_id: id,
+                            recurrence: PaymentRecurrence::Retro,
+                            kind: PaymentKind::Ibc,
+                            receipient: Id::Account(inner.target),
+                            amount: NamadaAmount::from(inner.amount),
+                            action: None,
+                        },
+                    },
+                    PGFAction::Continuous(add_remove) => match add_remove {
+                        AddRemove::Add(target) => match target {
+                            PGFTarget::Internal(inner) => PgfPayment {
+                                proposal_id: id,
+                                recurrence: PaymentRecurrence::Continous,
+                                kind: PaymentKind::Native,
+                                receipient: Id::from(inner.target),
+                                amount: NamadaAmount::from(inner.amount),
+                                action: Some(PgfAction::Add),
+                            },
+                            PGFTarget::Ibc(inner) => PgfPayment {
+                                proposal_id: id,
+                                recurrence: PaymentRecurrence::Continous,
+                                kind: PaymentKind::Ibc,
+                                receipient: Id::Account(inner.target),
+                                amount: NamadaAmount::from(inner.amount),
+                                action: Some(PgfAction::Add),
+                            },
+                        },
+                        AddRemove::Remove(target) => match target {
+                            PGFTarget::Internal(inner) => PgfPayment {
+                                proposal_id: id,
+                                recurrence: PaymentRecurrence::Continous,
+                                kind: PaymentKind::Native,
+                                receipient: Id::from(inner.target),
+                                amount: NamadaAmount::from(inner.amount),
+                                action: Some(PgfAction::Remove),
+                            },
+                            PGFTarget::Ibc(inner) => PgfPayment {
+                                proposal_id: id,
+                                recurrence: PaymentRecurrence::Continous,
+                                kind: PaymentKind::Ibc,
+                                receipient: Id::Account(inner.target),
+                                amount: NamadaAmount::from(inner.amount),
+                                action: Some(PgfAction::Remove),
+                            },
+                        },
+                    },
+                })
+                .collect::<Vec<PgfPayment>>()
+        })
+        .collect::<Vec<_>>();
+    tracing::info!("Got {} pgf payments...", pgf_payments.len());
+
     let timestamp = DateTimeUtc::now().0.timestamp();
     let crawler_state = IntervalCrawlerState { timestamp };
 
@@ -129,6 +227,12 @@ async fn crawling_fn(
                         proposal_status.into(),
                     )?;
                 }
+
+                repository::pgf::update_pgf(
+                    transaction_conn,
+                    pgf_payments,
+                    native_token,
+                )?;
 
                 repository::crawler_state::upsert_crawler_state(
                     transaction_conn,

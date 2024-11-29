@@ -8,6 +8,7 @@ pub mod group_by_macros;
 pub mod helpers;
 pub mod migrations;
 pub mod parameters;
+pub mod pgf;
 pub mod pos_rewards;
 pub mod revealed_pk;
 pub mod schema;
