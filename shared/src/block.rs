@@ -378,25 +378,40 @@ impl Block {
                 });
 
                 let (msg, packet_data) = data?;
+                let denom = packet_data.token.denom.to_string();
 
-                let ibc_trace = format!(
-                    "{}/{}/{}",
-                    msg.packet.port_id_on_b,
-                    msg.packet.chan_id_on_b,
-                    packet_data.token.denom
-                );
+                // If the denom is the native token, we can just return the
+                // receiver
+                if denom.contains(&native_token.to_string()) {
+                    vec![BalanceChange::new(
+                        Id::Account(String::from(
+                            packet_data.receiver.as_ref(),
+                        )),
+                        Token::Native(native_token.clone()),
+                    )]
+                } else {
+                    let ibc_trace = format!(
+                        "{}/{}/{}",
+                        msg.packet.port_id_on_b,
+                        msg.packet.chan_id_on_b,
+                        packet_data.token.denom
+                    );
 
-                let trace = Id::IbcTrace(ibc_trace.clone());
-                let address = namada_ibc::trace::convert_to_address(ibc_trace)
-                    .expect("Failed to convert IBC trace to address");
+                    let trace = Id::IbcTrace(ibc_trace.clone());
+                    let address =
+                        namada_ibc::trace::convert_to_address(ibc_trace)
+                            .expect("Failed to convert IBC trace to address");
 
-                vec![BalanceChange::new(
-                    Id::Account(String::from(packet_data.receiver.as_ref())),
-                    Token::Ibc(IbcToken {
-                        address: Id::from(address.clone()),
-                        trace,
-                    }),
-                )]
+                    vec![BalanceChange::new(
+                        Id::Account(String::from(
+                            packet_data.receiver.as_ref(),
+                        )),
+                        Token::Ibc(IbcToken {
+                            address: Id::from(address.clone()),
+                            trace,
+                        }),
+                    )]
+                }
             }
             TransactionKind::TransparentTransfer(data) => {
                 let data = data.as_ref()?;

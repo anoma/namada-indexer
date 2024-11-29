@@ -2,7 +2,6 @@ use bigdecimal::{BigDecimal, Zero};
 use orm::helpers::OrderByDb;
 use orm::validators::{ValidatorSortByDb, ValidatorStateDb};
 
-use super::utils::raw_amount_to_nam;
 use crate::appstate::AppState;
 use crate::dto::pos::{OrderByDto, ValidatorSortFieldDto, ValidatorStateDto};
 use crate::error::pos::PoSError;
@@ -120,12 +119,7 @@ impl PosService {
             .into_iter()
             .map(|(validator, bond)| {
                 let bond_status = BondStatus::from((&bond, &pos_state));
-                let bond = Bond::from(bond, bond_status, validator);
-
-                Bond {
-                    amount: raw_amount_to_nam(bond.amount),
-                    ..bond
-                }
+                Bond::from(bond, bond_status, validator)
             })
             .collect();
 
@@ -146,15 +140,10 @@ impl PosService {
         let bonds: Vec<MergedBond> = db_bonds
             .into_iter()
             .map(|(_, validator, amount)| {
-                let bond = MergedBond::from(
+                MergedBond::from(
                     amount.unwrap_or(BigDecimal::zero()),
                     validator,
-                );
-
-                MergedBond {
-                    amount: raw_amount_to_nam(bond.amount),
-                    ..bond
-                }
+                )
             })
             .collect();
 
@@ -187,18 +176,14 @@ impl PosService {
         let unbonds: Vec<Unbond> = db_unbonds
             .into_iter()
             .map(|(validator, unbond)| {
-                let bond = Unbond::from(
+                Unbond::from(
                     unbond.raw_amount,
                     unbond.withdraw_epoch,
                     validator,
                     &chain_state,
                     parameters.max_block_time,
                     parameters.min_duration,
-                );
-                Unbond {
-                    amount: raw_amount_to_nam(bond.amount),
-                    ..bond
-                }
+                )
             })
             .collect();
 
@@ -241,18 +226,14 @@ impl PosService {
         let unbonds: Vec<Unbond> = db_merged_unbonds
             .into_iter()
             .map(|(_, validator, raw_amount, withdraw_epoch)| {
-                let bond = Unbond::from(
+                Unbond::from(
                     raw_amount.unwrap_or(BigDecimal::zero()),
                     withdraw_epoch,
                     validator,
                     &chain_state,
                     parameters.max_block_time,
                     parameters.min_duration,
-                );
-                Unbond {
-                    amount: raw_amount_to_nam(bond.amount),
-                    ..bond
-                }
+                )
             })
             .collect();
 
@@ -283,13 +264,7 @@ impl PosService {
 
         let withdraws: Vec<Withdraw> = db_withdraws
             .into_iter()
-            .map(|(validator, withdraw)| {
-                let bond = Withdraw::from(withdraw, validator);
-                Withdraw {
-                    amount: raw_amount_to_nam(bond.amount),
-                    ..bond
-                }
-            })
+            .map(|(validator, withdraw)| Withdraw::from(withdraw, validator))
             .collect();
 
         Ok((withdraws, total_pages as u64, total_items as u64))
@@ -321,15 +296,8 @@ impl PosService {
                 );
             }
         }
-        let denominated_rewards: Vec<Reward> = rewards
-            .iter()
-            .cloned()
-            .map(|reward| Reward {
-                amount: raw_amount_to_nam(reward.amount),
-                ..reward
-            })
-            .collect();
-        Ok(denominated_rewards)
+
+        Ok(rewards)
     }
 
     // TODO: maybe return object(struct) instead
