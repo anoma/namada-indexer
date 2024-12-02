@@ -1,18 +1,12 @@
 use anyhow::Context;
-use diesel::sql_types::BigInt;
-use diesel::{sql_query, PgConnection, QueryableByName, RunQueryDsl};
+use diesel::{PgConnection, RunQueryDsl};
 use orm::balances::BalanceChangesInsertDb;
 use orm::schema::{balance_changes, ibc_token, token};
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
 use shared::balance::Balances;
 use shared::token::Token;
+use shared::tuple_len::TupleLen;
 pub const MAX_PARAM_SIZE: u16 = u16::MAX;
-
-#[derive(QueryableByName)]
-struct BalanceColCount {
-    #[diesel(sql_type = BigInt)]
-    count: i64,
-}
 
 pub fn insert_balance(
     transaction_conn: &mut PgConnection,
@@ -41,19 +35,13 @@ pub fn insert_balance_in_chunks(
     transaction_conn: &mut PgConnection,
     balances: Balances,
 ) -> anyhow::Result<()> {
-    let balances_col_count = sql_query(
-        "SELECT COUNT(*)
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-            AND table_name = 'balances';",
-    )
-    .get_result::<BalanceColCount>(transaction_conn)?;
+    let balances_col_count = balance_changes::all_columns.len() as i64;
 
     for chunk in balances
         // We have to divide MAX_PARAM_SIZE by the number of columns in the
         // balances table to get the correct number of rows in the
         // chunk.
-        .chunks((MAX_PARAM_SIZE as i64 / balances_col_count.count) as usize)
+        .chunks((MAX_PARAM_SIZE as i64 / balances_col_count) as usize)
     {
         insert_balance(transaction_conn, chunk.to_vec())?
     }
