@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
-use namada_ibc::apps::transfer::types::events::AckEvent;
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
