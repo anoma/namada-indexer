@@ -728,17 +728,17 @@ components:
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
-        amount:
+        minDenomAmount:
           type: string
           format: float
           minimum: 0
     Bond:
       type: object
-      required: [validator, amount, status, startEpoch]
+      required: [validator, minDenomAmount, status, startEpoch]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
-        amount:
+        minDenomAmount:
           type: string
         status:
           type: string
@@ -747,19 +747,19 @@ components:
           type: string
     MergedBond:
       type: object
-      required: [validator, amount]
+      required: [validator, minDenomAmount]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
-        amount:
+        minDenomAmount:
           type: string
     Unbond:
       type: object
-      required: [validator, amount, withdrawEpoch, withdrawTime, canWithdraw]
+      required: [validator, minDenomAmount, withdrawEpoch, withdrawTime, canWithdraw]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
-        amount:
+        minDenomAmount:
           type: string
         withdrawEpoch:
           type: string
@@ -769,11 +769,11 @@ components:
           type: boolean
     Withdraw:
       type: object
-      required: [amount, withdrawEpoch]
+      required: [minDenomAmount, withdrawEpoch]
       properties:
         validator:
           $ref: '#/components/schemas/Validator'
-        amount:
+        minDenomAmount:
           type: string
           format: float
           minimum: 0
@@ -787,11 +787,11 @@ components:
           type: string
     Balance:
       type: object
-      required: [tokenAddress, balance]
+      required: [tokenAddress, minDenomAmount]
       properties:
         tokenAddress:
           type: string
-        balance:
+        minDenomAmount:
           type: string
     Pagination:
       type: object
@@ -828,11 +828,11 @@ components:
       type: array
       items:
         type: object
-        required: [token, amount]
+        required: [token, minDenomAmount]
         properties:
           token:
             type: string
-          amount:
+          minDenomAmount:
             type: string
     NativeToken:
       type: object

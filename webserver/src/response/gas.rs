@@ -2,7 +2,6 @@ use orm::gas::{GasDb, GasPriceDb};
 use serde::{Deserialize, Serialize};
 
 use super::transaction::TransactionKind;
-use crate::service::utils::raw_amount_to_nam;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,14 +23,14 @@ impl From<GasDb> for Gas {
 #[serde(rename_all = "camelCase")]
 pub struct GasPrice {
     pub token: String,
-    pub amount: String,
+    pub min_denom_amount: String,
 }
 
 impl From<GasPriceDb> for GasPrice {
     fn from(value: GasPriceDb) -> Self {
         Self {
             token: value.token,
-            amount: raw_amount_to_nam(value.amount.to_string()),
+            min_denom_amount: value.amount.to_string(),
         }
     }
 }

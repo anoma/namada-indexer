@@ -165,8 +165,8 @@ pub fn delete_claimed_rewards(
     transaction_conn: &mut PgConnection,
     reward_claimers: HashSet<(Id, Id)>,
 ) -> anyhow::Result<()> {
-
-    // If there are no rewards to claimm return early, to not clear the whole table
+    // If there are no rewards to claimm return early, to not clear the whole
+    // table
     if reward_claimers.is_empty() {
         return Ok(());
     }

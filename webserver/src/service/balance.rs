@@ -33,7 +33,7 @@ impl BalanceService {
             .cloned()
             .map(|balance| AddressBalance {
                 token_address: balance.token,
-                balance: Amount::from(balance.raw_amount).to_string(),
+                min_denom_amount: Amount::from(balance.raw_amount).to_string(),
             })
             .collect();
 

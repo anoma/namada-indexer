@@ -58,7 +58,7 @@ pub enum BondStatus {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bond {
-    pub amount: String,
+    pub min_denom_amount: String,
     pub validator: ValidatorWithId,
     pub status: BondStatus,
     pub start_epoch: String,
@@ -67,14 +67,14 @@ pub struct Bond {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MergedBond {
-    pub amount: String,
+    pub min_denom_amount: String,
     pub validator: ValidatorWithId,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Unbond {
-    pub amount: String,
+    pub min_denom_amount: String,
     pub validator: ValidatorWithId,
     pub withdraw_epoch: String,
     pub withdraw_time: String,
@@ -84,7 +84,7 @@ pub struct Unbond {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Withdraw {
-    pub amount: String,
+    pub min_denom_amount: String,
     pub validator: ValidatorWithId,
     pub withdraw_epoch: String,
 }
@@ -92,7 +92,7 @@ pub struct Withdraw {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Reward {
-    pub amount: String,
+    pub min_denom_amount: String,
     pub validator: ValidatorWithId,
 }
 
@@ -156,7 +156,7 @@ impl Bond {
         db_validator: ValidatorDb,
     ) -> Self {
         Self {
-            amount: db_bond.raw_amount.to_string(),
+            min_denom_amount: db_bond.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator, None),
             status,
             start_epoch: db_bond.start.to_string(),
@@ -167,7 +167,7 @@ impl Bond {
 impl MergedBond {
     pub fn from(amount: BigDecimal, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: amount.to_string(),
+            min_denom_amount: amount.to_string(),
             validator: ValidatorWithId::from(db_validator, None),
         }
     }
@@ -202,7 +202,7 @@ impl Unbond {
         let withdraw_time = time_now + i64::from(to_withdraw);
 
         Self {
-            amount: raw_amount.to_string(),
+            min_denom_amount: raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator, None),
             withdraw_epoch: withdraw_epoch.to_string(),
             withdraw_time: withdraw_time.to_string(),
@@ -214,7 +214,7 @@ impl Unbond {
 impl Withdraw {
     pub fn from(db_unbond: UnbondDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: db_unbond.raw_amount.to_string(),
+            min_denom_amount: db_unbond.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator, None),
             withdraw_epoch: db_unbond.withdraw_epoch.to_string(),
         }
@@ -224,7 +224,7 @@ impl Withdraw {
 impl Reward {
     pub fn from(db_reward: PoSRewardDb, db_validator: ValidatorDb) -> Self {
         Self {
-            amount: db_reward.raw_amount.to_string(),
+            min_denom_amount: db_reward.raw_amount.to_string(),
             validator: ValidatorWithId::from(db_validator, None),
         }
     }
