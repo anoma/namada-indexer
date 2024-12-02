@@ -8,7 +8,7 @@ use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use orm::migrations::run_migrations;
 use shared::block::Block;
-use shared::block_result::BlockResult;
+use shared::block_result::{BlockResult, TxAttributesType};
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
@@ -20,7 +20,7 @@ use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::transactions as transaction_repo;
 use transactions::services::{
-    db as db_service, namada as namada_service,
+    db as db_service, namada as namada_service, tx as tx_service,
     tendermint as tendermint_service,
 };
 
@@ -132,6 +132,8 @@ async fn crawling_fn(
         1_u32,
         block_height,
     );
+
+    let acks = tx_service::get_ibc_packets(&block_results);
 
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
