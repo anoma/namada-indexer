@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
+use namada_ibc::apps::transfer::types::events::AckEvent;
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
@@ -10,6 +11,7 @@ use crate::transaction::TransactionExitStatus;
 #[derive(Debug, Clone)]
 pub enum EventKind {
     Applied,
+    SendPacket,
     Unknown,
 }
 
@@ -17,6 +19,7 @@ impl From<&String> for EventKind {
     fn from(value: &String) -> Self {
         match value.as_str() {
             "tx/applied" => Self::Applied,
+            "send_packet" => Self::SendPacket,
             _ => Self::Unknown,
         }
     }
@@ -32,7 +35,7 @@ pub struct BlockResult {
 #[derive(Debug, Clone)]
 pub struct Event {
     pub kind: EventKind,
-    pub attributes: Option<TxAttributes>,
+    pub attributes: Option<TxAttributesType>,
 }
 
 #[derive(Debug, Clone, Default, Copy)]
@@ -107,7 +110,7 @@ impl BatchResults {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct TxAttributes {
+pub struct TxApplied {
     pub code: TxEventStatusCode,
     pub gas: u64,
     pub hash: Id,
@@ -116,14 +119,48 @@ pub struct TxAttributes {
     pub info: String,
 }
 
-impl TxAttributes {
+#[derive(Debug, Clone, Default)]
+pub struct SendPacket {
+    pub source_port: String,
+    pub dest_port: String,
+    pub source_channel: String,
+    pub dest_channel: String,
+    pub sequence: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum TxAttributesType {
+    TxApplied(TxApplied),
+    SendPacket(SendPacket)
+}
+
+impl TxAttributesType {
     pub fn deserialize(
         event_kind: &EventKind,
         attributes: &BTreeMap<String, String>,
     ) -> Option<Self> {
         match event_kind {
             EventKind::Unknown => None,
-            EventKind::Applied => Some(Self {
+            EventKind::SendPacket => {
+                let source_port =
+                    attributes.get("packet_src_port").unwrap().to_owned();
+                let dest_port =
+                    attributes.get("packet_dst_port").unwrap().to_owned();
+                let source_channel =
+                    attributes.get("packet_src_channel").unwrap().to_owned();
+                let dest_channel =
+                    attributes.get("packet_dst_channel").unwrap().to_owned();
+                let sequence =
+                    attributes.get("packet_sequence").unwrap().to_owned();
+                Some(Self::SendPacket(SendPacket {
+                    source_port,
+                    dest_port,
+                    source_channel,
+                    dest_channel,
+                    sequence,
+                }))
+            }
+            EventKind::Applied => Some(Self::TxApplied(TxApplied {
                 code: attributes
                     .get("code")
                     .map(|code| TxEventStatusCode::from(code.as_str()))
@@ -153,7 +190,7 @@ impl TxAttributes {
                     })
                     .unwrap(),
                 info: attributes.get("info").unwrap().to_owned(),
-            }),
+            })),
         }
     }
 }
@@ -177,7 +214,7 @@ impl From<TendermintBlockResultResponse> for BlockResult {
                     },
                 );
                 let attributes =
-                    TxAttributes::deserialize(&kind, &raw_attributes);
+                    TxAttributesType::deserialize(&kind, &raw_attributes);
                 Event { kind, attributes }
             })
             .collect::<Vec<Event>>();
@@ -198,7 +235,7 @@ impl From<TendermintBlockResultResponse> for BlockResult {
                     },
                 );
                 let attributes =
-                    TxAttributes::deserialize(&kind, &raw_attributes);
+                    TxAttributesType::deserialize(&kind, &raw_attributes);
                 Event { kind, attributes }
             })
             .collect::<Vec<Event>>();
@@ -221,7 +258,15 @@ impl BlockResult {
         let exit_status = self
             .end_events
             .iter()
-            .filter_map(|event| event.attributes.clone())
+            .filter_map(|event| {
+                if let Some(TxAttributesType::TxApplied(data)) =
+                    &event.attributes
+                {
+                    Some(data.clone())
+                } else {
+                    None
+                }
+            })
             .find(|attributes| attributes.hash.eq(tx_hash))
             .map(|attributes| attributes.clone().code)
             .map(TransactionExitStatus::from);
@@ -237,7 +282,15 @@ impl BlockResult {
         let exit_status = self
             .end_events
             .iter()
-            .filter_map(|event| event.attributes.clone())
+            .filter_map(|event| {
+                if let Some(TxAttributesType::TxApplied(data)) =
+                    &event.attributes
+                {
+                    Some(data.clone())
+                } else {
+                    None
+                }
+            })
             .find(|attributes| attributes.hash.eq(wrapper_hash))
             .map(|attributes| attributes.batch.is_successful(inner_hash))
             .map(|successful| match successful {
