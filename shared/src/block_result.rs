@@ -126,12 +126,13 @@ pub struct SendPacket {
     pub source_channel: String,
     pub dest_channel: String,
     pub sequence: String,
+    pub timeout_timestamp: u64,
 }
 
 #[derive(Debug, Clone)]
 pub enum TxAttributesType {
     TxApplied(TxApplied),
-    SendPacket(SendPacket)
+    SendPacket(SendPacket),
 }
 
 impl TxAttributesType {
@@ -152,11 +153,18 @@ impl TxAttributesType {
                     attributes.get("packet_dst_channel").unwrap().to_owned();
                 let sequence =
                     attributes.get("packet_sequence").unwrap().to_owned();
+                let timeout_timestamp = attributes
+                    .get("packet_timeout_timestamp")
+                    .unwrap()
+                    .parse::<u64>()
+                    .unwrap()
+                    .to_owned();
                 Some(Self::SendPacket(SendPacket {
                     source_port,
                     dest_port,
                     source_channel,
                     dest_channel,
+                    timeout_timestamp,
                     sequence,
                 }))
             }
