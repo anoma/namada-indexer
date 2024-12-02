@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
-use namada_ibc::apps::transfer::types::events::AckEvent;
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
@@ -125,6 +124,7 @@ pub struct SendPacket {
     pub dest_port: String,
     pub source_channel: String,
     pub dest_channel: String,
+    pub timeout_timestamp: u64,
     pub sequence: String,
 }
 
@@ -152,11 +152,18 @@ impl TxAttributesType {
                     attributes.get("packet_dst_channel").unwrap().to_owned();
                 let sequence =
                     attributes.get("packet_sequence").unwrap().to_owned();
+                let timeout_timestamp = attributes
+                    .get("packet_timeout_timestamp")
+                    .unwrap_or(&"0".to_string())
+                    .parse::<u64>()
+                    .unwrap_or_default()
+                    .to_owned();
                 Some(Self::SendPacket(SendPacket {
                     source_port,
                     dest_port,
                     source_channel,
                     dest_channel,
+                    timeout_timestamp,
                     sequence,
                 }))
             }

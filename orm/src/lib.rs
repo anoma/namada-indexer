@@ -7,6 +7,7 @@ pub mod governance_proposal;
 pub mod governance_votes;
 pub mod group_by_macros;
 pub mod helpers;
+pub mod ibc;
 pub mod migrations;
 pub mod parameters;
 pub mod pos_rewards;
