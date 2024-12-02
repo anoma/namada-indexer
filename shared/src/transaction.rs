@@ -425,6 +425,30 @@ impl Transaction {
 }
 
 #[derive(Debug, Clone)]
+pub struct IbcSequence {
+    pub sequence_number: String,
+    pub source_port: String,
+    pub dest_port: String,
+    pub source_channel: String,
+    pub dest_channel: String,
+    pub timeout: u64,
+    pub tx_id: Id,
+}
+
+impl IbcSequence {
+    pub fn id(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}",
+            self.dest_port,
+            self.dest_channel,
+            self.source_port,
+            self.source_channel,
+            self.sequence_number
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum IbcAckStatus {
     Success,
     Fail,
@@ -454,6 +478,17 @@ impl IbcAck {
         format!(
             "{}/{}/{}",
             self.dest_port, self.dest_channel, self.sequence_number
+        )
+    }
+
+    pub fn id(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}",
+            self.dest_port,
+            self.dest_channel,
+            self.source_port,
+            self.source_channel,
+            self.sequence_number
         )
     }
 }
