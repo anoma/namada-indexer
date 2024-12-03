@@ -5,6 +5,8 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
       - "v[0-9]+.[0-9]+.[0-9]+-[a-z]+"
+    branches:
+      - test
 
 jobs:
   swagger-ui:
@@ -87,4 +89,4 @@ jobs:
       - name: Update package.json
         run: python3 .github/workflows/scripts/update-package.py typescript-axios/package.json ${{ steps.get_version.outputs.version-without-v }}
       - name: Publish package
-        run: cd typescript-axios && npm publish --access public --verbose
+        run: cd typescript-axios && npm publish --access public --verbose --dry-run
