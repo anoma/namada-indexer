@@ -118,7 +118,6 @@ async fn crawling_fn(
         tm_block_response.clone(),
         &block_results,
         checksums,
-        1_u32,
         block_height,
     );
 

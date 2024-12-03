@@ -1,4 +1,5 @@
-use diesel::{AsChangeset, Insertable};
+use diesel::prelude::Queryable;
+use diesel::{AsChangeset, Insertable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::transaction::{IbcAckStatus, IbcSequence};
 
@@ -24,13 +25,13 @@ impl From<IbcAckStatus> for IbcAckStatusDb {
     }
 }
 
-#[derive(Serialize, Insertable, AsChangeset, Clone)]
+#[derive(Serialize, Queryable, Insertable, Selectable, Clone, Debug)]
 #[diesel(table_name = ibc_ack)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct IbcAckDb {
     pub id: String,
     pub tx_hash: String,
-    pub timeout: i32,
+    pub timeout: i64,
     pub status: IbcAckStatusDb,
 }
 
@@ -41,7 +42,7 @@ impl From<IbcSequence> for IbcAckInsertDb {
         Self {
             id: value.id(),
             tx_hash: value.tx_id.to_string(),
-            timeout: value.timeout as i32,
+            timeout: value.timeout as i64,
             status: IbcAckStatusDb::Unknown,
         }
     }
