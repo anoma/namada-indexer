@@ -15,6 +15,18 @@ impl Display for CargoEnv {
     }
 }
 
+#[derive(clap::ValueEnum, Clone, Debug, Copy)]
+pub enum LogFormat {
+    Json,
+    Text,
+}
+
+impl Display for LogFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 #[derive(clap::Parser)]
 pub struct AppConfig {
     #[clap(long, env)]
@@ -36,4 +48,7 @@ pub struct AppConfig {
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
+
+    #[clap(long, env, default_value_t = LogFormat::Text)]
+    pub log_format: LogFormat,
 }

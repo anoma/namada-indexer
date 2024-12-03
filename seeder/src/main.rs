@@ -16,7 +16,7 @@ use orm::schema::{
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorInsertDb};
 use rand::Rng;
-use seeder::config::AppConfig;
+use seeder::config::{AppConfig, LogFormat};
 use seeder::state::AppState;
 use shared::balance::Balance;
 use shared::bond::Bond;
@@ -45,9 +45,12 @@ async fn main() -> anyhow::Result<(), MainError> {
     };
 
     if let Some(log_level) = log_level {
-        let subscriber =
-            FmtSubscriber::builder().with_max_level(log_level).finish();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
+
+        match config.log_format {
+            LogFormat::Text => subscriber.init(),
+            LogFormat::Json => subscriber.json().flatten_event(true).init(),
+        };
     }
 
     tracing::info!("version: {}", env!("VERGEN_GIT_SHA").to_string());

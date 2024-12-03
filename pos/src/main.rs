@@ -10,7 +10,7 @@ use orm::crawler_state::EpochStateInsertDb;
 use orm::migrations::run_migrations;
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
-use pos::config::AppConfig;
+use pos::config::{AppConfig, LogFormat};
 use pos::repository::{self};
 use pos::services::namada as namada_service;
 use shared::crawler;
@@ -33,9 +33,12 @@ async fn main() -> Result<(), MainError> {
         LevelFilter::Trace => Some(Level::TRACE),
     };
     if let Some(log_level) = log_level {
-        let subscriber =
-            FmtSubscriber::builder().with_max_level(log_level).finish();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
+
+        match config.log_format {
+            LogFormat::Text => subscriber.init(),
+            LogFormat::Json => subscriber.json().flatten_event(true).init(),
+        };
     }
 
     let client =

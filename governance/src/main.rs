@@ -6,7 +6,7 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
-use governance::config::AppConfig;
+use governance::config::{AppConfig, LogFormat};
 use governance::repository;
 use governance::services::namada as namada_service;
 use governance::state::AppState;
@@ -35,9 +35,12 @@ async fn main() -> Result<(), MainError> {
     };
 
     if let Some(log_level) = log_level {
-        let subscriber =
-            FmtSubscriber::builder().with_max_level(log_level).finish();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
+
+        match config.log_format {
+            LogFormat::Text => subscriber.init(),
+            LogFormat::Json => subscriber.json().flatten_event(true).init(),
+        };
     }
 
     tracing::info!("version: {}", env!("VERGEN_GIT_SHA").to_string());

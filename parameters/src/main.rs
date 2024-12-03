@@ -12,7 +12,7 @@ use orm::gas::GasPriceDb;
 use orm::migrations::run_migrations;
 use orm::parameters::ParametersInsertDb;
 use parameters::app_state::AppState;
-use parameters::config::AppConfig;
+use parameters::config::{AppConfig, LogFormat};
 use parameters::repository;
 use parameters::services::{
     namada as namada_service, tendermint as tendermint_service,
@@ -39,9 +39,12 @@ async fn main() -> Result<(), MainError> {
         LevelFilter::Trace => Some(Level::TRACE),
     };
     if let Some(log_level) = log_level {
-        let subscriber =
-            FmtSubscriber::builder().with_max_level(log_level).finish();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
+
+        match config.log_format {
+            LogFormat::Text => subscriber.init(),
+            LogFormat::Json => subscriber.json().flatten_event(true).init(),
+        };
     }
 
     let client =

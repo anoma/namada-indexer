@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use chain::app_state::AppState;
-use chain::config::AppConfig;
+use chain::config::{AppConfig, LogFormat};
 use chain::repository;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
@@ -59,9 +59,12 @@ async fn main() -> Result<(), MainError> {
         LevelFilter::Trace => Some(Level::TRACE),
     };
     if let Some(log_level) = log_level {
-        let subscriber =
-            FmtSubscriber::builder().with_max_level(log_level).finish();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
+
+        match config.log_format {
+            LogFormat::Text => subscriber.init(),
+            LogFormat::Json => subscriber.json().flatten_event(true).init(),
+        };
     }
 
     let client = Arc::new(client);

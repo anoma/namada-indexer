@@ -17,7 +17,7 @@ use tendermint_rpc::HttpClient;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 use transactions::app_state::AppState;
-use transactions::config::AppConfig;
+use transactions::config::{AppConfig, LogFormat};
 use transactions::repository::transactions as transaction_repo;
 use transactions::services::{
     db as db_service, namada as namada_service,
@@ -37,9 +37,12 @@ async fn main() -> Result<(), MainError> {
         LevelFilter::Trace => Some(Level::TRACE),
     };
     if let Some(log_level) = log_level {
-        let subscriber =
-            FmtSubscriber::builder().with_max_level(log_level).finish();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
+
+        match config.log_format {
+            LogFormat::Text => subscriber.init(),
+            LogFormat::Json => subscriber.json().flatten_event(true).init(),
+        };
     }
 
     let client =
