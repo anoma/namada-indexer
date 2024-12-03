@@ -211,7 +211,7 @@ diesel::table! {
         id -> Varchar,
         tx_hash -> Varchar,
         timeout -> Int4,
-        status -> Nullable<IbcStatus>,
+        status -> IbcStatus,
     }
 }
 

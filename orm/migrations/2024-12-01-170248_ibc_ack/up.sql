@@ -5,5 +5,5 @@ CREATE TABLE ibc_ack (
     id VARCHAR PRIMARY KEY,
     tx_hash VARCHAR NOT NULL,
     timeout INT NOT NULL,
-    status IBC_STATUS
+    status IBC_STATUS NOT NULL
 );

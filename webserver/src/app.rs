@@ -21,8 +21,8 @@ use crate::config::AppConfig;
 use crate::handler::{
     balance as balance_handlers, chain as chain_handlers,
     crawler_state as crawler_state_handlers, gas as gas_handlers,
-    governance as gov_handlers, pk as pk_handlers, pos as pos_handlers,
-    transaction as transaction_handlers,
+    governance as gov_handlers, ibc as ibc_handler, pk as pk_handlers,
+    pos as pos_handlers, transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -129,6 +129,7 @@ impl ApplicationServer {
                     "/chain/epoch/latest",
                     get(chain_handlers::get_last_processed_epoch),
                 )
+                .route("/ibc/:tx_id/status", get(ibc_handler::get_ibc_status))
                 .route(
                     "/crawlers/timestamps",
                     get(crawler_state_handlers::get_crawlers_timestamps),
