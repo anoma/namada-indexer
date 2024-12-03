@@ -136,7 +136,6 @@ async fn crawling_fn(
         &block_results,
         &proposer_address_namada,
         checksums,
-        1_u32,
         block_height,
     );
 
