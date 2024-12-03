@@ -21,7 +21,7 @@ use transactions::config::AppConfig;
 use transactions::repository::transactions as transaction_repo;
 use transactions::services::{
     db as db_service, namada as namada_service,
-    tendermint as tendermint_service,
+    tendermint as tendermint_service, tx as tx_service,
 };
 
 #[tokio::main]
@@ -136,9 +136,17 @@ async fn crawling_fn(
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
 
+    let ibc_sequence_packet =
+        tx_service::get_ibc_packets(&block_results, &inner_txs);
+    let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
+
     tracing::info!(
-        "Deserialized {} txs...",
-        wrapper_txs.len() + inner_txs.len()
+        "Deserialized {} wrappers, {} inners, {} sequence and {} acks \
+         events...",
+        wrapper_txs.len(),
+        inner_txs.len(),
+        ibc_sequence_packet.len(),
+        ibc_ack_packet.len()
     );
 
     // Because transaction crawler starts from block 1 we read timestamp from
@@ -164,6 +172,16 @@ async fn crawling_fn(
                 transaction_repo::insert_crawler_state(
                     transaction_conn,
                     crawler_state,
+                )?;
+
+                transaction_repo::insert_ibc_sequence(
+                    transaction_conn,
+                    ibc_sequence_packet,
+                )?;
+
+                transaction_repo::update_ibc_sequence(
+                    transaction_conn,
+                    ibc_ack_packet,
                 )?;
 
                 anyhow::Ok(())
