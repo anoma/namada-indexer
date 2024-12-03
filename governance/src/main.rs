@@ -90,6 +90,11 @@ async fn crawling_fn(
 
     tracing::info!("Starting to update proposals...");
 
+    let latest_block_height =
+        namada_service::query_latest_block_height(&client)
+            .await
+            .into_rpc_error()?;
+
     let native_token = namada_service::get_native_token(&client)
         .await
         .into_rpc_error()?;
@@ -232,6 +237,7 @@ async fn crawling_fn(
                     transaction_conn,
                     pgf_payments,
                     native_token,
+                    latest_block_height,
                 )?;
 
                 repository::crawler_state::upsert_crawler_state(

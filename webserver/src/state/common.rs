@@ -7,6 +7,7 @@ use crate::service::chain::ChainService;
 use crate::service::crawler_state::CrawlerStateService;
 use crate::service::gas::GasService;
 use crate::service::governance::GovernanceService;
+use crate::service::pgf::PgfService;
 use crate::service::pos::PosService;
 use crate::service::revealed_pk::RevealedPkService;
 use crate::service::transaction::TransactionService;
@@ -20,6 +21,7 @@ pub struct CommonState {
     pub revealed_pk_service: RevealedPkService,
     pub gas_service: GasService,
     pub transaction_service: TransactionService,
+    pub pgf_service: PgfService,
     pub crawler_state_service: CrawlerStateService,
     pub client: HttpClient,
     pub config: AppConfig,
@@ -34,6 +36,7 @@ impl CommonState {
             chain_service: ChainService::new(data.clone()),
             revealed_pk_service: RevealedPkService::new(data.clone()),
             gas_service: GasService::new(data.clone()),
+            pgf_service: PgfService::new(data.clone()),
             transaction_service: TransactionService::new(data.clone()),
             crawler_state_service: CrawlerStateService::new(data.clone()),
             client,

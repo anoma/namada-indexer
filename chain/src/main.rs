@@ -174,10 +174,13 @@ async fn crawling_fn(
         .cloned()
         .collect::<HashSet<_>>();
 
-    let balances =
-        namada_service::query_balance(&client, &all_balance_changed_addresses)
-            .await
-            .into_rpc_error()?;
+    let balances = namada_service::query_balance(
+        &client,
+        &all_balance_changed_addresses,
+        block_height,
+    )
+    .await
+    .into_rpc_error()?;
     tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =

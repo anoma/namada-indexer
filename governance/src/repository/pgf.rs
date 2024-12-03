@@ -2,9 +2,10 @@ use anyhow::Context;
 use diesel::query_dsl::methods::FilterDsl;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
-use orm::balances::BalancesInsertDb;
+use orm::balances::BalanceChangesInsertDb;
 use orm::pgf::PublicGoodFundingPaymentInsertDb;
-use orm::schema::{balances, public_good_funding};
+use orm::schema::{balance_changes, public_good_funding};
+use shared::block::BlockHeight;
 use shared::id::Id;
 use shared::pgf::{PaymentRecurrence, PgfPayment};
 
@@ -12,9 +13,10 @@ pub fn update_pgf(
     transaction_conn: &mut PgConnection,
     pgf_payments: Vec<PgfPayment>,
     native_token: Id,
+    block_height: BlockHeight,
 ) -> anyhow::Result<()> {
-    diesel::insert_into(balances::table)
-        .values::<Vec<BalancesInsertDb>>(
+    diesel::insert_into(balance_changes::table)
+        .values::<Vec<BalanceChangesInsertDb>>(
             pgf_payments
                 .clone()
                 .into_iter()
@@ -28,9 +30,10 @@ pub fn update_pgf(
                             Some(shared::pgf::PgfAction::Add)
                         ))
                     {
-                        Some(BalancesInsertDb::from_pgf_retro(
+                        Some(BalanceChangesInsertDb::from_pgf_retro(
                             payment,
                             native_token.clone(),
+                            block_height,
                         ))
                     } else {
                         None
@@ -38,14 +41,18 @@ pub fn update_pgf(
                 })
                 .collect::<Vec<_>>(),
         )
-        .on_conflict((balances::columns::owner, balances::columns::token))
+        .on_conflict((
+            balance_changes::columns::owner,
+            balance_changes::columns::token,
+        ))
         .do_update()
         .set(
-            balances::columns::raw_amount.eq(balances::columns::raw_amount
-                + excluded(balances::columns::raw_amount)),
+            balance_changes::columns::raw_amount
+                .eq(balance_changes::columns::raw_amount
+                    + excluded(balance_changes::columns::raw_amount)),
         )
         .execute(transaction_conn)
-        .context("Failed to update balances in db")?;
+        .context("Failed to update balance_changes in db")?;
 
     diesel::insert_into(public_good_funding::table)
         .values::<Vec<PublicGoodFundingPaymentInsertDb>>(
@@ -71,7 +78,7 @@ pub fn update_pgf(
         ))
         .do_nothing()
         .execute(transaction_conn)
-        .context("Failed to update balances in db")?;
+        .context("Failed to update balance_changes in db")?;
 
     for payment in pgf_payments.into_iter().filter(|payment| {
         matches!(payment.recurrence, PaymentRecurrence::Continous)
