@@ -29,6 +29,8 @@ use shared::id::Id;
 use shared::token::Token;
 use shared::validator::ValidatorSet;
 use tendermint_rpc::HttpClient;
+use tokio_retry::strategy::{jitter, ExponentialBackoff};
+use tokio_retry::Retry;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -73,7 +75,13 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(&client, &conn).await?;
+    initial_query(
+        &client,
+        &conn,
+        config.initial_query_retry_time,
+        config.initial_query_retry_attempts,
+    )
+    .await?;
 
     let crawler_state = db_service::get_chain_crawler_state(&conn)
         .await
@@ -305,6 +313,18 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
+    retry_time: u64,
+    retry_attempts: usize,
+) -> Result<(), MainError> {
+    let retry_strategy = ExponentialBackoff::from_millis(retry_time)
+        .map(jitter)
+        .take(retry_attempts);
+    Retry::spawn(retry_strategy, || try_initial_query(client, conn)).await
+}
+
+async fn try_initial_query(
+    client: &HttpClient,
+    conn: &Object,
 ) -> Result<(), MainError> {
     tracing::info!("Querying initial data...");
     let block_height =
@@ -318,6 +338,9 @@ async fn initial_query(
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
+    // This can sometimes fail if the last block height in the node has moved forward after we queried
+    // for it. In that case, query_all_balances returns an Err indicating that it can only be used for
+    // the last block. This function will be retried in that case.
     let balances = query_all_balances(client, block_height)
         .await
         .into_rpc_error()?;
