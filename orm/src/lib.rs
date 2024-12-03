@@ -15,3 +15,4 @@ pub mod token;
 pub mod transactions;
 pub mod unbond;
 pub mod validators;
+pub mod views;

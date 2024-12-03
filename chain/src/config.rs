@@ -23,8 +23,16 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub database_url: String,
 
-    #[clap(long, env)]
+    #[clap(
+        long,
+        env,
+        default_value = "100",
+        help = "Time between retry attempts in milliseconds"
+    )]
     pub initial_query_retry_time: u64,
+
+    #[clap(long, env, default_value = "5")]
+    pub initial_query_retry_attempts: usize,
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,

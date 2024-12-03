@@ -1,11 +1,8 @@
 use anyhow::Context;
 use diesel::sql_types::BigInt;
-use diesel::upsert::excluded;
-use diesel::{
-    sql_query, ExpressionMethods, PgConnection, QueryableByName, RunQueryDsl,
-};
-use orm::balances::BalancesInsertDb;
-use orm::schema::{balances, ibc_token, token};
+use diesel::{sql_query, PgConnection, QueryableByName, RunQueryDsl};
+use orm::balances::BalanceChangesInsertDb;
+use orm::schema::{balance_changes, ibc_token, token};
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
 use shared::balance::Balances;
 use shared::token::Token;
@@ -21,19 +18,19 @@ pub fn insert_balance(
     transaction_conn: &mut PgConnection,
     balances: Balances,
 ) -> anyhow::Result<()> {
-    diesel::insert_into(balances::table)
-        .values::<&Vec<BalancesInsertDb>>(
+    diesel::insert_into(balance_changes::table)
+        .values::<&Vec<BalanceChangesInsertDb>>(
             &balances
                 .into_iter()
-                .map(BalancesInsertDb::from_balance)
+                .map(BalanceChangesInsertDb::from_balance)
                 .collect::<Vec<_>>(),
         )
-        .on_conflict((balances::columns::owner, balances::columns::token))
-        .do_update()
-        .set(
-            balances::columns::raw_amount
-                .eq(excluded(balances::columns::raw_amount)),
-        )
+        .on_conflict((
+            balance_changes::columns::owner,
+            balance_changes::columns::token,
+            balance_changes::columns::height,
+        ))
+        .do_nothing()
         .execute(transaction_conn)
         .context("Failed to update balances in db")?;
 
@@ -99,12 +96,16 @@ pub fn insert_tokens(
 mod tests {
 
     use anyhow::Context;
-    use diesel::{BoolExpressionMethods, QueryDsl, SelectableHelper};
+    use diesel::{
+        BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper,
+    };
     use namada_sdk::token::Amount as NamadaAmount;
     use namada_sdk::uint::MAX_SIGNED_VALUE;
     use orm::balances::BalanceDb;
+    use orm::views::balances;
     use shared::balance::{Amount, Balance};
     use shared::id::Id;
+    use shared::token::IbcToken;
     use test_helpers::db::TestDb;
 
     use super::*;
@@ -140,11 +141,13 @@ mod tests {
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
             ));
             let amount = Amount::from(NamadaAmount::from_u64(100));
+            let height = 42;
 
             let balance = Balance {
                 owner: owner.clone(),
                 token: token.clone(),
                 amount: amount.clone(),
+                height,
             };
 
             insert_tokens(conn, vec![token.clone()])?;
@@ -162,7 +165,7 @@ mod tests {
     }
 
     /// Test that the function updates existing balances when there is a
-    /// conflict.
+    /// later height.
     #[tokio::test]
     async fn test_insert_balance_with_existing_balances_update() {
         let db = TestDb::new();
@@ -174,19 +177,23 @@ mod tests {
             "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
         ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
 
         let balance = Balance {
             owner: owner.clone(),
             token: token.clone(),
             amount: amount.clone(),
+            height,
         };
 
         db.run_test(move |conn| {
             seed_balance(conn, vec![balance.clone()])?;
 
             let new_amount = Amount::from(NamadaAmount::from_u64(200));
+            let new_height = 43;
             let new_balance = Balance {
                 amount: new_amount.clone(),
+                height: new_height,
                 ..(balance.clone())
             };
 
@@ -204,7 +211,7 @@ mod tests {
     }
 
     /// Test the function's behavior when inserting balances that cause a
-    /// conflict.
+    /// conflict (same owner, different token).
     #[tokio::test]
     async fn test_insert_balance_with_conflicting_owners() {
         let db = TestDb::new();
@@ -216,19 +223,32 @@ mod tests {
             "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
         ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
 
         let balance = Balance {
             owner: owner.clone(),
             token: token.clone(),
             amount: amount.clone(),
+            height,
         };
 
         db.run_test(move |conn| {
             seed_balance(conn, vec![balance.clone()])?;
 
+            // this is probably not a valid way to construct an IbcToken
+            // but seems to be sufficient for testing purposes here.
+            let new_token = Token::Ibc(IbcToken {
+                address: Id::Account(
+                    "tnam1q9rhgyv3ydq0zu3whnftvllqnvhvhm270qxay5tn".to_string(),
+                ),
+                trace: Id::Account(
+                    "tnam1q9rhgyv3ydq0zu3whnftvllqnvhvhm270qxay5tn".to_string(),
+                ),
+            });
+
             let new_amount = Amount::from(NamadaAmount::from_u64(200));
             let new_balance = Balance {
-                token: token.clone(),
+                token: new_token.clone(),
                 amount: new_amount.clone(),
                 ..(balance.clone())
             };
@@ -240,7 +260,17 @@ mod tests {
             let queried_balance =
                 query_balance_by_address(conn, owner.clone(), token.clone())?;
 
-            assert_eq!(Amount::from(queried_balance.raw_amount), new_amount);
+            let queried_balance_new = query_balance_by_address(
+                conn,
+                owner.clone(),
+                new_token.clone(),
+            )?;
+
+            assert_eq!(Amount::from(queried_balance.raw_amount), amount);
+            assert_eq!(
+                Amount::from(queried_balance_new.raw_amount),
+                new_amount
+            );
 
             anyhow::Ok(())
         })
@@ -248,7 +278,7 @@ mod tests {
         .expect("Failed to run test");
     }
     /// Test the function's behavior when inserting balances that cause a
-    /// conflict.
+    /// conflict. (same token, different owner)
     #[tokio::test]
     async fn test_insert_balance_with_conflicting_tokens() {
         let db = TestDb::new();
@@ -260,11 +290,13 @@ mod tests {
             "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
         ));
         let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
 
         let balance = Balance {
             owner: owner.clone(),
             token: token.clone(),
             amount: amount.clone(),
+            height,
         };
 
         db.run_test(move |conn| {
@@ -296,6 +328,53 @@ mod tests {
                 Amount::from(queried_balance_new.raw_amount),
                 new_amount
             );
+
+            anyhow::Ok(())
+        })
+        .await
+        .expect("Failed to run test");
+    }
+
+    /// Test the function's behavior when inserting balances that cause a
+    /// conflict (same owner, same token, same height, different amount).
+    #[tokio::test]
+    async fn test_insert_balance_with_conflicting_heights() {
+        let db = TestDb::new();
+
+        let owner = Id::Account(
+            "tnam1qqshvryx9pngpk7mmzpzkjkm6klelgusuvmkc0uz".to_string(),
+        );
+        let token = Token::Native(Id::Account(
+            "tnam1qxfj3sf6a0meahdu9t6znp05g8zx4dkjtgyn9gfu".to_string(),
+        ));
+        let amount = Amount::from(NamadaAmount::from_u64(100));
+        let height = 42;
+
+        let balance = Balance {
+            owner: owner.clone(),
+            token: token.clone(),
+            amount: amount.clone(),
+            height,
+        };
+
+        db.run_test(move |conn| {
+            seed_balance(conn, vec![balance.clone()])?;
+
+            let new_amount = Amount::from(NamadaAmount::from_u64(200));
+            let new_balance = Balance {
+                amount: new_amount.clone(),
+                ..(balance.clone())
+            };
+
+            let res = insert_balance(conn, vec![new_balance]);
+
+            // Conflicting insert succeeds, but is ignored
+            assert!(res.is_ok());
+
+            // Balance is not updated when height is the same
+            let queried_balance =
+                query_balance_by_address(conn, owner.clone(), token.clone())?;
+            assert_eq!(Amount::from(queried_balance.raw_amount), amount);
 
             anyhow::Ok(())
         })
@@ -342,11 +421,13 @@ mod tests {
                 "tnam1q87wtaqqtlwkw927gaff34hgda36huk0kgry692a".to_string(),
             ));
             let max_amount = Amount::from(NamadaAmount::from(MAX_SIGNED_VALUE));
+            let height = 42;
 
             let balance = Balance {
                 owner: owner.clone(),
                 token: token.clone(),
                 amount: max_amount.clone(),
+                height,
             };
 
             insert_tokens(conn, vec![token.clone()])?;
@@ -447,11 +528,11 @@ mod tests {
     ) -> anyhow::Result<()> {
         seed_tokens_from_balance(conn, balances.clone())?;
 
-        diesel::insert_into(balances::table)
-            .values::<&Vec<BalancesInsertDb>>(
+        diesel::insert_into(balance_changes::table)
+            .values::<&Vec<BalanceChangesInsertDb>>(
                 &balances
                     .into_iter()
-                    .map(BalancesInsertDb::from_balance)
+                    .map(BalanceChangesInsertDb::from_balance)
                     .collect::<Vec<_>>(),
             )
             .execute(conn)

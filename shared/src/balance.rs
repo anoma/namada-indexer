@@ -82,6 +82,7 @@ pub struct Balance {
     pub owner: Id,
     pub token: Token,
     pub amount: Amount,
+    pub height: u32,
 }
 
 pub type Balances = Vec<Balance>;
@@ -97,6 +98,7 @@ impl Balance {
             owner: Id::Account(address.to_string()),
             token: Token::Native(Id::Account(token_address.to_string())),
             amount: Amount::fake(),
+            height: (0..10000).fake::<u32>(),
         }
     }
 
@@ -108,6 +110,7 @@ impl Balance {
             owner: Id::Account(address.to_string()),
             token,
             amount: Amount::fake(),
+            height: (0..10000).fake::<u32>(),
         }
     }
 }
