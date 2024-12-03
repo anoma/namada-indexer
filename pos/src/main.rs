@@ -3,43 +3,25 @@ use std::sync::Arc;
 
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
-use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::crawler_state::EpochStateInsertDb;
 use orm::migrations::run_migrations;
 use orm::validators::ValidatorInsertDb;
 use pos::app_state::AppState;
-use pos::config::{AppConfig, LogFormat};
+use pos::config::AppConfig;
 use pos::repository::{self};
 use pos::services::namada as namada_service;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
-    let log_level = match config.verbosity.log_level_filter() {
-        LevelFilter::Off => None,
-        LevelFilter::Error => Some(Level::ERROR),
-        LevelFilter::Warn => Some(Level::WARN),
-        LevelFilter::Info => Some(Level::INFO),
-        LevelFilter::Debug => Some(Level::DEBUG),
-        LevelFilter::Trace => Some(Level::TRACE),
-    };
-    if let Some(log_level) = log_level {
-        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
-
-        match config.log_format {
-            LogFormat::Text => subscriber.init(),
-            LogFormat::Json => subscriber.json().flatten_event(true).init(),
-        };
-    }
+    config.log.init();
 
     let client =
         Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());

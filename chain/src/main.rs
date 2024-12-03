@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use chain::app_state::AppState;
-use chain::config::{AppConfig, LogFormat};
+use chain::config::AppConfig;
 use chain::repository;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
@@ -15,7 +15,6 @@ use chain::services::{
 };
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
-use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
@@ -31,8 +30,6 @@ use shared::validator::ValidatorSet;
 use tendermint_rpc::HttpClient;
 use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
@@ -50,22 +47,7 @@ async fn main() -> Result<(), MainError> {
         checksums.add(code_path, code.to_lowercase());
     }
 
-    let log_level = match config.verbosity.log_level_filter() {
-        LevelFilter::Off => None,
-        LevelFilter::Error => Some(Level::ERROR),
-        LevelFilter::Warn => Some(Level::WARN),
-        LevelFilter::Info => Some(Level::INFO),
-        LevelFilter::Debug => Some(Level::DEBUG),
-        LevelFilter::Trace => Some(Level::TRACE),
-    };
-    if let Some(log_level) = log_level {
-        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
-
-        match config.log_format {
-            LogFormat::Text => subscriber.init(),
-            LogFormat::Json => subscriber.json().flatten_event(true).init(),
-        };
-    }
+    config.log.init();
 
     let client = Arc::new(client);
 

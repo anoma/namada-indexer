@@ -4,11 +4,10 @@ use std::time::Duration;
 
 use chrono::NaiveDateTime;
 use clap::Parser;
-use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::{DateTimeUtc, Utc};
 use orm::migrations::run_migrations;
-use rewards::config::{AppConfig, LogFormat};
+use rewards::config::AppConfig;
 use rewards::repository;
 use rewards::services::namada as namada_service;
 use rewards::state::AppState;
@@ -17,30 +16,12 @@ use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
-    let log_level = match config.verbosity.log_level_filter() {
-        LevelFilter::Off => None,
-        LevelFilter::Error => Some(Level::ERROR),
-        LevelFilter::Warn => Some(Level::WARN),
-        LevelFilter::Info => Some(Level::INFO),
-        LevelFilter::Debug => Some(Level::DEBUG),
-        LevelFilter::Trace => Some(Level::TRACE),
-    };
-
-    if let Some(log_level) = log_level {
-        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
-
-        match config.log_format {
-            LogFormat::Text => subscriber.init(),
-            LogFormat::Json => subscriber.json().flatten_event(true).init(),
-        };
-    }
+    config.log.init();
 
     tracing::info!("version: {}", env!("VERGEN_GIT_SHA").to_string());
 

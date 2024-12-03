@@ -4,7 +4,6 @@ use std::sync::Arc;
 use anyhow::Context;
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
-use clap_verbosity_flag::LevelFilter;
 use deadpool_diesel::postgres::Object;
 use orm::migrations::run_migrations;
 use shared::block::Block;
@@ -14,10 +13,8 @@ use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 use transactions::app_state::AppState;
-use transactions::config::{AppConfig, LogFormat};
+use transactions::config::AppConfig;
 use transactions::repository::transactions as transaction_repo;
 use transactions::services::{
     db as db_service, namada as namada_service,
@@ -28,22 +25,7 @@ use transactions::services::{
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
-    let log_level = match config.verbosity.log_level_filter() {
-        LevelFilter::Off => None,
-        LevelFilter::Error => Some(Level::ERROR),
-        LevelFilter::Warn => Some(Level::WARN),
-        LevelFilter::Info => Some(Level::INFO),
-        LevelFilter::Debug => Some(Level::DEBUG),
-        LevelFilter::Trace => Some(Level::TRACE),
-    };
-    if let Some(log_level) = log_level {
-        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
-
-        match config.log_format {
-            LogFormat::Text => subscriber.init(),
-            LogFormat::Json => subscriber.json().flatten_event(true).init(),
-        };
-    }
+    config.log.init();
 
     let client =
         Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());

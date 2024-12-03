@@ -1,6 +1,5 @@
 use anyhow::Context;
 use clap::Parser;
-use clap_verbosity_flag::LevelFilter;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use orm::balances::BalanceChangesInsertDb;
 use orm::bond::BondInsertDb;
@@ -16,7 +15,7 @@ use orm::schema::{
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{ValidatorDb, ValidatorInsertDb};
 use rand::Rng;
-use seeder::config::{AppConfig, LogFormat};
+use seeder::config::AppConfig;
 use seeder::state::AppState;
 use shared::balance::Balance;
 use shared::bond::Bond;
@@ -28,30 +27,12 @@ use shared::rewards::Reward;
 use shared::unbond::Unbond;
 use shared::validator::Validator;
 use shared::vote::GovernanceVote;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<(), MainError> {
     let config = AppConfig::parse();
 
-    let log_level = match config.verbosity.log_level_filter() {
-        LevelFilter::Off => None,
-        LevelFilter::Error => Some(Level::ERROR),
-        LevelFilter::Warn => Some(Level::WARN),
-        LevelFilter::Info => Some(Level::INFO),
-        LevelFilter::Debug => Some(Level::DEBUG),
-        LevelFilter::Trace => Some(Level::TRACE),
-    };
-
-    if let Some(log_level) = log_level {
-        let subscriber = FmtSubscriber::builder().with_max_level(log_level);
-
-        match config.log_format {
-            LogFormat::Text => subscriber.init(),
-            LogFormat::Json => subscriber.json().flatten_event(true).init(),
-        };
-    }
+    config.log.init();
 
     tracing::info!("version: {}", env!("VERGEN_GIT_SHA").to_string());
 
