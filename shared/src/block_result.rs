@@ -154,10 +154,13 @@ impl TxAttributesType {
                     attributes.get("packet_sequence").unwrap().to_owned();
                 let timeout_timestamp = attributes
                     .get("packet_timeout_timestamp")
-                    .unwrap()
+                    .unwrap_or(&"0".to_string())
                     .parse::<u64>()
-                    .unwrap()
+                    .unwrap_or_default()
                     .to_owned();
+
+                tracing::error!("{}", timeout_timestamp);
+
                 Some(Self::SendPacket(SendPacket {
                     source_port,
                     dest_port,

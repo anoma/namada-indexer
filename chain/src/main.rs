@@ -209,19 +209,9 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
-    let block = Block::from(
-        tm_block_response,
-        &block_results,
-        checksums,
-        epoch,
-        block_height,
-    );
-    tracing::debug!(
-        block = block_height,
-        txs = block.transactions.len(),
-        "Deserialized {} txs...",
-        block.transactions.len()
-    );
+    let block =
+        Block::from(tm_block_response, &block_results, checksums, block_height);
+    tracing::info!("Deserialized {} txs...", block.transactions.len());
 
     let native_token = namada_service::get_native_token(&client)
         .await
