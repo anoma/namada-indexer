@@ -8,30 +8,7 @@ use shared::token::Token;
 use shared::tuple_len::TupleLen;
 pub const MAX_PARAM_SIZE: u16 = u16::MAX;
 
-pub fn insert_balance(
-    transaction_conn: &mut PgConnection,
-    balances: Balances,
-) -> anyhow::Result<()> {
-    diesel::insert_into(balance_changes::table)
-        .values::<&Vec<BalanceChangesInsertDb>>(
-            &balances
-                .into_iter()
-                .map(BalanceChangesInsertDb::from_balance)
-                .collect::<Vec<_>>(),
-        )
-        .on_conflict((
-            balance_changes::columns::owner,
-            balance_changes::columns::token,
-            balance_changes::columns::height,
-        ))
-        .do_nothing()
-        .execute(transaction_conn)
-        .context("Failed to update balances in db")?;
-
-    anyhow::Ok(())
-}
-
-pub fn insert_balance_in_chunks(
+pub fn insert_balances(
     transaction_conn: &mut PgConnection,
     balances: Balances,
 ) -> anyhow::Result<()> {
@@ -43,7 +20,22 @@ pub fn insert_balance_in_chunks(
         // chunk.
         .chunks((MAX_PARAM_SIZE as i64 / balances_col_count) as usize)
     {
-        insert_balance(transaction_conn, chunk.to_vec())?
+        diesel::insert_into(balance_changes::table)
+            .values::<&Vec<BalanceChangesInsertDb>>(
+                &chunk
+                    .iter()
+                    .cloned()
+                    .map(BalanceChangesInsertDb::from_balance)
+                    .collect::<Vec<_>>(),
+            )
+            .on_conflict((
+                balance_changes::columns::owner,
+                balance_changes::columns::token,
+                balance_changes::columns::height,
+            ))
+            .do_nothing()
+            .execute(transaction_conn)
+            .context("Failed to update balances in db")?;
     }
 
     anyhow::Ok(())
@@ -104,7 +96,7 @@ mod tests {
         let db = TestDb::new();
 
         db.run_test(|conn| {
-            insert_balance(conn, vec![])?;
+            insert_balances(conn, vec![])?;
 
             let queried_balance = query_all_balances(conn)?;
 
@@ -140,7 +132,7 @@ mod tests {
 
             insert_tokens(conn, vec![token.clone()])?;
 
-            insert_balance(conn, vec![balance.clone()])?;
+            insert_balances(conn, vec![balance.clone()])?;
 
             let queried_balance = query_balance_by_address(conn, owner, token)?;
 
@@ -185,7 +177,7 @@ mod tests {
                 ..(balance.clone())
             };
 
-            insert_balance(conn, vec![new_balance])?;
+            insert_balances(conn, vec![new_balance])?;
 
             let queried_balance =
                 query_balance_by_address(conn, owner.clone(), token.clone())?;
@@ -243,7 +235,7 @@ mod tests {
 
             seed_tokens_from_balance(conn, vec![new_balance.clone()])?;
 
-            insert_balance(conn, vec![new_balance])?;
+            insert_balances(conn, vec![new_balance])?;
 
             let queried_balance =
                 query_balance_by_address(conn, owner.clone(), token.clone())?;
@@ -300,7 +292,7 @@ mod tests {
                 ..(balance.clone())
             };
 
-            insert_balance(conn, vec![new_balance])?;
+            insert_balances(conn, vec![new_balance])?;
 
             let queried_balance =
                 query_balance_by_address(conn, owner.clone(), token.clone())?;
@@ -354,7 +346,7 @@ mod tests {
                 ..(balance.clone())
             };
 
-            let res = insert_balance(conn, vec![new_balance]);
+            let res = insert_balances(conn, vec![new_balance]);
 
             // Conflicting insert succeeds, but is ignored
             assert!(res.is_ok());
@@ -386,7 +378,7 @@ mod tests {
 
             seed_tokens_from_balance(conn, fake_balances.clone())?;
 
-            insert_balance(conn, fake_balances.clone())?;
+            insert_balances(conn, fake_balances.clone())?;
 
             assert_eq!(query_all_balances(conn)?.len(), fake_balances.len());
 
@@ -420,7 +412,7 @@ mod tests {
 
             insert_tokens(conn, vec![token.clone()])?;
 
-            insert_balance(conn, vec![balance.clone()])?;
+            insert_balances(conn, vec![balance.clone()])?;
 
             let queried_balance = query_balance_by_address(conn, owner, token)?;
 
@@ -434,7 +426,7 @@ mod tests {
 
     /// Test that we can insert more than u16::MAX balances
     #[tokio::test]
-    async fn test_insert_balance_in_chunks_with_max_param_size_plus_one() {
+    async fn test_insert_balances_with_max_param_size_plus_one() {
         let db = TestDb::new();
 
         db.run_test(|conn| {
@@ -452,7 +444,7 @@ mod tests {
 
             insert_tokens(conn, vec![token])?;
 
-            let res = insert_balance_in_chunks(conn, balances);
+            let res = insert_balances(conn, balances);
 
             assert!(res.is_ok());
 
@@ -464,7 +456,7 @@ mod tests {
 
     /// Test that we can insert less than u16::MAX balances using chunks
     #[tokio::test]
-    async fn test_insert_balance_in_chunks_with_1000_params() {
+    async fn test_insert_balances_with_1000_params() {
         let db = TestDb::new();
 
         db.run_test(|conn| {
@@ -485,7 +477,7 @@ mod tests {
 
             seed_tokens_from_balance(conn, balances.clone())?;
 
-            let res = insert_balance_in_chunks(conn, balances);
+            let res = insert_balances(conn, balances);
 
             assert!(res.is_ok());
 
