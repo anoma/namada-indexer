@@ -12,12 +12,17 @@
 
 pub trait TupleLen {
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
 }
 
 // Base case for empty tuple
 impl TupleLen for () {
     fn len(&self) -> usize {
         0
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -35,6 +40,10 @@ macro_rules! tuple {
             #[inline]
             fn len(&self) -> usize {
                 count_idents!($($name),+)
+            }
+            #[inline]
+            fn is_empty(&self) -> bool {
+                self.len() == 0
             }
         }
         peel! { $($name,)+ }

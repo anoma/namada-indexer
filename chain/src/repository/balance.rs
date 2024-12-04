@@ -23,8 +23,8 @@ pub fn insert_balances(
         diesel::insert_into(balance_changes::table)
             .values::<&Vec<BalanceChangesInsertDb>>(
                 &chunk
-                    .to_vec()
-                    .into_iter()
+                    .iter()
+                    .cloned()
                     .map(BalanceChangesInsertDb::from_balance)
                     .collect::<Vec<_>>(),
             )
