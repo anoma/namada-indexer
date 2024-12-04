@@ -36,14 +36,14 @@ jobs:
       matrix:
         docker:
           [
-            { image: namada-indexer-chain, context: chain },
-            { image: namada-indexer-governance, context: governance },
-            { image: namada-indexer-pos, context: pos },
-            { image: namada-indexer-rewards, context: rewards },
-            { image: namada-indexer-seeder, context: seeder },
-            { image: namada-indexer-webserver, context: webserver },
-            { image: namada-indexer-parameters, context: parameters },
-            { image: namada-indexer-transactions, context: transactions },
+            { image: chain, package: chain },
+            { image: governance, package: governance },
+            { image: pos, package: pos },
+            { image: rewards, package: rewards },
+            { image: seeder, package: seeder },
+            { image: webserver, package: webserver },
+            { image: parameters, package: parameters },
+            { image: transactions, package: transactions },
           ]
 
     steps:
