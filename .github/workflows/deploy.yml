@@ -20,11 +20,15 @@ jobs:
           output: swagger-ui
           spec-file: swagger.yml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: swagger-ui
+          path: 'swagger-ui'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   docker:
     name: Docker
@@ -92,6 +96,6 @@ jobs:
           generator: typescript-axios
           openapi-file: swagger.yml
       - name: Update package.json
-        run: python3 .github/workflows/scripts/update-package.py typescript-axios/package.json ${{ steps.get_version.outputs.version-without-v }}
+        run: python3 .github/workflows/scripts/update-package.py typescript-axios-client/package.json ${{ steps.get_version.outputs.version-without-v }}
       - name: Publish package
         run: cd typescript-axios && npm publish --access public --verbose --dry-run
