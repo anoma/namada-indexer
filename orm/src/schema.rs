@@ -77,11 +77,11 @@ pub mod sql_types {
 diesel::table! {
     balance_changes (id) {
         id -> Int4,
+        height -> Int4,
         owner -> Varchar,
         #[max_length = 64]
         token -> Varchar,
         raw_amount -> Numeric,
-        height -> Int4,
     }
 }
 
