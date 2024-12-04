@@ -8,5 +8,5 @@ configuration = {
   "npmVersion": package_version
 }
 
-with open("swagger-codegen.json", 'w', encoding='utf-8') as f:
+with open("swagger-codegen.json", 'w+', encoding='utf-8') as f:
     json.dump(configuration, f, ensure_ascii=False, indent=4)
