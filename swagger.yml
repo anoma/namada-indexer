@@ -1,0 +1,943 @@
+openapi: '3.0.2'
+info:
+  title: Namada Interface Indexer REST Api
+  version: '0.1'
+  description: "Set of API to interact with a namada indexer."
+  contact: 
+    email: hello@heliax.dev
+    url: https://github.com/anoma/namada-indexer
+servers:
+  - url: http://localhost:5001
+paths:
+  /health:
+    get:
+      responses:
+        '200':
+          description: Health check
+  /api/v1/pos/validator:
+    get:
+      summary: Get all validators, paginated
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+        - in: query
+          name: state
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ValidatorStatus'
+          description: Validator status parameter
+        - in: query
+          name: sortField
+          schema:
+            type: string
+            enum: [votingPower, commission, rank]
+          description: Sort field
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: Sort order - ignored if sortField is not provided
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Validator'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/validator/all:
+    get:
+      summary: Get all validators, non paginated
+      parameters:
+        - in: query
+          name: state
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ValidatorStatus'
+          description: Validator status parameter
+      responses:
+        '200':
+          description: A list of validator.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Validator'
+  /api/v1/pos/reward/{address}:
+    get:
+      summary: Get all the rewards for an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+      responses:
+        '200':
+          description: A list of rewards.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reward'
+  /api/v1/pos/bond/{address}:
+    get:
+      summary: Get all the bonds for an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of bonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/merged-bonds/{address}:
+    get:
+      summary: Get all the bonds for an address, with merged amounts, regardless of the status
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of bonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MergedBond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/unbond/{address}:
+    get:
+      summary: Get all the unbonds for an an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of unbonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Unbond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/merged-unbonds/{address}:
+    get:
+      summary: Get all the unbonds for an an address with merged withdraw amounts
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of unbonds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Unbond'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/withdraw/{address}:
+    get:
+      summary: Get all the withdraws for an address at a specific epoch
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: query
+          name: epoch
+          schema:
+            type: integer
+          description: The epoch
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter
+      responses:
+        '200':
+          description: A list of withdraws.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Withdraw'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/pos/voting-power:
+    get:
+      summary: Get the total voting power
+      responses:
+        '200':
+          description: The total voting power.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VotingPower'
+  /api/v1/gov/proposal:
+    get:
+      summary: Get a list of governance proposals
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          description: Pagination parameter 
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, votingPeriod, passed, rejected]
+          description: The status of the proposal
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [default, defaultWithWasm, pgfSteward, pgfFunding]
+          description: The status of the proposal
+        - in: query
+          name: pattern
+          schema:
+            type: string
+          description: The status of the proposal
+      responses:
+        '200':
+          description: A list of governance proposal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Proposal'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/gov/proposal/all:
+    get:
+      summary: Get a list of all governance proposals
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, votingPeriod, passed, rejected]
+          description: The status of the proposal
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [default, defaultWithWasm, pgfSteward, pgfFunding]
+          description: The status of the proposal
+        - in: query
+          name: pattern
+          schema:
+            type: string
+          description: The status of the proposal
+      responses:
+        '200':
+          description: A list of governance proposals.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Proposal'
+  /api/v1/gov/proposal/{id}:
+    get:
+      summary: Get a governance proposal by proposal id
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 0
+          required: true
+          description: Proposal id
+      responses:
+        '200':
+          description: A Governance proposal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proposal'
+  /api/v1/gov/proposal/{id}/votes:
+    get:
+      summary: Get all the votes for a governance proposal
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 1
+          required: true
+          description: Proposal id
+      responses:
+        '200':
+          description: A list of votes for a governance proposal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vote'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+  /api/v1/gov/proposal/{id}/votes/{address}:
+    get:
+      summary: Get all the votes for a governance proposal from an address
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            minimum: 1
+          required: true
+          description: Proposal id
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The voter address
+      responses:
+        '200':
+          description: A list of votes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vote'
+  /api/v1/gov/voter/{address}/votes:
+    get:
+      summary: Get all the votes from a voter
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The voter address
+      responses:
+        '200':
+          description: A list of votes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vote'
+  /api/v1/account/{address}:
+    get:
+      summary: Get the all the tokens balances of an address
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The address account
+      responses:
+        '200':
+          description: A List of balances.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+  /api/v1/revealed-public-key/{address}:
+    get:
+      summary: Get revealed public key for an address if exists
+      parameters:
+        - in: path
+          name: address
+          schema:
+            type: string
+          required: true
+          description: The address account
+      responses:
+        '200':
+          description: Revealed public key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevealedPk'
+  /api/v1/gas:
+    get:
+      summary: Get the gas limit per tx kind.
+      responses:
+        '200':
+          description: Gas limit table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GasLimitTable'
+  /api/v1/gas-price:
+    get:
+      summary: Get all the gas prices
+      responses:
+        '200':
+          description: Gas price table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GasPriceTable'
+  /api/v1/gas-price/{token}:
+    get:
+      parameters:
+        - in: path
+          name: token
+          schema:
+            type: string
+          required: true
+          description: The gas token. 
+      summary: Get the gas price per token type
+      responses:
+        '200':
+          description: Gas price table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GasPriceTable'
+  /api/v1/chain/token:
+    get:
+      summary: Get chain tokens
+      responses:
+        '200':
+          description: Chain tokens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/NativeToken'
+                    - $ref: '#/components/schemas/IbcToken'
+              examples:
+                native:
+                  summary: An example of native token
+                  value: 
+                   - address: tnam1qqg0jc68dx69d7klxg6n39qtcc6qnhc93senzthk]
+                ibc:
+                  summary: An example of ibc token
+                  value:
+                    - address: tnam1pkg30gnt4q0zn7j00r6hms4ajrxn6f5ysyyl7w9m
+                      trace: transfer/channel-2/uatom
+  /api/v1/chain/parameters:
+    get:
+      summary: Get chain parameters
+      responses:
+        '200':
+          description: Chain parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parameters'
+  /api/v1/chain/rpc-url:
+    get:
+      summary: Get rpc url that indexer connects to
+      responses:
+        '200':
+          description: Rpc url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RpcUrl'
+  /api/v1/chain/block/latest:
+    get:
+      summary: Get the latest block processed by the chain crawler
+      responses:
+        '200':
+          description: Block height
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [height]
+                properties:
+                  height:
+                    type: string
+  /api/v1/chain/epoch/latest:
+    get:
+      summary: Get the latest epoch processed by the chain crawler
+      responses:
+        '200':
+          description: Epoch
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [epoch]
+                properties:
+                  height:
+                    type: string
+  /api/v1/chain/wrapper/{tx_id}:
+    get:
+      summary: Get the wrapper transaction by hash
+      parameters:
+        - in: path
+          name: tx_id
+          schema:
+            type: string
+          required: true
+          description: Tx id hash 
+      responses:
+        '200':
+          description: Wrapper transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrapperTransaction'
+  /api/v1/chain/inner/{tx_id}:
+    get:
+      summary: Get the inner transaction by hash
+      parameters:
+        - in: path
+          name: tx_id
+          schema:
+            type: string
+          required: true
+          description: Tx id hash 
+      responses:
+        '200':
+          description: Inner transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InnerTransaction'
+  /api/v1/crawlers/timestamps:
+    get:
+      summary: Get timestamps of the last activity of the crawlers
+      parameters:
+        - in: query
+          name: crawler_names
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [chain, governance, parameters, pos, rewards, transactions]
+          description: The crawler names
+      responses:
+        '200':
+          description: Inner transaction
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name, timestamp]
+                  properties:
+                    name:
+                      type: string
+                      enum: [chain, governance, parameters, pos, rewards, transactions]
+                    timestamp:
+                      type: number
+
+components:
+  schemas:
+    Validator:
+      type: object
+      required: [validatorId, address, name, votingPower, maxCommission, commission, state]
+      properties:
+        validatorId:
+          type: string
+        rank:
+          type: number
+        address:
+          type: string
+        votingPower:
+          type: string
+        maxCommission:
+          type: string
+        commission:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        description:
+          type: string
+        discordHandle:
+          type: string
+        avatar:
+          type: string
+        state:
+          $ref: '#/components/schemas/ValidatorStatus'
+    ValidatorStatus:
+      type: string
+      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
+    Proposal:
+      type: object
+      required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, activationTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+          enum: [default, defaultWithWasm, pgfSteward, pgfFunding]
+        tallyType:
+          type: string
+          enum: [twoFifths, oneHalfOverOneThird, lessOneHalfOverOneThirdNay]
+        data:
+          type: string
+        author:
+          type: string
+        startEpoch:
+          type: string
+        endEpoch:
+          type: string
+        activationEpoch:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        currentTime:
+          type: string
+        activationTime:
+          type: string
+        status:
+          type: string
+          enum: [pending, voting, passed, rejected]
+        yayVotes:
+          type: string
+        nayVotes:
+          type: string
+        abstainVotes:
+          type: string
+    Vote:
+      type: object
+      required: [proposalId, vote, voterAddress]
+      properties:
+        proposalId:
+          type: string
+        vote:
+          type: string
+          enum: [yay, nay, abstain]
+        voterAddress:
+          type: string
+    Reward:
+      type: object
+      properties:
+        validator:
+          $ref: '#/components/schemas/Validator'
+        minDenomAmount:
+          type: string
+          format: float
+          minimum: 0
+    Bond:
+      type: object
+      required: [validator, minDenomAmount, status, startEpoch]
+      properties:
+        validator:
+          $ref: '#/components/schemas/Validator'
+        minDenomAmount:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        startEpoch:
+          type: string
+    MergedBond:
+      type: object
+      required: [validator, minDenomAmount]
+      properties:
+        validator:
+          $ref: '#/components/schemas/Validator'
+        minDenomAmount:
+          type: string
+    Unbond:
+      type: object
+      required: [validator, minDenomAmount, withdrawEpoch, withdrawTime, canWithdraw]
+      properties:
+        validator:
+          $ref: '#/components/schemas/Validator'
+        minDenomAmount:
+          type: string
+        withdrawEpoch:
+          type: string
+        withdrawTime:
+          type: string
+        canWithdraw:
+          type: boolean
+    Withdraw:
+      type: object
+      required: [minDenomAmount, withdrawEpoch]
+      properties:
+        validator:
+          $ref: '#/components/schemas/Validator'
+        minDenomAmount:
+          type: string
+          format: float
+          minimum: 0
+        withdrawEpoch:
+          type: string
+    VotingPower:
+      type: object
+      required: [totalVotingPower]
+      properties:
+        totalVotingPower:
+          type: string
+    Balance:
+      type: object
+      required: [tokenAddress, minDenomAmount]
+      properties:
+        tokenAddress:
+          type: string
+        minDenomAmount:
+          type: string
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: string
+          minimum: 0
+        perPage:
+          type: string
+          minimum: 0
+        totalPages:
+          type: string
+          minimum: 0
+        totalItems:
+          type: string
+          minimum: 0
+    RevealedPk:
+      type: object
+      properties:
+        publicKey:
+          type: string
+    GasLimitTable:
+      type: array
+      items:
+        type: object
+        required: [gasLimit, txKind]
+        properties:
+          gasLimit:
+            type: number
+          txKind:
+            type: string
+            enum: [transparentTransfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, ibcMsgTransfer, unknown]
+    GasPriceTable:
+      type: array
+      items:
+        type: object
+        required: [token, minDenomAmount]
+        properties:
+          token:
+            type: string
+          minDenomAmount:
+            type: string
+    NativeToken:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+    IbcToken:
+      type: object
+      required: [address, trace]
+      properties:
+        address:
+          type: string
+        trace:
+          type: string
+    Parameters:
+      type: object
+      required: [unbondingLength, pipelineLength, epochsPerYear, apr, nativeTokenAddress, chainId, genesisTime, minDuration, minNumOfBlocks, maxBlockTime, checksums, epochSwitchBlocksDelay, cubicSlashingWindowLength]
+      properties:
+        unbondingLength:
+          type: string
+        pipelineLength:
+          type: string
+        epochsPerYear:
+          type: string
+        apr:
+          type: string
+        nativeTokenAddress:
+          type: string
+        chainId:
+          type: string
+        genesisTime:
+          type: string
+        minDuration:
+          type: string
+        minNumOfBlocks:
+          type: string
+        maxBlockTime:
+          type: string
+        checksums:
+          type: object
+          additionalProperties:
+            type: string
+        epochSwitchBlocksDelay:
+          type: string
+        cubicSlashingWindowLength:
+          type: string
+    RpcUrl:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+    WrapperTransaction:
+      type: object
+      required: [txId, feePayer, feeToken, gasLimit, blockHeight, innerTransactions, exitCode, atomic]
+      properties:
+        txId:
+          type: string
+        feePayer:
+          type: string
+        feeToken:
+          type: string
+        gasLimit:
+          type: string
+        blockHeight:
+          type: string
+        innerTransactions:
+          type: array
+          items:
+            type: object
+            required: [txId, kind, exitCode]
+            properties:
+              txId:
+                type: string
+              kind:
+                type: string
+                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+              exitCode:
+                type: string
+                enum: [applied, rejected]
+              memo:
+                type: string
+              data:
+                type: string
+        exitCode:
+          type: string
+          enum: [applied, rejected]
+        atomic:
+          type: boolean
+    InnerTransaction:
+      type: object
+      required: [txId, kind, wrapperId, exitCode]
+      properties:
+        txId:
+          type: string
+        wrapperId:
+          type: string
+        kind:
+          type: string
+          enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+        exitCode:
+          type: string
+          enum: [applied, rejected]
+        memo:
+          type: string
+        data:
+          type: string
