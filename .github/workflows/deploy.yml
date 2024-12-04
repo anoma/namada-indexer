@@ -12,8 +12,8 @@ jobs:
   swagger-ui:
     runs-on: ubuntu-latest
     steps:
-      - name: Create output directory
-        run: mkdir swagger-ui
+      - name: Checkout repo
+        uses: actions/checkout@v4
       - name: Generate Swagger UI
         uses: Legion2/swagger-ui-action@v1
         with:
@@ -66,7 +66,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.docker.context }}/Dockerfile
+          file: Dockerfile
           build-args: PACKAGE=${{ matrix.docker.package }}
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.REGISTRY_URL }}/anoma/namada-indexer:${{ matrix.docker.image }}-${{ steps.get_version.outputs.version-without-v }}
@@ -77,6 +77,7 @@ jobs:
   swagger-npm-package:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
       - id: get_version
         uses: battila7/get-version-action@v2
       - uses: actions/setup-node@v4
@@ -88,6 +89,7 @@ jobs:
         uses: openapi-generators/openapitools-generator-action@v1
         with:
           generator: typescript-axios
+          openapi-file: swagger.yml
       - name: Update package.json
         run: python3 .github/workflows/scripts/update-package.py typescript-axios/package.json ${{ steps.get_version.outputs.version-without-v }}
       - name: Publish package
