@@ -78,6 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
+        uses: actions/checkout@v4
       - id: get_version
         uses: battila7/get-version-action@v2
       - uses: actions/setup-node@v4
