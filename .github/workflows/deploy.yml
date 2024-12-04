@@ -103,6 +103,7 @@ jobs:
         with:
           generator: typescript-axios
           openapi-file: swagger.yml
+          command-args: -c swagger-codegen.json
       - name: Update package.json
         run: python3 .github/workflows/scripts/update-package.py typescript-axios-client/package.json ${{ steps.get_version.outputs.version-without-v }}
       - name: Publish package
