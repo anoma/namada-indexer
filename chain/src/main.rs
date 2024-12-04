@@ -395,8 +395,9 @@ async fn try_initial_query(
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
-    // This can sometimes fail if the last block height in the node has moved forward after we queried
-    // for it. In that case, query_all_balances returns an Err indicating that it can only be used for
+    // This can sometimes fail if the last block height in the node has moved
+    // forward after we queried for it. In that case, query_all_balances
+    // returns an Err indicating that it can only be used for
     // the last block. This function will be retried in that case.
     let balances = query_all_balances(client, block_height)
         .await
@@ -476,8 +477,14 @@ async fn try_initial_query(
                     validator_set,
                 )?;
 
-                repository::pos::insert_bonds(transaction_conn, bonds)?;
-                repository::pos::insert_unbonds(transaction_conn, unbonds)?;
+                repository::pos::insert_bonds_in_chunks(
+                    transaction_conn,
+                    bonds,
+                )?;
+                repository::pos::insert_unbonds_in_chunks(
+                    transaction_conn,
+                    unbonds,
+                )?;
 
                 repository::crawler_state::upsert_crawler_state(
                     transaction_conn,

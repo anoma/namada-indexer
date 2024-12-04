@@ -1,9 +1,8 @@
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::queries::RPC;
 use namada_sdk::storage::{self, PrefixValue};
-use tendermint_rpc::HttpClient;
-
 use shared::block::BlockHeight;
+use tendermint_rpc::HttpClient;
 
 /// Query a range of storage values with a matching prefix and decode them with
 /// [`BorshDeserialize`]. Returns an iterator of the storage keys paired with

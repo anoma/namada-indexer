@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 
 use anyhow::Context;
+use diesel::sql_types::BigInt;
 use diesel::upsert::excluded;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalEmptyChangesetExtension,
-    PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
+    sql_query, BoolExpressionMethods, ExpressionMethods,
+    OptionalEmptyChangesetExtension, PgConnection, QueryDsl, QueryableByName,
+    RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondInsertDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
@@ -17,6 +19,20 @@ use shared::bond::Bonds;
 use shared::id::Id;
 use shared::unbond::{UnbondAddresses, Unbonds};
 use shared::validator::{ValidatorMetadataChange, ValidatorSet};
+
+pub const MAX_PARAM_SIZE: u16 = u16::MAX;
+
+#[derive(QueryableByName)]
+struct UnbondsColCount {
+    #[diesel(sql_type = BigInt)]
+    count: i64,
+}
+
+#[derive(QueryableByName)]
+struct BondsColCount {
+    #[diesel(sql_type = BigInt)]
+    count: i64,
+}
 
 pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
@@ -46,6 +62,30 @@ pub fn clear_bonds(
     query
         .execute(transaction_conn)
         .context("Failed to remove bonds from db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_bonds_in_chunks(
+    transaction_conn: &mut PgConnection,
+    bonds: Bonds,
+) -> anyhow::Result<()> {
+    let bonds_col_count = sql_query(
+        "SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'bonds';",
+    )
+    .get_result::<BondsColCount>(transaction_conn)?;
+
+    for chunk in bonds
+        // We have to divide MAX_PARAM_SIZE by the number of columns in the
+        // balances table to get the correct number of rows in the
+        // chunk.
+        .chunks((MAX_PARAM_SIZE as i64 / bonds_col_count.count) as usize)
+    {
+        insert_bonds(transaction_conn, chunk.to_vec())?
+    }
 
     anyhow::Ok(())
 }
@@ -83,6 +123,30 @@ pub fn insert_bonds(
         ))
         .execute(transaction_conn)
         .context("Failed to update bonds in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_unbonds_in_chunks(
+    transaction_conn: &mut PgConnection,
+    unbonds: Unbonds,
+) -> anyhow::Result<()> {
+    let unbonds_col_count = sql_query(
+        "SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'unbonds';",
+    )
+    .get_result::<UnbondsColCount>(transaction_conn)?;
+
+    for chunk in unbonds
+        // We have to divide MAX_PARAM_SIZE by the number of columns in the
+        // balances table to get the correct number of rows in the
+        // chunk.
+        .chunks((MAX_PARAM_SIZE as i64 / unbonds_col_count.count) as usize)
+    {
+        insert_unbonds(transaction_conn, chunk.to_vec())?
+    }
 
     anyhow::Ok(())
 }
