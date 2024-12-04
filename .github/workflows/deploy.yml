@@ -99,7 +99,7 @@ jobs:
       - name: Authenticate with private NPM package
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
       - name: Generate openapi client configuration file
-        run: python3 ${{ steps.get_version.outputs.version-without-v }}
+        run: python3 .github/workflows/scripts/update-package.py ${{ steps.get_version.outputs.version-without-v }}
       - name: Generate Typescript Client
         uses: openapi-generators/openapitools-generator-action@v1
         with:
