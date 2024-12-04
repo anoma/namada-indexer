@@ -105,6 +105,6 @@ jobs:
         with:
           generator: typescript-axios
           openapi-file: swagger.yml
-          command-args: -c swagger-codegen.json
+          command-args: -c swagger-codegen.json -o client
       - name: Publish package
-        run: cd typescript-axios && npm publish --access public --verbose --dry-run
+        run: cd client && npm publish --access public --verbose --dry-run
