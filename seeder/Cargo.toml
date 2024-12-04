@@ -15,14 +15,12 @@ path = "src/main.rs"
 [dependencies]
 tokio.workspace = true 
 tracing.workspace = true
-tracing-subscriber.workspace = true
 clap.workspace = true 
 anyhow.workspace = true
 shared.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
-clap-verbosity-flag.workspace = true
 rand.workspace = true
 
 [build-dependencies]

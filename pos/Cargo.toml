@@ -15,7 +15,6 @@ path = "src/main.rs"
 [dependencies]
 tokio.workspace = true 
 tracing.workspace = true
-tracing-subscriber.workspace = true
 chrono.workspace = true 
 clap.workspace = true 
 anyhow.workspace = true
@@ -28,7 +27,6 @@ deadpool-diesel.workspace = true
 diesel.workspace = true
 diesel_migrations.workspace = true
 orm.workspace = true
-clap-verbosity-flag.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

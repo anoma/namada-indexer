@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::Display;
 
-use clap_verbosity_flag::{InfoLevel, Verbosity};
+use shared::log_config::LogConfig;
 
 #[derive(clap::ValueEnum, Clone, Debug, Copy)]
 pub enum CargoEnv {
@@ -41,6 +41,6 @@ pub struct AppConfig {
     #[clap(long, env, default_value_t = 10)]
     pub total_balances: u64,
 
-    #[command(flatten)]
-    pub verbosity: Verbosity<InfoLevel>,
+    #[clap(flatten)]
+    pub log: LogConfig,
 }

@@ -17,7 +17,6 @@ test_helpers.workspace = true
 tokio.workspace = true
 tokio-retry.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 clap.workspace = true
@@ -32,7 +31,6 @@ shared.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
-clap-verbosity-flag.workspace = true
 futures.workspace = true
 
 [build-dependencies]
