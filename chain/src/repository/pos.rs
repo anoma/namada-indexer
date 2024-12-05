@@ -1,12 +1,10 @@
 use std::collections::HashSet;
 
 use anyhow::Context;
-use diesel::sql_types::BigInt;
 use diesel::upsert::excluded;
 use diesel::{
-    sql_query, BoolExpressionMethods, ExpressionMethods,
-    OptionalEmptyChangesetExtension, PgConnection, QueryDsl, QueryableByName,
-    RunQueryDsl, SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, OptionalEmptyChangesetExtension,
+    PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondInsertDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
@@ -21,13 +19,7 @@ use shared::tuple_len::TupleLen;
 use shared::unbond::{UnbondAddresses, Unbonds};
 use shared::validator::{ValidatorMetadataChange, ValidatorSet};
 
-pub const MAX_PARAM_SIZE: u16 = u16::MAX;
-
-#[derive(QueryableByName)]
-struct UnbondsColCount {
-    #[diesel(sql_type = BigInt)]
-    count: i64,
-}
+use super::utils::MAX_PARAM_SIZE;
 
 pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
@@ -119,11 +111,8 @@ pub fn insert_unbonds(
 ) -> anyhow::Result<()> {
     let unbonds_col_count = unbonds::all_columns.len() as i64;
 
-    for chunk in unbonds
-        // We have to divide MAX_PARAM_SIZE by the number of columns in the
-        // balances table to get the correct number of rows in the
-        // chunk.
-        .chunks((MAX_PARAM_SIZE as i64 / unbonds_col_count) as usize)
+    for chunk in
+        unbonds.chunks((MAX_PARAM_SIZE as i64 / unbonds_col_count) as usize)
     {
         insert_unbonds_chunk(transaction_conn, chunk.to_vec())?
     }
