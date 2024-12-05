@@ -17,6 +17,7 @@ use orm::validators::{
 use shared::block::Epoch;
 use shared::bond::Bonds;
 use shared::id::Id;
+use shared::tuple_len::TupleLen;
 use shared::unbond::{UnbondAddresses, Unbonds};
 use shared::validator::{ValidatorMetadataChange, ValidatorSet};
 
@@ -24,12 +25,6 @@ pub const MAX_PARAM_SIZE: u16 = u16::MAX;
 
 #[derive(QueryableByName)]
 struct UnbondsColCount {
-    #[diesel(sql_type = BigInt)]
-    count: i64,
-}
-
-#[derive(QueryableByName)]
-struct BondsColCount {
     #[diesel(sql_type = BigInt)]
     count: i64,
 }
@@ -66,31 +61,22 @@ pub fn clear_bonds(
     anyhow::Ok(())
 }
 
-pub fn insert_bonds_in_chunks(
+pub fn insert_bonds(
     transaction_conn: &mut PgConnection,
     bonds: Bonds,
 ) -> anyhow::Result<()> {
-    let bonds_col_count = sql_query(
-        "SELECT COUNT(*)
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-            AND table_name = 'bonds';",
-    )
-    .get_result::<BondsColCount>(transaction_conn)?;
+    let bonds_col_count = bonds::all_columns.len() as i64;
 
-    for chunk in bonds
-        // We have to divide MAX_PARAM_SIZE by the number of columns in the
-        // balances table to get the correct number of rows in the
-        // chunk.
-        .chunks((MAX_PARAM_SIZE as i64 / bonds_col_count.count) as usize)
+    for chunk in
+        bonds.chunks((MAX_PARAM_SIZE as i64 / bonds_col_count) as usize)
     {
-        insert_bonds(transaction_conn, chunk.to_vec())?
+        insert_bonds_chunk(transaction_conn, chunk.to_vec())?
     }
 
     anyhow::Ok(())
 }
 
-pub fn insert_bonds(
+fn insert_bonds_chunk(
     transaction_conn: &mut PgConnection,
     bonds: Bonds,
 ) -> anyhow::Result<()> {
@@ -127,31 +113,25 @@ pub fn insert_bonds(
     anyhow::Ok(())
 }
 
-pub fn insert_unbonds_in_chunks(
+pub fn insert_unbonds(
     transaction_conn: &mut PgConnection,
     unbonds: Unbonds,
 ) -> anyhow::Result<()> {
-    let unbonds_col_count = sql_query(
-        "SELECT COUNT(*)
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-            AND table_name = 'unbonds';",
-    )
-    .get_result::<UnbondsColCount>(transaction_conn)?;
+    let unbonds_col_count = unbonds::all_columns.len() as i64;
 
     for chunk in unbonds
         // We have to divide MAX_PARAM_SIZE by the number of columns in the
         // balances table to get the correct number of rows in the
         // chunk.
-        .chunks((MAX_PARAM_SIZE as i64 / unbonds_col_count.count) as usize)
+        .chunks((MAX_PARAM_SIZE as i64 / unbonds_col_count) as usize)
     {
-        insert_unbonds(transaction_conn, chunk.to_vec())?
+        insert_unbonds_chunk(transaction_conn, chunk.to_vec())?
     }
 
     anyhow::Ok(())
 }
 
-pub fn insert_unbonds(
+fn insert_unbonds_chunk(
     transaction_conn: &mut PgConnection,
     unbonds: Unbonds,
 ) -> anyhow::Result<()> {

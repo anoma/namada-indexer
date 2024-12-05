@@ -462,14 +462,8 @@ async fn try_initial_query(
                     validator_set,
                 )?;
 
-                repository::pos::insert_bonds_in_chunks(
-                    transaction_conn,
-                    bonds,
-                )?;
-                repository::pos::insert_unbonds_in_chunks(
-                    transaction_conn,
-                    unbonds,
-                )?;
+                repository::pos::insert_bonds(transaction_conn, bonds)?;
+                repository::pos::insert_unbonds(transaction_conn, unbonds)?;
 
                 repository::crawler_state::upsert_crawler_state(
                     transaction_conn,
