@@ -285,7 +285,7 @@ async fn crawling_fn(
                     ibc_tokens,
                 )?;
 
-                repository::balance::insert_balance_in_chunks(
+                repository::balance::insert_balances(
                     transaction_conn,
                     balances,
                 )?;
@@ -442,7 +442,7 @@ async fn try_initial_query(
                     "Inserting {} balances...",
                     balances.len()
                 );
-                repository::balance::insert_balance_in_chunks(
+                repository::balance::insert_balances(
                     transaction_conn,
                     balances,
                 )?;
