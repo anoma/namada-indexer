@@ -7,7 +7,10 @@ use orm::governance_proposal::GovernanceProposalInsertDb;
 use orm::governance_votes::GovernanceProposalVoteInsertDb;
 use orm::schema::{governance_proposals, governance_votes};
 use shared::proposal::{GovernanceProposal, TallyType};
+use shared::tuple_len::TupleLen;
 use shared::vote::GovernanceVote;
+
+use super::utils::MAX_PARAM_SIZE;
 
 pub fn insert_proposals(
     transaction_conn: &mut PgConnection,
@@ -45,6 +48,23 @@ pub fn insert_proposals(
 pub fn insert_votes(
     transaction_conn: &mut PgConnection,
     proposals_votes: HashSet<GovernanceVote>,
+) -> anyhow::Result<()> {
+    let votes_col_count = governance_votes::all_columns.len() as i64;
+
+    for chunk in proposals_votes
+        .into_iter()
+        .collect::<Vec<_>>()
+        .chunks((MAX_PARAM_SIZE as i64 / votes_col_count) as usize)
+    {
+        insert_votes_chunk(transaction_conn, chunk.to_vec())?
+    }
+
+    anyhow::Ok(())
+}
+
+fn insert_votes_chunk(
+    transaction_conn: &mut PgConnection,
+    proposals_votes: Vec<GovernanceVote>,
 ) -> anyhow::Result<()> {
     diesel::insert_into(governance_votes::table)
         .values::<&Vec<GovernanceProposalVoteInsertDb>>(
