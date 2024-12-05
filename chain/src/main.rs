@@ -60,17 +60,66 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(
-        &client,
-        &conn,
-        config.initial_query_retry_time,
-        config.initial_query_retry_attempts,
-    )
-    .await?;
-
-    let crawler_state = db_service::get_chain_crawler_state(&conn)
+    // See if we can start from existing crawler_state
+    let crawler_state = match db_service::try_get_chain_crawler_state(&conn)
         .await
-        .into_db_error()?;
+        .into_db_error()?
+    {
+        Some(crawler_state) => {
+            tracing::info!(
+                    "Found chain crawler state, attempting initial crawl at block {}...",
+                    crawler_state.last_processed_block
+                );
+
+            // Try to run crawler_fn with the last processed block
+            let crawl_result = crawling_fn(
+                crawler_state.last_processed_block,
+                client.clone(),
+                conn.clone(),
+                checksums.clone(),
+            )
+            .await;
+
+            // Start from initial_query if we got an RpcError
+            if matches!(crawl_result, Err(MainError::RpcError)) {
+                tracing::info!(
+                    "Failed to query block {}, starting from initial_query...",
+                    crawler_state.last_processed_block
+                );
+                None
+            } else {
+                tracing::info!(
+                        "Initial crawl did not have an RPC error, continuing from block {}...",
+                        crawler_state.last_processed_block
+                    );
+                Some(crawler_state)
+            }
+        }
+        None => {
+            tracing::info!(
+                "No chain crawler state found, starting from initial_query..."
+            );
+            None
+        }
+    };
+
+    // Handle cases where we need to perform initial query
+    let crawler_state = match crawler_state {
+        Some(state) => state,
+        None => {
+            initial_query(
+                &client,
+                &conn,
+                config.initial_query_retry_time,
+                config.initial_query_retry_attempts,
+            )
+            .await?;
+
+            db_service::get_chain_crawler_state(&conn)
+                .await
+                .into_db_error()?
+        }
+    };
 
     crawl(
         move |block_height| {
