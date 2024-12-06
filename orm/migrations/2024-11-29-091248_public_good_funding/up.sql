@@ -1,5 +1,5 @@
 CREATE TYPE PAYMENT_RECURRENCE AS ENUM (
-    'continuos',
+    'continuous',
     'retro'
 );
 
@@ -15,8 +15,8 @@ CREATE TABLE public_good_funding (
     payment_kind PAYMENT_KIND NOT NULL,
     receipient VARCHAR NOT NULL,
     amount NUMERIC(78, 0) NOT NULL,
-    last_paid_epoch INT NOT NULL,
     CONSTRAINT fk_proposal_id FOREIGN KEY(proposal_id) REFERENCES governance_proposals(id) ON DELETE CASCADE
 );
 
 CREATE INDEX index_public_good_funding_receipient ON public_good_funding (receipient);
+CREATE UNIQUE INDEX index_public_good_funding_receipient_proposal_id ON public_good_funding (receipient, proposal_id);

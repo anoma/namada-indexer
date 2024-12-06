@@ -131,7 +131,7 @@ impl ApplicationServer {
                 )
                 .route(
                     "/pgf/payments",
-                    get(pgf_service::get_pgf_continous_payments),
+                    get(pgf_service::get_pgf_continuous_payments),
                 )
                 .route(
                     "/pgf/paymenents/:proposal_id",

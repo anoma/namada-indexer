@@ -21,7 +21,7 @@ impl PgfService {
     ) -> Result<(Vec<PgfPayment>, u64, u64), PgfError> {
         let (payments, total_pages, total_items) = self
             .pgf_repo
-            .get_pgf_continous_payments(page as i64)
+            .get_pgf_continuous_payments(page as i64)
             .await
             .map_err(PgfError::Database)?;
 

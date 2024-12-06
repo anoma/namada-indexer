@@ -6,7 +6,7 @@ use crate::id::Id;
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum PaymentRecurrence {
-    Continous,
+    Continuous,
     Retro,
 }
 

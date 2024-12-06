@@ -10,7 +10,7 @@ use crate::schema::public_good_funding;
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::PaymentRecurrence"]
 pub enum PaymentRecurrenceDb {
-    Continous,
+    Continuous,
     Retro,
 }
 
@@ -24,7 +24,7 @@ pub enum PaymentKindDb {
 impl From<PaymentRecurrence> for PaymentRecurrenceDb {
     fn from(value: PaymentRecurrence) -> Self {
         match value {
-            PaymentRecurrence::Continous => Self::Continous,
+            PaymentRecurrence::Continuous => Self::Continuous,
             PaymentRecurrence::Retro => Self::Retro,
         }
     }

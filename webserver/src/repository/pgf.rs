@@ -15,7 +15,7 @@ pub struct PgfRepo {
 pub trait PgfRepoTrait {
     fn new(app_state: AppState) -> Self;
 
-    async fn get_pgf_continous_payments(
+    async fn get_pgf_continuous_payments(
         &self,
         page: i64,
     ) -> Result<PaginatedResponseDb<PublicGoodFundingPaymentDb>, String>;
@@ -32,7 +32,7 @@ impl PgfRepoTrait for PgfRepo {
         Self { app_state }
     }
 
-    async fn get_pgf_continous_payments(
+    async fn get_pgf_continuous_payments(
         &self,
         page: i64,
     ) -> Result<PaginatedResponseDb<PublicGoodFundingPaymentDb>, String> {

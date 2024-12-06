@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub enum PaymentRecurrence {
     Retro,
-    Continous,
+    Continuous,
 }
 
 impl From<PaymentRecurrenceDb> for PaymentRecurrence {
     fn from(value: PaymentRecurrenceDb) -> Self {
         match value {
-            PaymentRecurrenceDb::Continous => Self::Continous,
+            PaymentRecurrenceDb::Continuous => Self::Continuous,
             PaymentRecurrenceDb::Retro => Self::Retro,
         }
     }

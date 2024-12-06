@@ -11,7 +11,7 @@ use crate::response::utils::PaginatedResponse;
 use crate::state::common::CommonState;
 
 #[debug_handler]
-pub async fn get_pgf_continous_payments(
+pub async fn get_pgf_continuous_payments(
     _headers: HeaderMap,
     Query(query): Query<PgfQueryParams>,
     State(state): State<CommonState>,

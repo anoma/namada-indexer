@@ -242,7 +242,6 @@ diesel::table! {
         payment_kind -> PaymentKind,
         receipient -> Varchar,
         amount -> Numeric,
-        last_paid_epoch -> Int4,
     }
 }
 

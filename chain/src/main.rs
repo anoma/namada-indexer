@@ -19,6 +19,7 @@ use clap::Parser;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use repository::pgf as namada_pgf_repository;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -165,11 +166,24 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
-    let pgf_receipients =
-        namada_service::get_pgf_receipients(&client, native_token.clone())
-            .await;
-    let addresses = block.addresses_with_balance_change(native_token.clone());
-    let all_balance_changed_addresses = pgf_receipients
+    let addresses = block.addresses_with_balance_change(&native_token);
+
+    let pgf_receipient_addresses = if first_block_in_epoch.eq(&block_height) {
+        conn.interact(move |conn| {
+            namada_pgf_repository::get_pgf_receipients_balance_changes(
+                conn,
+                &native_token,
+            )
+        })
+        .await
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?
+    } else {
+        HashSet::default()
+    };
+
+    let all_balance_changed_addresses = pgf_receipient_addresses
         .union(&addresses)
         .cloned()
         .collect::<HashSet<_>>();

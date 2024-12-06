@@ -90,19 +90,11 @@ async fn crawling_fn(
 
     tracing::info!("Starting to update proposals...");
 
-    let latest_block_height =
-        namada_service::query_latest_block_height(&client)
-            .await
-            .into_rpc_error()?;
-
-    let native_token = namada_service::get_native_token(&client)
-        .await
-        .into_rpc_error()?;
-
-    tracing::info!("Query epoch...");
     let epoch = namada_service::query_last_epoch(&client)
         .await
         .into_rpc_error()?;
+
+    tracing::info!("Fetched epoch is {} ...", epoch);
 
     let running_governance_proposals = conn
         .interact(move |conn| {
@@ -179,7 +171,7 @@ async fn crawling_fn(
                         AddRemove::Add(target) => match target {
                             PGFTarget::Internal(inner) => PgfPayment {
                                 proposal_id: id,
-                                recurrence: PaymentRecurrence::Continous,
+                                recurrence: PaymentRecurrence::Continuous,
                                 kind: PaymentKind::Native,
                                 receipient: Id::from(inner.target),
                                 amount: NamadaAmount::from(inner.amount),
@@ -187,7 +179,7 @@ async fn crawling_fn(
                             },
                             PGFTarget::Ibc(inner) => PgfPayment {
                                 proposal_id: id,
-                                recurrence: PaymentRecurrence::Continous,
+                                recurrence: PaymentRecurrence::Continuous,
                                 kind: PaymentKind::Ibc,
                                 receipient: Id::Account(inner.target),
                                 amount: NamadaAmount::from(inner.amount),
@@ -197,7 +189,7 @@ async fn crawling_fn(
                         AddRemove::Remove(target) => match target {
                             PGFTarget::Internal(inner) => PgfPayment {
                                 proposal_id: id,
-                                recurrence: PaymentRecurrence::Continous,
+                                recurrence: PaymentRecurrence::Continuous,
                                 kind: PaymentKind::Native,
                                 receipient: Id::from(inner.target),
                                 amount: NamadaAmount::from(inner.amount),
@@ -205,7 +197,7 @@ async fn crawling_fn(
                             },
                             PGFTarget::Ibc(inner) => PgfPayment {
                                 proposal_id: id,
-                                recurrence: PaymentRecurrence::Continous,
+                                recurrence: PaymentRecurrence::Continuous,
                                 kind: PaymentKind::Ibc,
                                 receipient: Id::Account(inner.target),
                                 amount: NamadaAmount::from(inner.amount),
@@ -233,12 +225,7 @@ async fn crawling_fn(
                     )?;
                 }
 
-                repository::pgf::update_pgf(
-                    transaction_conn,
-                    pgf_payments,
-                    native_token,
-                    latest_block_height,
-                )?;
+                repository::pgf::update_pgf(transaction_conn, pgf_payments)?;
 
                 repository::crawler_state::upsert_crawler_state(
                     transaction_conn,
