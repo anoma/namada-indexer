@@ -635,6 +635,8 @@ paths:
                       enum: [chain, governance, parameters, pos, rewards, transactions]
                     timestamp:
                       type: number
+                    last_processed_block:
+                      type: number
 
 components:
   schemas:
