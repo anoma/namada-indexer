@@ -26,7 +26,28 @@ impl BlockService {
             .find_block_by_height(height)
             .await
             .map_err(BlockError::Database)?;
-        let block = block.ok_or(BlockError::NotFound(height.to_string()))?;
+        let block = block.ok_or(BlockError::NotFound(
+            "height".to_string(),
+            height.to_string(),
+        ))?;
+
+        Ok(Block::from(block))
+    }
+
+    pub async fn get_block_by_timestamp(
+        &self,
+        timestamp: i64,
+    ) -> Result<Block, BlockError> {
+        let block = self
+            .block_repo
+            .find_block_by_timestamp(timestamp)
+            .await
+            .map_err(BlockError::Database)?;
+
+        let block = block.ok_or(BlockError::NotFound(
+            "timestamp".to_string(),
+            timestamp.to_string(),
+        ))?;
 
         Ok(Block::from(block))
     }

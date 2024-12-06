@@ -118,10 +118,6 @@ impl ApplicationServer {
                     "/chain/inner/:id",
                     get(transaction_handlers::get_inner_tx),
                 )
-                .route(
-                    "/chain/block/:id",
-                    get(block_handlers::get_block_by_height),
-                )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route("/chain/token", get(chain_handlers::get_tokens))
@@ -139,6 +135,14 @@ impl ApplicationServer {
                 )
                 // Server sent events endpoints
                 .route("/chain/status", get(chain_handlers::chain_status))
+                .route(
+                    "/block/height/:height",
+                    get(block_handlers::get_block_by_height),
+                )
+                .route(
+                    "/block/timestamp/:timestamp",
+                    get(block_handlers::get_block_by_timestamp),
+                )
                 .route(
                     "/metrics",
                     get(|| async move { metric_handle.render() }),

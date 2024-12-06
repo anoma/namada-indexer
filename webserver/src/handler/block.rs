@@ -17,3 +17,17 @@ pub async fn get_block_by_height(
 
     Ok(Json(block))
 }
+
+#[debug_handler]
+pub async fn get_block_by_timestamp(
+    _headers: HeaderMap,
+    Path(timestamp): Path<i64>,
+    State(state): State<CommonState>,
+) -> Result<Json<Block>, ApiError> {
+    let block = state
+        .block_service
+        .get_block_by_timestamp(timestamp)
+        .await?;
+
+    Ok(Json(block))
+}

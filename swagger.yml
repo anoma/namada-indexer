@@ -607,7 +607,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InnerTransaction'
-  /api/v1/chain/block/{height}:
+  /api/v1/block/height/{height}:
     get:
       summary: Get the block by height
       parameters:
@@ -617,6 +617,23 @@ paths:
             type: number
           required: true
           description: Block height
+      responses:
+        '200':
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
+  /api/v1/block/timestamp/{timestamp}:
+    get:
+      summary: Get the block by timestamp
+      parameters:
+        - in: path
+          name: timestamp
+          schema:
+            type: number
+          required: true
+          description: Block timestamp
       responses:
         '200':
           description: Block info
