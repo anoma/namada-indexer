@@ -19,10 +19,10 @@ use tower_http::trace::TraceLayer;
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, chain as chain_handlers,
-    crawler_state as crawler_state_handlers, gas as gas_handlers,
-    governance as gov_handlers, pk as pk_handlers, pos as pos_handlers,
-    transaction as transaction_handlers,
+    balance as balance_handlers, block as block_handlers,
+    chain as chain_handlers, crawler_state as crawler_state_handlers,
+    gas as gas_handlers, governance as gov_handlers, pk as pk_handlers,
+    pos as pos_handlers, transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -117,6 +117,10 @@ impl ApplicationServer {
                 .route(
                     "/chain/inner/:id",
                     get(transaction_handlers::get_inner_tx),
+                )
+                .route(
+                    "/chain/block/:id",
+                    get(block_handlers::get_block_by_height),
                 )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))

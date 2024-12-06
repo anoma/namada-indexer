@@ -1,5 +1,6 @@
 pub mod api;
 pub mod balance;
+pub mod block;
 pub mod chain;
 pub mod crawler_state;
 pub mod gas;

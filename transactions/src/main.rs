@@ -15,6 +15,7 @@ use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
+use transactions::repository::block as block_repo;
 use transactions::repository::transactions as transaction_repo;
 use transactions::services::{
     db as db_service, namada as namada_service,
@@ -151,6 +152,8 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                block_repo::insert_block(transaction_conn, block)?;
+
                 transaction_repo::insert_wrapper_transactions(
                     transaction_conn,
                     wrapper_txs,

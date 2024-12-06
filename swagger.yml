@@ -607,6 +607,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InnerTransaction'
+  /api/v1/chain/block/{height}:
+    get:
+      summary: Get the block by height
+      parameters:
+        - in: path
+          name: height
+          schema:
+            type: number
+          required: true
+          description: Block height
+      responses:
+        '200':
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
   /api/v1/crawlers/timestamps:
     get:
       summary: Get timestamps of the last activity of the crawlers
@@ -940,4 +957,12 @@ components:
         memo:
           type: string
         data:
+          type: string
+    Block:
+      type: object
+      required: [height, timestamp]
+      properties:
+        height:
+          type: string
+        timestamp:
           type: string
