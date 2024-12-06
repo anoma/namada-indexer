@@ -58,7 +58,7 @@ impl From<TransactionKind> for TransactionKindDb {
             TransactionKind::BecomeValidator(_) => {
                 TransactionKindDb::BecomeValidator
             }
-            TransactionKind::Unknown => TransactionKindDb::Unknown,
+            TransactionKind::Unknown(_) => TransactionKindDb::Unknown,
         }
     }
 }
