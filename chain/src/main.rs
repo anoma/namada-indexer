@@ -80,19 +80,37 @@ async fn main() -> Result<(), MainError> {
             )
             .await;
 
-            // Start from initial_query if we got an RpcError
-            if matches!(crawl_result, Err(MainError::RpcError)) {
-                tracing::info!(
-                    "Failed to query block {}, starting from initial_query...",
-                    crawler_state.last_processed_block
-                );
-                None
-            } else {
-                tracing::info!(
-                        "Initial crawl did not have an RPC error, continuing from block {}...",
+            match crawl_result {
+                Err(MainError::RpcError) => {
+                    // If there was an RpcError, it likely means the block was pruned from the node.
+                    // We need to do an initial_query in that case.
+                    tracing::error!(
+                        "Failed to query block {}, starting from initial_query ...",
+                        crawler_state.last_processed_block,
+                    );
+                    None
+                }
+                Err(_) => {
+                    // If any other type of error occurred, we should not increment
+                    // last_processed_block but crawl from there without initial_query
+                    tracing::info!(
+                        "Initial crawl had an error (not RpcError), continuing from block {}...",
                         crawler_state.last_processed_block
                     );
-                Some(crawler_state)
+                    Some(crawler_state)
+                }
+                Ok(_) => {
+                    // If the crawl was successful, increment last_processed block and continue from there.
+                    let next_block = crawler_state.last_processed_block + 1;
+                    tracing::info!(
+                        "Initial crawl was successful, continuing from block {}...",
+                        next_block
+                    );
+                    Some(ChainCrawlerState {
+                        last_processed_block: next_block,
+                        ..crawler_state
+                    })
+                }
             }
         }
         None => {
