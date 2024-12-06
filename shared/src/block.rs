@@ -339,7 +339,7 @@ impl Block {
     // TODO: move this and process_inner_tx_for_balance to a separate module
     pub fn addresses_with_balance_change(
         &self,
-        native_token: Id,
+        native_token: &Id,
     ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
@@ -347,7 +347,7 @@ impl Block {
                 let mut balance_changes: Vec<BalanceChange> = inners_txs
                     .iter()
                     .filter_map(|tx| {
-                        self.process_inner_tx_for_balance(tx, &native_token)
+                        self.process_inner_tx_for_balance(tx, native_token)
                     })
                     .flatten()
                     .collect();
