@@ -27,6 +27,7 @@ deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
 tokio-retry.workspace = true
+serde_json.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

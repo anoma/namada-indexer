@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::convert::identity;
 use std::sync::Arc;
 
@@ -18,6 +19,7 @@ use clap::Parser;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use repository::pgf as namada_pgf_repository;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -231,17 +233,36 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
-    let addresses = block.addresses_with_balance_change(native_token);
+    let addresses = block.addresses_with_balance_change(&native_token);
 
-    let balances =
-        namada_service::query_balance(&client, &addresses, block_height)
-            .await
-            .into_rpc_error()?;
-    tracing::debug!(
-        block = block_height,
-        "Updating balance for {} addresses...",
-        addresses.len()
-    );
+    let pgf_receipient_addresses = if first_block_in_epoch.eq(&block_height) {
+        conn.interact(move |conn| {
+            namada_pgf_repository::get_pgf_receipients_balance_changes(
+                conn,
+                &native_token,
+            )
+        })
+        .await
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?
+    } else {
+        HashSet::default()
+    };
+
+    let all_balance_changed_addresses = pgf_receipient_addresses
+        .union(&addresses)
+        .cloned()
+        .collect::<HashSet<_>>();
+
+    let balances = namada_service::query_balance(
+        &client,
+        &all_balance_changed_addresses,
+        block_height,
+    )
+    .await
+    .into_rpc_error()?;
+    tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =
         namada_service::query_next_governance_id(&client, block_height)

@@ -24,7 +24,6 @@ format_macro_matchers = true
 format_strings = true
 group_imports = "StdExternalCrate"
 hard_tabs = false
-show_parse_errors = true
 ignore = []
 imports_granularity = "Module"
 imports_indent = "Block"

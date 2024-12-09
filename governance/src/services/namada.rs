@@ -1,16 +1,36 @@
 use anyhow::Context;
 use futures::StreamExt;
+use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
-use shared::block::Epoch;
+use shared::block::{BlockHeight, Epoch};
+use shared::id::Id;
 use shared::proposal::{GovernanceProposalResult, GovernanceProposalStatus};
 use shared::utils::GovernanceProposalShort;
 use tendermint_rpc::HttpClient;
+
+pub async fn query_latest_block_height(
+    client: &HttpClient,
+) -> anyhow::Result<BlockHeight> {
+    let block = rpc::query_block(client)
+        .await
+        .with_context(|| "Failed to query Namada's epoch epoch".to_string())?;
+    Ok(block.map(|block| block.height.0 as u32).unwrap_or(0_u32))
+}
 
 pub async fn query_last_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
     let epoch = rpc::query_epoch(client)
         .await
         .with_context(|| "Failed to query Namada's epoch epoch".to_string())?;
     Ok(epoch.0 as Epoch)
+}
+
+pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
+    let native_token = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+    Ok(Id::from(native_token))
 }
 
 pub async fn get_governance_proposals_updates(
