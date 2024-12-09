@@ -86,12 +86,16 @@ async fn crawling_fn(
     .await
     .into_rpc_error()?;
 
-    let complete_validators_set = validators_set.union(missing_validator_set);
+    let complete_validators_set = validators_set.union(&missing_validator_set);
 
     tracing::info!(
-        "Processing epoch {} with {} validators...",
+        "Processing epoch {} with {} validators in the consensus set and {} \
+         missing (total {})...",
         epoch_to_process,
+        validators_set.validators.len(),
+        missing_validator_set.validators.len(),
         validators_set.validators.len()
+            + missing_validator_set.validators.len()
     );
 
     let timestamp = DateTimeUtc::now().0.timestamp();

@@ -44,7 +44,7 @@ pub struct ValidatorSet {
 }
 
 impl ValidatorSet {
-    pub fn union(&self, validator_set: ValidatorSet) -> Self {
+    pub fn union(&self, validator_set: &ValidatorSet) -> Self {
         ValidatorSet {
             validators: self
                 .validators
