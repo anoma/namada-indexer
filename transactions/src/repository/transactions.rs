@@ -18,6 +18,15 @@ pub fn insert_inner_transactions(
                 .map(InnerTransactionInsertDb::from)
                 .collect::<Vec<_>>(),
         )
+        .on_conflict(inner_transactions::id)
+        .do_update()
+        .set((
+            // Allow updating transactions kind + data so that if the indexer is updated with
+            // new transaction type support, we can easily go back & reindex any old transactions
+            // that were previously marked as "unknown".
+            inner_transactions::kind.eq(excluded(inner_transactions::kind)),
+            inner_transactions::data.eq(excluded(inner_transactions::data)),
+        ))
         .execute(transaction_conn)
         .context("Failed to insert inner transactions in db")?;
 
@@ -34,6 +43,7 @@ pub fn insert_wrapper_transactions(
                 .map(WrapperTransactionInsertDb::from)
                 .collect::<Vec<_>>(),
         )
+        .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to insert wrapper transactions in db")?;
 
