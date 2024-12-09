@@ -1,13 +1,13 @@
-//
-// The TupleLen trait allows compile-time checking of the length of a tuple. This is useful for
-// statically determining the number of columns in a diesel schema table.
+// The TupleLen trait allows compile-time checking of the length of a tuple.
+// This is useful for statically determining the number of columns in a diesel
+// schema table.
 //
 // Use it like this:
 //
 // let num_columns = orm::schema::(table_name)::all_columns.len();
 //
-// If you need to support tuples with more than 12 elements, you can add more type parameters to
-// the tuple! macro invocation at the bottom of this file.
+// If you need to support tuples with more than 12 elements, you can add more
+// type parameters to the tuple! macro invocation at the bottom of this file.
 //
 
 pub trait TupleLen {

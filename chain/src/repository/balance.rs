@@ -6,7 +6,8 @@ use orm::token::{IbcTokenInsertDb, TokenInsertDb};
 use shared::balance::Balances;
 use shared::token::Token;
 use shared::tuple_len::TupleLen;
-pub const MAX_PARAM_SIZE: u16 = u16::MAX;
+
+use super::utils::MAX_PARAM_SIZE;
 
 pub fn insert_balances(
     transaction_conn: &mut PgConnection,
@@ -14,11 +15,8 @@ pub fn insert_balances(
 ) -> anyhow::Result<()> {
     let balances_col_count = balance_changes::all_columns.len() as i64;
 
-    for chunk in balances
-        // We have to divide MAX_PARAM_SIZE by the number of columns in the
-        // balances table to get the correct number of rows in the
-        // chunk.
-        .chunks((MAX_PARAM_SIZE as i64 / balances_col_count) as usize)
+    for chunk in
+        balances.chunks((MAX_PARAM_SIZE as i64 / balances_col_count) as usize)
     {
         diesel::insert_into(balance_changes::table)
             .values::<&Vec<BalanceChangesInsertDb>>(
