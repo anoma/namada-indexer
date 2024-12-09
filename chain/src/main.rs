@@ -142,7 +142,7 @@ async fn crawling_fn(
             .into_rpc_error()?;
 
     let block = Block::from(
-        tm_block_response,
+        &tm_block_response,
         &block_results,
         checksums,
         epoch,
@@ -308,6 +308,12 @@ async fn crawling_fn(
                 repository::balance::insert_tokens(
                     transaction_conn,
                     ibc_tokens,
+                )?;
+
+                repository::block::upsert_block(
+                    transaction_conn,
+                    block,
+                    tm_block_response,
                 )?;
 
                 repository::balance::insert_balances(

@@ -102,6 +102,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    blocks (height) {
+        height -> Int4,
+        #[max_length = 64]
+        hash -> Varchar,
+        #[max_length = 64]
+        app_hash -> Varchar,
+        timestamp -> Timestamp,
+        proposer -> Varchar,
+        epoch -> Int4,
+    }
+}
+
+diesel::table! {
     bonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -305,6 +318,7 @@ diesel::joinable!(unbonds -> validators (validator_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balance_changes,
+    blocks,
     bonds,
     chain_parameters,
     crawler_state,
