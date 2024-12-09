@@ -12,7 +12,7 @@ pub struct AppConfig {
     pub port: u16,
 
     #[clap(long, env)]
-    pub cache_url: String,
+    pub cache_url: Option<String>,
 
     #[clap(long, env)]
     pub database_url: String,
