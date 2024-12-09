@@ -7,9 +7,7 @@ use webserver::config::AppConfig;
 async fn main() -> anyhow::Result<()> {
     let config = AppConfig::parse();
 
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    config.log.init();
 
     ApplicationServer::serve(config)
         .await

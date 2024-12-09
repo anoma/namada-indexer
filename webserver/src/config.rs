@@ -1,3 +1,5 @@
+use shared::log_config::LogConfig;
+
 #[derive(clap::ValueEnum, Clone, Debug, Copy)]
 pub enum CargoEnv {
     Development,
@@ -10,7 +12,7 @@ pub struct AppConfig {
     pub port: u16,
 
     #[clap(long, env)]
-    pub cache_url: String,
+    pub cache_url: Option<String>,
 
     #[clap(long, env)]
     pub database_url: String,
@@ -20,4 +22,7 @@ pub struct AppConfig {
 
     #[clap(long, env)]
     pub tendermint_url: String,
+
+    #[clap(flatten)]
+    pub log: LogConfig,
 }
