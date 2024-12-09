@@ -4,6 +4,10 @@ A set of microservices that crawler data from a namada node, store them in a pos
 
 > 🔧 This is currently being worked on. Don't expect things to work! 🔧
 
+# Namadillo integration
+
+When using this project as a backend for [Namadillo](https://github.com/anoma/namada-interface), always checkout the latest tag, as the `main` branch could have an incompatible set of APIs.
+
 ## Architecture
 
 The indexer is composed of a set microservices and a webserver, each one of these lives in his own crate. Each microservice is responsible of indexing some data from the chain and store them in the postgres database. Right now, there are 4 microservices:
