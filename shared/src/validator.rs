@@ -43,6 +43,19 @@ pub struct ValidatorSet {
     pub epoch: Epoch,
 }
 
+impl ValidatorSet {
+    pub fn union(&self, validator_set: &ValidatorSet) -> Self {
+        ValidatorSet {
+            validators: self
+                .validators
+                .union(&validator_set.validators)
+                .cloned()
+                .collect::<HashSet<Validator>>(),
+            epoch: self.epoch,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Validator {
     pub address: Id,
