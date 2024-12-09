@@ -10,6 +10,8 @@ pub enum GovernanceError {
     TooShortPattern(usize),
     #[error("Proposal {0} not found")]
     NotFound(u64),
+    #[error("Proposal {0} has no associated data")]
+    DataNotFound(u64),
     #[error("Database error: {0}")]
     Database(String),
     #[error("Unknown error: {0}")]
@@ -21,6 +23,7 @@ impl IntoResponse for GovernanceError {
         let status_code = match self {
             GovernanceError::TooShortPattern(_) => StatusCode::BAD_REQUEST,
             GovernanceError::NotFound(_) => StatusCode::NOT_FOUND,
+            GovernanceError::DataNotFound(_) => StatusCode::NOT_FOUND,
             GovernanceError::Unknown(_) | GovernanceError::Database(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
