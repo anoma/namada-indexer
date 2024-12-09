@@ -1,4 +1,5 @@
 pub mod balances;
+pub mod blocks;
 pub mod bond;
 pub mod crawler_state;
 pub mod gas;

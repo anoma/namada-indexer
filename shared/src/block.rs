@@ -107,7 +107,7 @@ pub struct Block {
 
 impl Block {
     pub fn from(
-        block_response: TendermintBlockResponse,
+        block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
         checksums: Checksums,
         epoch: Epoch,
@@ -145,7 +145,7 @@ impl Block {
                     .to_string()
                     .to_lowercase(),
                 timestamp: block_response.block.header.time.to_string(),
-                app_hash: Id::from(block_response.block.header.app_hash),
+                app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
             epoch,
