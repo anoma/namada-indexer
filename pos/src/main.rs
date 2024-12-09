@@ -72,6 +72,22 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
+    let missing_validators =
+        namada_service::get_missing_validators_state_from_db(
+            &conn,
+            validators_set.validators.clone(),
+        )
+        .await;
+    let missing_validator_set = namada_service::get_validators_state(
+        &client,
+        missing_validators,
+        epoch_to_process,
+    )
+    .await
+    .into_rpc_error()?;
+
+    let complete_validators_set = validators_set.union(missing_validator_set);
+
     tracing::info!(
         "Processing epoch {} with {} validators...",
         epoch_to_process,
@@ -90,7 +106,7 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
-                let validators_dbo = &validators_set
+                let validators_dbo = &complete_validators_set
                     .validators
                     .into_iter()
                     .map(ValidatorInsertDb::from_validator)
