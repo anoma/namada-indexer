@@ -140,8 +140,8 @@ jobs:
             prefix=${{ matrix.docker.image }}
             suffix=
           tags: |
-            type=ref,event=branch,prefix=${{ matrix.docker.image }}
-            type=ref,event=pr,prefix=${{ matrix.docker.image }}
+            type=ref,event=branch,prefix=${{ matrix.docker.image }}-branch-
+            type=ref,event=pr,prefix=${{ matrix.docker.image }}-pr-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
