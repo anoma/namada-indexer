@@ -12,6 +12,7 @@ pub mod header;
 pub mod id;
 pub mod log_config;
 pub mod parameters;
+pub mod pgf;
 pub mod proposal;
 pub mod public_key;
 pub mod rewards;
