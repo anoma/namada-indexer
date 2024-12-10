@@ -162,7 +162,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   can_enqueue:
-    needs: [clippy, format, build, validate-swagger]
+    needs: [clippy, format, docker, validate-swagger]
     if: always() && github.event_name != 'merge_group'
     permissions:
       actions: read
