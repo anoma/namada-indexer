@@ -29,6 +29,9 @@ pub enum TransactionKind {
     RevealPk,
     IbcMsgTransfer,
     BecomeValidator,
+    DeactivateValidator,
+    ReactivateValidator,
+    UnjailValidator,
     Unknown,
 }
 
@@ -90,39 +93,26 @@ impl From<TransactionResultDb> for TransactionResult {
 impl From<TransactionKindDb> for TransactionKind {
     fn from(value: TransactionKindDb) -> Self {
         match value {
-            TransactionKindDb::TransparentTransfer => {
-                TransactionKind::TransparentTransfer
-            }
-            TransactionKindDb::ShieldedTransfer => {
-                TransactionKind::ShieldedTransfer
-            }
-            TransactionKindDb::ShieldingTransfer => {
-                TransactionKind::ShieldingTransfer
-            }
-            TransactionKindDb::UnshieldingTransfer => {
-                TransactionKind::UnshieldingTransfer
-            }
-            TransactionKindDb::Bond => TransactionKind::Bond,
-            TransactionKindDb::Redelegation => TransactionKind::Redelegation,
-            TransactionKindDb::Unbond => TransactionKind::Unbond,
-            TransactionKindDb::Withdraw => TransactionKind::Withdraw,
-            TransactionKindDb::ClaimRewards => TransactionKind::ClaimRewards,
-            TransactionKindDb::VoteProposal => TransactionKind::VoteProposal,
-            TransactionKindDb::InitProposal => TransactionKind::InitProposal,
-            TransactionKindDb::ChangeMetadata => {
-                TransactionKind::ChangeMetadata
-            }
-            TransactionKindDb::ChangeCommission => {
-                TransactionKind::ChangeCommission
-            }
-            TransactionKindDb::RevealPk => TransactionKind::RevealPk,
-            TransactionKindDb::Unknown => TransactionKind::Unknown,
-            TransactionKindDb::IbcMsgTransfer => {
-                TransactionKind::IbcMsgTransfer
-            }
-            TransactionKindDb::BecomeValidator => {
-                TransactionKind::BecomeValidator
-            }
+            TransactionKindDb::TransparentTransfer => Self::TransparentTransfer,
+            TransactionKindDb::ShieldedTransfer => Self::ShieldedTransfer,
+            TransactionKindDb::ShieldingTransfer => Self::ShieldingTransfer,
+            TransactionKindDb::UnshieldingTransfer => Self::UnshieldingTransfer,
+            TransactionKindDb::Bond => Self::Bond,
+            TransactionKindDb::Redelegation => Self::Redelegation,
+            TransactionKindDb::Unbond => Self::Unbond,
+            TransactionKindDb::Withdraw => Self::Withdraw,
+            TransactionKindDb::ClaimRewards => Self::ClaimRewards,
+            TransactionKindDb::VoteProposal => Self::VoteProposal,
+            TransactionKindDb::InitProposal => Self::InitProposal,
+            TransactionKindDb::ChangeMetadata => Self::ChangeMetadata,
+            TransactionKindDb::ChangeCommission => Self::ChangeCommission,
+            TransactionKindDb::RevealPk => Self::RevealPk,
+            TransactionKindDb::Unknown => Self::Unknown,
+            TransactionKindDb::IbcMsgTransfer => Self::IbcMsgTransfer,
+            TransactionKindDb::BecomeValidator => Self::BecomeValidator,
+            TransactionKindDb::ReactivateValidator => Self::ReactivateValidator,
+            TransactionKindDb::DeactivateValidator => Self::DeactivateValidator,
+            TransactionKindDb::UnjailValidator => Self::UnjailValidator,
         }
     }
 }

@@ -51,6 +51,7 @@ pub enum TransactionKind {
     BecomeValidator(Option<Box<BecomeValidator>>),
     ReactivateValidator(Option<Address>),
     DeactivateValidator(Option<Address>),
+    UnjailValidator(Option<Address>),
     Unknown,
 }
 
@@ -181,6 +182,14 @@ impl TransactionKind {
                     None
                 };
                 TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
+            }
+            "tx_unjail_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::UnjailValidator(data)
             }
             "tx_become_validator" => {
                 let data =
