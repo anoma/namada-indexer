@@ -3,6 +3,8 @@ name: Check Stuff 👨‍🔧
 on:
   merge_group:
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -138,10 +140,8 @@ jobs:
             prefix=${{ matrix.docker.image }}
             suffix=
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch,prefix=${{ matrix.docker.image }}
+            type=ref,event=pr,prefix=${{ matrix.docker.image }}
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -154,7 +154,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: PACKAGE=${{matrix.docker.package}}
+          build-args: PACKAGE=${{ matrix.docker.package }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
