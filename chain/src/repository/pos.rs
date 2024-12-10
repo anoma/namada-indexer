@@ -10,14 +10,17 @@ use orm::bond::BondInsertDb;
 use orm::schema::{bonds, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondInsertDb;
 use orm::validators::{
-    ValidatorDb, ValidatorUpdateMetadataDb, ValidatorWithMetaInsertDb,
+    ValidatorDb, ValidatorStateChangeDb, ValidatorStateDb,
+    ValidatorUpdateMetadataDb, ValidatorWithMetaInsertDb,
 };
 use shared::block::Epoch;
 use shared::bond::Bonds;
 use shared::id::Id;
 use shared::tuple_len::TupleLen;
 use shared::unbond::{UnbondAddresses, Unbonds};
-use shared::validator::{ValidatorMetadataChange, ValidatorSet};
+use shared::validator::{
+    ValidatorMetadataChange, ValidatorSet, ValidatorStateChange,
+};
 
 use super::utils::MAX_PARAM_SIZE;
 
@@ -248,6 +251,31 @@ pub fn update_validator_metadata(
             .context("Failed to update validator metadata in db")?;
     }
     anyhow::Ok(())
+}
+
+pub fn upsert_validator_state(
+    transaction_conn: &mut PgConnection,
+    validators_states: HashSet<ValidatorStateChange>,
+) -> anyhow::Result<()> {
+    let validator_state_change_db = &validators_states
+        .into_iter()
+        .map(|change| ValidatorStateChangeDb {
+            namada_address: change.address.to_string(),
+            state: ValidatorStateDb::from(change.state),
+        })
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(validators::table)
+        .values::<&Vec<ValidatorStateChangeDb>>(validator_state_change_db)
+        .on_conflict(validators::columns::namada_address)
+        .do_update()
+        .set((
+            validators::columns::state.eq(excluded(validators::columns::state)),
+        ))
+        .execute(transaction_conn)
+        .context("Failed to update validators in db")?;
+
+    Ok(())
 }
 
 pub fn upsert_validators(

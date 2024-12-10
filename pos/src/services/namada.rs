@@ -166,7 +166,10 @@ pub async fn get_missing_validators_state_from_db(
                 ValidatorStateDb::BelowThreshold => {
                     ValidatorState::BelowThreshold
                 }
+                ValidatorStateDb::Deactivating => ValidatorState::Deactivating,
+                ValidatorStateDb::Reactivating => ValidatorState::Reactivating,
                 ValidatorStateDb::Inactive => ValidatorState::Inactive,
+                ValidatorStateDb::Unjailing => ValidatorState::Unjailing,
                 ValidatorStateDb::Jailed => ValidatorState::Jailed,
                 ValidatorStateDb::Unknown => ValidatorState::Unknown,
             },
