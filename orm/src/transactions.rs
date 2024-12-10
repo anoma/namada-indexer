@@ -26,6 +26,8 @@ pub enum TransactionKindDb {
     ChangeCommission,
     RevealPk,
     BecomeValidator,
+    ReactivateValidator,
+    DeactivateValidator,
     Unknown,
 }
 
@@ -54,6 +56,8 @@ impl From<TransactionKind> for TransactionKindDb {
             TransactionKind::CommissionChange(_) => {
                 TransactionKindDb::ChangeCommission
             }
+            TransactionKind::DeactivateValidator(_) => TransactionKindDb::DeactivateValidator,
+            TransactionKind::ReactivateValidator(_) => TransactionKindDb::ReactivateValidator,
             TransactionKind::RevealPk(_) => TransactionKindDb::RevealPk,
             TransactionKind::BecomeValidator(_) => {
                 TransactionKindDb::BecomeValidator
