@@ -39,3 +39,18 @@ impl From<(Block, TendermintBlockResponse)> for BlockInsertDb {
         }
     }
 }
+
+impl BlockInsertDb {
+    pub fn fake(height: i32) -> Self {
+        Self {
+            height,
+            hash: height.to_string(), // fake hash but ensures uniqueness with height
+            app_hash: "fake_app_hash".to_string(), // doesn't require uniqueness
+            timestamp: chrono::DateTime::from_timestamp(0, 0)
+                .unwrap()
+                .naive_utc(),
+            proposer: "fake_proposer".to_string(),
+            epoch: 0,
+        }
+    }
+}
