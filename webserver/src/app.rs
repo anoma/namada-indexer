@@ -138,10 +138,6 @@ impl ApplicationServer {
                     get(pgf_service::get_pgf_payment_by_proposal_id),
                 )
                 .route(
-                    "/chain/epoch/latest",
-                    get(chain_handlers::get_last_processed_epoch),
-                )
-                .route(
                     "/crawlers/timestamps",
                     get(crawler_state_handlers::get_crawlers_timestamps),
                 )
