@@ -18,6 +18,9 @@ pub enum ValidatorState {
     BelowThreshold,
     Inactive,
     Jailed,
+    Deactivating,
+    Reactivating,
+    Unjailing,
     Unknown,
 }
 
@@ -81,6 +84,12 @@ pub struct ValidatorMetadataChange {
     pub website: Option<String>,
     pub discord_handler: Option<String>,
     pub avatar: Option<String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct ValidatorStateChange {
+    pub address: Id,
+    pub state: ValidatorState,
 }
 
 impl Validator {

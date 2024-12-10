@@ -69,9 +69,10 @@ async fn main() -> Result<(), MainError> {
     {
         Some(crawler_state) => {
             tracing::info!(
-                    "Found chain crawler state, attempting initial crawl at block {}...",
-                    crawler_state.last_processed_block
-                );
+                "Found chain crawler state, attempting initial crawl at block \
+                 {}...",
+                crawler_state.last_processed_block
+            );
 
             // Try to run crawler_fn with the last processed block
             let crawl_result = crawling_fn(
@@ -84,28 +85,34 @@ async fn main() -> Result<(), MainError> {
 
             match crawl_result {
                 Err(MainError::RpcError) => {
-                    // If there was an RpcError, it likely means the block was pruned from the node.
-                    // We need to do an initial_query in that case.
+                    // If there was an RpcError, it likely means the block was
+                    // pruned from the node. We need to do
+                    // an initial_query in that case.
                     tracing::error!(
-                        "Failed to query block {}, starting from initial_query ...",
+                        "Failed to query block {}, starting from \
+                         initial_query ...",
                         crawler_state.last_processed_block,
                     );
                     None
                 }
                 Err(_) => {
-                    // If any other type of error occurred, we should not increment
-                    // last_processed_block but crawl from there without initial_query
+                    // If any other type of error occurred, we should not
+                    // increment last_processed_block but
+                    // crawl from there without initial_query
                     tracing::info!(
-                        "Initial crawl had an error (not RpcError), continuing from block {}...",
+                        "Initial crawl had an error (not RpcError), \
+                         continuing from block {}...",
                         crawler_state.last_processed_block
                     );
                     Some(crawler_state)
                 }
                 Ok(_) => {
-                    // If the crawl was successful, increment last_processed block and continue from there.
+                    // If the crawl was successful, increment last_processed
+                    // block and continue from there.
                     let next_block = crawler_state.last_processed_block + 1;
                     tracing::info!(
-                        "Initial crawl was successful, continuing from block {}...",
+                        "Initial crawl was successful, continuing from block \
+                         {}...",
                         next_block
                     );
                     Some(ChainCrawlerState {
@@ -288,11 +295,14 @@ async fn crawling_fn(
         proposals_votes.len()
     );
 
-    let validators = block.validators();
+    let validators = block.new_validators();
     let validator_set = ValidatorSet {
         validators: validators.clone(),
         epoch,
     };
+
+    let validators_state_change = block.update_validators_state();
+    tracing::info!("{:?}", validators_state_change);
 
     let addresses = block.bond_addresses();
     let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
@@ -390,6 +400,11 @@ async fn crawling_fn(
                 repository::pos::upsert_validators(
                     transaction_conn,
                     validator_set,
+                )?;
+
+                repository::pos::upsert_validator_state(
+                    transaction_conn,
+                    validators_state_change,
                 )?;
 
                 // We first remove all the bonds and then insert the new ones

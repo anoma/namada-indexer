@@ -1,18 +1,14 @@
 use std::collections::HashSet;
 
 use anyhow::Context;
-use deadpool_diesel::postgres::Object;
 use futures::{StreamExt, TryStreamExt};
 use namada_core::chain::Epoch as NamadaSdkEpoch;
 use namada_sdk::address::Address;
 use namada_sdk::rpc;
-use orm::validators::ValidatorStateDb;
 use shared::block::Epoch;
 use shared::id::Id;
 use shared::validator::{Validator, ValidatorSet, ValidatorState};
 use tendermint_rpc::HttpClient;
-
-use crate::repository::pos::get_missing_validators;
 
 pub async fn get_validator_set_at_epoch(
     client: &HttpClient,
@@ -115,12 +111,35 @@ pub async fn get_validators_state(
             .with_context(|| {
                 format!("Failed to query validator {validator_address} state")
             })?;
+
             let validator_state = validator_state
                 .0
                 .map(ValidatorState::from)
                 .unwrap_or(ValidatorState::Unknown);
 
-            validator.state = validator_state;
+            let from_unjailing_state =
+                validator.state.eq(&ValidatorState::Unjailing)
+                    && !validator_state.eq(&ValidatorState::Jailed);
+            let from_deactivating_state =
+                validator.state.eq(&ValidatorState::Deactivating)
+                    && validator_state.eq(&ValidatorState::Inactive);
+            let from_reactivating_state =
+                validator.state.eq(&ValidatorState::Reactivating)
+                    && !validator_state.eq(&ValidatorState::Inactive);
+            let from_concrete_state = ![
+                ValidatorState::Deactivating,
+                ValidatorState::Reactivating,
+                ValidatorState::Unjailing,
+            ]
+            .contains(&validator.state);
+
+            if from_unjailing_state
+                || from_deactivating_state
+                || from_reactivating_state
+                || from_concrete_state
+            {
+                validator.state = validator_state;
+            }
 
             anyhow::Ok(validator)
         })
@@ -137,41 +156,6 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
         .context("Failed to query Namada's current epoch")?;
 
     Ok(epoch.0 as Epoch)
-}
-
-pub async fn get_missing_validators_state_from_db(
-    conn: &Object,
-    validators: HashSet<Validator>,
-) -> Vec<Validator> {
-    get_missing_validators(conn, validators)
-        .await
-        .unwrap_or_default()
-        .into_iter()
-        .map(|validator| Validator {
-            address: Id::Account(validator.namada_address),
-            voting_power: validator.voting_power.to_string(),
-            max_commission: validator.max_commission,
-            commission: validator.commission,
-            name: validator.name,
-            email: validator.email,
-            description: validator.description,
-            website: validator.website,
-            discord_handler: validator.discord_handle,
-            avatar: validator.avatar,
-            state: match validator.state {
-                ValidatorStateDb::Consensus => ValidatorState::Consensus,
-                ValidatorStateDb::BelowCapacity => {
-                    ValidatorState::BelowCapacity
-                }
-                ValidatorStateDb::BelowThreshold => {
-                    ValidatorState::BelowThreshold
-                }
-                ValidatorStateDb::Inactive => ValidatorState::Inactive,
-                ValidatorStateDb::Jailed => ValidatorState::Jailed,
-                ValidatorStateDb::Unknown => ValidatorState::Unknown,
-            },
-        })
-        .collect()
 }
 
 fn to_epoch(epoch: u32) -> NamadaSdkEpoch {

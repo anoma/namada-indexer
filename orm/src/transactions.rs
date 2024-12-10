@@ -28,6 +28,7 @@ pub enum TransactionKindDb {
     BecomeValidator,
     ReactivateValidator,
     DeactivateValidator,
+    UnjailValidator,
     Unknown,
 }
 
@@ -35,34 +36,29 @@ impl From<TransactionKind> for TransactionKindDb {
     fn from(value: TransactionKind) -> Self {
         match value {
             TransactionKind::TransparentTransfer(_) => {
-                TransactionKindDb::TransparentTransfer
+                Self::TransparentTransfer
             }
-            TransactionKind::ShieldedTransfer(_) => {
-                TransactionKindDb::ShieldedTransfer
+            TransactionKind::ShieldedTransfer(_) => Self::ShieldedTransfer,
+            TransactionKind::IbcMsgTransfer(_) => Self::IbcMsgTransfer,
+            TransactionKind::Bond(_) => Self::Bond,
+            TransactionKind::Redelegation(_) => Self::Redelegation,
+            TransactionKind::Unbond(_) => Self::Unbond,
+            TransactionKind::Withdraw(_) => Self::Withdraw,
+            TransactionKind::ClaimRewards(_) => Self::ClaimRewards,
+            TransactionKind::ProposalVote(_) => Self::VoteProposal,
+            TransactionKind::InitProposal(_) => Self::InitProposal,
+            TransactionKind::MetadataChange(_) => Self::ChangeMetadata,
+            TransactionKind::CommissionChange(_) => Self::ChangeCommission,
+            TransactionKind::DeactivateValidator(_) => {
+                Self::DeactivateValidator
             }
-            TransactionKind::IbcMsgTransfer(_) => {
-                TransactionKindDb::IbcMsgTransfer
+            TransactionKind::ReactivateValidator(_) => {
+                Self::ReactivateValidator
             }
-            TransactionKind::Bond(_) => TransactionKindDb::Bond,
-            TransactionKind::Redelegation(_) => TransactionKindDb::Redelegation,
-            TransactionKind::Unbond(_) => TransactionKindDb::Unbond,
-            TransactionKind::Withdraw(_) => TransactionKindDb::Withdraw,
-            TransactionKind::ClaimRewards(_) => TransactionKindDb::ClaimRewards,
-            TransactionKind::ProposalVote(_) => TransactionKindDb::VoteProposal,
-            TransactionKind::InitProposal(_) => TransactionKindDb::InitProposal,
-            TransactionKind::MetadataChange(_) => {
-                TransactionKindDb::ChangeMetadata
-            }
-            TransactionKind::CommissionChange(_) => {
-                TransactionKindDb::ChangeCommission
-            }
-            TransactionKind::DeactivateValidator(_) => TransactionKindDb::DeactivateValidator,
-            TransactionKind::ReactivateValidator(_) => TransactionKindDb::ReactivateValidator,
-            TransactionKind::RevealPk(_) => TransactionKindDb::RevealPk,
-            TransactionKind::BecomeValidator(_) => {
-                TransactionKindDb::BecomeValidator
-            }
-            TransactionKind::Unknown(_) => TransactionKindDb::Unknown,
+            TransactionKind::RevealPk(_) => Self::RevealPk,
+            TransactionKind::BecomeValidator(_) => Self::BecomeValidator,
+            TransactionKind::UnjailValidator(_) => Self::UnjailValidator,
+            TransactionKind::Unknown(_) => Self::Unknown,
         }
     }
 }
