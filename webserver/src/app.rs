@@ -10,20 +10,19 @@ use axum_prometheus::PrometheusMetricLayer;
 use lazy_static::lazy_static;
 use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
-use tower::ServiceBuilder;
 use tower::buffer::BufferLayer;
 use tower::limit::RateLimitLayer;
+use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, block as block_handlers,
-    chain as chain_handlers, crawler_state as crawler_state_handlers,
-    gas as gas_handlers, governance as gov_handlers, ibc as ibc_handler,
-    pk as pk_handlers, pos as pos_handlers,
-    transaction as transaction_handlers,
+    balance as balance_handlers, chain as chain_handlers,
+    crawler_state as crawler_state_handlers, gas as gas_handlers,
+    governance as gov_handlers, pgf as pgf_service, pk as pk_handlers,
+    pos as pos_handlers, transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -140,6 +139,14 @@ impl ApplicationServer {
                     get(chain_handlers::get_last_processed_epoch),
                 )
                 .route("/ibc/:tx_id/status", get(ibc_handler::get_ibc_status))
+                .route(
+                    "/pgf/payments",
+                    get(pgf_service::get_pgf_continuous_payments),
+                )
+                .route(
+                    "/pgf/paymenents/:proposal_id",
+                    get(pgf_service::get_pgf_payment_by_proposal_id),
+                )
                 .route(
                     "/crawlers/timestamps",
                     get(crawler_state_handlers::get_crawlers_timestamps),

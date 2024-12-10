@@ -256,12 +256,6 @@ pub struct MaspSectionData {
 }
 
 #[derive(Debug, Clone)]
-pub struct Transaction2 {
-    pub wrapper: WrapperTransaction,
-    pub inners: InnerTransaction,
-}
-
-#[derive(Debug, Clone)]
 pub struct WrapperTransaction {
     pub tx_id: Id,
     pub index: usize,

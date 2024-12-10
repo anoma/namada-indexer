@@ -10,6 +10,7 @@ pub mod helpers;
 pub mod ibc;
 pub mod migrations;
 pub mod parameters;
+pub mod pgf;
 pub mod pos_rewards;
 pub mod revealed_pk;
 pub mod schema;

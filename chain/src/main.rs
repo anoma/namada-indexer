@@ -19,6 +19,7 @@ use clap::Parser;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use repository::pgf as namada_pgf_repository;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -206,38 +207,25 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
-    let native_addresses =
-        namada_service::query_native_addresses_balance_change(Token::Native(
-            native_token.clone(),
-        ));
     let addresses = block.addresses_with_balance_change(&native_token);
 
-    let validators_addresses = if first_block_in_epoch.eq(&block_height) {
-        namada_service::get_all_consensus_validators_addresses_at(
-            &client,
-            epoch - 1,
-            native_token.clone(),
-        )
+    let pgf_receipient_addresses = if first_block_in_epoch.eq(&block_height) {
+        conn.interact(move |conn| {
+            namada_pgf_repository::get_pgf_receipients_balance_changes(
+                conn,
+                &native_token,
+            )
+        })
         .await
-        .into_rpc_error()?
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?
     } else {
         HashSet::default()
     };
 
-    let block_proposer_address = block
-        .header
-        .proposer_address_namada
-        .as_ref()
-        .map(|address| BalanceChange {
-            address: Id::Account(address.clone()),
-            token: Token::Native(native_token.clone()),
-        });
-
-    let all_balance_changed_addresses = addresses
-        .iter()
-        .chain(block_proposer_address.iter())
-        .chain(validators_addresses.iter())
-        .chain(native_addresses.iter())
+    let all_balance_changed_addresses = pgf_receipient_addresses
+        .union(&addresses)
         .cloned()
         .collect::<HashSet<_>>();
 
@@ -248,13 +236,7 @@ async fn crawling_fn(
     )
     .await
     .into_rpc_error()?;
-
-    tracing::debug!(
-        block = block_height,
-        addresses = all_balance_changed_addresses.len(),
-        "Updating balance for {} addresses...",
-        all_balance_changed_addresses.len()
-    );
+    tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =
         namada_service::query_next_governance_id(&client, block_height)
