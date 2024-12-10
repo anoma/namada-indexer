@@ -133,6 +133,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_URL }}/anoma/namada-indexer
+          flavor: |
+            latest=auto
+            prefix=${{ matrix.docker.image }}
+            suffix=
           tags: |
             type=ref,event=branch
             type=ref,event=pr
