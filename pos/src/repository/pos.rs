@@ -1,8 +1,17 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
+use deadpool_diesel::postgres::Object;
+use diesel::dsl::not;
 use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, PgConnection, QueryDsl,
+    RunQueryDsl, SelectableHelper,
+};
 use orm::schema::validators;
-use orm::validators::ValidatorInsertDb;
+use orm::validators::{ValidatorDb, ValidatorInsertDb, ValidatorStateDb};
+use shared::error::ContextDbInteractError;
+use shared::validator::Validator;
 
 pub fn upsert_validators(
     transaction_conn: &mut PgConnection,
@@ -24,4 +33,37 @@ pub fn upsert_validators(
         .context("Failed to update validators in db")?;
 
     Ok(())
+}
+
+pub async fn get_missing_validators(
+    conn: &Object,
+    validators: HashSet<Validator>,
+) -> anyhow::Result<Vec<ValidatorDb>> {
+    conn.interact(move |conn| {
+        validators::table
+            .filter(
+                validators::dsl::state
+                    .eq_any(vec![
+                        ValidatorStateDb::Unjailing,
+                        ValidatorStateDb::Reactivating,
+                        ValidatorStateDb::Deactivating,
+                        ValidatorStateDb::BelowCapacity,
+                        ValidatorStateDb::BelowThreshold,
+                        ValidatorStateDb::Unknown,
+                    ])
+                    .and(not(validators::dsl::namada_address.eq_any(
+                        validators
+                            .into_iter()
+                            .map(|validator| {
+                                validator.address.to_owned().to_string()
+                            })
+                            .collect::<Vec<_>>(),
+                    ))),
+            )
+            .select(ValidatorDb::as_select())
+            .load(conn)
+    })
+    .await
+    .context_db_interact_error()?
+    .context("Failed to read validator state from the db")
 }
