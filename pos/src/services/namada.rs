@@ -115,12 +115,33 @@ pub async fn get_validators_state(
             .with_context(|| {
                 format!("Failed to query validator {validator_address} state")
             })?;
+
             let validator_state = validator_state
                 .0
                 .map(ValidatorState::from)
                 .unwrap_or(ValidatorState::Unknown);
 
-            validator.state = validator_state;
+            if validator.state.eq(&ValidatorState::Unjailing)
+                && !validator_state.eq(&ValidatorState::Jailed)
+            {
+                validator.state = validator_state;
+            } else if validator.state.eq(&ValidatorState::Reactivating)
+                && !validator_state.eq(&ValidatorState::Inactive)
+            {
+                validator.state = validator_state;
+            } else if validator.state.eq(&ValidatorState::Deactivating)
+                && validator_state.eq(&ValidatorState::Inactive)
+            {
+                validator.state = validator_state;
+            } else if ![
+                ValidatorState::Deactivating,
+                ValidatorState::Reactivating,
+                ValidatorState::Unjailing,
+            ]
+            .contains(&validator.state)
+            {
+                validator.state = validator_state;
+            }
 
             anyhow::Ok(validator)
         })
