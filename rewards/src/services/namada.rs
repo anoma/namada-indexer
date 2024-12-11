@@ -40,7 +40,7 @@ pub async fn query_delegation_pairs(
 
 pub async fn query_rewards(
     client: &HttpClient,
-    delegation_pairs: HashSet<DelegationPair>,
+    delegation_pairs: &HashSet<DelegationPair>,
 ) -> anyhow::Result<Vec<Reward>> {
     let epoch = get_current_epoch(client).await?;
 
@@ -71,7 +71,7 @@ pub async fn query_rewards(
             );
 
             Some(Reward {
-                delegation_pair: delegation,
+                delegation_pair: delegation.clone(),
                 amount: Amount::from(reward),
                 epoch: epoch as i32,
             })
