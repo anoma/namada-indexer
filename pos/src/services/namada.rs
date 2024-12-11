@@ -121,24 +121,26 @@ pub async fn get_validators_state(
                 .map(ValidatorState::from)
                 .unwrap_or(ValidatorState::Unknown);
 
-            if validator.state.eq(&ValidatorState::Unjailing)
-                && !validator_state.eq(&ValidatorState::Jailed)
-            {
-                validator.state = validator_state;
-            } else if validator.state.eq(&ValidatorState::Reactivating)
-                && !validator_state.eq(&ValidatorState::Inactive)
-            {
-                validator.state = validator_state;
-            } else if validator.state.eq(&ValidatorState::Deactivating)
-                && validator_state.eq(&ValidatorState::Inactive)
-            {
-                validator.state = validator_state;
-            } else if ![
+            let from_unjailing_state =
+                validator.state.eq(&ValidatorState::Unjailing)
+                    && !validator_state.eq(&ValidatorState::Jailed);
+            let from_deactivating_state =
+                validator.state.eq(&ValidatorState::Deactivating)
+                    && validator_state.eq(&ValidatorState::Inactive);
+            let from_reactivating_state =
+                validator.state.eq(&ValidatorState::Reactivating)
+                    && !validator_state.eq(&ValidatorState::Inactive);
+            let from_concrete_state = ![
                 ValidatorState::Deactivating,
                 ValidatorState::Reactivating,
                 ValidatorState::Unjailing,
             ]
-            .contains(&validator.state)
+            .contains(&validator.state);
+
+            if from_unjailing_state
+                || from_deactivating_state
+                || from_reactivating_state
+                || from_concrete_state
             {
                 validator.state = validator_state;
             }
