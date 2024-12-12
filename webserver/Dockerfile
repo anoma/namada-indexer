@@ -19,7 +19,7 @@ FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/webserver /app/webserver
 
-RUN apt-get update && apt-get install -y libpq5
+RUN apt-get update && apt-get install -y libpq5 curl
 
 WORKDIR /app
 
