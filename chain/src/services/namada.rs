@@ -19,7 +19,7 @@ use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{borsh, rpc, token};
 use shared::balance::{Amount, Balance, Balances};
-use shared::block::{BlockHeight, Epoch};
+use shared::block::{Block, BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::proposal::{GovernanceProposal, TallyType};
@@ -691,6 +691,40 @@ pub async fn get_validator_set_at_epoch(
         .await?;
 
     Ok(ValidatorSet { validators, epoch })
+}
+
+pub async fn get_block_proposer_address(
+    client: &HttpClient,
+    block: &Block,
+    native_token: &Id,
+) -> anyhow::Result<HashSet<BalanceChange>> {
+    let validator = RPC
+        .vp()
+        .pos()
+        .validator_by_tm_addr(
+            client,
+            &block.header.proposer_address.to_uppercase(),
+        )
+        .await?;
+
+    tracing::debug!(
+        block = block.header.height,
+        native_token = native_token.to_string(),
+        proposer_address = block.header.proposer_address,
+        namada_address = ?validator,
+        "Got block proposer address"
+    );
+
+    match validator {
+        Some(validator) => {
+            let balance_change = BalanceChange {
+                address: Id::from(validator),
+                token: Token::Native(native_token.clone()),
+            };
+            Ok(std::iter::once(balance_change).collect())
+        }
+        None => Ok(HashSet::new()),
+    }
 }
 
 pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
