@@ -113,6 +113,12 @@ paths:
             type: integer
             minimum: 1
           description: Pagination parameter
+        - in: query
+          name: activeAt
+          schema:
+            type: integer
+            minimum: 0
+          description: Get all bonds that are active at this epoch
       responses:
         '200':
           description: A list of bonds.
@@ -175,6 +181,12 @@ paths:
             type: integer
             minimum: 1
           description: Pagination parameter
+        - in: query
+          name: activeAt
+          schema:
+            type: integer
+            minimum: 0
+          description: Get all unbonds that are active at this epoch( < )
       responses:
         '200':
           description: A list of unbonds.
