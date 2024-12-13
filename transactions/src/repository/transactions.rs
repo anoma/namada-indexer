@@ -21,8 +21,9 @@ pub fn insert_inner_transactions(
         .on_conflict(inner_transactions::id)
         .do_update()
         .set((
-            // Allow updating transactions kind + data so that if the indexer is updated with
-            // new transaction type support, we can easily go back & reindex any old transactions
+            // Allow updating transactions kind + data so that if the indexer
+            // is updated with new transaction type support, we can
+            // easily go back & reindex any old transactions
             // that were previously marked as "unknown".
             inner_transactions::kind.eq(excluded(inner_transactions::kind)),
             inner_transactions::data.eq(excluded(inner_transactions::data)),

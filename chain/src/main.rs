@@ -62,6 +62,9 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
+    rlimit::increase_nofile_limit(10240).unwrap();
+    rlimit::increase_nofile_limit(u64::MAX).unwrap();
+
     // See if we can start from existing crawler_state
     let crawler_state = match db_service::try_get_chain_crawler_state(&conn)
         .await
@@ -69,9 +72,10 @@ async fn main() -> Result<(), MainError> {
     {
         Some(crawler_state) => {
             tracing::info!(
-                    "Found chain crawler state, attempting initial crawl at block {}...",
-                    crawler_state.last_processed_block
-                );
+                "Found chain crawler state, attempting initial crawl at block \
+                 {}...",
+                crawler_state.last_processed_block
+            );
 
             // Try to run crawler_fn with the last processed block
             let crawl_result = crawling_fn(
@@ -84,28 +88,34 @@ async fn main() -> Result<(), MainError> {
 
             match crawl_result {
                 Err(MainError::RpcError) => {
-                    // If there was an RpcError, it likely means the block was pruned from the node.
-                    // We need to do an initial_query in that case.
+                    // If there was an RpcError, it likely means the block was
+                    // pruned from the node. We need to do
+                    // an initial_query in that case.
                     tracing::error!(
-                        "Failed to query block {}, starting from initial_query ...",
+                        "Failed to query block {}, starting from \
+                         initial_query ...",
                         crawler_state.last_processed_block,
                     );
                     None
                 }
                 Err(_) => {
-                    // If any other type of error occurred, we should not increment
-                    // last_processed_block but crawl from there without initial_query
+                    // If any other type of error occurred, we should not
+                    // increment last_processed_block but
+                    // crawl from there without initial_query
                     tracing::info!(
-                        "Initial crawl had an error (not RpcError), continuing from block {}...",
+                        "Initial crawl had an error (not RpcError), \
+                         continuing from block {}...",
                         crawler_state.last_processed_block
                     );
                     Some(crawler_state)
                 }
                 Ok(_) => {
-                    // If the crawl was successful, increment last_processed block and continue from there.
+                    // If the crawl was successful, increment last_processed
+                    // block and continue from there.
                     let next_block = crawler_state.last_processed_block + 1;
                     tracing::info!(
-                        "Initial crawl was successful, continuing from block {}...",
+                        "Initial crawl was successful, continuing from block \
+                         {}...",
                         next_block
                     );
                     Some(ChainCrawlerState {
