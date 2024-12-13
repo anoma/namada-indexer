@@ -151,7 +151,7 @@ impl ApplicationServer {
             .nest("/api/v1", routes)
             .merge(Router::new().route(
                 "/health",
-                get(|| async { env!("VERGEN_GIT_SHA").to_string() }),
+                get(|| async { json!({"commit": env!("VERGEN_GIT_SHA").to_string(), "version": env!("CARGO_PKG_VERSION") }).to_string() }),
             ))
             .layer(
                 ServiceBuilder::new()
