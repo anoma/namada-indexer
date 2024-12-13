@@ -1,9 +1,9 @@
 use bigdecimal::BigDecimal;
-use diesel::{Insertable, Queryable};
+use diesel::{Insertable, Queryable, Selectable};
 use crate::schema::pos_rewards;
 use shared::rewards::Reward;
 
-#[derive(Insertable, Queryable, Clone)]
+#[derive(Insertable, Queryable, Selectable, Clone)]
 #[diesel(table_name = pos_rewards)]
 pub struct PosRewardInsertDb {
     pub owner: String,
@@ -11,6 +11,8 @@ pub struct PosRewardInsertDb {
     pub raw_amount: BigDecimal,
     pub epoch: i32,
 }
+
+pub type PoSRewardDb = PosRewardInsertDb;
 
 impl PosRewardInsertDb {
     pub fn from_reward(reward: Reward, validator_id: i32, epoch: i32) -> Self {
