@@ -35,6 +35,12 @@ impl Display for Amount {
 }
 
 impl Amount {
+    pub fn as_i64(&self) -> i64 {
+        let s = self.0.to_string();
+        s.parse::<i64>()
+            .expect("Cannot convert NamadaAmount to i64")
+    }
+
     pub fn checked_add(&self, other: &Self) -> Option<Self> {
         self.0.checked_add(other.0).map(Self)
     }
