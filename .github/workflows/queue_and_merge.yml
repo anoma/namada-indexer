@@ -5,9 +5,11 @@ on:
   pull_request:
     branches:
       - main
+      - '*-maint'
   push:
     branches:
       - main
+      - '*-maint'
 
 concurrency:
   group: ${{ github.ref }}
