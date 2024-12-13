@@ -621,6 +621,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InnerTransaction'
+  /api/v1/ibc/{tx_id}/status:
+    get:
+      summary: Get the status of an IBC transfer by tx id
+      parameters:
+        - in: path
+          name: tx_id
+          schema:
+            type: string
+          required: true
+          description: Tx id hash 
+      responses:
+        '200':
+          description: Status of the IBC transfer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [status]
+                  properties:
+                    name:
+                      type: string
+                      enum: [unknown, timeout, success, fail]
   /api/v1/crawlers/timestamps:
     get:
       summary: Get timestamps of the last activity of the crawlers
