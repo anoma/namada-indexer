@@ -178,7 +178,8 @@ async fn main() -> anyhow::Result<(), MainError> {
                             .into_iter()
                             .map(|reward| {
                                 let validator_id = reward.delegation_pair.validator_address.to_string().parse::<i32>().unwrap();
-                                PosRewardInsertDb::from_reward(reward, validator_id)
+                                let epoch = reward.epoch;
+                                PosRewardInsertDb::from_reward(reward, validator_id, epoch)
                             })
                             .collect::<Vec<_>>(),
                     )
