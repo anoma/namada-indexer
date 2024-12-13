@@ -7,6 +7,7 @@ use shared::rewards::Reward;
 pub fn upsert_rewards(
     transaction_conn: &mut PgConnection,
     rewards: Vec<Reward>,
+    epoch: i32, // Add an epoch parameter
 ) -> anyhow::Result<()> {
     diesel::insert_into(pos_rewards::table)
         .values::<Vec<PosRewardInsertDb>>(
@@ -14,23 +15,21 @@ pub fn upsert_rewards(
                 .into_iter()
                 .map(|reward| {
                     let validator_id: i32 = validators::table
-                        .filter(
-                            validators::namada_address.eq(&reward
-                                .delegation_pair
-                                .validator_address
-                                .to_string()),
-                        )
+                        .filter(validators::namada_address.eq(
+                            &reward.delegation_pair.validator_address.to_string(),
+                        ))
                         .select(validators::id)
                         .first(transaction_conn)
                         .expect("Failed to get validator");
 
-                    PosRewardInsertDb::from_reward(reward, validator_id)
+                    PosRewardInsertDb::from_reward(reward, validator_id, epoch)
                 })
                 .collect::<Vec<_>>(),
         )
         .on_conflict((
             pos_rewards::columns::owner,
             pos_rewards::columns::validator_id,
+            pos_rewards::columns::epoch, // Add epoch to conflict target
         ))
         .do_update()
         .set(
