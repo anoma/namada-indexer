@@ -11,9 +11,9 @@ use rewards::config::AppConfig;
 use rewards::repository;
 use rewards::services::namada as namada_service;
 use rewards::state::AppState;
-use shared::crawler;
 use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::{client, crawler};
 use tendermint_rpc::HttpClient;
 use tokio::time::sleep;
 
@@ -25,8 +25,7 @@ async fn main() -> Result<(), MainError> {
 
     tracing::info!("version: {}", env!("VERGEN_GIT_SHA").to_string());
 
-    let client =
-        Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
+    let client = Arc::new(client::build_client(&config.tendermint_url));
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
 

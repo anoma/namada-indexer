@@ -8,8 +8,8 @@ use axum::routing::get;
 use axum::{BoxError, Json, Router};
 use axum_prometheus::PrometheusMetricLayer;
 use lazy_static::lazy_static;
-use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
+use shared::client;
 use tower::buffer::BufferLayer;
 use tower::limit::RateLimitLayer;
 use tower::ServiceBuilder;
@@ -41,7 +41,7 @@ impl ApplicationServer {
         let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
         let app_state = AppState::new(db_url, cache_url);
-        let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
+        let client = client::build_client(&config.tendermint_url);
 
         let routes = {
             let common_state =

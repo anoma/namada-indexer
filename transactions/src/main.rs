@@ -9,6 +9,7 @@ use orm::migrations::run_migrations;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
+use shared::client;
 use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
@@ -27,8 +28,7 @@ async fn main() -> Result<(), MainError> {
 
     config.log.init();
 
-    let client =
-        Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
+    let client = Arc::new(client::build_client(&config.tendermint_url));
 
     let mut checksums = Checksums::default();
     for code_path in Checksums::code_paths() {

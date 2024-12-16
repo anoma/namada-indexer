@@ -40,3 +40,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 fake.workspace = true
 rand.workspace = true
+reqwest.workspace = true

@@ -12,9 +12,9 @@ use pos::app_state::AppState;
 use pos::config::AppConfig;
 use pos::repository::{self};
 use pos::services::namada as namada_service;
-use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::{client, crawler};
 use tendermint_rpc::HttpClient;
 
 #[tokio::main]
@@ -23,8 +23,7 @@ async fn main() -> Result<(), MainError> {
 
     config.log.init();
 
-    let client =
-        Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
+    let client = Arc::new(client::build_client(&config.tendermint_url));
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
