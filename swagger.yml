@@ -682,7 +682,7 @@ components:
           $ref: '#/components/schemas/ValidatorStatus'
     ValidatorStatus:
       type: string
-      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
+      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown, unjailing, deactivating, reactivating]
     Proposal:
       type: object
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, activationTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
@@ -922,7 +922,7 @@ components:
                 type: string
               kind:
                 type: string
-                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "deactivateValidator", "reactivateValidator", "unjailValidator", "unknown"]
               exitCode:
                 type: string
                 enum: [applied, rejected]

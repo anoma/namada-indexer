@@ -18,6 +18,9 @@ pub enum ValidatorState {
     BelowThreshold,
     Inactive,
     Jailed,
+    Deactivating,
+    Reactivating,
+    Unjailing,
     Unknown,
 }
 
@@ -41,6 +44,19 @@ impl From<NamadaValidatorState> for ValidatorState {
 pub struct ValidatorSet {
     pub validators: HashSet<Validator>,
     pub epoch: Epoch,
+}
+
+impl ValidatorSet {
+    pub fn union(&self, validator_set: &ValidatorSet) -> Self {
+        ValidatorSet {
+            validators: self
+                .validators
+                .union(&validator_set.validators)
+                .cloned()
+                .collect::<HashSet<Validator>>(),
+            epoch: self.epoch,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -68,6 +84,12 @@ pub struct ValidatorMetadataChange {
     pub website: Option<String>,
     pub discord_handler: Option<String>,
     pub avatar: Option<String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct ValidatorStateChange {
+    pub address: Id,
+    pub state: ValidatorState,
 }
 
 impl Validator {

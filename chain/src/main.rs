@@ -200,11 +200,14 @@ async fn crawling_fn(
         proposals_votes.len()
     );
 
-    let validators = block.validators();
+    let validators = block.new_validators();
     let validator_set = ValidatorSet {
         validators: validators.clone(),
         epoch,
     };
+
+    let validators_state_change = block.update_validators_state();
+    tracing::debug!("Updating {} validators state", validators_state_change.len());
 
     let addresses = block.bond_addresses();
     let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
@@ -270,6 +273,7 @@ async fn crawling_fn(
         withdraws = withdraw_addreses.len(),
         claimed_rewards = reward_claimers.len(),
         revealed_pks = revealed_pks.len(),
+        validator_state = validators_state_change.len(),
         epoch = epoch,
         first_block_in_epoch = first_block_in_epoch,
         block = block_height,
@@ -302,6 +306,11 @@ async fn crawling_fn(
                 repository::pos::upsert_validators(
                     transaction_conn,
                     validator_set,
+                )?;
+
+                repository::pos::upsert_validator_state(
+                    transaction_conn,
+                    validators_state_change,
                 )?;
 
                 // We first remove all the bonds and then insert the new ones

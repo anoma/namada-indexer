@@ -24,7 +24,9 @@ use crate::transaction::{
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
-use crate::validator::{Validator, ValidatorMetadataChange, ValidatorState};
+use crate::validator::{
+    Validator, ValidatorMetadataChange, ValidatorState, ValidatorStateChange,
+};
 use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
@@ -506,7 +508,7 @@ impl Block {
         Some(recv_msg)
     }
 
-    pub fn validators(&self) -> HashSet<Validator> {
+    pub fn new_validators(&self) -> HashSet<Validator> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
@@ -531,6 +533,34 @@ impl Block {
                         discord_handler: data.discord_handle,
                         avatar: data.avatar,
                         state: ValidatorState::Inactive,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn update_validators_state(&self) -> HashSet<ValidatorStateChange> {
+        self.transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::DeactivateValidator(data) => {
+                    let data = data.clone().unwrap();
+                    Some(ValidatorStateChange {
+                        address: Id::from(data),
+                        state: ValidatorState::Deactivating,
+                    })
+                }
+                TransactionKind::ReactivateValidator(data) => {
+                    let data = data.clone().unwrap();
+                    Some(ValidatorStateChange {
+                        address: Id::from(data),
+                        state: ValidatorState::Reactivating,
                     })
                 }
                 _ => None,

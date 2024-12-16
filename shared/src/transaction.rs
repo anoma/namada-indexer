@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
+use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
@@ -48,6 +49,9 @@ pub enum TransactionKind {
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
     BecomeValidator(Option<Box<BecomeValidator>>),
+    ReactivateValidator(Option<Address>),
+    DeactivateValidator(Option<Address>),
+    UnjailValidator(Option<Address>),
     Unknown,
 }
 
@@ -152,6 +156,22 @@ impl TransactionKind {
                 };
                 TransactionKind::RevealPk(data)
             }
+            "tx_deactivate_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::DeactivateValidator(data)
+            }
+            "tx_reactivate_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::ReactivateValidator(data)
+            }
             "tx_ibc" => {
                 let data = if let Ok(data) =
                     namada_ibc::decode_message::<Transfer>(data)
@@ -162,6 +182,14 @@ impl TransactionKind {
                     None
                 };
                 TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
+            }
+            "tx_unjail_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::UnjailValidator(data)
             }
             "tx_become_validator" => {
                 let data =
