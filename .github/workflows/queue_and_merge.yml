@@ -5,9 +5,11 @@ on:
   pull_request:
     branches:
       - main
+      - '*-maint'
   push:
     branches:
       - main
+      - '*-maint'
 
 concurrency:
   group: ${{ github.ref }}
@@ -155,7 +157,7 @@ jobs:
           context: .
           file: Dockerfile
           build-args: PACKAGE=${{ matrix.docker.package }}
-          push: true
+          push: ${{ github.event.pull_request.head.repo.full_name == 'anoma/namada-indexer' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
