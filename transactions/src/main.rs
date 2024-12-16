@@ -15,8 +15,9 @@ use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
-use transactions::repository::block as block_repo;
-use transactions::repository::transactions as transaction_repo;
+use transactions::repository::{
+    block as block_repo, transactions as transaction_repo,
+};
 use transactions::services::{
     db as db_service, namada as namada_service,
     tendermint as tendermint_service,

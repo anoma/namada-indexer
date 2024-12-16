@@ -3,6 +3,7 @@ use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
 use orm::blocks::BlockInsertDb;
 use orm::schema::blocks;
+use shared::balance::Balance;
 use shared::block::Block;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
@@ -27,6 +28,21 @@ pub fn upsert_block(
         ))
         .execute(transaction_conn)
         .context("Failed to insert block in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn upsert_empty_blocks_from_balances(
+    conn: &mut PgConnection,
+    balances: &Vec<Balance>,
+) -> anyhow::Result<()> {
+    for balance in balances {
+        diesel::insert_into(blocks::table)
+            .values::<&BlockInsertDb>(&BlockInsertDb::from(balance.clone()))
+            .on_conflict_do_nothing()
+            .execute(conn)
+            .context("Failed to insert block in db")?;
+    }
 
     anyhow::Ok(())
 }

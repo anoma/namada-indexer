@@ -441,6 +441,11 @@ async fn try_initial_query(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                repository::block::upsert_empty_blocks_from_balances(
+                    transaction_conn,
+                    &balances,
+                )?;
+
                 repository::balance::insert_tokens(transaction_conn, tokens)?;
 
                 tracing::debug!(
