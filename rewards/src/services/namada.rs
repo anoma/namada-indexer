@@ -60,6 +60,8 @@ pub async fn query_rewards(
         .collect::<Vec<_>>()
         .await;
 
+    tracing::info!("Done fetching rewards!");
+
     for result in results {
         match result {
             Ok(mut rewards) => all_rewards.append(&mut rewards),
@@ -86,8 +88,6 @@ async fn process_batch_with_retries(
 
     loop {
         let result = process_batch(client, batch.clone()).await;
-
-        tracing::info!("Done batch...");
 
         match result {
             Ok(rewards) => return Ok(rewards),
