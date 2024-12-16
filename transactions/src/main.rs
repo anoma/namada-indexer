@@ -129,8 +129,8 @@ async fn crawling_fn(
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
 
     tracing::info!(
-        "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} ibc acks \
-         events...",
+        "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
+         ibc acks events...",
         wrapper_txs.len(),
         inner_txs.len(),
         ibc_sequence_packet.len(),

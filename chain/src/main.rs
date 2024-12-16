@@ -197,7 +197,10 @@ async fn crawling_fn(
     };
 
     let validators_state_change = block.update_validators_state();
-    tracing::debug!("Updating {} validators state", validators_state_change.len());
+    tracing::debug!(
+        "Updating {} validators state",
+        validators_state_change.len()
+    );
 
     let addresses = block.bond_addresses();
     let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
