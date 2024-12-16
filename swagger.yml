@@ -8,6 +8,8 @@ info:
     url: https://github.com/anoma/namada-indexer
 servers:
   - url: http://localhost:5001
+  - url: https://namada-rpc.mandragora.io
+  - url: https://indexer.namada.tududes.com:443
 paths:
   /health:
     get:
