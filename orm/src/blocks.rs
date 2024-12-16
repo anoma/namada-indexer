@@ -34,7 +34,7 @@ impl From<(Block, TendermintBlockResponse)> for BlockInsertDb {
             hash: Some(block.hash.to_string()),
             app_hash: Some(block.header.app_hash.to_string()),
             timestamp: Some(timestamp),
-            proposer: Some(block.header.proposer_address),
+            proposer: block.header.proposer_address_namada,
             epoch: Some(block.epoch as i32),
         }
     }

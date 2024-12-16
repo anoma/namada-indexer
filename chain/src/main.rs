@@ -27,6 +27,7 @@ use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::token::Token;
+use shared::utils::BalanceChange;
 use shared::validator::ValidatorSet;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 use tendermint_rpc::HttpClient;
@@ -138,13 +139,14 @@ async fn crawling_fn(
 
     let addresses = block.addresses_with_balance_change(&native_token);
 
-    let block_proposer_address = namada_service::get_block_proposer_address(
-        &client,
-        &block,
-        &native_token,
-    )
-    .await
-    .into_rpc_error()?;
+    let block_proposer_address = block
+        .header
+        .proposer_address_namada
+        .as_ref()
+        .map(|address| BalanceChange {
+            address: Id::Account(address.clone()),
+            token: Token::Native(native_token.clone()),
+        });
 
     let all_balance_changed_addresses = addresses
         .iter()
@@ -162,8 +164,7 @@ async fn crawling_fn(
 
     tracing::debug!(
         block = block_height,
-        addresses = addresses.len(),
-        block_proposer_address = block_proposer_address.len(),
+        addresses = all_balance_changed_addresses.len(),
         "Updating balance for {} addresses...",
         all_balance_changed_addresses.len()
     );
@@ -567,9 +568,24 @@ async fn get_block(
         .await
         .into_rpc_error()?;
 
+    let proposer_address_namada = namada_service::get_validator_namada_address(
+        client,
+        &Id::from(&tm_block_response.block.header.proposer_address),
+    )
+    .await
+    .into_rpc_error()?;
+
+    tracing::info!(
+        block = block_height,
+        tm_address = tm_block_response.block.header.proposer_address.to_string(),
+        namada_address = ?proposer_address_namada,
+        "Got block proposer address"
+    );
+
     let block = Block::from(
         &tm_block_response,
         &block_results,
+        &proposer_address_namada,
         checksums,
         epoch,
         block_height,
