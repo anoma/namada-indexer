@@ -40,12 +40,13 @@ pub async fn query_rewards(
 ) -> anyhow::Result<Vec<Reward>> {
     let mut all_rewards: Vec<Reward> = Vec::new();
 
-    let batches: Vec<Vec<DelegationPair>> = delegation_pairs
+    let batches: Vec<(usize, Vec<DelegationPair>)> = delegation_pairs
         .clone()
         .into_iter()
         .collect::<Vec<_>>()
         .chunks(32)
-        .map(|chunk| chunk.to_vec())
+        .enumerate()
+        .map(|(i, chunk)| (i, chunk.to_vec()))
         .collect();
 
     tracing::info!(
@@ -65,7 +66,7 @@ pub async fn query_rewards(
     for result in results {
         match result {
             Ok(mut rewards) => all_rewards.append(&mut rewards),
-            Err(err) => return Err(err)
+            Err(err) => return Err(err),
         }
     }
 
@@ -82,15 +83,19 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
 
 async fn process_batch_with_retries(
     client: &HttpClient,
-    batch: Vec<DelegationPair>,
+    batch: (usize, Vec<DelegationPair>),
 ) -> anyhow::Result<Vec<Reward>> {
     let mut retries = 0;
 
+    tracing::info!("Processing batch {}", batch.0);
     loop {
-        let result = process_batch(client, batch.clone()).await;
+        let result = process_batch(client, batch.1.clone()).await;
 
         match result {
-            Ok(rewards) => return Ok(rewards),
+            Ok(rewards) => {
+                tracing::info!("Batch {} done!", batch.0);
+                return Ok(rewards);
+            }
             Err(err) => {
                 retries += 1;
                 tracing::warn!(
