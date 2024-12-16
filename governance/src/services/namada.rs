@@ -63,7 +63,7 @@ pub async fn get_governance_proposals_updates(
             }
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await)
 }

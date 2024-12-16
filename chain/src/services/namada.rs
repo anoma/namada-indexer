@@ -110,7 +110,7 @@ pub async fn query_balance(
             })
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await)
 }
@@ -440,7 +440,7 @@ pub async fn query_bonds(
             Some(bonds)
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -513,7 +513,7 @@ pub async fn query_unbonds(
             }
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -573,7 +573,7 @@ pub async fn query_tallies(
             Some((proposal, tally_type))
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -603,7 +603,7 @@ pub async fn query_all_votes(
                 Some(votes)
             })
             .map(futures::future::ready)
-            .buffer_unordered(20)
+            .buffer_unordered(32)
             .collect::<Vec<_>>()
             .await;
 
@@ -686,7 +686,7 @@ pub async fn get_validator_set_at_epoch(
                 state: validator_state
             })
         })
-        .buffer_unordered(100)
+        .buffer_unordered(32)
         .try_collect::<HashSet<_>>()
         .await?;
 
