@@ -131,7 +131,7 @@ pub struct SendPacket {
 #[derive(Debug, Clone)]
 pub enum TxAttributesType {
     TxApplied(TxApplied),
-    SendPacket(SendPacket)
+    SendPacket(SendPacket),
 }
 
 impl TxAttributesType {
