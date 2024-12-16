@@ -28,6 +28,7 @@ use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::token::Token;
 use shared::validator::ValidatorSet;
+use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 use tendermint_rpc::HttpClient;
 use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
@@ -64,6 +65,7 @@ async fn main() -> Result<(), MainError> {
     initial_query(
         &client,
         &conn,
+        checksums.clone(),
         config.initial_query_retry_time,
         config.initial_query_retry_attempts,
     )
@@ -108,46 +110,15 @@ async fn crawling_fn(
         return Err(MainError::NoAction);
     }
 
-    tracing::debug!(block = block_height, "Query block...");
-    let tm_block_response =
-        tendermint_service::query_raw_block_at_height(&client, block_height)
-            .await
-            .into_rpc_error()?;
-    tracing::debug!(
-        block = block_height,
-        "Raw block contains {} txs...",
-        tm_block_response.block.data.len()
-    );
-
-    tracing::debug!(block = block_height, "Query block results...");
-    let tm_block_results_response =
-        tendermint_service::query_raw_block_results_at_height(
-            &client,
-            block_height,
-        )
-        .await
-        .into_rpc_error()?;
-    let block_results = BlockResult::from(tm_block_results_response);
-
-    tracing::debug!(block = block_height, "Query epoch...");
-    let epoch =
-        namada_service::get_epoch_at_block_height(&client, block_height)
-            .await
-            .into_rpc_error()?;
-
     tracing::debug!(block = block_height, "Query first block in epoch...");
     let first_block_in_epoch =
         namada_service::get_first_block_in_epoch(&client)
             .await
             .into_rpc_error()?;
 
-    let block = Block::from(
-        &tm_block_response,
-        &block_results,
-        checksums,
-        epoch,
-        block_height,
-    );
+    let (block, tm_block_response, epoch) =
+        get_block(block_height, &client, checksums).await?;
+
     tracing::debug!(
         block = block_height,
         txs = block.transactions.len(),
@@ -228,7 +199,10 @@ async fn crawling_fn(
     };
 
     let validators_state_change = block.update_validators_state();
-    tracing::debug!("Updating {} validators state", validators_state_change.len());
+    tracing::debug!(
+        "Updating {} validators state",
+        validators_state_change.len()
+    );
 
     let addresses = block.bond_addresses();
     let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
@@ -391,28 +365,34 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
+    checksums: Checksums,
     retry_time: u64,
     retry_attempts: usize,
 ) -> Result<(), MainError> {
     let retry_strategy = ExponentialBackoff::from_millis(retry_time)
         .map(jitter)
         .take(retry_attempts);
-    Retry::spawn(retry_strategy, || try_initial_query(client, conn)).await
+    Retry::spawn(retry_strategy, || {
+        try_initial_query(client, conn, checksums.clone())
+    })
+    .await
 }
 
 async fn try_initial_query(
     client: &HttpClient,
     conn: &Object,
+    checksums: Checksums,
 ) -> Result<(), MainError> {
     tracing::debug!("Querying initial data...");
     let block_height =
         query_last_block_height(client).await.into_rpc_error()?;
-    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
-        .await
-        .into_rpc_error()?;
+
     let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
         .await
         .into_rpc_error()?;
+
+    let (block, tm_block_response, epoch) =
+        get_block(block_height, client, checksums.clone()).await?;
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
@@ -472,6 +452,12 @@ async fn try_initial_query(
             .read_write()
             .run(|transaction_conn| {
                 repository::balance::insert_tokens(transaction_conn, tokens)?;
+
+                repository::block::upsert_block(
+                    transaction_conn,
+                    block,
+                    tm_block_response,
+                )?;
 
                 tracing::debug!(
                     block = block_height,
@@ -548,4 +534,46 @@ async fn update_crawler_timestamp(
     .context_db_interact_error()
     .and_then(identity)
     .into_db_error()
+}
+
+async fn get_block(
+    block_height: u32,
+    client: &HttpClient,
+    checksums: Checksums,
+) -> Result<(Block, TendermintBlockResponse, u32), MainError> {
+    tracing::debug!(block = block_height, "Query block...");
+    let tm_block_response =
+        tendermint_service::query_raw_block_at_height(client, block_height)
+            .await
+            .into_rpc_error()?;
+    tracing::debug!(
+        block = block_height,
+        "Raw block contains {} txs...",
+        tm_block_response.block.data.len()
+    );
+
+    tracing::debug!(block = block_height, "Query block results...");
+    let tm_block_results_response =
+        tendermint_service::query_raw_block_results_at_height(
+            client,
+            block_height,
+        )
+        .await
+        .into_rpc_error()?;
+    let block_results = BlockResult::from(tm_block_results_response);
+
+    tracing::debug!(block = block_height, "Query epoch...");
+    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
+        .await
+        .into_rpc_error()?;
+
+    let block = Block::from(
+        &tm_block_response,
+        &block_results,
+        checksums,
+        epoch,
+        block_height,
+    );
+
+    Ok((block, tm_block_response, epoch))
 }
