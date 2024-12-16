@@ -105,12 +105,12 @@ diesel::table! {
     blocks (height) {
         height -> Int4,
         #[max_length = 64]
-        hash -> Varchar,
+        hash -> Nullable<Varchar>,
         #[max_length = 64]
-        app_hash -> Varchar,
-        timestamp -> Timestamp,
-        proposer -> Varchar,
-        epoch -> Int4,
+        app_hash -> Nullable<Varchar>,
+        timestamp -> Nullable<Timestamp>,
+        proposer -> Nullable<Varchar>,
+        epoch -> Nullable<Int4>,
     }
 }
 
@@ -308,6 +308,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(balance_changes -> blocks (height));
 diesel::joinable!(balance_changes -> token (token));
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
@@ -315,6 +316,7 @@ diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(unbonds -> validators (validator_id));
+diesel::joinable!(wrapper_transactions -> blocks (block_height));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balance_changes,
