@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use fake::Fake;
@@ -25,6 +26,13 @@ impl From<BigDecimal> for Amount {
             NamadaAmount::from_string_precise(&amount.to_string())
                 .expect("Invalid amount"),
         )
+    }
+}
+
+impl From<Amount> for BigDecimal {
+    fn from(amount: Amount) -> BigDecimal {
+        BigDecimal::from_str(&amount.0.to_string_native())
+            .expect("Invalid amount")
     }
 }
 
@@ -112,5 +120,43 @@ impl Balance {
             amount: Amount::fake(),
             height: (0..10000).fake::<u32>(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::balance::{Amount, NamadaAmount};
+    use bigdecimal::BigDecimal;
+    use namada_sdk::token::NATIVE_MAX_DECIMAL_PLACES;
+    use std::str::FromStr;
+    #[test]
+    fn test_bigquery_amount_round_trip_integer() {
+        let bigdecimal =
+            BigDecimal::from(100).with_scale(NATIVE_MAX_DECIMAL_PLACES.into());
+        let amount = Amount::from(bigdecimal.clone());
+        let bigdecimal_from_amount = BigDecimal::from(amount.clone());
+        assert_eq!(amount, Amount::from(bigdecimal_from_amount.clone()));
+        assert_eq!(bigdecimal, bigdecimal_from_amount);
+    }
+    #[test]
+    fn test_bigquery_amount_round_trip_decimal() {
+        let bigdecimal = BigDecimal::from_str("100.123456").unwrap();
+        let amount = Amount::from(bigdecimal.clone());
+        let bigdecimal_from_amount = BigDecimal::from(amount.clone());
+        assert_eq!(amount, Amount::from(bigdecimal_from_amount.clone()));
+        assert_eq!(bigdecimal, bigdecimal_from_amount);
+    }
+    #[test]
+    fn test_amount_same_as_namada_amount_integer() {
+        let amount = Amount::from(BigDecimal::from(100));
+        let namada_amount = NamadaAmount::from_u64(100);
+        assert_eq!(amount.0, namada_amount);
+    }
+    #[test]
+    fn test_amount_same_as_namada_amount_decimal() {
+        let amount = Amount::from(BigDecimal::from_str("100.123").unwrap());
+        let namada_amount = NamadaAmount::from_string_precise("100.123")
+            .expect("Invalid amount");
+        assert_eq!(amount.0, namada_amount);
     }
 }

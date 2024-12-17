@@ -37,6 +37,9 @@ pub async fn query_rewards(
     client: &HttpClient,
     delegation_pairs: HashSet<DelegationPair>,
 ) -> anyhow::Result<Vec<Reward>> {
+    let epoch = rpc::query_epoch(client)
+        .await
+        .context("Failed to query Namada's current epoch")?;
     Ok(futures::stream::iter(delegation_pairs)
         .filter_map(|delegation| async move {
             tracing::info!(
@@ -64,6 +67,7 @@ pub async fn query_rewards(
             Some(Reward {
                 delegation_pair: delegation,
                 amount: Amount::from(reward),
+                epoch: epoch.0 as i32,
             })
         })
         .map(futures::future::ready)
