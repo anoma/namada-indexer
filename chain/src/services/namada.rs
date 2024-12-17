@@ -77,7 +77,7 @@ pub async fn query_balance(
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
-            tracing::info!(
+            tracing::debug!(
                 "Fetching balance change for {} ...",
                 balance_change.address
             );
