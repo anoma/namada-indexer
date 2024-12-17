@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS pos_rewards;
+ALTER TABLE pos_rewards DROP COLUMN epoch;
