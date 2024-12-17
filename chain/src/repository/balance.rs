@@ -133,7 +133,7 @@ mod tests {
 
             insert_tokens(conn, vec![token.clone()])?;
 
-            seed_blocks_from_balances(conn, &vec![balance.clone()])?;
+            seed_blocks_from_balances(conn, &[balance.clone()])?;
 
             insert_balances(conn, vec![balance.clone()])?;
 
@@ -180,7 +180,7 @@ mod tests {
                 ..(balance.clone())
             };
 
-            seed_blocks_from_balances(conn, &vec![new_balance.clone()])?;
+            seed_blocks_from_balances(conn, &[new_balance.clone()])?;
             insert_balances(conn, vec![new_balance])?;
 
             let queried_balance =
@@ -418,7 +418,7 @@ mod tests {
 
             insert_tokens(conn, vec![token.clone()])?;
 
-            seed_blocks_from_balances(conn, &vec![balance.clone()])?;
+            seed_blocks_from_balances(conn, &[balance.clone()])?;
             insert_balances(conn, vec![balance.clone()])?;
 
             let queried_balance = query_balance_by_address(conn, owner, token)?;
@@ -515,10 +515,10 @@ mod tests {
 
     fn seed_blocks_from_balances(
         conn: &mut PgConnection,
-        balances: &Vec<Balance>,
+        balances: &[Balance],
     ) -> anyhow::Result<()> {
         for height in balances
-            .into_iter()
+            .iter()
             .map(|balance| balance.height as i32)
             .collect::<HashSet<_>>()
         {

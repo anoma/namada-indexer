@@ -104,7 +104,7 @@ pub struct Block {
     pub hash: Id,
     pub header: BlockHeader,
     pub transactions: Vec<(WrapperTransaction, Vec<InnerTransaction>)>,
-    pub epoch: Epoch,
+    pub epoch: Epoch
 }
 
 impl Block {
@@ -154,7 +154,7 @@ impl Block {
                 app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
-            epoch,
+            epoch
         }
     }
 

@@ -423,3 +423,72 @@ impl Transaction {
         self.extra_sections.get(&section_id).cloned()
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct IbcSequence {
+    pub sequence_number: String,
+    pub source_port: String,
+    pub dest_port: String,
+    pub source_channel: String,
+    pub dest_channel: String,
+    pub timeout: u64,
+    pub tx_id: Id,
+}
+
+impl IbcSequence {
+    pub fn id(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}",
+            self.dest_port,
+            self.dest_channel,
+            self.source_port,
+            self.source_channel,
+            self.sequence_number
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum IbcAckStatus {
+    Success,
+    Fail,
+    Timeout,
+    Unknown,
+}
+
+#[derive(Debug, Clone)]
+pub struct IbcAck {
+    pub sequence_number: String,
+    pub source_port: String,
+    pub dest_port: String,
+    pub source_channel: String,
+    pub dest_channel: String,
+    pub status: IbcAckStatus,
+}
+
+impl IbcAck {
+    pub fn id_source(&self) -> String {
+        format!(
+            "{}/{}/{}",
+            self.source_port, self.source_channel, self.sequence_number
+        )
+    }
+
+    pub fn id_dest(&self) -> String {
+        format!(
+            "{}/{}/{}",
+            self.dest_port, self.dest_channel, self.sequence_number
+        )
+    }
+
+    pub fn id(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}",
+            self.dest_port,
+            self.dest_channel,
+            self.source_port,
+            self.source_channel,
+            self.sequence_number
+        )
+    }
+}

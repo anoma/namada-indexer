@@ -38,6 +38,14 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "ibc_status"))]
+    pub struct IbcStatus;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "payment_kind"))]
     pub struct PaymentKind;
 
@@ -210,6 +218,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::IbcStatus;
+
+    ibc_ack (id) {
+        id -> Varchar,
+        tx_hash -> Varchar,
+        timeout -> Int8,
+        status -> IbcStatus,
+    }
+}
+
+diesel::table! {
     ibc_token (address) {
         #[max_length = 45]
         address -> Varchar,
@@ -240,6 +260,21 @@ diesel::table! {
         owner -> Varchar,
         validator_id -> Int4,
         raw_amount -> Numeric,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::PaymentRecurrence;
+    use super::sql_types::PaymentKind;
+
+    public_good_funding (id) {
+        id -> Int4,
+        proposal_id -> Int4,
+        payment_recurrence -> PaymentRecurrence,
+        payment_kind -> PaymentKind,
+        receipient -> Varchar,
+        amount -> Numeric,
     }
 }
 
@@ -315,6 +350,7 @@ diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
+diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 diesel::joinable!(wrapper_transactions -> blocks (block_height));
 
@@ -328,9 +364,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     gas_price,
     governance_proposals,
     governance_votes,
+    ibc_ack,
     ibc_token,
     inner_transactions,
     pos_rewards,
+    public_good_funding,
     revealed_pk,
     token,
     unbonds,
