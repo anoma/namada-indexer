@@ -104,6 +104,7 @@ pub struct Block {
     pub hash: Id,
     pub header: BlockHeader,
     pub transactions: Vec<(WrapperTransaction, Vec<InnerTransaction>)>,
+    pub epoch: Epoch
 }
 
 impl Block {
@@ -112,6 +113,7 @@ impl Block {
         block_results: &BlockResult,
         proposer_address_namada: &Option<Id>, // Provide the namada address of the proposer, if available
         checksums: Checksums,
+        epoch: Epoch,
         block_height: BlockHeight,
     ) -> Self {
         let transactions = block_response
@@ -152,6 +154,7 @@ impl Block {
                 app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
+            epoch
         }
     }
 

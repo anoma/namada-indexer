@@ -136,6 +136,7 @@ async fn crawling_fn(
         &block_results,
         &proposer_address_namada,
         checksums,
+        1_u32, // placeholder, we dont need the epoch here
         block_height,
     );
 
