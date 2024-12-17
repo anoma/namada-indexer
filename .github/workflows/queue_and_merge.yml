@@ -108,10 +108,10 @@ jobs:
         run: echo "version=$(cat $GITHUB_WORKSPACE/rust-nightly-version | tr -d '\n')" >> $GITHUB_OUTPUT
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: ${{ steps.rust_toolchain.outputs.version }}
+          toolchain: nightly-2024-06-14
           components: rustfmt
           cache: true
-      - run: just fmt
+      - run: just fmt-check
 
   docker:
     name: Docker

@@ -1,13 +1,6 @@
-RUST_STABLE := trim(read("rust-stable-version"))
-RUST_NIGTHLY := trim(read("rust-nightly-version"))
-
 devs:
-    rustup toolchain install {{ RUST_STABLE }} --no-self-update --component clippy,rustfmt
-    rustup toolchain install {{ RUST_NIGTHLY }} --no-self-update --component clippy,rustfmt
-
-toolchains:
-    @echo {{ RUST_STABLE }}
-    @echo {{ RUST_NIGTHLY }}
+    rustup toolchain install 1.79.0 --no-self-update --component clippy,rustfmt
+    rustup toolchain install nightly-2024-06-14 --no-self-update --component clippy,rustfmt
 
 build:
     cargo +{{ RUST_STABLE }} build --all
@@ -16,10 +9,10 @@ check:
     cargo +{{ RUST_STABLE }} check --all
 
 fmt:
-    cargo +{{ RUST_NIGTHLY }} fmt --all
+    cargo +nightly-2024-06-14 fmt --all
 
 fmt-check:
-    cargo +{{ RUST_NIGTHLY }} fmt --all --check
+    cargo +nightly-2024-06-14 fmt --all --check
 
 test:
     cargo +{{ RUST_STABLE }} test
