@@ -1,11 +1,13 @@
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::transaction::{
-    InnerTransaction, TransactionExitStatus, TransactionKind,
-    WrapperTransaction,
+    InnerTransaction, TransactionExitStatus, TransactionHistoryKind,
+    TransactionKind, TransactionTarget, WrapperTransaction,
 };
 
-use crate::schema::{inner_transactions, wrapper_transactions};
+use crate::schema::{
+    inner_transactions, transaction_history, wrapper_transactions,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::TransactionKind"]
@@ -133,6 +135,51 @@ impl WrapperTransactionInsertDb {
             block_height: tx.block_height as i32,
             exit_code: TransactionResultDb::from(tx.exit_code),
             atomic: tx.atomic,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::HistoryKind"]
+pub enum TransactionHistoryKindDb {
+    Received,
+    Sent,
+}
+
+impl From<TransactionHistoryKind> for TransactionHistoryKindDb {
+    fn from(value: TransactionHistoryKind) -> Self {
+        match value {
+            TransactionHistoryKind::Received => Self::Received,
+            TransactionHistoryKind::Sent => Self::Sent,
+        }
+    }
+}
+
+#[derive(Serialize, Queryable, Selectable, Clone)]
+#[diesel(table_name = transaction_history)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct TransactionHistoryDb {
+    pub id: i32,
+    pub inner_tx_id: String,
+    pub target: String,
+    pub kind: TransactionHistoryKindDb,
+}
+
+#[derive(Serialize, Insertable, Clone)]
+#[diesel(table_name = transaction_history)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct TransactionHistoryInsertDb {
+    pub inner_tx_id: String,
+    pub target: String,
+    pub kind: TransactionHistoryKindDb,
+}
+
+impl TransactionHistoryInsertDb {
+    pub fn from(target: TransactionTarget) -> Self {
+        Self {
+            inner_tx_id: target.inner_tx.to_string(),
+            target: target.address,
+            kind: TransactionHistoryKindDb::from(target.kind),
         }
     }
 }

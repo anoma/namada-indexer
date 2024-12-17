@@ -1,83 +1,47 @@
 // @generated automatically by Diesel CLI.
 
 pub mod sql_types {
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "crawler_name"))]
     pub struct CrawlerName;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_kind"))]
     pub struct GovernanceKind;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_result"))]
     pub struct GovernanceResult;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "governance_tally_type"))]
     pub struct GovernanceTallyType;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "history_kind"))]
+    pub struct HistoryKind;
+
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "ibc_status"))]
     pub struct IbcStatus;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "token_type"))]
     pub struct TokenType;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "transaction_kind"))]
     pub struct TransactionKind;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "transaction_result"))]
     pub struct TransactionResult;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "validator_state"))]
     pub struct ValidatorState;
 
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
+    #[derive(diesel::query_builder::QueryId, std::fmt::Debug, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "vote_kind"))]
     pub struct VoteKind;
 }
@@ -267,6 +231,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::HistoryKind;
+
+    transaction_history (id) {
+        id -> Int4,
+        #[max_length = 64]
+        inner_tx_id -> Varchar,
+        target -> Varchar,
+        kind -> HistoryKind,
+    }
+}
+
+diesel::table! {
     unbonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -320,6 +297,7 @@ diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
+diesel::joinable!(transaction_history -> inner_transactions (inner_tx_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 diesel::joinable!(wrapper_transactions -> blocks (block_height));
 
@@ -339,6 +317,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     pos_rewards,
     revealed_pk,
     token,
+    transaction_history,
     unbonds,
     validators,
     wrapper_transactions,
