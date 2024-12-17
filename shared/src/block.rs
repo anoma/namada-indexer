@@ -104,14 +104,16 @@ pub struct Block {
     pub hash: Id,
     pub header: BlockHeader,
     pub transactions: Vec<(WrapperTransaction, Vec<InnerTransaction>)>,
-    pub epoch: Epoch
+    pub epoch: Epoch,
 }
 
 impl Block {
     pub fn from(
         block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
-        proposer_address_namada: &Option<Id>, // Provide the namada address of the proposer, if available
+        proposer_address_namada: &Option<Id>, /* Provide the namada address
+                                               * of the proposer, if
+                                               * available */
         checksums: Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
@@ -154,7 +156,7 @@ impl Block {
                 app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
-            epoch
+            epoch,
         }
     }
 

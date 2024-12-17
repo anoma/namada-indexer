@@ -285,8 +285,7 @@ impl BlockResult {
     }
 
     pub fn gas_used(&self, tx_hash: &Id) -> Option<String> {
-        self
-            .end_events
+        self.end_events
             .iter()
             .filter_map(|event| {
                 if let Some(TxAttributesType::TxApplied(data)) =

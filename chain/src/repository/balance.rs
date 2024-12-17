@@ -73,6 +73,8 @@ pub fn insert_tokens(
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashSet;
+
     use anyhow::Context;
     use diesel::{
         BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper,
@@ -86,7 +88,6 @@ mod tests {
     use shared::balance::{Amount, Balance};
     use shared::id::Id;
     use shared::token::IbcToken;
-    use std::collections::HashSet;
     use test_helpers::db::TestDb;
 
     use super::*;
