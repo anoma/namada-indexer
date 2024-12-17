@@ -284,6 +284,22 @@ impl BlockResult {
         exit_status.unwrap_or(TransactionExitStatus::Rejected)
     }
 
+    pub fn gas_used(&self, tx_hash: &Id) -> Option<String> {
+        self.end_events
+            .iter()
+            .filter_map(|event| {
+                if let Some(TxAttributesType::TxApplied(data)) =
+                    &event.attributes
+                {
+                    Some(data.clone())
+                } else {
+                    None
+                }
+            })
+            .find(|attributes| attributes.hash.eq(tx_hash))
+            .map(|attributes| attributes.gas.to_string())
+    }
+
     pub fn is_inner_tx_accepted(
         &self,
         wrapper_hash: &Id,

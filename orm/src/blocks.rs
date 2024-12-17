@@ -44,9 +44,11 @@ impl BlockInsertDb {
     pub fn fake(height: i32) -> Self {
         Self {
             height,
-            hash: Some(height.to_string()), /* fake hash but ensures uniqueness
+            hash: Some(height.to_string()), /* fake hash but ensures
+                                             * uniqueness
                                              * with height */
-            app_hash: Some("fake_app_hash".to_string()), // doesn't require uniqueness
+            app_hash: Some("fake_app_hash".to_string()), /* doesn't require
+                                                          * uniqueness */
             timestamp: Some(
                 chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc(),
             ),

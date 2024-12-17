@@ -936,6 +936,8 @@ components:
           type: string
         gasLimit:
           type: string
+        gasUsed:
+          type: string
         blockHeight:
           type: string
         innerTransactions:
