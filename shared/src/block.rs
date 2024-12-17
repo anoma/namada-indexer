@@ -109,8 +109,9 @@ pub struct Block {
 
 impl Block {
     pub fn from(
-        block_response: TendermintBlockResponse,
+        block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
+        proposer_address_namada: &Option<Id>, // Provide the namada address of the proposer, if available
         checksums: Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
@@ -140,14 +141,17 @@ impl Block {
             header: BlockHeader {
                 height: block_response.block.header.height.value()
                     as BlockHeight,
-                proposer_address: block_response
+                proposer_address_tm: block_response
                     .block
                     .header
                     .proposer_address
                     .to_string()
                     .to_lowercase(),
+                proposer_address_namada: proposer_address_namada
+                    .as_ref()
+                    .map(Id::to_string),
                 timestamp: block_response.block.header.time.to_string(),
-                app_hash: Id::from(block_response.block.header.app_hash),
+                app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
             epoch,

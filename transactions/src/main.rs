@@ -12,10 +12,13 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::id::Id;
 use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
-use transactions::repository::transactions as transaction_repo;
+use transactions::repository::{
+    block as block_repo, transactions as transaction_repo,
+};
 use transactions::services::{
     db as db_service, namada as namada_service,
     tendermint as tendermint_service,
@@ -114,9 +117,24 @@ async fn crawling_fn(
         .into_rpc_error()?;
     let block_results = BlockResult::from(tm_block_results_response);
 
+    let proposer_address_namada = namada_service::get_validator_namada_address(
+        &client,
+        &Id::from(&tm_block_response.block.header.proposer_address),
+    )
+    .await
+    .into_rpc_error()?;
+
+    tracing::debug!(
+        block = block_height,
+        tm_address = tm_block_response.block.header.proposer_address.to_string(),
+        namada_address = ?proposer_address_namada,
+        "Got block proposer address"
+    );
+
     let block = Block::from(
-        tm_block_response.clone(),
+        &tm_block_response,
         &block_results,
+        &proposer_address_namada,
         checksums,
         1_u32,
         block_height,
@@ -151,6 +169,11 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                block_repo::upsert_block(
+                    transaction_conn,
+                    block,
+                    tm_block_response,
+                )?;
                 transaction_repo::insert_wrapper_transactions(
                     transaction_conn,
                     wrapper_txs,
