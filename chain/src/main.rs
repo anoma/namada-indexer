@@ -66,11 +66,22 @@ async fn main() -> Result<(), MainError> {
     rlimit::increase_nofile_limit(u64::MAX).unwrap();
 
     // See if we can start from existing crawler_state
-    let crawler_state = match db_service::try_get_chain_crawler_state(&conn)
-        .await
-        .into_db_error()?
-    {
-        Some(crawler_state) => {
+    let crawler_state = match (
+        config.backfill_from,
+        db_service::try_get_chain_crawler_state(&conn)
+            .await
+            .into_db_error()?,
+    ) {
+        (Some(height), _) => {
+            tracing::warn!("Backfilling from block height {}", height);
+            Some(ChainCrawlerState {
+                last_processed_block: height,
+                last_processed_epoch: 0,
+                first_block_in_epoch: 0,
+                timestamp: 0,
+            })
+        }
+        (None, Some(crawler_state)) => {
             tracing::info!(
                 "Found chain crawler state, attempting initial crawl at block \
                  {}...",
@@ -83,6 +94,7 @@ async fn main() -> Result<(), MainError> {
                 client.clone(),
                 conn.clone(),
                 checksums.clone(),
+                true,
             )
             .await;
 
@@ -125,7 +137,7 @@ async fn main() -> Result<(), MainError> {
                 }
             }
         }
-        None => {
+        (None, None) => {
             tracing::info!(
                 "No chain crawler state found, starting from initial_query..."
             );
@@ -158,6 +170,7 @@ async fn main() -> Result<(), MainError> {
                 client.clone(),
                 conn.clone(),
                 checksums.clone(),
+                config.backfill_from.is_none(),
             )
         },
         crawler_state.last_processed_block,
@@ -171,6 +184,7 @@ async fn crawling_fn(
     client: Arc<HttpClient>,
     conn: Arc<Object>,
     checksums: Checksums,
+    should_update_crawler_state: bool,
 ) -> Result<(), MainError> {
     let should_process = can_process(block_height, client.clone()).await?;
 
@@ -431,10 +445,12 @@ async fn crawling_fn(
                     revealed_pks,
                 )?;
 
-                repository::crawler_state::upsert_crawler_state(
-                    transaction_conn,
-                    crawler_state,
-                )?;
+                if should_update_crawler_state {
+                    repository::crawler_state::upsert_crawler_state(
+                        transaction_conn,
+                        crawler_state,
+                    )?;
+                }
 
                 anyhow::Ok(())
             })
