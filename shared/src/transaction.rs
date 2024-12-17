@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
+use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::masp::ShieldedTransfer;
@@ -81,6 +82,9 @@ pub enum TransactionKind {
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
     BecomeValidator(Option<Box<BecomeValidator>>),
+    ReactivateValidator(Option<Address>),
+    DeactivateValidator(Option<Address>),
+    UnjailValidator(Option<Address>),
     Unknown(Option<UnknownTransaction>),
 }
 
@@ -185,6 +189,22 @@ impl TransactionKind {
                 };
                 TransactionKind::RevealPk(data)
             }
+            "tx_deactivate_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::DeactivateValidator(data)
+            }
+            "tx_reactivate_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::ReactivateValidator(data)
+            }
             "tx_ibc" => {
                 let data = if let Ok(data) =
                     namada_ibc::decode_message::<Transfer>(data)
@@ -195,6 +215,14 @@ impl TransactionKind {
                     None
                 };
                 TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
+            }
+            "tx_unjail_validator" => {
+                let data = if let Ok(data) = Address::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::UnjailValidator(data)
             }
             "tx_become_validator" => {
                 let data =
@@ -283,6 +311,7 @@ impl InnerTransaction {
 #[derive(Debug, Clone)]
 pub struct Fee {
     pub gas: String,
+    pub gas_used: Option<String>,
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
@@ -304,9 +333,11 @@ impl Transaction {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
                 let wrapper_tx_status =
                     block_results.is_wrapper_tx_applied(&wrapper_tx_id);
+                let gas_used = block_results.gas_used(&wrapper_tx_id);
 
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
+                    gas_used,
                     amount_per_gas_unit: wrapper
                         .fee
                         .amount_per_gas_unit
@@ -432,5 +463,74 @@ impl Transaction {
 
     pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
         self.extra_sections.get(&section_id).cloned()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IbcSequence {
+    pub sequence_number: String,
+    pub source_port: String,
+    pub dest_port: String,
+    pub source_channel: String,
+    pub dest_channel: String,
+    pub timeout: u64,
+    pub tx_id: Id,
+}
+
+impl IbcSequence {
+    pub fn id(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}",
+            self.dest_port,
+            self.dest_channel,
+            self.source_port,
+            self.source_channel,
+            self.sequence_number
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum IbcAckStatus {
+    Success,
+    Fail,
+    Timeout,
+    Unknown,
+}
+
+#[derive(Debug, Clone)]
+pub struct IbcAck {
+    pub sequence_number: String,
+    pub source_port: String,
+    pub dest_port: String,
+    pub source_channel: String,
+    pub dest_channel: String,
+    pub status: IbcAckStatus,
+}
+
+impl IbcAck {
+    pub fn id_source(&self) -> String {
+        format!(
+            "{}/{}/{}",
+            self.source_port, self.source_channel, self.sequence_number
+        )
+    }
+
+    pub fn id_dest(&self) -> String {
+        format!(
+            "{}/{}/{}",
+            self.dest_port, self.dest_channel, self.sequence_number
+        )
+    }
+
+    pub fn id(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}",
+            self.dest_port,
+            self.dest_channel,
+            self.source_port,
+            self.source_channel,
+            self.sequence_number
+        )
     }
 }

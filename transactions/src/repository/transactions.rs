@@ -1,12 +1,20 @@
 use anyhow::Context;
 use chrono::NaiveDateTime;
 use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use diesel::{
+    ExpressionMethods, OptionalEmptyChangesetExtension, PgConnection,
+    RunQueryDsl,
+};
 use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
-use orm::schema::{crawler_state, inner_transactions, wrapper_transactions};
+use orm::ibc::{IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb};
+use orm::schema::{
+    crawler_state, ibc_ack, inner_transactions, wrapper_transactions,
+};
 use orm::transactions::{InnerTransactionInsertDb, WrapperTransactionInsertDb};
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
-use shared::transaction::{InnerTransaction, WrapperTransaction};
+use shared::transaction::{
+    IbcAck, IbcSequence, InnerTransaction, WrapperTransaction,
+};
 
 pub fn insert_inner_transactions(
     transaction_conn: &mut PgConnection,
@@ -85,5 +93,40 @@ pub fn update_crawler_timestamp(
         .execute(transaction_conn)
         .context("Failed to update crawler timestamp in db")?;
 
+    anyhow::Ok(())
+}
+
+pub fn insert_ibc_sequence(
+    transaction_conn: &mut PgConnection,
+    ibc_sequences: Vec<IbcSequence>,
+) -> anyhow::Result<()> {
+    diesel::insert_into(ibc_ack::table)
+        .values::<Vec<IbcAckInsertDb>>(
+            ibc_sequences
+                .into_iter()
+                .map(IbcAckInsertDb::from)
+                .collect(),
+        )
+        .execute(transaction_conn)
+        .context("Failed to update crawler state in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn update_ibc_sequence(
+    transaction_conn: &mut PgConnection,
+    ibc_acks: Vec<IbcAck>,
+) -> anyhow::Result<()> {
+    for ack in ibc_acks {
+        let ack_update = IbcSequencekStatusUpdateDb {
+            status: IbcAckStatusDb::from(ack.status.clone()),
+        };
+        diesel::update(ibc_ack::table)
+            .set(ack_update)
+            .filter(ibc_ack::dsl::id.eq(ack.id()))
+            .execute(transaction_conn)
+            .optional_empty_changeset()
+            .context("Failed to update validator metadata in db")?;
+    }
     anyhow::Ok(())
 }

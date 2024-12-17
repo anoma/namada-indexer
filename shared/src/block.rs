@@ -24,7 +24,9 @@ use crate::transaction::{
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
-use crate::validator::{Validator, ValidatorMetadataChange, ValidatorState};
+use crate::validator::{
+    Validator, ValidatorMetadataChange, ValidatorState, ValidatorStateChange,
+};
 use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
@@ -107,8 +109,11 @@ pub struct Block {
 
 impl Block {
     pub fn from(
-        block_response: TendermintBlockResponse,
+        block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
+        proposer_address_namada: &Option<Id>, /* Provide the namada address
+                                               * of the proposer, if
+                                               * available */
         checksums: Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
@@ -138,14 +143,17 @@ impl Block {
             header: BlockHeader {
                 height: block_response.block.header.height.value()
                     as BlockHeight,
-                proposer_address: block_response
+                proposer_address_tm: block_response
                     .block
                     .header
                     .proposer_address
                     .to_string()
                     .to_lowercase(),
+                proposer_address_namada: proposer_address_namada
+                    .as_ref()
+                    .map(Id::to_string),
                 timestamp: block_response.block.header.time.to_string(),
-                app_hash: Id::from(block_response.block.header.app_hash),
+                app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
             epoch,
@@ -506,7 +514,7 @@ impl Block {
         Some(recv_msg)
     }
 
-    pub fn validators(&self) -> HashSet<Validator> {
+    pub fn new_validators(&self) -> HashSet<Validator> {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
@@ -531,6 +539,34 @@ impl Block {
                         discord_handler: data.discord_handle,
                         avatar: data.avatar,
                         state: ValidatorState::Inactive,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn update_validators_state(&self) -> HashSet<ValidatorStateChange> {
+        self.transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter(|tx| {
+                tx.data.is_some()
+                    && tx.exit_code == TransactionExitStatus::Applied
+            })
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::DeactivateValidator(data) => {
+                    let data = data.clone().unwrap();
+                    Some(ValidatorStateChange {
+                        address: Id::from(data),
+                        state: ValidatorState::Deactivating,
+                    })
+                }
+                TransactionKind::ReactivateValidator(data) => {
+                    let data = data.clone().unwrap();
+                    Some(ValidatorStateChange {
+                        address: Id::from(data),
+                        state: ValidatorState::Reactivating,
                     })
                 }
                 _ => None,

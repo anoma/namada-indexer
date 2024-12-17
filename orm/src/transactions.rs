@@ -26,6 +26,9 @@ pub enum TransactionKindDb {
     ChangeCommission,
     RevealPk,
     BecomeValidator,
+    ReactivateValidator,
+    DeactivateValidator,
+    UnjailValidator,
     Unknown,
 }
 
@@ -33,31 +36,28 @@ impl From<TransactionKind> for TransactionKindDb {
     fn from(value: TransactionKind) -> Self {
         match value {
             TransactionKind::TransparentTransfer(_) => {
-                TransactionKindDb::TransparentTransfer
+                Self::TransparentTransfer
             }
-            TransactionKind::ShieldedTransfer(_) => {
-                TransactionKindDb::ShieldedTransfer
+            TransactionKind::ShieldedTransfer(_) => Self::ShieldedTransfer,
+            TransactionKind::IbcMsgTransfer(_) => Self::IbcMsgTransfer,
+            TransactionKind::Bond(_) => Self::Bond,
+            TransactionKind::Redelegation(_) => Self::Redelegation,
+            TransactionKind::Unbond(_) => Self::Unbond,
+            TransactionKind::Withdraw(_) => Self::Withdraw,
+            TransactionKind::ClaimRewards(_) => Self::ClaimRewards,
+            TransactionKind::ProposalVote(_) => Self::VoteProposal,
+            TransactionKind::InitProposal(_) => Self::InitProposal,
+            TransactionKind::MetadataChange(_) => Self::ChangeMetadata,
+            TransactionKind::CommissionChange(_) => Self::ChangeCommission,
+            TransactionKind::DeactivateValidator(_) => {
+                Self::DeactivateValidator
             }
-            TransactionKind::IbcMsgTransfer(_) => {
-                TransactionKindDb::IbcMsgTransfer
+            TransactionKind::ReactivateValidator(_) => {
+                Self::ReactivateValidator
             }
-            TransactionKind::Bond(_) => TransactionKindDb::Bond,
-            TransactionKind::Redelegation(_) => TransactionKindDb::Redelegation,
-            TransactionKind::Unbond(_) => TransactionKindDb::Unbond,
-            TransactionKind::Withdraw(_) => TransactionKindDb::Withdraw,
-            TransactionKind::ClaimRewards(_) => TransactionKindDb::ClaimRewards,
-            TransactionKind::ProposalVote(_) => TransactionKindDb::VoteProposal,
-            TransactionKind::InitProposal(_) => TransactionKindDb::InitProposal,
-            TransactionKind::MetadataChange(_) => {
-                TransactionKindDb::ChangeMetadata
-            }
-            TransactionKind::CommissionChange(_) => {
-                TransactionKindDb::ChangeCommission
-            }
-            TransactionKind::RevealPk(_) => TransactionKindDb::RevealPk,
-            TransactionKind::BecomeValidator(_) => {
-                TransactionKindDb::BecomeValidator
-            }
+            TransactionKind::RevealPk(_) => Self::RevealPk,
+            TransactionKind::BecomeValidator(_) => Self::BecomeValidator,
+            TransactionKind::UnjailValidator(_) => Self::UnjailValidator,
             TransactionKind::Unknown(_) => TransactionKindDb::Unknown,
         }
     }
@@ -114,6 +114,7 @@ pub struct WrapperTransactionInsertDb {
     pub fee_payer: String,
     pub fee_token: String,
     pub gas_limit: String,
+    pub gas_used: Option<String>,
     pub block_height: i32,
     pub exit_code: TransactionResultDb,
     pub atomic: bool,
@@ -128,6 +129,7 @@ impl WrapperTransactionInsertDb {
             fee_payer: tx.fee.gas_payer.to_string(),
             fee_token: tx.fee.gas_token.to_string(),
             gas_limit: tx.fee.gas,
+            gas_used: tx.fee.gas_used,
             block_height: tx.block_height as i32,
             exit_code: TransactionResultDb::from(tx.exit_code),
             atomic: tx.atomic,

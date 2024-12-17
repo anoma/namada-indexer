@@ -110,7 +110,7 @@ pub async fn query_balance(
             })
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await)
 }
@@ -440,7 +440,7 @@ pub async fn query_bonds(
             Some(bonds)
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -513,7 +513,7 @@ pub async fn query_unbonds(
             }
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -573,7 +573,7 @@ pub async fn query_tallies(
             Some((proposal, tally_type))
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -603,7 +603,7 @@ pub async fn query_all_votes(
                 Some(votes)
             })
             .map(futures::future::ready)
-            .buffer_unordered(20)
+            .buffer_unordered(32)
             .collect::<Vec<_>>()
             .await;
 
@@ -686,11 +686,24 @@ pub async fn get_validator_set_at_epoch(
                 state: validator_state
             })
         })
-        .buffer_unordered(100)
+        .buffer_unordered(32)
         .try_collect::<HashSet<_>>()
         .await?;
 
     Ok(ValidatorSet { validators, epoch })
+}
+
+pub async fn get_validator_namada_address(
+    client: &HttpClient,
+    tm_addr: &Id,
+) -> anyhow::Result<Option<Id>> {
+    let validator = RPC
+        .vp()
+        .pos()
+        .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
+        .await?;
+
+    Ok(validator.map(Id::from))
 }
 
 pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {

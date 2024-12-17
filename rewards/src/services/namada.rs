@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::Duration;
 
 use anyhow::Context;
 use futures::StreamExt;
@@ -37,13 +38,97 @@ pub async fn query_rewards(
     client: &HttpClient,
     delegation_pairs: HashSet<DelegationPair>,
 ) -> anyhow::Result<Vec<Reward>> {
-    Ok(futures::stream::iter(delegation_pairs)
+    let mut all_rewards: Vec<Reward> = Vec::new();
+
+    let batches: Vec<(usize, Vec<DelegationPair>)> = delegation_pairs
+        .clone()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .chunks(32)
+        .enumerate()
+        .map(|(i, chunk)| (i, chunk.to_vec()))
+        .collect();
+
+    tracing::info!(
+        "Got {} batches with a total of {} rewards to query...",
+        batches.len(),
+        delegation_pairs.len()
+    );
+
+    let results = futures::stream::iter(batches)
+        .map(|batch| process_batch_with_retries(client, batch))
+        .buffer_unordered(3)
+        .collect::<Vec<_>>()
+        .await;
+
+    tracing::info!("Done fetching rewards!");
+
+    for result in results {
+        match result {
+            Ok(mut rewards) => all_rewards.append(&mut rewards),
+            Err(err) => return Err(err),
+        }
+    }
+
+    Ok(all_rewards)
+}
+
+pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
+    let epoch = rpc::query_epoch(client)
+        .await
+        .context("Failed to query Namada's current epoch")?;
+
+    Ok(epoch.0 as Epoch)
+}
+
+async fn process_batch_with_retries(
+    client: &HttpClient,
+    batch: (usize, Vec<DelegationPair>),
+) -> anyhow::Result<Vec<Reward>> {
+    let mut retries = 0;
+
+    tracing::info!("Processing batch {}", batch.0);
+    loop {
+        let result = process_batch(client, batch.1.clone()).await;
+
+        match result {
+            Ok(rewards) => {
+                tracing::info!("Batch {} done!", batch.0);
+                return Ok(rewards);
+            }
+            Err(err) => {
+                retries += 1;
+                tracing::warn!(
+                    "Batch reward failed (attempt {}/{}) - Error: {:?}",
+                    retries,
+                    3,
+                    err
+                );
+
+                if retries >= 3 {
+                    tracing::error!(
+                        "Batch reward failed after maximum retries."
+                    );
+                    return Err(err);
+                }
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        }
+    }
+}
+
+async fn process_batch(
+    client: &HttpClient,
+    batch: Vec<DelegationPair>,
+) -> anyhow::Result<Vec<Reward>> {
+    Ok(futures::stream::iter(batch)
         .filter_map(|delegation| async move {
-            tracing::info!(
+            tracing::debug!(
                 "Fetching rewards {} -> {} ...",
                 delegation.validator_address,
                 delegation.delegator_address
             );
+
             let reward = RPC
                 .vp()
                 .pos()
@@ -55,7 +140,7 @@ pub async fn query_rewards(
                 .await
                 .ok()?;
 
-            tracing::info!(
+            tracing::debug!(
                 "Done fetching reward for {} -> {}!",
                 delegation.validator_address,
                 delegation.delegator_address
@@ -67,15 +152,7 @@ pub async fn query_rewards(
             })
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await)
-}
-
-pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
-    let epoch = rpc::query_epoch(client)
-        .await
-        .context("Failed to query Namada's current epoch")?;
-
-    Ok(epoch.0 as Epoch)
 }

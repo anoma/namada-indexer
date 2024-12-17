@@ -54,6 +54,14 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "ibc_status"))]
+    pub struct IbcStatus;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "token_type"))]
     pub struct TokenType;
 
@@ -98,6 +106,19 @@ diesel::table! {
         #[max_length = 64]
         token -> Varchar,
         raw_amount -> Numeric,
+    }
+}
+
+diesel::table! {
+    blocks (height) {
+        height -> Int4,
+        #[max_length = 64]
+        hash -> Nullable<Varchar>,
+        #[max_length = 64]
+        app_hash -> Nullable<Varchar>,
+        timestamp -> Nullable<Timestamp>,
+        proposer -> Nullable<Varchar>,
+        epoch -> Nullable<Int4>,
     }
 }
 
@@ -193,6 +214,18 @@ diesel::table! {
         kind -> VoteKind,
         voter_address -> Varchar,
         proposal_id -> Int4,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::IbcStatus;
+
+    ibc_ack (id) {
+        id -> Varchar,
+        tx_hash -> Varchar,
+        timeout -> Int8,
+        status -> IbcStatus,
     }
 }
 
@@ -307,9 +340,11 @@ diesel::table! {
         block_height -> Int4,
         exit_code -> TransactionResult,
         atomic -> Bool,
+        gas_used -> Nullable<Varchar>,
     }
 }
 
+diesel::joinable!(balance_changes -> blocks (height));
 diesel::joinable!(balance_changes -> token (token));
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
@@ -318,9 +353,11 @@ diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
 diesel::joinable!(unbonds -> validators (validator_id));
+diesel::joinable!(wrapper_transactions -> blocks (block_height));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balance_changes,
+    blocks,
     bonds,
     chain_parameters,
     crawler_state,
@@ -328,6 +365,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     gas_price,
     governance_proposals,
     governance_votes,
+    ibc_ack,
     ibc_token,
     inner_transactions,
     pos_rewards,

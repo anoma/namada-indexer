@@ -8,6 +8,8 @@ info:
     url: https://github.com/anoma/namada-indexer
 servers:
   - url: http://localhost:5001
+  - url: https://namada-rpc.mandragora.io
+  - url: https://indexer.namada.tududes.com:443
 paths:
   /health:
     get:
@@ -113,6 +115,12 @@ paths:
             type: integer
             minimum: 1
           description: Pagination parameter
+        - in: query
+          name: activeAt
+          schema:
+            type: integer
+            minimum: 0
+          description: Get all bonds that are active at this epoch
       responses:
         '200':
           description: A list of bonds.
@@ -175,6 +183,12 @@ paths:
             type: integer
             minimum: 1
           description: Pagination parameter
+        - in: query
+          name: activeAt
+          schema:
+            type: integer
+            minimum: 0
+          description: Get all unbonds that are active at this epoch( < )
       responses:
         '200':
           description: A list of unbonds.
@@ -621,6 +635,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InnerTransaction'
+  /api/v1/ibc/{tx_id}/status:
+    get:
+      summary: Get the status of an IBC transfer by tx id
+      parameters:
+        - in: path
+          name: tx_id
+          schema:
+            type: string
+          required: true
+          description: Tx id hash 
+      responses:
+        '200':
+          description: Status of the IBC transfer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [status]
+                  properties:
+                    name:
+                      type: string
+                      enum: [unknown, timeout, success, fail]
+  /api/v1/block/height/{value}:
+    get:
+      summary: Get the block by height
+      parameters:
+        - in: path
+          name: value
+          schema:
+            type: number
+          required: true
+          description: Block height
+      responses:
+        '200':
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
+  /api/v1/block/timestamp/{value}:
+    get:
+      summary: Get the block by timestamp
+      parameters:
+        - in: path
+          name: value
+          schema:
+            type: number
+          required: true
+          description: Block timestamp
+      responses:
+        '200':
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
   /api/v1/crawlers/timestamps:
     get:
       summary: Get timestamps of the last activity of the crawlers
@@ -686,7 +758,7 @@ components:
           $ref: '#/components/schemas/ValidatorStatus'
     ValidatorStatus:
       type: string
-      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown]
+      enum: [consensus, belowCapacity, belowThreshold, inactive, jailed, unknown, unjailing, deactivating, reactivating]
     Proposal:
       type: object
       required: [id, content, type, author, startEpoch, endEpoch, activationEpoch, startTime, endTime, currentTime, activationTime, status, yayVotes, nayVotes, abstainVotes, tallyType]
@@ -914,6 +986,8 @@ components:
           type: string
         gasLimit:
           type: string
+        gasUsed:
+          type: string
         blockHeight:
           type: string
         innerTransactions:
@@ -926,7 +1000,7 @@ components:
                 type: string
               kind:
                 type: string
-                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+                enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "deactivateValidator", "reactivateValidator", "unjailValidator", "unknown"]
               exitCode:
                 type: string
                 enum: [applied, rejected]
@@ -956,4 +1030,20 @@ components:
         memo:
           type: string
         data:
+          type: string
+    Block:
+      type: object
+      required: [height]
+      properties:
+        height:
+          type: string
+        hash:
+          type: string
+        appHash:
+          type: string
+        timestamp:
+          type: string
+        proposer:
+          type: string
+        epoch:
           type: string
