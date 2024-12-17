@@ -2,6 +2,7 @@ use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 
 use super::balance::BalanceError;
+use super::block::BlockError;
 use super::chain::ChainError;
 use super::crawler_state::CrawlerStateError;
 use super::gas::GasError;
@@ -13,6 +14,8 @@ use super::transaction::TransactionError;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
+    #[error(transparent)]
+    BlockError(#[from] BlockError),
     #[error(transparent)]
     TransactionError(#[from] TransactionError),
     #[error(transparent)]
@@ -36,6 +39,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
+            ApiError::BlockError(error) => error.into_response(),
             ApiError::TransactionError(error) => error.into_response(),
             ApiError::ChainError(error) => error.into_response(),
             ApiError::PoSError(error) => error.into_response(),
