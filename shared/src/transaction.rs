@@ -280,6 +280,7 @@ impl InnerTransaction {
 #[derive(Debug, Clone)]
 pub struct Fee {
     pub gas: String,
+    pub gas_used: Option<String>,
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
@@ -301,9 +302,11 @@ impl Transaction {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
                 let wrapper_tx_status =
                     block_results.is_wrapper_tx_applied(&wrapper_tx_id);
+                let gas_used = block_results.gas_used(&wrapper_tx_id);
 
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
+                    gas_used,
                     amount_per_gas_unit: wrapper
                         .fee
                         .amount_per_gas_unit
