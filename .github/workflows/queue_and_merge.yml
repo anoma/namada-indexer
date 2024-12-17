@@ -99,10 +99,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2024-06-14
           components: rustfmt
           cache: true
-      - run: just fmt
+      - run: just fmt-check
 
   docker:
     name: Docker

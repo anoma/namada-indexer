@@ -1,3 +1,7 @@
+devs:
+    rustup toolchain install 1.79.0 --no-self-update --component clippy,rustfmt
+    rustup toolchain install nightly-2024-06-14 --no-self-update --component clippy,rustfmt
+
 build:
     cargo build --all
 
@@ -5,7 +9,10 @@ check:
     cargo check --all
 
 fmt:
-    cargo +nightly fmt --all
+    cargo +nightly-2024-06-14 fmt --all
+
+fmt-check:
+    cargo +nightly-2024-06-14 fmt --all --check
 
 test:
     cargo test
