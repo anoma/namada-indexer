@@ -28,6 +28,9 @@ pub enum ValidatorStateDb {
     BelowThreshold,
     Inactive,
     Jailed,
+    Deactivating,
+    Reactivating,
+    Unjailing,
     Unknown,
 }
 
@@ -39,6 +42,9 @@ impl From<ValidatorState> for ValidatorStateDb {
             ValidatorState::BelowThreshold => Self::BelowThreshold,
             ValidatorState::Inactive => Self::Inactive,
             ValidatorState::Jailed => Self::Jailed,
+            ValidatorState::Deactivating => Self::Deactivating,
+            ValidatorState::Reactivating => Self::Reactivating,
+            ValidatorState::Unjailing => Self::Unjailing,
             ValidatorState::Unknown => Self::Unknown,
         }
     }
@@ -87,6 +93,14 @@ pub struct ValidatorWithMetaInsertDb {
     pub description: Option<String>,
     pub discord_handle: Option<String>,
     pub avatar: Option<String>,
+    pub state: ValidatorStateDb,
+}
+
+#[derive(Serialize, Insertable, Clone)]
+#[diesel(table_name = validators)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ValidatorStateChangeDb {
+    pub namada_address: String,
     pub state: ValidatorStateDb,
 }
 

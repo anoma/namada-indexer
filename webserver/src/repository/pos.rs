@@ -60,12 +60,14 @@ pub trait PosRepositoryTrait {
         &self,
         address: String,
         page: i64,
+        active_at: Option<i32>,
     ) -> Result<PaginatedResponseDb<(ValidatorDb, BondDb)>, String>;
 
     async fn find_unbonds_by_address(
         &self,
         address: String,
         page: i64,
+        active_at: Option<i32>,
     ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String>;
 
     async fn find_merged_unbonds_by_address(
@@ -183,12 +185,19 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
+        active_at: Option<i32>,
     ) -> Result<PaginatedResponseDb<(ValidatorDb, BondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            validators::table
-                .inner_join(bonds::table)
+            let mut query =
+                validators::table.inner_join(bonds::table).into_boxed();
+
+            if let Some(at) = active_at {
+                query = query.filter(bonds::dsl::start.le(at));
+            }
+
+            query
                 .filter(bonds::dsl::address.eq(address))
                 .select((validators::all_columns, bonds::all_columns))
                 .paginate(page)
@@ -235,12 +244,19 @@ impl PosRepositoryTrait for PosRepository {
         &self,
         address: String,
         page: i64,
+        active_at: Option<i32>,
     ) -> Result<PaginatedResponseDb<(ValidatorDb, UnbondDb)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            validators::table
-                .inner_join(unbonds::table)
+            let mut query =
+                validators::table.inner_join(unbonds::table).into_boxed();
+
+            if let Some(at) = active_at {
+                query = query.filter(unbonds::dsl::withdraw_epoch.lt(at));
+            }
+
+            query
                 .filter(unbonds::dsl::address.eq(address))
                 .select((validators::all_columns, unbonds::all_columns))
                 .paginate(page)

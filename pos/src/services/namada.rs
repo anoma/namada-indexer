@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use anyhow::Context;
 use futures::{StreamExt, TryStreamExt};
 use namada_core::chain::Epoch as NamadaSdkEpoch;
+use namada_sdk::address::Address;
 use namada_sdk::rpc;
 use shared::block::Epoch;
 use shared::id::Id;
@@ -84,7 +85,65 @@ pub async fn get_validator_set_at_epoch(
                 state: validator_state
             })
         })
-        .buffer_unordered(100)
+        .buffer_unordered(32)
+        .try_collect::<HashSet<_>>()
+        .await?;
+
+    Ok(ValidatorSet { validators, epoch })
+}
+
+pub async fn get_validators_state(
+    client: &HttpClient,
+    validators: Vec<Validator>,
+    epoch: Epoch,
+) -> anyhow::Result<ValidatorSet> {
+    let namada_epoch = to_epoch(epoch);
+
+    let validators = futures::stream::iter(validators)
+        .map(|mut validator| async move {
+            let validator_address = Address::from(validator.address.clone());
+            let validator_state = rpc::get_validator_state(
+                client,
+                &validator_address,
+                Some(namada_epoch),
+            )
+            .await
+            .with_context(|| {
+                format!("Failed to query validator {validator_address} state")
+            })?;
+
+            let validator_state = validator_state
+                .0
+                .map(ValidatorState::from)
+                .unwrap_or(ValidatorState::Unknown);
+
+            let from_unjailing_state =
+                validator.state.eq(&ValidatorState::Unjailing)
+                    && !validator_state.eq(&ValidatorState::Jailed);
+            let from_deactivating_state =
+                validator.state.eq(&ValidatorState::Deactivating)
+                    && validator_state.eq(&ValidatorState::Inactive);
+            let from_reactivating_state =
+                validator.state.eq(&ValidatorState::Reactivating)
+                    && !validator_state.eq(&ValidatorState::Inactive);
+            let from_concrete_state = ![
+                ValidatorState::Deactivating,
+                ValidatorState::Reactivating,
+                ValidatorState::Unjailing,
+            ]
+            .contains(&validator.state);
+
+            if from_unjailing_state
+                || from_deactivating_state
+                || from_reactivating_state
+                || from_concrete_state
+            {
+                validator.state = validator_state;
+            }
+
+            anyhow::Ok(validator)
+        })
+        .buffer_unordered(32)
         .try_collect::<HashSet<_>>()
         .await?;
 
