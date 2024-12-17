@@ -19,10 +19,11 @@ use tower_http::trace::TraceLayer;
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, chain as chain_handlers,
-    crawler_state as crawler_state_handlers, gas as gas_handlers,
-    governance as gov_handlers, ibc as ibc_handler, pk as pk_handlers,
-    pos as pos_handlers, transaction as transaction_handlers,
+    balance as balance_handlers, block as block_handlers,
+    chain as chain_handlers, crawler_state as crawler_state_handlers,
+    gas as gas_handlers, governance as gov_handlers, ibc as ibc_handler,
+    pk as pk_handlers, pos as pos_handlers,
+    transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -136,6 +137,14 @@ impl ApplicationServer {
                 )
                 // Server sent events endpoints
                 .route("/chain/status", get(chain_handlers::chain_status))
+                .route(
+                    "/block/height/:value",
+                    get(block_handlers::get_block_by_height),
+                )
+                .route(
+                    "/block/timestamp/:value",
+                    get(block_handlers::get_block_by_timestamp),
+                )
                 .route(
                     "/metrics",
                     get(|| async move { metric_handle.render() }),

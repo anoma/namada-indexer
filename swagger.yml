@@ -645,6 +645,40 @@ paths:
                     name:
                       type: string
                       enum: [unknown, timeout, success, fail]
+  /api/v1/block/height/{value}:
+    get:
+      summary: Get the block by height
+      parameters:
+        - in: path
+          name: value
+          schema:
+            type: number
+          required: true
+          description: Block height
+      responses:
+        '200':
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
+  /api/v1/block/timestamp/{value}:
+    get:
+      summary: Get the block by timestamp
+      parameters:
+        - in: path
+          name: value
+          schema:
+            type: number
+          required: true
+          description: Block timestamp
+      responses:
+        '200':
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
   /api/v1/crawlers/timestamps:
     get:
       summary: Get timestamps of the last activity of the crawlers
@@ -980,4 +1014,20 @@ components:
         memo:
           type: string
         data:
+          type: string
+    Block:
+      type: object
+      required: [height]
+      properties:
+        height:
+          type: string
+        hash:
+          type: string
+        appHash:
+          type: string
+        timestamp:
+          type: string
+        proposer:
+          type: string
+        epoch:
           type: string
