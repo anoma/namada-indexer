@@ -35,11 +35,11 @@ pub async fn query_delegation_pairs(
 
 pub async fn query_rewards(
     client: &HttpClient,
-    delegation_pairs: HashSet<DelegationPair>,
+    delegation_pairs: &HashSet<DelegationPair>,
 ) -> anyhow::Result<Vec<Reward>> {
     Ok(futures::stream::iter(delegation_pairs)
         .filter_map(|delegation| async move {
-            tracing::info!(
+            tracing::debug!(
                 "Fetching rewards {} -> {} ...",
                 delegation.validator_address,
                 delegation.delegator_address
@@ -55,14 +55,14 @@ pub async fn query_rewards(
                 .await
                 .ok()?;
 
-            tracing::info!(
+            tracing::debug!(
                 "Done fetching reward for {} -> {}!",
                 delegation.validator_address,
                 delegation.delegator_address
             );
 
             Some(Reward {
-                delegation_pair: delegation,
+                delegation_pair: delegation.clone(),
                 amount: Amount::from(reward),
             })
         })
