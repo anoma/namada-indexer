@@ -707,7 +707,34 @@ paths:
                       enum: [chain, governance, parameters, pos, rewards, transactions]
                     timestamp:
                       type: number
-
+  /api/v1/chain/history:
+    get:
+      summary: Get a paginated list of transaction for a list of addresses
+      parameters:
+        - in: query
+          name: addresses
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 1
+            maxItems: 10
+          description: The list of address. Must contain at least 1 element
+      responses:
+        '200':
+          description: Pagined historic transaction list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TransactionHistory'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
 components:
   schemas:
     Validator:
@@ -1031,3 +1058,30 @@ components:
           type: string
         epoch:
           type: string
+    TransactionHistory:
+      type: object
+      required: [txId, kind, wrapperId, exitCode]
+      properties:
+        tx:
+          type: object
+          required: [txId, kind, wrapperId, exitCode]
+          properties:
+            txId:
+              type: string
+            wrapperId:
+              type: string
+            kind:
+              type: string
+              enum: ["transparentTransfer", "shieldedTransfer", "shieldingTransfer", "unshieldingTransfer", "bond", "redelegation", "unbond", "withdraw", "claimRewards", "voteProposal", "initProposal", "changeMetadata", "changeCommission", "revealPk", "unknown"]
+            exitCode:
+              type: string
+              enum: [applied, rejected]
+            memo:
+              type: string
+            data:
+              type: string
+        target:
+          type: string
+        kind:
+          type: string
+          enum: [received, sent]
