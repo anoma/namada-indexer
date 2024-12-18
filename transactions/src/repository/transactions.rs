@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use chrono::NaiveDateTime;
 use diesel::upsert::excluded;
@@ -8,12 +10,17 @@ use diesel::{
 use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
 use orm::ibc::{IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb};
 use orm::schema::{
-    crawler_state, ibc_ack, inner_transactions, wrapper_transactions,
+    crawler_state, ibc_ack, inner_transactions, transaction_history,
+    wrapper_transactions,
 };
-use orm::transactions::{InnerTransactionInsertDb, WrapperTransactionInsertDb};
+use orm::transactions::{
+    InnerTransactionInsertDb, TransactionHistoryInsertDb,
+    WrapperTransactionInsertDb,
+};
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
 use shared::transaction::{
-    IbcAck, IbcSequence, InnerTransaction, WrapperTransaction,
+    IbcAck, IbcSequence, InnerTransaction, TransactionTarget,
+    WrapperTransaction,
 };
 
 pub fn insert_inner_transactions(
@@ -117,5 +124,22 @@ pub fn update_ibc_sequence(
             .optional_empty_changeset()
             .context("Failed to update validator metadata in db")?;
     }
+    anyhow::Ok(())
+}
+
+pub fn insert_transactions_history(
+    transaction_conn: &mut PgConnection,
+    txs: HashSet<TransactionTarget>,
+) -> anyhow::Result<()> {
+    diesel::insert_into(transaction_history::table)
+        .values::<&Vec<TransactionHistoryInsertDb>>(
+            &txs.into_iter()
+                .map(TransactionHistoryInsertDb::from)
+                .collect::<Vec<_>>(),
+        )
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to insert transaction history in db")?;
+
     anyhow::Ok(())
 }

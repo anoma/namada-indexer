@@ -3,7 +3,9 @@ use crate::error::transaction::TransactionError;
 use crate::repository::tranasaction::{
     TransactionRepository, TransactionRepositoryTrait,
 };
-use crate::response::transaction::{InnerTransaction, WrapperTransaction};
+use crate::response::transaction::{
+    InnerTransaction, TransactionHistory, WrapperTransaction,
+};
 
 #[derive(Clone)]
 pub struct TransactionService {
@@ -54,5 +56,25 @@ impl TransactionService {
             .map_err(TransactionError::Database)?;
 
         Ok(inner_txs.into_iter().map(InnerTransaction::from).collect())
+    }
+
+    pub async fn get_addresses_history(
+        &self,
+        addresses: Vec<String>,
+        page: u64,
+    ) -> Result<(Vec<TransactionHistory>, u64, u64), TransactionError> {
+        let (txs, total_pages, total_items) = self
+            .transaction_repo
+            .find_addresses_history(addresses, page as i64)
+            .await
+            .map_err(TransactionError::Database)?;
+
+        Ok((
+            txs.into_iter()
+                .map(|(h, t, bh)| TransactionHistory::from(h, t, bh))
+                .collect(),
+            total_pages as u64,
+            total_items as u64,
+        ))
     }
 }

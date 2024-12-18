@@ -119,6 +119,10 @@ impl ApplicationServer {
                     "/chain/inner/:id",
                     get(transaction_handlers::get_inner_tx),
                 )
+                .route(
+                    "/chain/history",
+                    get(transaction_handlers::get_transaction_history),
+                )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route("/chain/token", get(chain_handlers::get_tokens))

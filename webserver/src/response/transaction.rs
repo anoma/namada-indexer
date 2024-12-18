@@ -1,10 +1,11 @@
 use orm::transactions::{
-    InnerTransactionDb, TransactionKindDb, TransactionResultDb,
-    WrapperTransactionDb,
+    InnerTransactionDb, TransactionHistoryDb, TransactionHistoryKindDb,
+    TransactionKindDb, TransactionResultDb, WrapperTransactionDb,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TransactionResult {
     Applied,
     Rejected,
@@ -143,6 +144,42 @@ impl From<InnerTransactionDb> for InnerTransaction {
             data: value.data,
             memo: value.memo,
             exit_code: TransactionResult::from(value.exit_code),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TrasactionHistoryKind {
+    Received,
+    Sent,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionHistory {
+    pub tx: InnerTransaction,
+    pub target: String,
+    pub kind: TrasactionHistoryKind,
+    pub block_height: i32,
+}
+
+impl TransactionHistory {
+    pub fn from(
+        transaction_history_db: TransactionHistoryDb,
+        inner_tx_db: InnerTransactionDb,
+        block_height: i32,
+    ) -> Self {
+        Self {
+            tx: InnerTransaction::from(inner_tx_db),
+            target: transaction_history_db.target,
+            kind: match transaction_history_db.kind {
+                TransactionHistoryKindDb::Received => {
+                    TrasactionHistoryKind::Received
+                }
+                TransactionHistoryKindDb::Sent => TrasactionHistoryKind::Sent,
+            },
+            block_height,
         }
     }
 }

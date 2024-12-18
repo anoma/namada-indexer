@@ -495,3 +495,38 @@ impl IbcAck {
         )
     }
 }
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum TransactionHistoryKind {
+    Received,
+    Sent,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct TransactionTarget {
+    pub inner_tx: Id,
+    pub address: String,
+    pub kind: TransactionHistoryKind,
+}
+
+impl TransactionTarget {
+    pub fn new(
+        inner_tx: Id,
+        address: String,
+        kind: TransactionHistoryKind,
+    ) -> Self {
+        Self {
+            inner_tx,
+            address,
+            kind,
+        }
+    }
+
+    pub fn sent(inner_tx: Id, address: String) -> Self {
+        Self::new(inner_tx, address, TransactionHistoryKind::Sent)
+    }
+
+    pub fn received(inner_tx: Id, address: String) -> Self {
+        Self::new(inner_tx, address, TransactionHistoryKind::Received)
+    }
+}

@@ -5,6 +5,7 @@ use namada_ibc::apps::transfer::types::packet::PacketData;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::IbcMessage;
+use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::token::Transfer;
 use subtle_encoding::hex;
@@ -20,7 +21,7 @@ use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
 use crate::transaction::{
     InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
-    WrapperTransaction,
+    TransactionTarget, WrapperTransaction,
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
@@ -172,6 +173,291 @@ impl Block {
             .iter()
             .map(|(wrapper_tx, _)| wrapper_tx.clone())
             .collect()
+    }
+
+    pub fn sources(&self) -> HashSet<TransactionTarget> {
+        self.inner_txs()
+            .into_iter()
+            .flat_map(|tx| match tx.kind {
+                TransactionKind::TransparentTransfer(transparent_transfer) => {
+                    if let Some(data) = transparent_transfer {
+                        let sources = data
+                            .sources
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::sent(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let targets = data
+                            .targets
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::received(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        [sources, targets].concat()
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ShieldedTransfer(_shielded_transfer) => {
+                    vec![]
+                }
+                TransactionKind::IbcMsgTransfer(ibc_message) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Envelope(_) => vec![],
+                            IbcMessage::Transfer(msg_transfer) => {
+                                if let Some(transfer) = msg_transfer.transfer {
+                                    let sources = transfer
+                                        .sources
+                                        .keys()
+                                        .map(|account| {
+                                            TransactionTarget::sent(
+                                                tx.tx_id.clone(),
+                                                account.owner.to_string(),
+                                            )
+                                        })
+                                        .collect::<Vec<_>>();
+                                    let targets = transfer
+                                        .targets
+                                        .keys()
+                                        .map(|account| {
+                                            TransactionTarget::sent(
+                                                tx.tx_id.clone(),
+                                                account.owner.to_string(),
+                                            )
+                                        })
+                                        .collect::<Vec<_>>();
+                                    [sources, targets].concat()
+                                } else {
+                                    vec![]
+                                }
+                            }
+                            IbcMessage::NftTransfer(msg_nft_transfer) => {
+                                if let Some(transfer) =
+                                    msg_nft_transfer.transfer
+                                {
+                                    let sources = transfer
+                                        .sources
+                                        .keys()
+                                        .map(|account| {
+                                            TransactionTarget::sent(
+                                                tx.tx_id.clone(),
+                                                account.owner.to_string(),
+                                            )
+                                        })
+                                        .collect::<Vec<_>>();
+                                    let targets = transfer
+                                        .targets
+                                        .keys()
+                                        .map(|account| {
+                                            TransactionTarget::sent(
+                                                tx.tx_id.clone(),
+                                                account.owner.to_string(),
+                                            )
+                                        })
+                                        .collect::<Vec<_>>();
+                                    [sources, targets].concat()
+                                } else {
+                                    vec![]
+                                }
+                            }
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Bond(bond) => {
+                    if let Some(data) = bond {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                source.to_string(),
+                            ),
+                            TransactionTarget::received(
+                                tx.tx_id,
+                                data.validator.to_string(),
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Redelegation(redelegation) => {
+                    if let Some(data) = redelegation {
+                        vec![
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                data.owner.to_string(),
+                            ),
+                            TransactionTarget::received(
+                                tx.tx_id,
+                                data.dest_validator.to_string(),
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Unbond(unbond) => {
+                    if let Some(data) = unbond {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                source.to_string(),
+                            ),
+                            TransactionTarget::received(
+                                tx.tx_id,
+                                data.validator.to_string(),
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Withdraw(withdraw) => {
+                    if let Some(data) = withdraw {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                source.to_string(),
+                            ),
+                            TransactionTarget::received(
+                                tx.tx_id,
+                                data.validator.to_string(),
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ClaimRewards(claim_rewards) => {
+                    if let Some(data) = claim_rewards {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                source.to_string(),
+                            ),
+                            TransactionTarget::received(
+                                tx.tx_id,
+                                data.validator.to_string(),
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ProposalVote(vote_proposal_data) => {
+                    if let Some(data) = vote_proposal_data {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.voter.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::InitProposal(init_proposal_data) => {
+                    if let Some(data) = init_proposal_data {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.author.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::MetadataChange(meta_data_change) => {
+                    if let Some(data) = meta_data_change {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.validator.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::CommissionChange(commission_change) => {
+                    if let Some(data) = commission_change {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.validator.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::RevealPk(reveal_pk_data) => {
+                    if let Some(data) = reveal_pk_data {
+                        let source = Address::from(&data.public_key);
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            source.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::BecomeValidator(become_validator) => {
+                    if let Some(data) = become_validator {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.address.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ReactivateValidator(address) => {
+                    if let Some(data) = address {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::DeactivateValidator(address) => {
+                    if let Some(data) = address {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::UnjailValidator(address) => {
+                    if let Some(data) = address {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Unknown => vec![],
+            })
+            .collect::<HashSet<_>>()
     }
 
     pub fn governance_proposal(
