@@ -1,4 +1,3 @@
-use orm::blocks::BlockDb;
 use orm::transactions::{
     InnerTransactionDb, TransactionHistoryDb, TransactionHistoryKindDb,
     TransactionKindDb, TransactionResultDb, WrapperTransactionDb,
@@ -6,6 +5,7 @@ use orm::transactions::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TransactionResult {
     Applied,
     Rejected,
@@ -161,23 +161,25 @@ pub struct TransactionHistory {
     pub tx: InnerTransaction,
     pub target: String,
     pub kind: TrasactionHistoryKind,
+    pub block_height: i32,
 }
 
 impl TransactionHistory {
     pub fn from(
-        transaction_history: TransactionHistoryDb,
-        inner_tx: InnerTransactionDb,
-        block: BlockDb,
+        transaction_history_db: TransactionHistoryDb,
+        inner_tx_db: InnerTransactionDb,
+        block_height: i32,
     ) -> Self {
         Self {
-            tx: InnerTransaction::from(inner_tx),
-            target: transaction_history.target,
-            kind: match transaction_history.kind {
+            tx: InnerTransaction::from(inner_tx_db),
+            target: transaction_history_db.target,
+            kind: match transaction_history_db.kind {
                 TransactionHistoryKindDb::Received => {
                     TrasactionHistoryKind::Received
                 }
                 TransactionHistoryKindDb::Sent => TrasactionHistoryKind::Sent,
             },
+            block_height,
         }
     }
 }

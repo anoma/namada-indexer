@@ -71,7 +71,7 @@ impl TransactionService {
 
         Ok((
             txs.into_iter()
-                .map(|(h, t, b)| TransactionHistory::from(h, t, b))
+                .map(|(h, t, bh)| TransactionHistory::from(h, t, bh))
                 .collect(),
             total_pages as u64,
             total_items as u64,

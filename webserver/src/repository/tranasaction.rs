@@ -2,9 +2,8 @@ use axum::async_trait;
 use diesel::{
     ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper,
 };
-use orm::blocks::BlockDb;
 use orm::schema::{
-    blocks, inner_transactions, transaction_history, wrapper_transactions,
+    inner_transactions, transaction_history, wrapper_transactions,
 };
 use orm::transactions::{
     InnerTransactionDb, TransactionHistoryDb, WrapperTransactionDb,
@@ -39,11 +38,7 @@ pub trait TransactionRepositoryTrait {
         addresses: Vec<String>,
         page: i64,
     ) -> Result<
-        PaginatedResponseDb<(
-            TransactionHistoryDb,
-            InnerTransactionDb,
-            BlockDb,
-        )>,
+        PaginatedResponseDb<(TransactionHistoryDb, InnerTransactionDb, i32)>,
         String,
     >;
 }
@@ -110,11 +105,7 @@ impl TransactionRepositoryTrait for TransactionRepository {
         addresses: Vec<String>,
         page: i64,
     ) -> Result<
-        PaginatedResponseDb<(
-            TransactionHistoryDb,
-            InnerTransactionDb,
-            BlockDb,
-        )>,
+        PaginatedResponseDb<(TransactionHistoryDb, InnerTransactionDb, i32)>,
         String,
     > {
         let conn = self.app_state.get_db_connection().await;
@@ -124,11 +115,10 @@ impl TransactionRepositoryTrait for TransactionRepository {
                 .filter(transaction_history::dsl::target.eq_any(addresses))
                 .inner_join(inner_transactions::table.on(transaction_history::dsl::inner_tx_id.eq(inner_transactions::dsl::id)))
                 .inner_join(wrapper_transactions::table.on(inner_transactions::dsl::wrapper_id.eq(wrapper_transactions::dsl::id)))
-                .inner_join(blocks::table.on(wrapper_transactions::dsl::block_height.eq(blocks::dsl::height)))
-                .order(blocks::dsl::timestamp.desc())
-                .select((transaction_history::all_columns, inner_transactions::all_columns, blocks::all_columns))
+                .order(wrapper_transactions::dsl::block_height.desc())
+                .select((transaction_history::all_columns, inner_transactions::all_columns, wrapper_transactions::dsl::block_height))
                 .paginate(page)
-                .load_and_count_pages::<(TransactionHistoryDb, InnerTransactionDb, BlockDb)>(conn)
+                .load_and_count_pages::<(TransactionHistoryDb, InnerTransactionDb, i32)>(conn)
         })
         .await
         .map_err(|e| e.to_string())?

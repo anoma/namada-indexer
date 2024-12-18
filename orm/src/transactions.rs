@@ -111,7 +111,7 @@ impl InnerTransactionInsertDb {
 #[derive(Serialize, Queryable, Selectable, Insertable, Clone)]
 #[diesel(table_name = wrapper_transactions)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct WrapperTransactionInsertDb {
+pub struct WrapperTransactionDb {
     pub id: String,
     pub fee_payer: String,
     pub fee_token: String,
@@ -122,7 +122,7 @@ pub struct WrapperTransactionInsertDb {
     pub atomic: bool,
 }
 
-pub type WrapperTransactionDb = WrapperTransactionInsertDb;
+pub type WrapperTransactionInsertDb = WrapperTransactionDb;
 
 impl WrapperTransactionInsertDb {
     pub fn from(tx: WrapperTransaction) -> Self {
