@@ -64,7 +64,6 @@ impl GasService {
         withdraw: u64,
         reveal_pk: u64,
     ) -> Result<GasEstimate, GasError> {
-        println!("{}, {}", bond, reveal_pk);
         let (min, max, avg) = self
             .gas_repo
             .find_gas_estimates(
