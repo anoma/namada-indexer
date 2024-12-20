@@ -11,7 +11,7 @@ pub enum TransactionResult {
     Rejected,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionKind {
     TransparentTransfer,
