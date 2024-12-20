@@ -140,7 +140,7 @@ diesel::table! {
         claim_rewards -> Int4,
         vote_proposal -> Int4,
         reveal_pk -> Int4,
-        size -> Int4,
+        tx_size -> Int4,
         signatures -> Int4,
     }
 }
@@ -308,7 +308,7 @@ diesel::table! {
         block_height -> Int4,
         exit_code -> TransactionResult,
         atomic -> Bool,
-        gas_used -> Nullable<Varchar>,
+        gas_used -> Nullable<Int4>,
     }
 }
 

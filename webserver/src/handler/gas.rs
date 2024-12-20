@@ -58,9 +58,9 @@ pub async fn get_gas_estimate(
             query.vote.unwrap_or(0),
             query.ibc.unwrap_or(0),
             query.withdraw.unwrap_or(0),
-            query.reveal_pk.unwrap_or(0)
+            query.reveal_pk.unwrap_or(0),
         )
-        .await;
+        .await?;
 
-    Ok(Json(GasEstimate { gas }))
+    Ok(Json(gas))
 }
