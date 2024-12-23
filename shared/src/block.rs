@@ -280,32 +280,20 @@ impl Block {
                     if let Some(data) = bond {
                         let source =
                             data.source.unwrap_or(data.validator.clone());
-                        vec![
-                            TransactionTarget::sent(
-                                tx.tx_id.clone(),
-                                source.to_string(),
-                            ),
-                            TransactionTarget::received(
-                                tx.tx_id,
-                                data.validator.to_string(),
-                            ),
-                        ]
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
                     } else {
                         vec![]
                     }
                 }
                 TransactionKind::Redelegation(redelegation) => {
                     if let Some(data) = redelegation {
-                        vec![
-                            TransactionTarget::sent(
-                                tx.tx_id.clone(),
-                                data.owner.to_string(),
-                            ),
-                            TransactionTarget::received(
-                                tx.tx_id,
-                                data.dest_validator.to_string(),
-                            ),
-                        ]
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            data.owner.to_string(),
+                        )]
                     } else {
                         vec![]
                     }
@@ -314,16 +302,10 @@ impl Block {
                     if let Some(data) = unbond {
                         let source =
                             data.source.unwrap_or(data.validator.clone());
-                        vec![
-                            TransactionTarget::sent(
-                                tx.tx_id.clone(),
-                                source.to_string(),
-                            ),
-                            TransactionTarget::received(
-                                tx.tx_id,
-                                data.validator.to_string(),
-                            ),
-                        ]
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
                     } else {
                         vec![]
                     }
@@ -332,16 +314,10 @@ impl Block {
                     if let Some(data) = withdraw {
                         let source =
                             data.source.unwrap_or(data.validator.clone());
-                        vec![
-                            TransactionTarget::sent(
-                                tx.tx_id.clone(),
-                                source.to_string(),
-                            ),
-                            TransactionTarget::received(
-                                tx.tx_id,
-                                data.validator.to_string(),
-                            ),
-                        ]
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
                     } else {
                         vec![]
                     }
@@ -350,16 +326,10 @@ impl Block {
                     if let Some(data) = claim_rewards {
                         let source =
                             data.source.unwrap_or(data.validator.clone());
-                        vec![
-                            TransactionTarget::sent(
-                                tx.tx_id.clone(),
-                                source.to_string(),
-                            ),
-                            TransactionTarget::received(
-                                tx.tx_id,
-                                data.validator.to_string(),
-                            ),
-                        ]
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
                     } else {
                         vec![]
                     }
