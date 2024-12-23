@@ -1,7 +1,10 @@
 x-defaults: &defaults
-  restart: on-failure
+  restart: unless-stopped
   depends_on:
-    - postgres
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
   build: &build
     context: .
     dockerfile: Dockerfile
@@ -15,6 +18,8 @@ x-defaults: &defaults
   command: "./service \
     --tendermint-url ${TENDERMINT_URL} \
     --database-url ${DATABASE_URL}"
+  extra_hosts:
+  - "host.docker.internal:host-gateway"
 
 include:
   - docker-compose-db.yml
@@ -80,10 +85,6 @@ services:
 
   webserver:
     image: namada/webserver-indexer
-    restart: on-failure
-    depends_on:
-      - postgres
-      - dragonfly
     build:
       context: .
       dockerfile: Dockerfile
@@ -96,7 +97,8 @@ services:
       <<: *env-vars
     healthcheck:
       test: curl --fail http://localhost:5001/health || exit 1
-      interval: 15s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
