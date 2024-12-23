@@ -21,7 +21,7 @@ Namada Indexer consists of the following services:
 - PoS Service
 - Rewards Service
 - Transactions Service
-- Webserver
+- Webserver Service
 
 ## SRC Cards for Each Service
 
@@ -44,4 +44,4 @@ Currently, service communication is achieved by checking the database state. In 
 
 API documentation is available in the [swagger.yml](../swagger.yml) file. The client is generated using the [OpenAPI Generator](https://github.com/OpenAPITools/openapi-generator), and the published versions can be found on [npm](https://www.npmjs.com/package/@namada/indexer-client).
 
-Graphs and cards are created with ❤️ using [Excalidraw](docs_indexer_2024_12_23.excalidraw).
+Graphs and cards are created with ❤️ using [Excalidraw](https://excalidraw.com/).
