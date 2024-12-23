@@ -139,6 +139,18 @@ async fn crawling_fn(
 
     let addresses = block.addresses_with_balance_change(&native_token);
 
+    let validators_addresses = if first_block_in_epoch.eq(&block_height) {
+        namada_service::get_all_consensus_validators_addresses_at(
+            &client,
+            epoch - 1,
+            native_token.clone(),
+        )
+        .await
+        .into_rpc_error()?
+    } else {
+        HashSet::default()
+    };
+
     let block_proposer_address = block
         .header
         .proposer_address_namada
@@ -151,6 +163,7 @@ async fn crawling_fn(
     let all_balance_changed_addresses = addresses
         .iter()
         .chain(block_proposer_address.iter())
+        .chain(validators_addresses.iter())
         .cloned()
         .collect::<HashSet<_>>();
 
