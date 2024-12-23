@@ -1,71 +1,124 @@
-# Namada Interface Indexer
+# 🟡 Namada Interface Indexer
 
-A set of microservices that crawler data from a namada node, store them in a postgres database and serve them via a REST api.
+```
+🔧 This project is a work in progress. Functionality is not guaranteed at this stage! 🔧
+```
 
-> 🔧 This is currently being worked on. Don't expect things to work! 🔧
+##  About 
 
-## Namadillo integration
+The **Namada Indexer** is a collection of microservices designed to crawl data from a Namada Node, store it in a PostgreSQL database, and provide access via a REST API.
 
-When using this project as a backend for [Namadillo](https://github.com/anoma/namada-interface), always checkout the latest tag, as the `main` branch could have an incompatible set of APIs.
+## Namadillo Integration
 
-## Contributing
+When using this project as a backend for [Namadillo](https://github.com/anoma/namada-interface), always ensure you check out the latest tag. The `main` branch may contain an incompatible set of APIs.
 
-If you feel like contributing to the this project, feel free to choose an issued labeled as `bug` or `good-first-issue`. If you want to add a new feature, we ask you to first open an issue so we discuss about it. 
+## Contribution
 
-Our git process requires you to target `main` if developing a new feature. Instead, if fixing a bug, you should checkout the latest tag maintaining branch (e.g `1.0.0-maint`).
+We welcome contributions to this project! If you'd like to help, feel free to pick an issue labeled as `bug` or `good-first-issue`. If you want to propose a new feature, please open an issue first so we can discuss it.
+
+- For **new features**, target the `main` branch.
+- For **bug fixes**, check out the latest maintenance branch (e.g., `1.0.0-maint`) and target your changes there.
 
 ## Architecture
 
-The indexer is composed of a set microservices and a webserver, each one of these lives in his own crate. Each microservice is responsible of indexing some data from the chain and store them in the postgres database. Right now, there are 4 microservices:
+The Namada Indexer is composed of a set of microservices, with each component residing in its own crate. Each microservice is responsible for indexing specific data from the blockchain and storing it in the PostgreSQL database.
 
-- `chain`: goes block by block and fetches information from transactions (e.g balances)
-- `pos`: fetches the validator set each new epoch.
-- `rewards`: fetches PoS rewards each new epoch.
-- `governance`: fetches new proposal and the corresponding votes.
-- `parameters`: fetches the chain parameters.
-- `transactions`: fetches transaction starting from block height 0 (or the latest processed block height).
+### Microservices & Containers
+- `namada/chain`: Processes blocks sequentially and extracts information from transactions (e.g., balances).
 
-The `webserver` is responsible to serve the data via a REST API, which are described in the `swagger.yml` file in the project root.
-We host a HTML version of the swagger at [https://anoma.github.io/namada-indexer/](https://anoma.github.io/namada-indexer/).
+- `namada/pos`: Retrieves the validator set at the start of each new epoch.
 
-![Namada indexer architecture](docs/architecture.png "Architecture")
+- `namada/rewards`: Fetches Proof-of-Stake rewards for each new epoch.
 
-# How to run
+- `namada/governance`: Tracks new proposals and their corresponding votes.
 
-## Prerequisites
+- `namada/parameters`: Retrieves the chain parameters.
 
-- Create the `.env` file in the root of the project. You can use the `.env_sample` file as a reference:
+- `namada/transactions`: Processes transactions starting from block height 0 (or the last successfully processed block height).
+
+- `namada/webserver-indexer`: The `webserver` serves indexed data via a REST API, enabling external applications and users to access blockchain data in a structured and accessible way. It listens on port `5001`. The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
+
+- `postgres:16-alpine`: This container runs a PostgreSQL instance, serving as the primary database for storing indexed data fetched by the microservices. It listens on port `5433` and provides a reliable and scalable storage backend for the project.
+
+- `docker.dragonflydb.io/dragonflydb/dragonfly`: This container runs a DragonflyDB instance, an advanced in-memory key-value store that acts as a caching layer. It listens on port `6379` and stores frequently accessed or temporary data, improving system performance by reducing the need for repeated database queries.
+
+<p align="center">
+  <img src="docs/architecture.png" alt="Namada Indexer Architecture" title="Architecture" width="500">
+</p>
+
+
+# 🚀 Getting Started
+
+Follow these instructions to set up the project locally. The steps below will guide you through the process of getting a local copy up and running.
+
+It is strongly recommended to change the default username and password for your PostgreSQL database for security purposes. Update these credentials in both the `.env` file and the `docker-compose.yml` file to reflect the changes.
+
+## Installation with Docker 🐳 
+
+### Prerequisites
+
+Before starting, ensure you have the necessary tools and dependencies installed. Below are the steps to set up the required environment.
+
+- **Packages**: Install prerequisite packages from the APT repository.
 
 ```sh
-cp .env_sample .env
+apt-get install -y curl apt-transport-https ca-certificates software-properties-common git nano just build-essential
 ```
 
-- Set the `TENDERMINT_URL` with the Namada RPC url:
-  - [Either create a local chain](https://docs.namada.net/operators/networks/local-network)
-  - Or use a Public RPC
+- **Docker**: Follow the official instructions provided by Docker to install it: [Install Docker Engine](https://docs.docker.com/engine/install/).
 
-## With docker
+- **Just**: Refer to the official documentation to install `just`: [Just Installation Guide](https://github.com/casey/just).
 
-- Install [just](https://github.com/casey/just)
-- Run `just docker-up`
+### Usage
+Ensure you have the latest repository cloned to maintain compatibility with other Namada interfaces. Use the following commands to clone the repository and navigate into its directory.
 
-## Without docker
+```sh
+git clone https://github.com/anoma/namada-indexer.git
+cd namada-indexer
+```
 
-- Install rust/cargo
-- Update the `.env` values to match your setup, for example:
-  ```env
-  DATABASE_URL=postgres://postgres:password@0.0.0.0:5433/namada-indexer
-  TENDERMINT_URL=http://127.0.0.1:27657
-  CACHE_URL=redis://redis@0.0.0.0:6379
-  PORT=5001
-  ```
-- Use the `run.sh` script inside each package. Keep in mind that PoS package have to be run always while other service might not
+Create the `.env` file in the root of the project. You can use the `.env.sample` file as a reference. 
 
-## Testing via seeder
+```sh
+cp .env.sample .env
+```
+- The `TENDERMINT_URL` variable must point to a Namada RPC URL, which can be either public or local. For a public RPC URL, refer to the [Namada Ecosystem Repository](https://github.com/Luminara-Hub/namada-ecosystem/tree/main/user-and-dev-tools/mainnet). If running the Namada Ledger locally, use the preconfigured `http://host.docker.internal:26657`.
 
-Instead of fetching data from a running network, for testing porpuses it's also possible to populate the databse with some random data.
+Build the required Docker containers for the project.
+```sh
+docker compose build
+```
 
-- `cargo build`
-- `cd seeder && cargo run -- --database-url postgres://postgres:password@0.0.0.0:5433/namada-indexer`
+Launch the Namada Indexer using the `just` command, which orchestrates the Docker containers.
+```sh
+just docker-up
+```
 
-It's possible to only run the webserver and have access to the data via API.
+## Installation without Docker
+
+If you prefer not to use Docker, you can follow the instructions below to set up and run the services manually.
+
+- Install **Rust** and **Cargo** on your system. Refer to the [official Rust installation guide](https://www.rust-lang.org/tools/install).
+
+- Update the `.env` file with values that match your setup.
+
+- Use the `run.sh` script located inside each package to start the services.  
+   - The **PoS** package must always be running.  
+   - Other services can be run as needed based on your requirements.
+
+
+## Populating the Database for Testing
+
+Instead of fetching data from a running network, you can populate the database with random data for testing purposes. Build the project using the following command.
+
+```sh
+cargo build
+# Run the seeder script to populate the database
+cd seeder && cargo run -- --database-url postgres://postgres:password@0.0.0.0:5433/namada-indexer
+```
+
+After populating the database, you can run the webserver to access the data via the API. To query your PostgreSQL database, ensure the PostgreSQL client is installed.
+
+```sh
+apt-get install -y postgresql-client
+```
