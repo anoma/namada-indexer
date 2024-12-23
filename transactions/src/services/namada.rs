@@ -55,3 +55,16 @@ pub async fn query_tx_code_hash(
         None
     }
 }
+
+pub async fn get_validator_namada_address(
+    client: &HttpClient,
+    tm_addr: &Id,
+) -> anyhow::Result<Option<Id>> {
+    let validator = RPC
+        .vp()
+        .pos()
+        .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
+        .await?;
+
+    Ok(validator.map(Id::from))
+}

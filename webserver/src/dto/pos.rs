@@ -64,15 +64,21 @@ pub enum MyValidatorKindDto {
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct BondsDto {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
+    #[validate(range(min = 0))]
+    pub active_at: Option<i32>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct UnbondsDto {
     #[validate(range(min = 1, max = 10000))]
     pub page: Option<u64>,
+    #[validate(range(min = 0))]
+    pub active_at: Option<i32>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Validate)]
