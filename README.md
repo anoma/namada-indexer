@@ -1,4 +1,4 @@
-# 🟡 Namada Interface Indexer
+# 🟡 Namada Indexer
 
 ```
 🔧 This project is a work in progress. Functionality is not guaranteed at this stage! 🔧
@@ -6,7 +6,9 @@
 
 ##  About 
 
-The **Namada Indexer** is a collection of microservices designed to crawl data from a Namada Node, store it in a PostgreSQL database, and provide access via a REST API.
+The **Namada Indexer** is a collection of microservices that crawls data from a Namada Node, stores it in a PostgreSQL database, and makes it accessible via a REST API.
+
+The primary goal of the indexer is to retrieve and store the data necessary for [Namadillo](https://github.com/anoma/namada-interface) (the Namada Interface) to operate. Consequently, the indexer does not store historical data, except for the `Transactions Service`, which indexes all transactions starting from block 1 and is not used by Namadillo.
 
 ## Namadillo Integration
 
@@ -24,26 +26,26 @@ We welcome contributions to this project! If you'd like to help, feel free to pi
 The Namada Indexer is composed of a set of microservices, with each component residing in its own crate. Each microservice is responsible for indexing specific data from the blockchain and storing it in the PostgreSQL database.
 
 ### Microservices & Containers
-- `namada/chain`: Processes blocks sequentially and extracts information from transactions (e.g., balances).
+- `namada/chain-indexer`: Processes blocks sequentially and extracts information from transactions (e.g., balances).
 
-- `namada/pos`: Retrieves the validator set at the start of each new epoch.
+- `namada/governance-indexer`: Tracks new proposals and their corresponding votes.
 
-- `namada/rewards`: Fetches Proof-of-Stake rewards for each new epoch.
+- `namada/parameters-indexer`: Retrieves the chain parameters.
 
-- `namada/governance`: Tracks new proposals and their corresponding votes.
+- `namada/pos-indexer`: Retrieves the validator set at the start of each new epoch.
 
-- `namada/parameters`: Retrieves the chain parameters.
+- `namada/rewards-indexer`: Fetches Proof-of-Stake rewards for each new epoch.
 
-- `namada/transactions`: Processes transactions starting from block height 0 (or the last successfully processed block height).
+- `namada/transactions-indexer`: Processes transactions starting from block height 0 (or the last successfully processed block height).
 
 - `namada/webserver-indexer`: The `webserver` serves indexed data via a REST API, enabling external applications and users to access blockchain data in a structured and accessible way. It listens on port `5001`. The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
 
-- `postgres:16-alpine`: This container runs a PostgreSQL instance, serving as the primary database for storing indexed data fetched by the microservices. It listens on port `5433` and provides a reliable and scalable storage backend for the project.
-
 - `docker.dragonflydb.io/dragonflydb/dragonfly`: This container runs a DragonflyDB instance, an advanced in-memory key-value store that acts as a caching layer. It listens on port `6379` and stores frequently accessed or temporary data, improving system performance by reducing the need for repeated database queries.
 
+- `postgres:16-alpine`: This container runs a PostgreSQL instance, serving as the primary database for storing indexed data fetched by the microservices. It listens on port `5433` and provides a reliable and scalable storage backend for the project.
+
 <p align="center">
-  <img src="docs/architecture.png" alt="Namada Indexer Architecture" title="Architecture" width="500">
+  <img src="docs/architecture.png" alt="Architecture" title="Architecture" width="500">
 </p>
 
 
@@ -53,7 +55,7 @@ Follow these instructions to set up the project locally. The steps below will gu
 
 It is strongly recommended to change the default username and password for your PostgreSQL database for security purposes. Update these credentials in both the `.env` file and the `docker-compose.yml` file to reflect the changes.
 
-## Installation with Docker 🐳 
+## 🐳 Installation with Docker 
 
 ### Prerequisites
 
@@ -82,7 +84,7 @@ Create the `.env` file in the root of the project. You can use the `.env.sample`
 ```sh
 cp .env.sample .env
 ```
-- The `TENDERMINT_URL` variable must point to a Namada RPC URL, which can be either public or local. For a public RPC URL, refer to the [Namada Ecosystem Repository](https://github.com/Luminara-Hub/namada-ecosystem/tree/main/user-and-dev-tools/mainnet). If running the Namada Ledger locally, use the preconfigured `http://host.docker.internal:26657`.
+- The `TENDERMINT_URL` variable must point to a Namada RPC URL, which can be either public or local. For a public RPC URL, refer to the [Namada Ecosystem Repository](https://github.com/Luminara-Hub/namada-ecosystem/tree/main/user-and-dev-tools/mainnet). If running the Namada Node locally, use the preconfigured `http://host.docker.internal:26657`.
 
 Build the required Docker containers for the project.
 ```sh
@@ -91,7 +93,11 @@ docker compose build
 
 Launch the Namada Indexer using the `just` command, which orchestrates the Docker containers.
 ```sh
+# Run the Docker containers in the foreground, displaying all logs and keeping the terminal active until stopped.
 just docker-up
+
+# Run the Docker containers in detached mode, starting them in the background without showing logs in the terminal.
+just docker-up-d
 ```
 
 ## Installation without Docker
