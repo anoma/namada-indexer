@@ -209,7 +209,7 @@ async fn crawling_fn(
                     transaction_conn,
                     transaction_sources,
                 )?;
-                
+
                 transaction_repo::insert_gas_estimates(
                     transaction_conn,
                     gas_estimates,
