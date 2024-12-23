@@ -51,12 +51,18 @@ async fn main() -> Result<(), MainError> {
 
     let crawler_state = db_service::get_crawler_state(&conn).await;
 
-    let next_block = std::cmp::max(
-        crawler_state
-            .map(|cs| cs.last_processed_block + 1)
-            .unwrap_or(1),
-        config.from_block_height,
-    );
+    let next_block = match config.backfill_from {
+        Some(height) => {
+            tracing::warn!("Backfilling from block height {}", height);
+            height
+        }
+        None => std::cmp::max(
+            crawler_state
+                .map(|cs| cs.last_processed_block + 1)
+                .unwrap_or(1),
+            config.from_block_height,
+        ),
+    };
 
     crawl(
         move |block_height| {
@@ -65,6 +71,7 @@ async fn main() -> Result<(), MainError> {
                 client.clone(),
                 conn.clone(),
                 checksums.clone(),
+                config.backfill_from.is_none(),
             )
         },
         next_block,
@@ -78,6 +85,7 @@ async fn crawling_fn(
     client: Arc<HttpClient>,
     conn: Arc<Object>,
     checksums: Checksums,
+    should_update_crawler_state: bool,
 ) -> Result<(), MainError> {
     let should_process = can_process(block_height, client.clone()).await?;
 
@@ -159,10 +167,13 @@ async fn crawling_fn(
                     transaction_conn,
                     inner_txs,
                 )?;
-                transaction_repo::insert_crawler_state(
-                    transaction_conn,
-                    crawler_state,
-                )?;
+
+                if should_update_crawler_state {
+                    transaction_repo::insert_crawler_state(
+                        transaction_conn,
+                        crawler_state,
+                    )?;
+                }
 
                 anyhow::Ok(())
             })
