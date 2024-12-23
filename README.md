@@ -1,10 +1,16 @@
 # 🟡 Namada Indexer
 
-```
-🔧 This project is a work in progress. Functionality is not guaranteed at this stage! 🔧
-```
+## Status
+
+- 🔧 - This project is a work in progress. 
+- 🚧 - Functionality is not guaranteed at this stage. 
+- ⚠️ - Use at your own risk.
 
 ##  About 
+
+This repository, **Namada Indexer**, is distinct from and incomparable to the similarly named [Namada MASP Indexer](https://github.com/anoma/namada-masp-indexer).
+
+Note that: `Namada Indexer != Namada MASP Indexer && Namada MASP Indexer != Namada Indexer`.
 
 The **Namada Indexer** is a collection of microservices that crawls data from a Namada Node, stores it in a PostgreSQL database, and makes it accessible via a REST API.
 
@@ -38,7 +44,7 @@ The Namada Indexer is composed of a set of microservices, with each component re
 
 - `namada/transactions-indexer`: Processes transactions starting from block height 0 (or the last successfully processed block height).
 
-- `namada/webserver-indexer`: The `webserver` serves indexed data via a REST API, enabling external applications and users to access blockchain data in a structured and accessible way. It listens on port `5001`. The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
+- `namada/webserver-indexer`: The `webserver` serves indexed data via a REST API, enabling external applications and users to access blockchain data in a structured and accessible way. It listens on port `5001`.
 
 - `docker.dragonflydb.io/dragonflydb/dragonfly`: This container runs a DragonflyDB instance, an advanced in-memory key-value store that acts as a caching layer. It listens on port `6379` and stores frequently accessed or temporary data, improving system performance by reducing the need for repeated database queries.
 
@@ -85,6 +91,7 @@ Create the `.env` file in the root of the project. You can use the `.env.sample`
 cp .env.sample .env
 ```
 - The `TENDERMINT_URL` variable must point to a Namada RPC URL, which can be either public or local. For a public RPC URL, refer to the [Namada Ecosystem Repository](https://github.com/Luminara-Hub/namada-ecosystem/tree/main/user-and-dev-tools/mainnet). If running the Namada Node locally, use the preconfigured `http://host.docker.internal:26657`.
+- When running locally, ensure that CometBFT allows RPC calls by setting the the configuration in your `config.toml` file.
 
 Build the required Docker containers for the project.
 ```sh
@@ -99,6 +106,9 @@ just docker-up
 # Run the Docker containers in detached mode, starting them in the background without showing logs in the terminal.
 just docker-up-d
 ```
+
+## REST API
+The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
 
 ## Installation without Docker
 
