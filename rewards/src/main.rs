@@ -40,23 +40,28 @@ async fn main() -> Result<(), MainError> {
 
     tracing::info!("Query epoch...");
 
-    let mut epoch;
-    loop {
-        epoch = namada_service::get_current_epoch(&client)
-            .await
-            .into_rpc_error()?;
+    let mut epoch = config.backfill_from;
 
-        if epoch < 2 {
-            tracing::info!("Waiting for first epoch to happen...");
-            sleep(Duration::from_secs(config.sleep_for)).await;
-        } else {
-            break;
+    if epoch.is_none() {
+        loop {
+            epoch = Some(
+                namada_service::get_current_epoch(&client)
+                    .await
+                    .into_rpc_error()?,
+            );
+
+            if epoch.unwrap_or(0) < 2 {
+                tracing::info!("Waiting for first epoch to happen...");
+                sleep(Duration::from_secs(config.sleep_for)).await;
+            } else {
+                break;
+            }
         }
     }
 
     crawler::crawl(
         move |epoch| crawling_fn(conn.clone(), client.clone(), epoch),
-        epoch,
+        epoch.unwrap_or(0),
         None,
     )
     .await
@@ -83,16 +88,17 @@ async fn crawling_fn(
 
     tracing::info!("Starting to update proposals...");
 
-    let current_epoch = namada_service::get_current_epoch(&client)
-    .await
-    .into_rpc_error()?;
     // TODO: change this by querying all the pairs in the database
     let delegations_pairs = namada_service::query_delegation_pairs(&client)
         .await
         .into_rpc_error()?;
-    let rewards = namada_service::query_rewards(&client, delegations_pairs)
-        .await
-        .into_rpc_error()?;
+    let rewards = namada_service::query_rewards(
+        &client,
+        delegations_pairs,
+        epoch_to_process,
+    )
+    .await
+    .into_rpc_error()?;
     let non_zero_rewards = rewards
         .into_iter()
         .filter(|reward| !reward.amount.is_zero())
@@ -107,7 +113,7 @@ async fn crawling_fn(
                 repository::pos_rewards::upsert_rewards(
                     transaction_conn,
                     non_zero_rewards,
-                    current_epoch as i32,
+                    epoch_to_process as i32,
                 )?;
 
                 repository::crawler_state::upsert_crawler_state(
