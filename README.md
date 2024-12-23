@@ -107,9 +107,6 @@ just docker-up
 just docker-up-d
 ```
 
-## REST API
-The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
-
 ## Installation without Docker
 
 If you prefer not to use Docker, you can follow the instructions below to set up and run the services manually.
@@ -122,6 +119,8 @@ If you prefer not to use Docker, you can follow the instructions below to set up
    - The **PoS** package must always be running.  
    - Other services can be run as needed based on your requirements.
 
+## REST API
+The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
 
 ## Populating the Database for Testing
 
