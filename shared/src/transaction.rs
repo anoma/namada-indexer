@@ -257,6 +257,8 @@ pub struct WrapperTransaction {
     pub atomic: bool,
     pub block_height: BlockHeight,
     pub exit_code: TransactionExitStatus,
+    pub total_signatures: u64,
+    pub size: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -300,6 +302,13 @@ impl Transaction {
     ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
+        let total_signatures = transaction
+            .clone()
+            .sections
+            .iter()
+            .filter(|section| section.signature().is_some())
+            .count() as u64;
+        let tx_size = raw_tx_bytes.len() as u64;
 
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
@@ -330,6 +339,8 @@ impl Transaction {
                     atomic,
                     block_height,
                     exit_code: wrapper_tx_status,
+                    total_signatures,
+                    size: tx_size,
                 };
 
                 let mut inner_txs = vec![];

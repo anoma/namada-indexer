@@ -515,6 +515,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GasPriceTable"
+  /api/v1/gas/estimate:
+    get:
+      summary: Get an estimate for a transaction
+      parameters:
+        - in: query
+          name: bond
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: claim_rewards
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: unbond
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: transparent_transfer
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: shielded_transfer
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: shielding_transfer
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: unshielding_transfer
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: vote
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: ibc
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: withdraw
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: reveal_pk
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: redelegate
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: signatures
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+        - in: query
+          name: tx_size
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: A gas estimate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GasEstimate'
   /api/v1/chain/token:
     get:
       summary: Get chain tokens
@@ -998,6 +1092,18 @@ components:
             type: string
           minDenomAmount:
             type: string
+    GasEstimate:
+      type: object
+      required: [min, max, avg, totalEstimates]
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        avg:
+          type: number
+        totalEstimates:
+          type: number
     NativeToken:
       type: object
       required: [address]

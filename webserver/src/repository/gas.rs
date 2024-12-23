@@ -1,7 +1,7 @@
 use axum::async_trait;
 use bigdecimal::BigDecimal;
-use diesel::dsl::{avg, max, min};
-use diesel::sql_types::{Integer, Nullable, Numeric};
+use diesel::dsl::{avg, count, max, min};
+use diesel::sql_types::{BigInt, Integer, Nullable, Numeric};
 use diesel::{
     ExpressionMethods, IntoSql, JoinOnDsl, QueryDsl, RunQueryDsl,
     SelectableHelper,
@@ -33,6 +33,7 @@ pub trait GasRepositoryTrait {
     async fn find_gas_estimates(
         &self,
         bond: u64,
+        redelegate: u64,
         claim_rewards: u64,
         unbond: u64,
         transparent_transfer: u64,
@@ -43,7 +44,9 @@ pub trait GasRepositoryTrait {
         ibc: u64,
         withdraw: u64,
         reveal_pk: u64,
-    ) -> Result<(Option<i32>, Option<i32>, Option<BigDecimal>), String>;
+        signatures: u64,
+        tx_size: u64,
+    ) -> Result<(Option<i32>, Option<i32>, Option<BigDecimal>, i64), String>;
 }
 
 #[async_trait]
@@ -97,6 +100,7 @@ impl GasRepositoryTrait for GasRepository {
     async fn find_gas_estimates(
         &self,
         bond: u64,
+        redelegate: u64,
         claim_rewards: u64,
         unbond: u64,
         transparent_transfer: u64,
@@ -107,12 +111,18 @@ impl GasRepositoryTrait for GasRepository {
         ibc: u64,
         withdraw: u64,
         reveal_pk: u64,
-    ) -> Result<(Option<i32>, Option<i32>, Option<BigDecimal>), String> {
+        signatures: u64,
+        tx_size: u64,
+    ) -> Result<(Option<i32>, Option<i32>, Option<BigDecimal>, i64), String>
+    {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             gas_estimations::table
                 .filter(gas_estimations::dsl::bond.eq(bond as i32))
+                .filter(
+                    gas_estimations::dsl::redelegation.eq(redelegate as i32),
+                )
                 .filter(
                     gas_estimations::dsl::claim_rewards
                         .eq(claim_rewards as i32),
@@ -138,6 +148,8 @@ impl GasRepositoryTrait for GasRepository {
                 .filter(gas_estimations::dsl::ibc_msg_transfer.eq(ibc as i32))
                 .filter(gas_estimations::dsl::withdraw.eq(withdraw as i32))
                 .filter(gas_estimations::dsl::reveal_pk.eq(reveal_pk as i32))
+                .filter(gas_estimations::dsl::signatures.ge(signatures as i32))
+                .filter(gas_estimations::dsl::tx_size.ge(tx_size as i32))
                 .inner_join(
                     wrapper_transactions::table
                         .on(gas_estimations::dsl::wrapper_id
@@ -151,8 +163,10 @@ impl GasRepositoryTrait for GasRepository {
                         .into_sql::<Nullable<Integer>>(),
                     avg(wrapper_transactions::dsl::gas_used)
                         .into_sql::<Nullable<Numeric>>(),
+                    count(wrapper_transactions::dsl::gas_used)
+                        .into_sql::<BigInt>(),
                 ))
-                .get_result::<(Option<i32>, Option<i32>, Option<BigDecimal>)>(
+                .get_result::<(Option<i32>, Option<i32>, Option<BigDecimal>, i64)>(
                     conn,
                 )
         })

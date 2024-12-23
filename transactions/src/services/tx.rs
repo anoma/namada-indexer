@@ -123,6 +123,9 @@ pub fn get_gas_estimates(
         .iter()
         .map(|wrapper_tx| {
             let mut gas_estimate = GasEstimation::new(wrapper_tx.tx_id.clone());
+            gas_estimate.signatures = wrapper_tx.total_signatures;
+            gas_estimate.size = wrapper_tx.size;
+
             inner_txs
                 .iter()
                 .filter(|inner_tx| {
@@ -131,27 +134,33 @@ pub fn get_gas_estimates(
                 })
                 .for_each(|tx| match tx.kind {
                     TransactionKind::TransparentTransfer(_) => {
-                        gas_estimate.transparent_transfer += 1
+                        gas_estimate.increase_transparent_transfer()
                     }
                     TransactionKind::ShieldedTransfer(_) => {
-                        gas_estimate.shielded_transfer += 1
+                        gas_estimate.increase_shielded_transfer()
                     }
                     TransactionKind::IbcMsgTransfer(_) => {
-                        gas_estimate.ibc_msg_transfer += 1
+                        gas_estimate.increase_ibc_msg_transfer()
                     }
-                    TransactionKind::Bond(_) => gas_estimate.bond += 1,
+                    TransactionKind::Bond(_) => gas_estimate.increase_bond(),
                     TransactionKind::Redelegation(_) => {
-                        gas_estimate.transparent_transfer += 1
+                        gas_estimate.increase_redelegation()
                     }
-                    TransactionKind::Unbond(_) => gas_estimate.unbond += 1,
-                    TransactionKind::Withdraw(_) => gas_estimate.withdraw += 1,
+                    TransactionKind::Unbond(_) => {
+                        gas_estimate.increase_unbond()
+                    }
+                    TransactionKind::Withdraw(_) => {
+                        gas_estimate.increase_withdraw()
+                    }
                     TransactionKind::ClaimRewards(_) => {
-                        gas_estimate.claim_rewards += 1
+                        gas_estimate.increase_claim_rewards()
                     }
                     TransactionKind::ProposalVote(_) => {
-                        gas_estimate.vote_proposal += 1
+                        gas_estimate.increase_vote()
                     }
-                    TransactionKind::RevealPk(_) => gas_estimate.reveal_pk += 1,
+                    TransactionKind::RevealPk(_) => {
+                        gas_estimate.increase_reveal_pk()
+                    }
                     _ => (),
                 });
             gas_estimate

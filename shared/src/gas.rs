@@ -46,4 +46,52 @@ impl GasEstimation {
             signatures: 0,
         }
     }
+
+    pub fn increase_transparent_transfer(&mut self) {
+        self.transparent_transfer += 1
+    }
+
+    pub fn increase_shielded_transfer(&mut self) {
+        self.shielded_transfer += 1
+    }
+
+    pub fn increase_shielding_transfer(&mut self) {
+        self.shielding_transfer += 1
+    }
+
+    pub fn increase_unshielding_transfer(&mut self) {
+        self.unshielding_transfer += 1
+    }
+
+    pub fn increase_ibc_msg_transfer(&mut self) {
+        self.ibc_msg_transfer += 1
+    }
+
+    pub fn increase_bond(&mut self) {
+        self.bond += 1
+    }
+
+    pub fn increase_redelegation(&mut self) {
+        self.redelegation += 1
+    }
+
+    pub fn increase_unbond(&mut self) {
+        self.unbond += 1
+    }
+
+    pub fn increase_withdraw(&mut self) {
+        self.withdraw += 1
+    }
+
+    pub fn increase_claim_rewards(&mut self) {
+        self.claim_rewards += 1
+    }
+
+    pub fn increase_vote(&mut self) {
+        self.vote_proposal += 1
+    }
+
+    pub fn increase_reveal_pk(&mut self) {
+        self.reveal_pk += 1
+    }
 }

@@ -53,6 +53,7 @@ impl GasService {
     pub async fn estimate_gas(
         &self,
         bond: u64,
+        redelegate: u64,
         claim_rewards: u64,
         unbond: u64,
         transparent_transfer: u64,
@@ -63,11 +64,14 @@ impl GasService {
         ibc: u64,
         withdraw: u64,
         reveal_pk: u64,
+        signatures: u64,
+        tx_size: u64,
     ) -> Result<GasEstimate, GasError> {
-        let (min, max, avg) = self
+        let (min, max, avg, count) = self
             .gas_repo
             .find_gas_estimates(
                 bond,
+                redelegate,
                 claim_rewards,
                 unbond,
                 transparent_transfer,
@@ -78,18 +82,27 @@ impl GasService {
                 ibc,
                 withdraw,
                 reveal_pk,
+                signatures,
+                tx_size,
             )
             .await
             .map_err(GasError::Database)
-            .map(|(min, max, avg)| {
+            .map(|(min, max, avg, count)| {
                 let min = min.map(|gas| gas as u64);
                 let max = max.map(|gas| gas as u64);
                 let avg = avg.map(|gas| gas.to_i64().unwrap() as u64);
-                (min, max, avg)
+                let count = count as u64;
+                (min, max, avg, count)
             })?;
 
-        if let (Some(min), Some(max), Some(avg)) = (min, max, avg) {
-            Ok(GasEstimate { min, max, avg })
+        if let (Some(min), Some(max), Some(avg), count) = (min, max, avg, count)
+        {
+            Ok(GasEstimate {
+                min,
+                max,
+                avg,
+                total_estimates: count,
+            })
         } else {
             let gas = self
                 .gas_repo
@@ -127,6 +140,7 @@ impl GasService {
                 min: estimate,
                 max: estimate,
                 avg: estimate,
+                total_estimates: 0,
             })
         }
     }

@@ -45,10 +45,13 @@ pub async fn get_gas_estimate(
     Query(query): Query<GasEstimateQuery>,
     State(state): State<CommonState>,
 ) -> Result<Json<GasEstimate>, ApiError> {
+    query.is_valid()?;
+
     let gas = state
         .gas_service
         .estimate_gas(
             query.bond.unwrap_or(0),
+            query.redelegate.unwrap_or(0),
             query.claim_rewards.unwrap_or(0),
             query.unbond.unwrap_or(0),
             query.transparent_transfer.unwrap_or(0),
@@ -59,6 +62,8 @@ pub async fn get_gas_estimate(
             query.ibc.unwrap_or(0),
             query.withdraw.unwrap_or(0),
             query.reveal_pk.unwrap_or(0),
+            query.signatures.unwrap_or(2),
+            query.tx_size.unwrap_or(0),
         )
         .await?;
 

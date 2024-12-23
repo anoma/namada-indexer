@@ -41,4 +41,5 @@ pub struct GasEstimate {
     pub min: u64,
     pub max: u64,
     pub avg: u64,
+    pub total_estimates: u64,
 }
