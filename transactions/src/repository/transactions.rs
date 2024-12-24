@@ -8,16 +8,15 @@ use diesel::{
     RunQueryDsl,
 };
 use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
+use orm::gas::GasEstimationInsertDb;
 use orm::ibc::{IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb};
 use orm::schema::{
-    crawler_state, ibc_ack, inner_transactions, transaction_history,
-    wrapper_transactions,
+    crawler_state, gas_estimations, ibc_ack, inner_transactions,
+    wrapper_transactions, transaction_history
 };
-use orm::transactions::{
-    InnerTransactionInsertDb, TransactionHistoryInsertDb,
-    WrapperTransactionInsertDb,
-};
+use orm::transactions::{InnerTransactionInsertDb, TransactionHistoryInsertDb, WrapperTransactionInsertDb};
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
+use shared::gas::GasEstimation;
 use shared::transaction::{
     IbcAck, IbcSequence, InnerTransaction, TransactionTarget,
     WrapperTransaction,
@@ -140,6 +139,24 @@ pub fn insert_transactions_history(
         .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to insert transaction history in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_gas_estimates(
+    transaction_conn: &mut PgConnection,
+    gas_estimates: Vec<GasEstimation>,
+) -> anyhow::Result<()> {
+    diesel::insert_into(gas_estimations::table)
+        .values::<Vec<GasEstimationInsertDb>>(
+            gas_estimates
+                .into_iter()
+                .map(GasEstimationInsertDb::from)
+                .collect(),
+        )
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update gas estimates in db")?;
 
     anyhow::Ok(())
 }

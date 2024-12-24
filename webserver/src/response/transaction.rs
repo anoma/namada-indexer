@@ -11,7 +11,7 @@ pub enum TransactionResult {
     Rejected,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionKind {
     TransparentTransfer,
@@ -43,7 +43,7 @@ pub struct WrapperTransaction {
     pub fee_payer: String,
     pub fee_token: String,
     pub gas_limit: String,
-    pub gas_used: Option<String>,
+    pub gas_used: Option<u64>,
     pub block_height: u64,
     pub inner_transactions: Vec<ShortInnerTransaction>,
     pub exit_code: TransactionResult,
@@ -126,7 +126,7 @@ impl From<WrapperTransactionDb> for WrapperTransaction {
             fee_payer: value.fee_payer,
             fee_token: value.fee_token,
             gas_limit: value.gas_limit,
-            gas_used: value.gas_used,
+            gas_used: value.gas_used.map(|gas| gas as u64),
             block_height: value.block_height as u64,
             inner_transactions: vec![],
             exit_code: TransactionResult::from(value.exit_code),

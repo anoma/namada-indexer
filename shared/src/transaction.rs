@@ -257,6 +257,8 @@ pub struct WrapperTransaction {
     pub atomic: bool,
     pub block_height: BlockHeight,
     pub exit_code: TransactionExitStatus,
+    pub total_signatures: u64,
+    pub size: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -275,12 +277,16 @@ impl InnerTransaction {
     pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
         self.extra_sections.get(&section_id).cloned()
     }
+
+    pub fn was_successful(&self) -> bool {
+        self.exit_code == TransactionExitStatus::Applied
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Fee {
     pub gas: String,
-    pub gas_used: Option<String>,
+    pub gas_used: Option<u64>,
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
@@ -296,13 +302,22 @@ impl Transaction {
     ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
+        let total_signatures = transaction
+            .clone()
+            .sections
+            .iter()
+            .filter(|section| section.signature().is_some())
+            .count() as u64;
+        let tx_size = raw_tx_bytes.len() as u64;
 
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
                 let wrapper_tx_status =
                     block_results.is_wrapper_tx_applied(&wrapper_tx_id);
-                let gas_used = block_results.gas_used(&wrapper_tx_id);
+                let gas_used = block_results
+                    .gas_used(&wrapper_tx_id)
+                    .map(|gas| gas.parse::<u64>().unwrap());
 
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
@@ -324,6 +339,8 @@ impl Transaction {
                     atomic,
                     block_height,
                     exit_code: wrapper_tx_status,
+                    total_signatures,
+                    size: tx_size,
                 };
 
                 let mut inner_txs = vec![];
