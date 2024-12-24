@@ -1,0 +1,1 @@
+ALTER TABLE pos_rewards DROP COLUMN epoch;
