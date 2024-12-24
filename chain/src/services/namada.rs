@@ -530,6 +530,27 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
     Ok(epoch.0 as Epoch)
 }
 
+pub async fn get_all_consensus_validators_addresses_at(
+    client: &HttpClient,
+    epoch: u32,
+    native_token: Id,
+) -> anyhow::Result<HashSet<BalanceChange>> {
+    let validators =
+        rpc::get_all_consensus_validators(client, (epoch as u64).into())
+            .await
+            .context("Failed to query Namada's current epoch")?
+            .into_iter()
+            .map(|validator| {
+                BalanceChange::new(
+                    Id::from(validator.address),
+                    Token::Native(native_token.clone()),
+                )
+            })
+            .collect::<HashSet<_>>();
+
+    Ok(validators)
+}
+
 pub async fn query_tx_code_hash(
     client: &HttpClient,
     tx_code_path: &str,
