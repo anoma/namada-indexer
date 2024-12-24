@@ -13,4 +13,5 @@ pub enum IbcAckStatus {
 #[serde(rename_all = "camelCase")]
 pub struct IbcAck {
     pub status: IbcAckStatus,
+    pub timeout: Option<i64>,
 }

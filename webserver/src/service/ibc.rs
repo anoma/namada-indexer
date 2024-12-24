@@ -33,9 +33,11 @@ impl IbcService {
                         IbcAckStatusDb::Fail => IbcAckStatus::Fail,
                         IbcAckStatusDb::Success => IbcAckStatus::Success,
                     },
+                    timeout: Some(ack.timeout),
                 },
                 None => IbcAck {
                     status: IbcAckStatus::Unknown,
+                    timeout: None,
                 },
             })
     }
