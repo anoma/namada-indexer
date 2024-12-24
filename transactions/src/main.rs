@@ -142,6 +142,7 @@ async fn crawling_fn(
 
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
+    let transaction_sources = block.sources();
 
     let ibc_sequence_packet =
         tx_service::get_ibc_packets(&block_results, &inner_txs);
@@ -201,6 +202,11 @@ async fn crawling_fn(
                 transaction_repo::update_ibc_sequence(
                     transaction_conn,
                     ibc_ack_packet,
+                )?;
+
+                transaction_repo::insert_transactions_history(
+                    transaction_conn,
+                    transaction_sources,
                 )?;
 
                 anyhow::Ok(())
