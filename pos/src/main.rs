@@ -59,9 +59,9 @@ async fn crawling_fn(
         let timestamp = Utc::now().naive_utc();
         update_crawler_timestamp(&conn, timestamp).await?;
 
-        tracing::warn!(
-            "Epoch {} was not processed, retry...",
-            epoch_to_process
+        tracing::trace!(
+            epoch = epoch_to_process,
+            "Epoch does not exist yet, waiting...",
         );
 
         return Err(MainError::NoAction);
@@ -73,9 +73,9 @@ async fn crawling_fn(
             .into_rpc_error()?;
 
     tracing::info!(
-        "Processing epoch {} with {} validators...",
-        epoch_to_process,
-        validators_set.validators.len()
+        epoch = epoch_to_process,
+        validators = validators_set.validators.len(),
+        "Queried validators successfully...",
     );
 
     let timestamp = DateTimeUtc::now().0.timestamp();
@@ -112,14 +112,17 @@ async fn crawling_fn(
     .await
     .context_db_interact_error()
     .and_then(identity)
-    .into_db_error()
+    .into_db_error()?;
+
+    tracing::info!(epoch = epoch_to_process, "Updated validators in database");
+
+    Ok(())
 }
 
 async fn can_process(
     epoch: u32,
     client: Arc<HttpClient>,
 ) -> Result<bool, MainError> {
-    tracing::info!("Attempting to process epoch: {}...", epoch);
     let current_epoch = namada_service::get_current_epoch(&client.clone())
         .await
         .map_err(|e| {

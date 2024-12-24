@@ -81,20 +81,20 @@ async fn crawling_fn(
         let timestamp = Utc::now().naive_utc();
         update_crawler_timestamp(&conn, timestamp).await?;
 
-        tracing::warn!(
+        tracing::trace!(
             "Not enough time has passed since last crawl, skipping..."
         );
 
         return Err(MainError::NoAction);
     }
 
-    tracing::info!("Starting to update proposals...");
+    tracing::debug!("Querying governance proposals...");
 
     let epoch = namada_service::query_last_epoch(&client)
         .await
         .into_rpc_error()?;
 
-    tracing::info!("Fetched epoch is {} ...", epoch);
+    tracing::debug!("Fetched epoch is {} ...", epoch);
 
     let running_governance_proposals = conn
         .interact(move |conn| {
@@ -105,7 +105,7 @@ async fn crawling_fn(
         .and_then(identity)
         .into_db_error()?;
 
-    tracing::info!(
+    tracing::debug!(
         "Got {} proposals to be tallied...",
         running_governance_proposals.len()
     );
@@ -117,7 +117,7 @@ async fn crawling_fn(
     )
     .await
     .map_err(|_| MainError::RpcError)?;
-    tracing::info!(
+    tracing::debug!(
         "Got {} proposals statuses updates...",
         proposals_statuses.len()
     );
@@ -209,10 +209,16 @@ async fn crawling_fn(
                 .collect::<Vec<PgfPayment>>()
         })
         .collect::<Vec<_>>();
-    tracing::info!("Got {} pgf payments...", pgf_payments.len());
+    tracing::debug!("Got {} pgf payments...", pgf_payments.len());
 
     let timestamp = DateTimeUtc::now().0.timestamp();
     let crawler_state = IntervalCrawlerState { timestamp };
+
+    tracing::info!(
+        proposals_statuses = proposals_statuses.len(),
+        pgf_payments = pgf_payments.len(),
+        "Queried governance proposals successfully"
+    );
 
     conn.interact(move |conn| {
         conn.build_transaction().read_write().run(
@@ -241,6 +247,8 @@ async fn crawling_fn(
     .and_then(identity)
     .into_db_error()?;
 
+    tracing::info!(sleep_for = sleep_for, "Inserted governance into database");
+
     // Once we are done processing, we reset the instant
     *instant = Instant::now();
 
@@ -248,8 +256,6 @@ async fn crawling_fn(
 }
 
 fn can_process(instant: &MutexGuard<Instant>, sleep_for: u64) -> bool {
-    tracing::info!("Attempting to process goverance data");
-
     let time_elapsed = instant.elapsed().as_secs();
     time_elapsed >= sleep_for
 }

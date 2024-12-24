@@ -38,7 +38,7 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    tracing::info!("Query epoch...");
+    tracing::debug!("Querying epoch...");
 
     let mut epoch;
     loop {
@@ -73,30 +73,44 @@ async fn crawling_fn(
         let timestamp = Utc::now().naive_utc();
         update_crawler_timestamp(&conn, timestamp).await?;
 
-        tracing::warn!(
-            "Epoch {} was not processed, retry...",
-            epoch_to_process
+        tracing::trace!(
+            epoch = epoch_to_process,
+            "Epoch does not exist yet, waiting...",
         );
 
         return Err(MainError::NoAction);
     }
 
-    tracing::info!("Starting to update proposals...");
-
     // TODO: change this by querying all the pairs in the database
     let delegations_pairs = namada_service::query_delegation_pairs(&client)
         .await
         .into_rpc_error()?;
-    let rewards = namada_service::query_rewards(&client, delegations_pairs)
+
+    tracing::info!(
+        epoch = epoch_to_process,
+        delegations = delegations_pairs.len(),
+        "Querying rewards..."
+    );
+
+    let rewards = namada_service::query_rewards(&client, &delegations_pairs)
         .await
         .into_rpc_error()?;
     let non_zero_rewards = rewards
-        .into_iter()
+        .iter()
         .filter(|reward| !reward.amount.is_zero())
-        .collect();
+        .cloned()
+        .collect::<Vec<_>>();
 
     let timestamp = DateTimeUtc::now().0.timestamp();
     let crawler_state = IntervalCrawlerState { timestamp };
+
+    tracing::info!(
+        epoch = epoch_to_process,
+        delegations = delegations_pairs.len(),
+        rewards = rewards.len(),
+        non_zero_rewards = non_zero_rewards.len(),
+        "Queried rewards successfully",
+    );
 
     conn.interact(move |conn| {
         conn.build_transaction().read_write().run(
@@ -120,6 +134,11 @@ async fn crawling_fn(
     .and_then(identity)
     .into_db_error()?;
 
+    tracing::info!(
+        epoch = epoch_to_process,
+        "Inserted rewards into database; waiting for next epoch"
+    );
+
     Ok(())
 }
 
@@ -127,7 +146,6 @@ async fn can_process(
     epoch: u32,
     client: Arc<HttpClient>,
 ) -> Result<bool, MainError> {
-    tracing::info!("Attempting to process epoch: {}...", epoch);
     let current_epoch = namada_service::get_current_epoch(&client.clone())
         .await
         .map_err(|e| {
