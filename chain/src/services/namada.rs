@@ -727,6 +727,21 @@ pub async fn get_validator_namada_address(
     Ok(validator.map(Id::from))
 }
 
+pub fn query_native_addresses_balance_change(
+    native_token: Token,
+) -> HashSet<BalanceChange> {
+    [
+        NamadaSdkAddress::Internal(InternalAddress::Governance),
+        NamadaSdkAddress::Internal(InternalAddress::PoS),
+        NamadaSdkAddress::Internal(InternalAddress::Masp),
+        NamadaSdkAddress::Internal(InternalAddress::Pgf),
+        NamadaSdkAddress::Internal(InternalAddress::Ibc),
+    ]
+    .into_iter()
+    .map(|address| BalanceChange::new(Id::from(address), native_token.clone()))
+    .collect::<HashSet<_>>()
+}
+
 pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
     let pos_parameters = rpc::get_pos_params(client)
         .await

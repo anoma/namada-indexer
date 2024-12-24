@@ -137,6 +137,10 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
+    let native_addresses =
+        namada_service::query_native_addresses_balance_change(Token::Native(
+            native_token.clone(),
+        ));
     let addresses = block.addresses_with_balance_change(&native_token);
 
     let validators_addresses = if first_block_in_epoch.eq(&block_height) {
@@ -164,6 +168,7 @@ async fn crawling_fn(
         .iter()
         .chain(block_proposer_address.iter())
         .chain(validators_addresses.iter())
+        .chain(native_addresses.iter())
         .cloned()
         .collect::<HashSet<_>>();
 

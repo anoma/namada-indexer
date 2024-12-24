@@ -12,9 +12,12 @@ use orm::gas::GasEstimationInsertDb;
 use orm::ibc::{IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb};
 use orm::schema::{
     crawler_state, gas_estimations, ibc_ack, inner_transactions,
-    wrapper_transactions, transaction_history
+    transaction_history, wrapper_transactions,
 };
-use orm::transactions::{InnerTransactionInsertDb, TransactionHistoryInsertDb, WrapperTransactionInsertDb};
+use orm::transactions::{
+    InnerTransactionInsertDb, TransactionHistoryInsertDb,
+    WrapperTransactionInsertDb,
+};
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
 use shared::gas::GasEstimation;
 use shared::transaction::{

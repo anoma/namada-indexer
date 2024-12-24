@@ -17,7 +17,6 @@ pub enum Id {
     IbcTrace(String),
     Hash(String),
 }
-
 impl Default for Id {
     fn default() -> Self {
         Self::Hash("".to_owned())
