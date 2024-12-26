@@ -16,6 +16,15 @@ paths:
       responses:
         "200":
           description: Health check
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commit:
+                    type: string
+                  version:
+                    type: string
   /api/v1/pos/validator:
     get:
       summary: Get all validators, paginated
@@ -603,12 +612,12 @@ paths:
             type: integer
             minimum: 1
       responses:
-        '200':
+        "200":
           description: A gas estimate.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GasEstimate'
+                $ref: "#/components/schemas/GasEstimate"
   /api/v1/chain/token:
     get:
       summary: Get chain tokens
@@ -731,14 +740,11 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  required: [status]
-                  properties:
-                    name:
-                      type: string
-                      enum: [unknown, timeout, success, fail]
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [unknown, timeout, success, fail]
   /api/v1/block/height/{value}:
     get:
       summary: Get the block by height
