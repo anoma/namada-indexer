@@ -1,10 +1,31 @@
+use anyhow::Context;
 use diesel::upsert::excluded;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 use orm::pos_rewards::PosRewardInsertDb;
 use orm::schema::{pos_rewards, validators};
 use shared::rewards::Reward;
+use shared::tuple_len::TupleLen;
+
+use super::utils::MAX_PARAM_SIZE;
 
 pub fn upsert_rewards(
+    transaction_conn: &mut PgConnection,
+    rewards: Vec<Reward>,
+) -> anyhow::Result<()> {
+    let rewards_col_count = pos_rewards::all_columns.len() as i64;
+
+    for chunk in rewards
+        .into_iter()
+        .collect::<Vec<_>>()
+        .chunks((MAX_PARAM_SIZE as i64 / rewards_col_count) as usize)
+    {
+        upsert_rewards_chunk(transaction_conn, chunk.to_vec())?;
+    }
+
+    anyhow::Ok(())
+}
+
+fn upsert_rewards_chunk(
     transaction_conn: &mut PgConnection,
     rewards: Vec<Reward>,
 ) -> anyhow::Result<()> {
@@ -37,7 +58,8 @@ pub fn upsert_rewards(
             pos_rewards::columns::raw_amount
                 .eq(excluded(pos_rewards::columns::raw_amount)),
         )
-        .execute(transaction_conn)?;
+        .execute(transaction_conn)
+        .context("Failed to upsert rewards in db")?;
 
     Ok(())
 }

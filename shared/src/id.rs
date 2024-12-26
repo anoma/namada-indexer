@@ -46,8 +46,8 @@ impl From<TendermintHash> for Id {
     }
 }
 
-impl From<TendermintAppHash> for Id {
-    fn from(value: TendermintAppHash) -> Self {
+impl From<&TendermintAppHash> for Id {
+    fn from(value: &TendermintAppHash) -> Self {
         Self::Hash(value.to_string())
     }
 }

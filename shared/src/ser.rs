@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use namada_core::address::Address;
 use namada_core::masp::MaspTxId;
+use namada_sdk::borsh::BorshSerializeExt;
 use namada_sdk::ibc::IbcMessage as NamadaIbcMessage;
 use namada_sdk::token::{
     Account as NamadaAccount, DenominatedAmount as NamadaDenominatedAmount,
@@ -10,6 +11,7 @@ use namada_sdk::token::{
 };
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
+use subtle_encoding::hex;
 
 #[derive(Debug, Clone)]
 pub struct AccountsMap(pub BTreeMap<NamadaAccount, NamadaDenominatedAmount>);
@@ -120,10 +122,19 @@ impl Serialize for IbcMessage<NamadaTransfer> {
 
                 state.end()
             }
-            NamadaIbcMessage::Envelope(_) => {
-                let state = serializer.serialize_struct("IbcEnvelope", 0)?;
+            NamadaIbcMessage::Envelope(data) => {
+                let mut state =
+                    serializer.serialize_struct("IbcEnvelope", 1)?;
 
-                // TODO: serialize envelope message correctly
+                // todo: implement this bs :(
+
+                state.serialize_field(
+                    "data",
+                    &String::from_utf8_lossy(&hex::encode(
+                        data.serialize_to_vec(),
+                    ))
+                    .into_owned(),
+                )?;
 
                 state.end()
             }

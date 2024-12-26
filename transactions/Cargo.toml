@@ -27,6 +27,8 @@ deadpool-diesel.workspace = true
 diesel.workspace = true
 diesel_migrations.workspace = true
 orm.workspace = true
+clap-verbosity-flag.workspace = true
+serde_json.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

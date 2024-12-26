@@ -81,7 +81,7 @@ async fn crawling_fn(
         return Err(MainError::NoAction);
     }
 
-    tracing::info!("Starting to update proposals...");
+    tracing::info!("Starting to update pos rewards...");
 
     // TODO: change this by querying all the pairs in the database
     let delegations_pairs = namada_service::query_delegation_pairs(&client)
