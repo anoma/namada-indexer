@@ -84,6 +84,7 @@ services:
         PACKAGE: transactions
 
   webserver:
+    <<: *defaults
     image: namada/webserver-indexer
     build:
       context: .
