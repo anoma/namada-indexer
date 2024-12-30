@@ -157,6 +157,16 @@ pub async fn get_rewards(
 }
 
 #[debug_handler]
+pub async fn get_rewards_by_delegator_and_validator_and_epoch(
+    _headers: HeaderMap,
+    Path((delegator, validator, epoch)): Path<(String, String, u64)>,
+    State(state): State<CommonState>,
+) -> Result<Json<Vec<Reward>>, ApiError> {
+    let rewards = state.pos_service.get_rewards_by_delegator_and_validator_and_epoch(delegator, validator, epoch).await?;
+    Ok(Json(rewards))
+}
+
+#[debug_handler]
 pub async fn get_total_voting_power(
     _headers: HeaderMap,
     State(state): State<CommonState>,
