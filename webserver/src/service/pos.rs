@@ -300,6 +300,52 @@ impl PosService {
         Ok(rewards)
     }
 
+
+    pub async fn get_rewards_by_delegator_and_validator_and_epoch(
+        &self,
+        delegator: String,
+        validator_address: String,
+        epoch: u64,
+    ) -> Result<Vec<Reward>, PoSError> {
+        // 1) Lookup validator by its address
+        let db_validator = self
+            .pos_repo
+            .find_validator_by_address(validator_address)
+            .await
+            .map_err(PoSError::Database)?;
+
+        // If no validator is found for the given address, handle it as an error or return empty results
+        let db_validator = match db_validator {
+            Some(val) => val,
+            None => {
+                tracing::error!("No validator found for the given address");
+                return Ok(vec![]); // or return Err(...) if you'd rather hard-fail
+            }
+        };
+
+        let validator_id = db_validator.id;
+
+        // 2) Now fetch the rewards by delegator, validator_id, and epoch
+        let db_rewards = self
+            .pos_repo
+            .find_rewards_by_delegator_and_validator_and_epoch(
+                delegator,
+                validator_id,
+                epoch,
+            )
+            .await
+            .map_err(PoSError::Database)?;
+
+        // 3) Transform each DB reward record into your domain `Reward` type
+        let mut rewards = vec![];
+        for db_reward in db_rewards {
+            rewards.push(Reward::from(db_reward.clone(), db_validator.clone()));
+        }
+
+        Ok(rewards)
+    }
+
+
     // TODO: maybe return object(struct) instead
     pub async fn get_total_voting_power(&self) -> Result<u64, PoSError> {
         let total_voting_power_db = self

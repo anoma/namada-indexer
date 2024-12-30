@@ -47,6 +47,11 @@ pub trait PosRepositoryTrait {
         id: i32,
     ) -> Result<Option<ValidatorDb>, String>;
 
+    async fn find_validator_by_address(
+        &self,
+        address: String,
+    ) -> Result<Option<ValidatorDb>, String>;
+
     async fn find_merged_bonds_by_address(
         &self,
         address: String,
@@ -88,6 +93,13 @@ pub trait PosRepositoryTrait {
     async fn find_rewards_by_address(
         &self,
         address: String,
+    ) -> Result<Vec<PoSRewardDb>, String>;
+
+    async fn find_rewards_by_delegator_and_validator_and_epoch(
+        &self,
+        delegator: String,
+        validator_id: i32,
+        epoch: u64,
     ) -> Result<Vec<PoSRewardDb>, String>;
 
     async fn get_total_voting_power(&self) -> Result<Option<i64>, String>;
@@ -171,6 +183,23 @@ impl PosRepositoryTrait for PosRepository {
         conn.interact(move |conn| {
             validators::table
                 .filter(validators::dsl::id.eq(validator_id))
+                .select(ValidatorDb::as_select())
+                .first(conn)
+                .ok()
+        })
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_validator_by_address(
+        &self,
+        address: String,
+    ) -> Result<Option<ValidatorDb>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            validators::table
+                .filter(validators::dsl::namada_address.eq(address))
                 .select(ValidatorDb::as_select())
                 .first(conn)
                 .ok()
@@ -315,6 +344,27 @@ impl PosRepositoryTrait for PosRepository {
         conn.interact(move |conn| {
             pos_rewards::table
                 .filter(pos_rewards::dsl::owner.eq(address))
+                .select(PoSRewardDb::as_select())
+                .get_results(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn find_rewards_by_delegator_and_validator_and_epoch(
+        &self,
+        delegator: String,
+        validator_id: i32,
+        epoch: u64,
+    ) -> Result<Vec<PoSRewardDb>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            pos_rewards::table
+                .filter(pos_rewards::dsl::owner.eq(delegator))
+                .filter(pos_rewards::dsl::validator_id.eq(validator_id))
+                .filter(pos_rewards::dsl::epoch.eq(epoch as i32))
                 .select(PoSRewardDb::as_select())
                 .get_results(conn)
         })
