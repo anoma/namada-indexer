@@ -2,6 +2,8 @@ use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use crate::schema::pos_rewards;
 use shared::rewards::Reward;
+use std::str::FromStr;
+
 
 #[derive(Insertable, Queryable, Selectable, Clone)]
 #[diesel(table_name = pos_rewards)]
@@ -19,7 +21,7 @@ impl PosRewardInsertDb {
         PosRewardInsertDb {
             owner: reward.delegation_pair.delegator_address.to_string(),
             validator_id,
-            raw_amount: BigDecimal::from(reward.amount),
+            raw_amount: BigDecimal::from_str(&reward.amount.to_string()).unwrap(),
             epoch,
         }
     }
