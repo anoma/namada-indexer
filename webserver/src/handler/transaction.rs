@@ -8,7 +8,8 @@ use crate::dto::transaction::TransactionHistoryQueryParams;
 use crate::error::api::ApiError;
 use crate::error::transaction::TransactionError;
 use crate::response::transaction::{
-    InnerTransaction, TransactionHistory, WrapperTransaction,
+    InnerTransaction, TransactionHistory, TransactionResult, TransactionStatus,
+    TransactionStructKind, WrapperTransaction,
 };
 use crate::response::utils::PaginatedResponse;
 use crate::state::common::CommonState;
@@ -79,6 +80,42 @@ pub async fn get_transaction_history(
         PaginatedResponse::new(transactions, page, total_pages, total_items);
 
     Ok(Json(response))
+}
+
+#[debug_handler]
+pub async fn get_tx_status(
+    _headers: HeaderMap,
+    Path(tx_id): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<TransactionStatus>, ApiError> {
+    is_valid_hash(&tx_id)?;
+
+    let wrapper_tx = state
+        .transaction_service
+        .get_wrapper_tx(tx_id.clone())
+        .await?;
+
+    let tx_status = if let Some(tx) = wrapper_tx {
+        TransactionStatus {
+            kind: TransactionStructKind::Wrapper,
+            status: tx.exit_code,
+        }
+    } else {
+        let tx = state.transaction_service.get_inner_tx(tx_id).await?;
+
+        match tx {
+            Some(tx) => TransactionStatus {
+                kind: TransactionStructKind::Inner,
+                status: tx.exit_code,
+            },
+            None => TransactionStatus {
+                kind: TransactionStructKind::Unknown,
+                status: TransactionResult::Unknown,
+            },
+        }
+    };
+
+    Ok(Json(tx_status))
 }
 
 fn is_valid_hash(hash: &str) -> Result<(), TransactionError> {
