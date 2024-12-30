@@ -117,6 +117,10 @@ impl ApplicationServer {
                     get(transaction_handlers::get_wrapper_tx),
                 )
                 .route(
+                    "/chain/tx/:id/status",
+                    get(transaction_handlers::get_tx_status),
+                )
+                .route(
                     "/chain/inner/:id",
                     get(transaction_handlers::get_inner_tx),
                 )

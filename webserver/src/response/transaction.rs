@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub enum TransactionResult {
     Applied,
     Rejected,
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
@@ -182,4 +183,19 @@ impl TransactionHistory {
             block_height,
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TransactionStructKind {
+    Wrapper,
+    Inner,
+    Unknown,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionStatus {
+    pub kind: TransactionStructKind,
+    pub status: TransactionResult,
 }
