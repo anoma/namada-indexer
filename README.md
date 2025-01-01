@@ -81,8 +81,9 @@ apt-get install -y curl apt-transport-https ca-certificates software-properties-
 Ensure you have the latest repository cloned to maintain compatibility with other Namada interfaces. Use the following commands to clone the repository and navigate into its directory.
 
 ```sh
-git clone https://github.com/anoma/namada-indexer.git
-cd namada-indexer
+# Clone this repository, copy the URL from the Code button above and use.
+git clone <copied-url>
+cd <repository-name>
 ```
 
 Create the `.env` file in the root of the project. You can use the `.env.sample` file as a reference. 
