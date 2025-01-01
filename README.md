@@ -81,7 +81,7 @@ apt-get install -y curl apt-transport-https ca-certificates software-properties-
 Ensure you have the latest repository cloned to maintain compatibility with other Namada interfaces. Use the following commands to clone the repository and navigate into its directory.
 
 ```sh
-# Clone this repository, copy the URL from the Code button above and use.
+# Clone this repository, copy the URL from the Code button above.
 git clone <copied-url>
 cd <repository-name>
 ```
