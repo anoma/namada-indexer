@@ -61,7 +61,7 @@ Follow these instructions to set up the project locally. The steps below will gu
 
 It is strongly recommended to change the default username and password for your PostgreSQL database for security purposes. Update these credentials in both the `.env` file and the `docker-compose.yml` file to reflect the changes.
 
-## 🐳 Installation with Docker 
+## 🐳 Docker Deployment
 
 ### Prerequisites
 
@@ -81,8 +81,9 @@ apt-get install -y curl apt-transport-https ca-certificates software-properties-
 Ensure you have the latest repository cloned to maintain compatibility with other Namada interfaces. Use the following commands to clone the repository and navigate into its directory.
 
 ```sh
-git clone https://github.com/anoma/namada-indexer.git
-cd namada-indexer
+# Clone this repository, copy the URL from the Code button above.
+git clone <copied-url>
+cd <repository-name>
 ```
 
 Create the `.env` file in the root of the project. You can use the `.env.sample` file as a reference. 
@@ -107,7 +108,7 @@ just docker-up
 just docker-up-d
 ```
 
-## Installation without Docker
+## 🖥️ Self-Hosted Deployment
 
 If you prefer not to use Docker, you can follow the instructions below to set up and run the services manually.
 
