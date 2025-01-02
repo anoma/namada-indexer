@@ -61,7 +61,7 @@ Follow these instructions to set up the project locally. The steps below will gu
 
 It is strongly recommended to change the default username and password for your PostgreSQL database for security purposes. Update these credentials in both the `.env` file and the `docker-compose.yml` file to reflect the changes.
 
-## 🐳 Installation with Docker 
+## 🐳 Docker Deployment
 
 ### Prerequisites
 
@@ -108,7 +108,7 @@ just docker-up
 just docker-up-d
 ```
 
-## Installation without Docker
+## 🖥️ Self-Hosted Deployment
 
 If you prefer not to use Docker, you can follow the instructions below to set up and run the services manually.
 
