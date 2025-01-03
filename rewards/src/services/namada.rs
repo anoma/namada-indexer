@@ -25,8 +25,12 @@ pub async fn query_delegation_pairs(
         data.into_iter()
             .fold(HashSet::new(), |mut acc, (bond_id, _)| {
                 acc.insert(DelegationPair {
-                    validator_address: Id::from(bond_id.validator),
+                    validator_address: Id::from(bond_id.validator.clone()),
                     delegator_address: Id::from(bond_id.source),
+                });
+                acc.insert(DelegationPair {
+                    validator_address: Id::from(bond_id.validator.clone()),
+                    delegator_address: Id::from(bond_id.validator),
                 });
                 acc
             });
