@@ -124,7 +124,7 @@ jobs:
   docker:
     name: Docker
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'merge_group' || github.ref == 'refs/heads/main' || github.ref == '*-maint' }}
+    if: ${{ github.event_name == 'merge_group' || github.ref == 'refs/heads/main' || github.ref == '1.0.0-maint' }}
     env:
       GIT_LFS_SKIP_SMUDGE: 1
       REGISTRY_URL: ghcr.io
