@@ -5,7 +5,10 @@ check:
     cargo check --all
 
 fmt:
-    cargo +nightly fmt --all
+    cargo +nightly-2024-06-14 fmt --all
+
+fmt-check:
+    cargo +nightly-2024-06-14 fmt --all --check
 
 test:
     cargo test

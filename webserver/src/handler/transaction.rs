@@ -20,6 +20,7 @@ pub async fn get_wrapper_tx(
     State(state): State<CommonState>,
 ) -> Result<Json<Option<WrapperTransaction>>, ApiError> {
     is_valid_hash(&tx_id)?;
+    let tx_id = tx_id.to_lowercase();
 
     let wrapper_tx = state
         .transaction_service
@@ -49,6 +50,7 @@ pub async fn get_inner_tx(
     State(state): State<CommonState>,
 ) -> Result<Json<Option<InnerTransaction>>, ApiError> {
     is_valid_hash(&tx_id)?;
+    let tx_id = tx_id.to_lowercase();
 
     let inner_tx = state
         .transaction_service
