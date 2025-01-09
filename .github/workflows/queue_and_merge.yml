@@ -157,7 +157,7 @@ jobs:
           context: .
           file: Dockerfile
           build-args: PACKAGE=${{ matrix.docker.package }}
-          push: ${{ github.event.pull_request.head.repo.full_name == 'anoma/namada-indexer' }}
+          push: ${{ github.event.pull_request.head.repo.full_name == 'anoma/namada-indexer' || github.event.push.head.repo.full_name == 'anoma/namada-indexer' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
