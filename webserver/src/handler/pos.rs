@@ -149,7 +149,7 @@ pub async fn get_withdraws(
 #[debug_handler]
 pub async fn get_rewards(
     _headers: HeaderMap,
-    Path((address)): Path<(String)>,
+    Path(address): Path<String>,
     Query(query): Query<LatestEpochRewardDto>,
     State(state): State<CommonState>,
 ) -> Result<Json<Vec<Reward>>, ApiError> {
