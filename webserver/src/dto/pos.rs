@@ -82,3 +82,8 @@ pub struct WithdrawsDto {
     #[validate(range(min = 1, max = 10000))]
     pub epoch: Option<u64>,
 }
+
+#[derive(Clone, Serialize, Deserialize, Validate)]
+pub struct LatestEpochRewardDto {
+    pub epoch: i32,
+}
