@@ -1,3 +1,5 @@
+-- Populate existing records with claimed = false
+ALTER TABLE pos_rewards ADD COLUMN claimed BOOLEAN DEFAULT FALSE;
 -- Populate existing records with epoch = 0
 ALTER TABLE pos_rewards ADD COLUMN epoch INTEGER NOT NULL DEFAULT 0;
 -- Now we can safely drop the default
