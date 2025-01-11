@@ -300,7 +300,6 @@ impl PosService {
         Ok(rewards)
     }
 
-
     pub async fn get_rewards_by_delegator_and_validator_and_epoch(
         &self,
         delegator: String,
@@ -344,7 +343,6 @@ impl PosService {
 
         Ok(rewards)
     }
-
 
     // TODO: maybe return object(struct) instead
     pub async fn get_total_voting_power(&self) -> Result<u64, PoSError> {
