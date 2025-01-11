@@ -149,10 +149,13 @@ pub async fn get_withdraws(
 #[debug_handler]
 pub async fn get_rewards(
     _headers: HeaderMap,
-    Path(address): Path<String>,
+    Path((address, epoch)): Path<(String, i32)>,
     State(state): State<CommonState>,
 ) -> Result<Json<Vec<Reward>>, ApiError> {
-    let rewards = state.pos_service.get_rewards_by_address(address).await?;
+    let rewards = state
+        .pos_service
+        .get_rewards_by_address(address, epoch)
+        .await?;
     Ok(Json(rewards))
 }
 
@@ -162,7 +165,12 @@ pub async fn get_rewards_by_delegator_and_validator_and_epoch(
     Path((delegator, validator, epoch)): Path<(String, String, u64)>,
     State(state): State<CommonState>,
 ) -> Result<Json<Vec<Reward>>, ApiError> {
-    let rewards = state.pos_service.get_rewards_by_delegator_and_validator_and_epoch(delegator, validator, epoch).await?;
+    let rewards = state
+        .pos_service
+        .get_rewards_by_delegator_and_validator_and_epoch(
+            delegator, validator, epoch,
+        )
+        .await?;
     Ok(Json(rewards))
 }
 
