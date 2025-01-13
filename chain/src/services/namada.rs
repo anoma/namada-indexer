@@ -605,30 +605,57 @@ pub async fn query_all_votes(
     client: &HttpClient,
     proposals_ids: Vec<u64>,
 ) -> anyhow::Result<HashSet<GovernanceVote>> {
-    let votes: Vec<HashSet<GovernanceVote>> =
-        futures::stream::iter(proposals_ids)
-            .filter_map(|proposal_id| async move {
-                let votes = rpc::query_proposal_votes(client, proposal_id)
-                    .await
-                    .ok()?;
+    let votes = futures::stream::iter(proposals_ids)
+        .filter_map(|proposal_id| async move {
+            let votes =
+                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
 
-                let votes = votes
-                    .into_iter()
-                    .map(|vote| GovernanceVote {
-                        proposal_id,
-                        vote: ProposalVoteKind::from(vote.data),
-                        address: Id::from(vote.delegator),
-                    })
-                    .collect::<HashSet<_>>();
+            let votes = votes
+                .into_iter()
+                .map(|vote| GovernanceVote {
+                    proposal_id,
+                    vote: ProposalVoteKind::from(vote.data),
+                    address: Id::from(vote.delegator),
+                })
+                .collect::<HashSet<_>>();
 
-                Some(votes)
+            Some(votes)
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(32)
+        .collect::<Vec<_>>()
+        .await;
+
+    let mut voter_count: HashMap<(Id, u64), u64> = HashMap::new();
+    for vote in votes.iter().flatten() {
+        *voter_count
+            .entry((vote.address.clone(), vote.proposal_id))
+            .or_insert(0) += 1;
+    }
+
+    let mut seen_voters = HashSet::new();
+    anyhow::Ok(
+        votes
+            .iter()
+            .flatten()
+            .filter(|&vote| {
+                seen_voters.insert((vote.address.clone(), vote.proposal_id))
             })
-            .map(futures::future::ready)
-            .buffer_unordered(32)
-            .collect::<Vec<_>>()
-            .await;
-
-    anyhow::Ok(votes.iter().flatten().cloned().collect())
+            .cloned()
+            .map(|mut vote| {
+                if let Some(count) =
+                    voter_count.get(&(vote.address.clone(), vote.proposal_id))
+                {
+                    if *count > 1_u64 {
+                        vote.vote = ProposalVoteKind::Unknown;
+                    }
+                    vote
+                } else {
+                    vote
+                }
+            })
+            .collect(),
+    )
 }
 
 pub async fn get_validator_set_at_epoch(

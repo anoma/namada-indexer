@@ -9,6 +9,7 @@ pub enum ProposalVoteKind {
     Nay,
     Yay,
     Abstain,
+    Unknown,
 }
 
 impl From<ProposalVote> for ProposalVoteKind {
