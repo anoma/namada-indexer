@@ -5,8 +5,8 @@ use axum_extra::extract::Query;
 use axum_macros::debug_handler;
 
 use crate::dto::pos::{
-    AllValidatorsQueryParams, BondsDto, LatestEpochRewardDto, UnbondsDto,
-    ValidatorQueryParams, ValidatorStateDto, WithdrawsDto,
+    AllValidatorsQueryParams, BondsDto, UnbondsDto, ValidatorQueryParams,
+    ValidatorStateDto, WithdrawsDto,
 };
 use crate::error::api::ApiError;
 use crate::response::pos::{
