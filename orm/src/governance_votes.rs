@@ -10,6 +10,7 @@ pub enum GovernanceVoteKindDb {
     Nay,
     Yay,
     Abstain,
+    Unknown,
 }
 
 impl From<ProposalVoteKind> for GovernanceVoteKindDb {
@@ -18,6 +19,7 @@ impl From<ProposalVoteKind> for GovernanceVoteKindDb {
             ProposalVoteKind::Nay => Self::Nay,
             ProposalVoteKind::Yay => Self::Yay,
             ProposalVoteKind::Abstain => Self::Abstain,
+            ProposalVoteKind::Unknown => Self::Unknown,
         }
     }
 }

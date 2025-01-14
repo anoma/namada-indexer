@@ -965,7 +965,7 @@ components:
           type: string
         vote:
           type: string
-          enum: [yay, nay, abstain]
+          enum: [yay, nay, abstain, unknown]
         voterAddress:
           type: string
     Reward:
