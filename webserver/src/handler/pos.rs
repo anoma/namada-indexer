@@ -150,13 +150,9 @@ pub async fn get_withdraws(
 pub async fn get_rewards(
     _headers: HeaderMap,
     Path(address): Path<String>,
-    Query(query): Query<LatestEpochRewardDto>,
     State(state): State<CommonState>,
 ) -> Result<Json<Vec<Reward>>, ApiError> {
-    let rewards = state
-        .pos_service
-        .get_rewards_by_address(address, query.epoch)
-        .await?;
+    let rewards = state.pos_service.get_rewards_by_address(address).await?;
     Ok(Json(rewards))
 }
 
