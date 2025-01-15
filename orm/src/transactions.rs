@@ -16,6 +16,7 @@ pub enum TransactionKindDb {
     ShieldedTransfer,
     ShieldingTransfer,
     UnshieldingTransfer,
+    MixedTransfer,
     IbcMsgTransfer,
     Bond,
     Redelegation,
@@ -41,6 +42,11 @@ impl From<TransactionKind> for TransactionKindDb {
                 Self::TransparentTransfer
             }
             TransactionKind::ShieldedTransfer(_) => Self::ShieldedTransfer,
+            TransactionKind::UnshieldingTransfer(_) => {
+                Self::UnshieldingTransfer
+            }
+            TransactionKind::ShieldingTransfer(_) => Self::ShieldingTransfer,
+            TransactionKind::MixedTransfer(_) => Self::MixedTransfer,
             TransactionKind::IbcMsgTransfer(_) => Self::IbcMsgTransfer,
             TransactionKind::Bond(_) => Self::Bond,
             TransactionKind::Redelegation(_) => Self::Redelegation,
