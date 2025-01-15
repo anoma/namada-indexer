@@ -1295,6 +1295,12 @@ components:
           type: string
         proposer:
           type: string
+        transactions:
+          type: array
+          items:
+            type: string
+        parentHash:
+          type: string
         epoch:
           type: string
     TransactionHistory:
