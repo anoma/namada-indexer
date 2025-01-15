@@ -5,7 +5,6 @@ use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
-use namada_sdk::masp::ShieldedTransfer;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
@@ -21,7 +20,7 @@ use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
-use crate::ser::{IbcMessage, TransparentTransfer};
+use crate::ser::{IbcMessage, TransferData};
 
 // We wrap public key in a struct so we serialize data as object instead of
 // string
@@ -33,10 +32,11 @@ pub struct RevealPkData {
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
-    TransparentTransfer(Option<TransparentTransfer>),
-    // TODO: remove once ShieldedTransfer can be serialized
-    #[serde(skip)]
-    ShieldedTransfer(Option<ShieldedTransfer>),
+    TransparentTransfer(Option<TransferData>),
+    ShieldedTransfer(Option<TransferData>),
+    ShieldingTransfer(Option<TransferData>),
+    UnshieldingTransfer(Option<TransferData>),
+    MixedTransfer(Option<TransferData>),
     IbcMsgTransfer(Option<IbcMessage<Transfer>>),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
@@ -60,16 +60,60 @@ impl TransactionKind {
         serde_json::to_string(&self).ok()
     }
 
-    pub fn from(tx_kind_name: &str, data: &[u8]) -> Self {
+    pub fn from(
+        tx_kind_name: &str,
+        data: &[u8],
+        masp_address: &Address,
+    ) -> Self {
         match tx_kind_name {
             "tx_transfer" => {
-                let data = if let Ok(data) = Transfer::try_from_slice(data) {
-                    Some(TransparentTransfer::from(data))
+                if let Ok(data) = Transfer::try_from_slice(data) {
+                    let has_shielded_section =
+                        data.shielded_section_hash.is_some();
+                    let all_sources_are_masp = data
+                        .sources
+                        .iter()
+                        .all(|(acc, _)| acc.owner.eq(masp_address));
+                    let any_sources_are_masp = data
+                        .sources
+                        .iter()
+                        .all(|(acc, _)| acc.owner.eq(masp_address));
+                    let all_targets_are_masp = data
+                        .targets
+                        .iter()
+                        .all(|(acc, _)| acc.owner.eq(masp_address));
+                    let any_targets_are_masp = data
+                        .targets
+                        .iter()
+                        .all(|(acc, _)| acc.owner.eq(masp_address));
+                    if all_sources_are_masp
+                        && all_targets_are_masp
+                        && has_shielded_section
+                    {
+                        TransactionKind::ShieldedTransfer(Some(data.into()))
+                    } else if all_sources_are_masp
+                        && !any_targets_are_masp
+                        && has_shielded_section
+                    {
+                        TransactionKind::UnshieldingTransfer(Some(data.into()))
+                    } else if !any_sources_are_masp
+                        && all_targets_are_masp
+                        && has_shielded_section
+                    {
+                        TransactionKind::ShieldingTransfer(Some(data.into()))
+                    } else if !any_sources_are_masp
+                        && !any_targets_are_masp
+                        && !has_shielded_section
+                    {
+                        TransactionKind::TransparentTransfer(Some(data.into()))
+                    } else {
+                        TransactionKind::MixedTransfer(Some(data.into()))
+                    }
                 } else {
-                    None
-                };
-                TransactionKind::TransparentTransfer(data)
+                    TransactionKind::Unknown
+                }
             }
+
             "tx_bond" => {
                 let data = if let Ok(data) = Bond::try_from_slice(data) {
                     Some(data)
@@ -299,6 +343,7 @@ impl Transaction {
         block_height: BlockHeight,
         checksums: Checksums,
         block_results: &BlockResult,
+        masp_address: &Address,
     ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
@@ -379,7 +424,11 @@ impl Transaction {
                         if let Some(tx_kind_name) =
                             checksums.get_name_by_id(&id)
                         {
-                            TransactionKind::from(&tx_kind_name, &tx_data)
+                            TransactionKind::from(
+                                &tx_kind_name,
+                                &tx_data,
+                                masp_address,
+                            )
                         } else {
                             TransactionKind::Unknown
                         }
