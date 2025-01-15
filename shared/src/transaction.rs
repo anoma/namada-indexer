@@ -70,44 +70,49 @@ impl TransactionKind {
                 if let Ok(data) = Transfer::try_from_slice(data) {
                     let has_shielded_section =
                         data.shielded_section_hash.is_some();
-                    let all_sources_are_masp = data
+
+                    let (all_sources_are_masp, any_sources_are_masp) = data
                         .sources
                         .iter()
-                        .all(|(acc, _)| acc.owner.eq(masp_address));
-                    let any_sources_are_masp = data
-                        .sources
-                        .iter()
-                        .all(|(acc, _)| acc.owner.eq(masp_address));
-                    let all_targets_are_masp = data
+                        .fold((true, false), |(all, any), (acc, _)| {
+                            let is_masp = acc.owner.eq(masp_address);
+                            (all && is_masp, any || is_masp)
+                        });
+
+                    let (all_targets_are_masp, any_targets_are_masp) = data
                         .targets
                         .iter()
-                        .all(|(acc, _)| acc.owner.eq(masp_address));
-                    let any_targets_are_masp = data
-                        .targets
-                        .iter()
-                        .all(|(acc, _)| acc.owner.eq(masp_address));
-                    if all_sources_are_masp
-                        && all_targets_are_masp
-                        && has_shielded_section
-                    {
-                        TransactionKind::ShieldedTransfer(Some(data.into()))
-                    } else if all_sources_are_masp
-                        && !any_targets_are_masp
-                        && has_shielded_section
-                    {
-                        TransactionKind::UnshieldingTransfer(Some(data.into()))
-                    } else if !any_sources_are_masp
-                        && all_targets_are_masp
-                        && has_shielded_section
-                    {
-                        TransactionKind::ShieldingTransfer(Some(data.into()))
-                    } else if !any_sources_are_masp
-                        && !any_targets_are_masp
-                        && !has_shielded_section
-                    {
-                        TransactionKind::TransparentTransfer(Some(data.into()))
-                    } else {
-                        TransactionKind::MixedTransfer(Some(data.into()))
+                        .fold((true, false), |(all, any), (acc, _)| {
+                            let is_masp = acc.owner.eq(masp_address);
+                            (all && is_masp, any || is_masp)
+                        });
+
+                    match (
+                        all_sources_are_masp,
+                        any_sources_are_masp,
+                        all_targets_are_masp,
+                        any_targets_are_masp,
+                        has_shielded_section,
+                    ) {
+                        (true, _, true, _, true) => {
+                            TransactionKind::ShieldedTransfer(Some(data.into()))
+                        }
+                        (true, _, _, false, true) => {
+                            TransactionKind::UnshieldingTransfer(Some(
+                                data.into(),
+                            ))
+                        }
+                        (false, _, true, _, true) => {
+                            TransactionKind::ShieldingTransfer(Some(
+                                data.into(),
+                            ))
+                        }
+                        (false, _, false, _, false) => {
+                            TransactionKind::TransparentTransfer(Some(
+                                data.into(),
+                            ))
+                        }
+                        _ => TransactionKind::MixedTransfer(Some(data.into())),
                     }
                 } else {
                     TransactionKind::Unknown
