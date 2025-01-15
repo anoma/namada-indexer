@@ -1,0 +1,8 @@
+-- This file should undo anything in `up.sql`
+DROP TABLE IF EXISTS masp_pool;
+
+DROP TABLE IF EXISTS masp_pool_aggregate;
+
+DROP TYPE IF EXISTS MASP_POOL_AGGREGATE_WINDOW;
+
+DROP TYPE IF EXISTS MASP_POOL_AGGREGATE_KIND;
