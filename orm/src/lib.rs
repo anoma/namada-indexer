@@ -18,3 +18,4 @@ pub mod transactions;
 pub mod unbond;
 pub mod validators;
 pub mod views;
+pub mod masp;
