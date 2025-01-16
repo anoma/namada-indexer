@@ -8,6 +8,7 @@ pub mod governance_votes;
 pub mod group_by_macros;
 pub mod helpers;
 pub mod ibc;
+pub mod masp;
 pub mod migrations;
 pub mod parameters;
 pub mod pgf;

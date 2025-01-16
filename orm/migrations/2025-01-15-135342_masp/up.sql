@@ -1,14 +1,21 @@
 -- Your SQL goes here
+CREATE TYPE MASP_POOL_DIRECTION AS ENUM (
+    'in',
+    'out'
+);
+
 CREATE TABLE masp_pool (
     id SERIAL PRIMARY KEY,
     token_address VARCHAR(45) NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     raw_amount NUMERIC(78, 0) NOT NULL,
+    direction MASP_POOL_DIRECTION NOT NULL,
     inner_tx_id VARCHAR(64) NOT NULL,
     CONSTRAINT fk_inner_tx_id FOREIGN KEY(inner_tx_id) REFERENCES inner_transactions(id) ON DELETE CASCADE
 );
 
 CREATE INDEX index_masp_pool_address_timestamp ON masp_pool (token_address, timestamp DESC);
+CREATE UNIQUE INDEX index_masp_pool_inner_tx_id ON masp_pool (inner_tx_id);
 
 CREATE TYPE MASP_POOL_AGGREGATE_WINDOW AS ENUM (
     '1',
@@ -54,7 +61,7 @@ DECLARE
   cutoff_30d TIMESTAMP := now() - INTERVAL '30 days';
 BEGIN
   -- Update 1-day time_window for 'inflow' or 'outflow'
-  IF NEW.raw_amount > 0 THEN
+  IF NEW.direction = 'in' THEN
     -- Inflow: update inflow entry
     INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
     VALUES (
@@ -79,7 +86,7 @@ BEGIN
   END IF;
 
   -- Update 7-day time_window for 'inflow' or 'outflow'
-  IF NEW.raw_amount > 0 THEN
+  IF NEW.direction = 'in' THEN
     -- Inflow: update inflow entry
     INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
     VALUES (
@@ -104,7 +111,7 @@ BEGIN
   END IF;
 
   -- Update 30-day time_window for 'inflow' or 'outflow'
-  IF NEW.raw_amount > 0 THEN
+  IF NEW.direction = 'in' THEN
     -- Inflow: update inflow entry
     INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
     VALUES (
@@ -129,7 +136,7 @@ BEGIN
   END IF;
 
   -- Update all-time time_window for 'inflow' or 'outflow'
-  IF NEW.raw_amount > 0 THEN
+  IF NEW.direction = 'in' THEN
     -- Inflow: update inflow entry
     INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
     VALUES (
