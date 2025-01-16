@@ -353,6 +353,7 @@ diesel::table! {
         exit_code -> TransactionResult,
         atomic -> Bool,
         gas_used -> Nullable<Int4>,
+        amount_per_gas_unit -> Nullable<Varchar>,
     }
 }
 

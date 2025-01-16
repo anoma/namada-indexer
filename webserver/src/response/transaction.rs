@@ -42,8 +42,9 @@ pub struct WrapperTransaction {
     pub tx_id: String,
     pub fee_payer: String,
     pub fee_token: String,
-    pub gas_limit: String,
+    pub gas_limit: u64,
     pub gas_used: Option<u64>,
+    pub amount_per_gas_unit: Option<f64>,
     pub block_height: u64,
     pub inner_transactions: Vec<ShortInnerTransaction>,
     pub exit_code: TransactionResult,
@@ -125,8 +126,12 @@ impl From<WrapperTransactionDb> for WrapperTransaction {
             tx_id: value.id,
             fee_payer: value.fee_payer,
             fee_token: value.fee_token,
-            gas_limit: value.gas_limit,
+            gas_limit: value.gas_limit.parse::<u64>().unwrap_or(0),
             gas_used: value.gas_used.map(|gas| gas as u64),
+            amount_per_gas_unit: value
+                .amount_per_gas_unit
+                .map(|gas| gas.parse::<f64>().ok())
+                .unwrap_or(None),
             block_height: value.block_height as u64,
             inner_transactions: vec![],
             exit_code: TransactionResult::from(value.exit_code),
