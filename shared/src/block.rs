@@ -389,6 +389,201 @@ impl Block {
                         vec![]
                     }
                 }
+                TransactionKind::IbcTrasparentTransfer((ibc_message, _)) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Transfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            IbcMessage::NftTransfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::IbcShieldingTransfer((ibc_message, _)) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Transfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            IbcMessage::NftTransfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::IbcUnshieldingTransfer((ibc_message, _)) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Transfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            IbcMessage::NftTransfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
                 TransactionKind::Bond(bond) => {
                     if let Some(data) = bond {
                         let source =
