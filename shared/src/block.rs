@@ -15,6 +15,7 @@ use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
+use crate::masp::{MaspEntry, MaspEntryDirection};
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
@@ -152,7 +153,7 @@ impl Block {
                 proposer_address_namada: proposer_address_namada
                     .as_ref()
                     .map(Id::to_string),
-                timestamp: block_response.block.header.time.to_string(),
+                timestamp: block_response.block.header.time.unix_timestamp(),
                 app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
@@ -392,6 +393,82 @@ impl Block {
                 TransactionKind::Unknown(_) => vec![],
             })
             .collect::<HashSet<_>>()
+    }
+
+    pub fn masp_entries(&self) -> Vec<MaspEntry> {
+        self.transactions
+            .iter()
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
+            })
+            .iter()
+            .flat_map(|tx| match &tx.kind {
+                TransactionKind::ShieldingTransfer(Some(transfer_data)) => {
+                    transfer_data
+                        .targets
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::In,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::UnshieldingTransfer(Some(transfer_data)) => {
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::Out,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::IbcShieldingTransfer((_, transfer_data)) => {
+                    transfer_data
+                        .targets
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::In,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::IbcUnshieldingTransfer((_, transfer_data)) => {
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::Out,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                } // we could improve this by looking at mixed transfers too
+                _ => vec![],
+            })
+            .collect()
     }
 
     pub fn governance_proposal(

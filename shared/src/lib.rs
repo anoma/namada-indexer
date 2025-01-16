@@ -12,6 +12,7 @@ pub mod genesis;
 pub mod header;
 pub mod id;
 pub mod log_config;
+pub mod masp;
 pub mod parameters;
 pub mod pgf;
 pub mod proposal;

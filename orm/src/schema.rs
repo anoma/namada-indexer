@@ -86,6 +86,14 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "masp_pool_direction"))]
+    pub struct MaspPoolDirection;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "token_type"))]
     pub struct TokenType;
 
@@ -313,12 +321,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::MaspPoolDirection;
+
     masp_pool (id) {
         id -> Int4,
         #[max_length = 45]
         token_address -> Varchar,
         timestamp -> Timestamp,
         raw_amount -> Numeric,
+        direction -> MaspPoolDirection,
         #[max_length = 64]
         inner_tx_id -> Varchar,
     }
