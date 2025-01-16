@@ -16,6 +16,7 @@ use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
+use crate::masp::MaspEntry;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
@@ -153,7 +154,7 @@ impl Block {
                 proposer_address_namada: proposer_address_namada
                     .as_ref()
                     .map(Id::to_string),
-                timestamp: block_response.block.header.time.to_string(),
+                timestamp: block_response.block.header.time.unix_timestamp(),
                 app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
@@ -736,6 +737,52 @@ impl Block {
                 TransactionKind::Unknown => vec![],
             })
             .collect::<HashSet<_>>()
+    }
+
+    pub fn masp(&self) -> Vec<MaspEntry> {
+        self
+            .transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
+            .map(|tx| match &tx.kind {
+                TransactionKind::ShieldingTransfer(Some(transfer_data)) => {
+                    transfer_data.targets.0.iter().map(|(account, amount)| MaspEntry {
+                        token_address: account.token.to_string(),
+                        timestamp: self.header.timestamp,
+                        raw_amount: amount.amount().into(),
+                        inner_tx_id: tx.tx_id,
+                    }).collect()
+                },
+                TransactionKind::UnshieldingTransfer(Some(transfer_data)) => {
+                    transfer_data.sources.0.iter().map(|(account, amount)| MaspEntry {
+                        token_address: account.token.to_string(),
+                        timestamp: self.header.timestamp,
+                        raw_amount: amount.amount().into(),
+                        inner_tx_id: tx.tx_id,
+                    }).collect()
+                },
+                TransactionKind::IbcMsgTransfer(Some(ibc_message)) => {
+                    match ibc_message.0 {
+                        IbcMessage::Transfer(transfer) => {
+                            if let Some(transfer_data) = transfer.transfer {
+
+                            } else {
+                                vec![]
+                            }
+                        },
+                        IbcMessage::NftTransfer(transfer) => {
+                            if let Some(transfer_data) = transfer.transfer {
+                                
+                            } else {
+                                vec![]
+                            }
+                        },
+                        _ => vec![]
+                    }
+                },
+                _ => vec![]
+            }).flatten()
     }
 
     pub fn governance_proposal(
