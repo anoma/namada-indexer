@@ -49,6 +49,9 @@ impl CrawlerStateService {
                 .map(|crawler| CrawlersTimestamps {
                     name: crawler.name.to_string(),
                     timestamp: crawler.timestamp.and_utc().timestamp(),
+                    last_processed_block_height: crawler
+                        .last_processed_block
+                        .unwrap_or(1),
                 })
                 .collect::<Vec<CrawlersTimestamps>>()
         })
