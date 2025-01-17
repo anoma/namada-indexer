@@ -815,6 +815,8 @@ paths:
                         ]
                     timestamp:
                       type: number
+                    last_processed_block_height: 
+                      type: number
   /api/v1/chain/history:
     get:
       summary: Get a paginated list of transaction for a list of addresses

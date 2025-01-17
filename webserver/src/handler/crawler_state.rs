@@ -41,6 +41,7 @@ pub async fn get_crawlers_timestamps(
                     || CrawlersTimestamps {
                         name: variant.to_string(),
                         timestamp: 0,
+                        last_processed_block_height: 1,
                     },
                     |ct| ct.clone(),
                 )
