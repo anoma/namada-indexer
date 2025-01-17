@@ -143,6 +143,7 @@ async fn crawling_fn(
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
     let transaction_sources = block.sources();
+    let masp_entries = block.masp_entries();
     let gas_estimates = tx_service::get_gas_estimates(&inner_txs, &wrapper_txs);
 
     let ibc_sequence_packet =
@@ -150,10 +151,11 @@ async fn crawling_fn(
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
 
     tracing::info!(
-        "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
-         ibc acks events...",
+        "Deserialized {} wrappers, {} inners, {} masp entries, {} ibc \
+         sequence numbers and {} ibc acks events...",
         wrapper_txs.len(),
         inner_txs.len(),
+        masp_entries.len(),
         ibc_sequence_packet.len(),
         ibc_ack_packet.len()
     );

@@ -16,7 +16,7 @@ use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
-use crate::masp::MaspEntry;
+use crate::masp::{MaspEntry, MaspEntryDirection};
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
@@ -739,50 +739,71 @@ impl Block {
             .collect::<HashSet<_>>()
     }
 
-    pub fn masp(&self) -> Vec<MaspEntry> {
-        self
-            .transactions
+    pub fn masp_entries(&self) -> Vec<MaspEntry> {
+        self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
             .filter(|tx| tx.data.is_some() && tx.was_successful())
-            .map(|tx| match &tx.kind {
+            .flat_map(|tx| match &tx.kind {
                 TransactionKind::ShieldingTransfer(Some(transfer_data)) => {
-                    transfer_data.targets.0.iter().map(|(account, amount)| MaspEntry {
-                        token_address: account.token.to_string(),
-                        timestamp: self.header.timestamp,
-                        raw_amount: amount.amount().into(),
-                        inner_tx_id: tx.tx_id,
-                    }).collect()
-                },
+                    transfer_data
+                        .targets
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::In,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
                 TransactionKind::UnshieldingTransfer(Some(transfer_data)) => {
-                    transfer_data.sources.0.iter().map(|(account, amount)| MaspEntry {
-                        token_address: account.token.to_string(),
-                        timestamp: self.header.timestamp,
-                        raw_amount: amount.amount().into(),
-                        inner_tx_id: tx.tx_id,
-                    }).collect()
-                },
-                TransactionKind::IbcMsgTransfer(Some(ibc_message)) => {
-                    match ibc_message.0 {
-                        IbcMessage::Transfer(transfer) => {
-                            if let Some(transfer_data) = transfer.transfer {
-
-                            } else {
-                                vec![]
-                            }
-                        },
-                        IbcMessage::NftTransfer(transfer) => {
-                            if let Some(transfer_data) = transfer.transfer {
-                                
-                            } else {
-                                vec![]
-                            }
-                        },
-                        _ => vec![]
-                    }
-                },
-                _ => vec![]
-            }).flatten()
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::Out,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::IbcShieldingTransfer((_, transfer_data)) => {
+                    transfer_data
+                        .targets
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::In,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::IbcUnshieldingTransfer((_, transfer_data)) => {
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::Out,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                } // we could improve this by looking at mixed transfers too
+                _ => vec![],
+            })
+            .collect()
     }
 
     pub fn governance_proposal(
