@@ -18,10 +18,10 @@ CREATE INDEX index_masp_pool_address_timestamp ON masp_pool (token_address, time
 CREATE UNIQUE INDEX index_masp_pool_inner_tx_id ON masp_pool (inner_tx_id);
 
 CREATE TYPE MASP_POOL_AGGREGATE_WINDOW AS ENUM (
-    '1',
-    '7',
-    '30',
-    'Inf'
+    'one_day',
+    'seven_days',
+    'thirty_days',
+    'all_time'
 );
 
 CREATE TYPE MASP_POOL_AGGREGATE_KIND AS ENUM (
@@ -39,126 +39,95 @@ CREATE TABLE masp_pool_aggregate (
 
 CREATE UNIQUE INDEX index_masp_pool_aggregate_token_address_window_kind ON masp_pool_aggregate (token_address, time_window, kind);
 
--- if it doesn't work ask for a fix to https://chatgpt.com
+
 CREATE OR REPLACE FUNCTION update_masp_pool_aggregate_sum()
 RETURNS TRIGGER AS $$
--- 
--- This function is triggered before an insert into the `masp_pool` table.
--- It calculates the running sum of amounts for different time windows (1-day, 7-day, 30-day, and all-time).
--- Depending on whether the `raw_amount` is positive or negative, it updates the corresponding `inflow` or `outflow`
--- entry in the `masp_pool_aggregate` table. 
--- 
--- The `inflow` entry is updated if `raw_amount` is positive, while the `outflow` entry is updated if `raw_amount`
--- is negative. The sum is incrementally updated for each of the windows:
--- 1-day, 7-day, 30-day, and all-time.
---
--- The trigger ensures that the `masp_pool_aggregate` table reflects the running total of both inflow and outflow
--- amounts, for each token address, over different time windows.
---
 DECLARE
   cutoff_1d TIMESTAMP := now() - INTERVAL '1 day';
   cutoff_7d TIMESTAMP := now() - INTERVAL '7 days';
   cutoff_30d TIMESTAMP := now() - INTERVAL '30 days';
+  nk MASP_POOL_AGGREGATE_KIND; -- Declare kind as the ENUM type
 BEGIN
-  -- Update 1-day time_window for 'inflow' or 'outflow'
-  IF NEW.direction = 'in' THEN
-    -- Inflow: update inflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      '1d',
-      'inflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  ELSE
-    -- Outflow: update outflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      '1d',
-      'outflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  END IF;
+  -- Determine the kind based on the direction
+  nk := CASE
+            WHEN NEW.direction = 'in' THEN 'inflows'::MASP_POOL_AGGREGATE_KIND
+            ELSE 'outflows'::MASP_POOL_AGGREGATE_KIND
+          END;
+  -- 1 day
+  INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
+  VALUES (
+    NEW.token_address,
+    'one_day',
+    nk,
+    (SELECT COALESCE(SUM(raw_amount), 0)
+     FROM masp_pool
+     WHERE token_address = NEW.token_address
+       AND direction = NEW.direction
+       AND timestamp >= cutoff_1d)
+  )
+  ON CONFLICT (token_address, time_window, kind)
+  DO UPDATE SET total_amount = (
+    SELECT COALESCE(SUM(raw_amount), 0)
+    FROM masp_pool
+    WHERE token_address = NEW.token_address
+      AND direction = NEW.direction
+      AND timestamp >= cutoff_1d
+  );
 
-  -- Update 7-day time_window for 'inflow' or 'outflow'
-  IF NEW.direction = 'in' THEN
-    -- Inflow: update inflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      '7d',
-      'inflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  ELSE
-    -- Outflow: update outflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      '7d',
-      'outflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  END IF;
+  -- 7 days
+  INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
+  VALUES (
+    NEW.token_address,
+    'seven_days',
+    nk,
+    (SELECT COALESCE(SUM(raw_amount), 0)
+     FROM masp_pool
+     WHERE token_address = NEW.token_address
+       AND direction = NEW.direction
+       AND timestamp >= cutoff_1d)
+  )
+  ON CONFLICT (token_address, time_window, kind) 
+  DO UPDATE SET total_amount = (
+    SELECT COALESCE(SUM(raw_amount), 0)
+    FROM masp_pool
+    WHERE token_address = NEW.token_address
+      AND direction = NEW.direction
+      AND timestamp >= cutoff_7d
+  );
 
-  -- Update 30-day time_window for 'inflow' or 'outflow'
-  IF NEW.direction = 'in' THEN
-    -- Inflow: update inflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      '30d',
-      'inflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  ELSE
-    -- Outflow: update outflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      '30d',
-      'outflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  END IF;
+  -- 30 days
+  INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
+  VALUES (
+    NEW.token_address,
+    'thirty_days',
+    nk,
+    (SELECT COALESCE(SUM(raw_amount), 0)
+     FROM masp_pool
+     WHERE token_address = NEW.token_address
+       AND direction = NEW.direction
+       AND timestamp >= cutoff_1d)
+  )
+  ON CONFLICT (token_address, time_window, kind) 
+  DO UPDATE SET total_amount = (
+    SELECT COALESCE(SUM(raw_amount), 0)
+    FROM masp_pool
+    WHERE token_address = NEW.token_address
+      AND direction = NEW.direction
+      AND timestamp >= cutoff_30d
+  );
 
-  -- Update all-time time_window for 'inflow' or 'outflow'
-  IF NEW.direction = 'in' THEN
-    -- Inflow: update inflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      'Inf',
-      'inflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  ELSE
-    -- Outflow: update outflow entry
-    INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
-    VALUES (
-      NEW.token_address,
-      'Inf',
-      'outflows',
-      NEW.raw_amount
-    )
-    ON CONFLICT (token_address, time_window, kind)
-    DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + EXCLUDED.total_amount;
-  END IF;
+  INSERT INTO masp_pool_aggregate (token_address, time_window, kind, total_amount)
+  VALUES (
+    NEW.token_address,
+    'all_time',
+    nk,
+    (SELECT COALESCE(SUM(raw_amount), 0)
+     FROM masp_pool
+     WHERE token_address = NEW.token_address
+       AND direction = NEW.direction)
+  )
+  ON CONFLICT (token_address, time_window, kind) 
+  DO UPDATE SET total_amount = masp_pool_aggregate.total_amount + NEW.raw_amount;
 
   RETURN NEW;
 END;
