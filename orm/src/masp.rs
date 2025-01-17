@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use diesel::Insertable;
+use diesel::{Insertable, Queryable, Selectable};
 use shared::masp::{MaspEntry, MaspEntryDirection};
 
 use crate::schema::{masp_pool, masp_pool_aggregate};
@@ -28,28 +28,28 @@ pub type MaspInsertDb = MaspDb;
 
 #[derive(Debug, Clone, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::MaspPoolAggregateWindow"]
-pub enum MaspPoolAggregateWindow {
+pub enum MaspPoolAggregateWindowDb {
     OneDay,
-    SevenDay,
-    OneMonth,
-    Inf,
+    SevenDays,
+    ThirtyDays,
+    AllTime,
 }
 
 #[derive(Debug, Clone, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::MaspPoolAggregateKind"]
-pub enum MaspPoolAggregateKind {
+pub enum MaspPoolAggregateKindDb {
     Inflows,
     Outflows,
 }
 
-#[derive(Insertable, Clone, Debug)]
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(table_name = masp_pool_aggregate)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct MaspPoolDb {
     pub id: i32,
     pub token_address: String,
-    pub time_window: MaspPoolAggregateWindow,
-    pub kind: MaspPoolAggregateKind,
+    pub time_window: MaspPoolAggregateWindowDb,
+    pub kind: MaspPoolAggregateKindDb,
     pub total_amount: BigDecimal,
 }
 

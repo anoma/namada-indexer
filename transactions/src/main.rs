@@ -17,7 +17,7 @@ use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
-    block as block_repo, transactions as transaction_repo,
+    block as block_repo, masp as masp_repo, transactions as transaction_repo,
 };
 use transactions::services::{
     db as db_service, namada as namada_service,
@@ -216,6 +216,8 @@ async fn crawling_fn(
                     transaction_conn,
                     gas_estimates,
                 )?;
+
+                masp_repo::insert_masp_entries(transaction_conn, masp_entries)?;
 
                 anyhow::Ok(())
             })
