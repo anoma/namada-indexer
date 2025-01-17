@@ -15,6 +15,7 @@ pub fn insert_masp_entries(
                 .map(MaspInsertDb::from)
                 .collect::<Vec<_>>(),
         )
+        .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to insert masp pool entries in db")?;
 

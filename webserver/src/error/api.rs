@@ -8,6 +8,7 @@ use super::crawler_state::CrawlerStateError;
 use super::gas::GasError;
 use super::governance::GovernanceError;
 use super::ibc::IbcError;
+use super::masp::MaspError;
 use super::pgf::PgfError;
 use super::pos::PoSError;
 use super::revealed_pk::RevealedPkError;
@@ -36,6 +37,8 @@ pub enum ApiError {
     #[error(transparent)]
     PgfError(#[from] PgfError),
     #[error(transparent)]
+    MaspError(#[from] MaspError),
+    #[error(transparent)]
     CrawlerStateError(#[from] CrawlerStateError),
 }
 
@@ -52,6 +55,7 @@ impl IntoResponse for ApiError {
             ApiError::GasError(error) => error.into_response(),
             ApiError::IbcError(error) => error.into_response(),
             ApiError::PgfError(error) => error.into_response(),
+            ApiError::MaspError(error) => error.into_response(),
             ApiError::CrawlerStateError(error) => error.into_response(),
         }
     }
