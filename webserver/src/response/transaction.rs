@@ -18,6 +18,7 @@ pub enum TransactionKind {
     ShieldedTransfer,
     ShieldingTransfer,
     UnshieldingTransfer,
+    MixedTransfer,
     Bond,
     Redelegation,
     Unbond,
@@ -29,6 +30,9 @@ pub enum TransactionKind {
     ChangeCommission,
     RevealPk,
     IbcMsgTransfer,
+    IbcTransparentTransfer,
+    IbcShieldingTransfer,
+    IbcUnshieldingTransfer,
     BecomeValidator,
     DeactivateValidator,
     ReactivateValidator,
@@ -100,6 +104,7 @@ impl From<TransactionKindDb> for TransactionKind {
             TransactionKindDb::ShieldedTransfer => Self::ShieldedTransfer,
             TransactionKindDb::ShieldingTransfer => Self::ShieldingTransfer,
             TransactionKindDb::UnshieldingTransfer => Self::UnshieldingTransfer,
+            TransactionKindDb::MixedTransfer => Self::MixedTransfer,
             TransactionKindDb::Bond => Self::Bond,
             TransactionKindDb::Redelegation => Self::Redelegation,
             TransactionKindDb::Unbond => Self::Unbond,
@@ -112,6 +117,15 @@ impl From<TransactionKindDb> for TransactionKind {
             TransactionKindDb::RevealPk => Self::RevealPk,
             TransactionKindDb::Unknown => Self::Unknown,
             TransactionKindDb::IbcMsgTransfer => Self::IbcMsgTransfer,
+            TransactionKindDb::IbcTransparentTransfer => {
+                Self::IbcTransparentTransfer
+            }
+            TransactionKindDb::IbcShieldingTransfer => {
+                Self::IbcShieldingTransfer
+            }
+            TransactionKindDb::IbcUnshieldingTransfer => {
+                Self::IbcUnshieldingTransfer
+            }
             TransactionKindDb::BecomeValidator => Self::BecomeValidator,
             TransactionKindDb::ReactivateValidator => Self::ReactivateValidator,
             TransactionKindDb::DeactivateValidator => Self::DeactivateValidator,

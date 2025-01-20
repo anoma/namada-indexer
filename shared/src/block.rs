@@ -5,7 +5,7 @@ use namada_ibc::apps::transfer::types::packet::PacketData;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::IbcMessage;
-use namada_sdk::address::Address;
+use namada_sdk::address::{Address, InternalAddress};
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::token::Transfer;
 use subtle_encoding::hex;
@@ -16,12 +16,13 @@ use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
+use crate::masp::{MaspEntry, MaspEntryDirection};
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
 use crate::transaction::{
-    InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
-    TransactionTarget, WrapperTransaction,
+    InnerTransaction, Transaction, TransactionKind, TransactionTarget,
+    WrapperTransaction,
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
@@ -112,13 +113,12 @@ impl Block {
     pub fn from(
         block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
-        proposer_address_namada: &Option<Id>, /* Provide the namada address
-                                               * of the proposer, if
-                                               * available */
+        proposer_address_namada: &Option<Id>,
         checksums: Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
     ) -> Self {
+        let masp_address = Address::Internal(InternalAddress::Masp);
         let transactions = block_response
             .block
             .data
@@ -131,6 +131,7 @@ impl Block {
                     block_height,
                     checksums.clone(),
                     block_results,
+                    &masp_address,
                 )
                 .map_err(|reason| {
                     tracing::info!("Couldn't deserialize tx due to {}", reason);
@@ -153,7 +154,7 @@ impl Block {
                 proposer_address_namada: proposer_address_namada
                     .as_ref()
                     .map(Id::to_string),
-                timestamp: block_response.block.header.time.to_string(),
+                timestamp: block_response.block.header.time.unix_timestamp(),
                 app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
@@ -208,8 +209,121 @@ impl Block {
                         vec![]
                     }
                 }
-                TransactionKind::ShieldedTransfer(_shielded_transfer) => {
-                    vec![]
+                TransactionKind::MixedTransfer(transparent_transfer) => {
+                    if let Some(data) = transparent_transfer {
+                        let sources = data
+                            .sources
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::sent(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let targets = data
+                            .targets
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::received(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        [sources, targets].concat()
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ShieldedTransfer(transparent_transfer) => {
+                    if let Some(data) = transparent_transfer {
+                        let sources = data
+                            .sources
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::sent(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let targets = data
+                            .targets
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::received(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        [sources, targets].concat()
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::UnshieldingTransfer(transparent_transfer) => {
+                    if let Some(data) = transparent_transfer {
+                        let sources = data
+                            .sources
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::sent(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let targets = data
+                            .targets
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::received(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        [sources, targets].concat()
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ShieldingTransfer(transparent_transfer) => {
+                    if let Some(data) = transparent_transfer {
+                        let sources = data
+                            .sources
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::sent(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let targets = data
+                            .targets
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::received(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        [sources, targets].concat()
+                    } else {
+                        vec![]
+                    }
                 }
                 TransactionKind::IbcMsgTransfer(ibc_message) => {
                     if let Some(data) = ibc_message {
@@ -271,6 +385,201 @@ impl Block {
                                     vec![]
                                 }
                             }
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::IbcTrasparentTransfer((ibc_message, _)) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Transfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            IbcMessage::NftTransfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::IbcShieldingTransfer((ibc_message, _)) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Transfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            IbcMessage::NftTransfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::IbcUnshieldingTransfer((ibc_message, _)) => {
+                    if let Some(data) = ibc_message {
+                        match data.0 {
+                            IbcMessage::Transfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            IbcMessage::NftTransfer(transfer) => {
+                                let sources = transfer
+                                    .clone()
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .sources
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                let targets = transfer
+                                    .transfer
+                                    .unwrap_or_default()
+                                    .targets
+                                    .keys()
+                                    .map(|account| {
+                                        TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            account.owner.to_string(),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>();
+                                [sources, targets].concat()
+                            }
+                            _ => vec![],
                         }
                     } else {
                         vec![]
@@ -430,6 +739,73 @@ impl Block {
             .collect::<HashSet<_>>()
     }
 
+    pub fn masp_entries(&self) -> Vec<MaspEntry> {
+        self.transactions
+            .iter()
+            .flat_map(|(_, txs)| txs)
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
+            .flat_map(|tx| match &tx.kind {
+                TransactionKind::ShieldingTransfer(Some(transfer_data)) => {
+                    transfer_data
+                        .targets
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::In,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::UnshieldingTransfer(Some(transfer_data)) => {
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::Out,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::IbcShieldingTransfer((_, transfer_data)) => {
+                    transfer_data
+                        .targets
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::In,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                }
+                TransactionKind::IbcUnshieldingTransfer((_, transfer_data)) => {
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .map(|(account, amount)| MaspEntry {
+                            token_address: account.token.to_string(),
+                            timestamp: self.header.timestamp,
+                            raw_amount: amount.amount().into(),
+                            direction: MaspEntryDirection::Out,
+                            inner_tx_id: tx.tx_id.clone(),
+                        })
+                        .collect()
+                } // we could improve this by looking at mixed transfers too
+                _ => vec![],
+            })
+            .collect()
+    }
+
     pub fn governance_proposal(
         &self,
         mut next_proposal_id: u64,
@@ -437,10 +813,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::InitProposal(data) => {
                     let init_proposal_data = data.clone().unwrap(); // safe as we filter before (not the best pattern)
@@ -517,10 +890,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ClaimRewards(data) => {
                     let data = data.clone().unwrap();
@@ -538,10 +908,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::ProposalVote(data) => {
                     let vote_proposal_data = data.clone().unwrap();
@@ -561,10 +928,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::IbcMsgTransfer(data) => {
                     let data = data.clone().and_then(|d| {
@@ -772,10 +1136,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::BecomeValidator(data) => {
                     let data = data.clone().unwrap();
@@ -804,10 +1165,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::DeactivateValidator(data) => {
                     let data = data.clone().unwrap();
@@ -832,10 +1190,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Bond(data) => {
                     let bond_data = data.clone().unwrap();
@@ -888,10 +1243,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Unbond(data) => {
                     let unbond_data = data.clone().unwrap();
@@ -915,10 +1267,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::Withdraw(data) => {
                     let withdraw_data = data.clone().unwrap();
@@ -942,10 +1291,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::MetadataChange(data) => {
                     let metadata_change_data = data.clone().unwrap();
@@ -992,10 +1338,7 @@ impl Block {
         self.transactions
             .iter()
             .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
+            .filter(|tx| tx.data.is_some() && tx.was_successful())
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::RevealPk(data) => {
                     let namada_public_key = data.clone().unwrap().public_key;
