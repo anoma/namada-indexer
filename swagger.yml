@@ -1200,9 +1200,12 @@ components:
         feeToken:
           type: string
         gasLimit:
-          type: string
+          type: number
+        amountPerGasUnit:
+          type: number
+          format: float
         gasUsed:
-          type: string
+          type: number
         blockHeight:
           type: string
         innerTransactions:
