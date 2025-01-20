@@ -21,6 +21,7 @@ use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
 use crate::ser::{IbcMessage, TransferData};
+use crate::utils::{self, transfer_to_ibc_tx_kind};
 
 // We wrap public key in a struct so we serialize data as object instead of
 // string
@@ -70,58 +71,12 @@ impl TransactionKind {
     ) -> Self {
         match tx_kind_name {
             "tx_transfer" => {
-                if let Ok(data) = Transfer::try_from_slice(data) {
-                    let has_shielded_section =
-                        data.shielded_section_hash.is_some();
-
-                    let (all_sources_are_masp, any_sources_are_masp) = data
-                        .sources
-                        .iter()
-                        .fold((true, false), |(all, any), (acc, _)| {
-                            let is_masp = acc.owner.eq(masp_address);
-                            (all && is_masp, any || is_masp)
-                        });
-
-                    let (all_targets_are_masp, any_targets_are_masp) = data
-                        .targets
-                        .iter()
-                        .fold((true, false), |(all, any), (acc, _)| {
-                            let is_masp = acc.owner.eq(masp_address);
-                            (all && is_masp, any || is_masp)
-                        });
-
-                    match (
-                        all_sources_are_masp,
-                        any_sources_are_masp,
-                        all_targets_are_masp,
-                        any_targets_are_masp,
-                        has_shielded_section,
-                    ) {
-                        (true, _, true, _, true) => {
-                            TransactionKind::ShieldedTransfer(Some(data.into()))
-                        }
-                        (true, _, _, false, true) => {
-                            TransactionKind::UnshieldingTransfer(Some(
-                                data.into(),
-                            ))
-                        }
-                        (false, _, true, _, true) => {
-                            TransactionKind::ShieldingTransfer(Some(
-                                data.into(),
-                            ))
-                        }
-                        (false, _, false, _, false) => {
-                            TransactionKind::TransparentTransfer(Some(
-                                data.into(),
-                            ))
-                        }
-                        _ => TransactionKind::MixedTransfer(Some(data.into())),
-                    }
+                if let Ok(transfer) = Transfer::try_from_slice(data) {
+                    utils::transfer_to_tx_kind(transfer, masp_address)
                 } else {
                     TransactionKind::Unknown
                 }
             }
-
             "tx_bond" => {
                 let data = if let Ok(data) = Bond::try_from_slice(data) {
                     Some(data)
@@ -236,132 +191,18 @@ impl TransactionKind {
                         }
                         namada_ibc::IbcMessage::Transfer(transfer) => {
                             if let Some(data) = transfer.transfer {
-                                let has_shielded_section =
-                                    data.shielded_section_hash.is_some();
-
-                                let (
-                                    all_sources_are_masp,
-                                    any_sources_are_masp,
-                                ) = data.sources.iter().fold(
-                                    (true, false),
-                                    |(all, any), (acc, _)| {
-                                        let is_masp =
-                                            acc.owner.eq(masp_address);
-                                        (all && is_masp, any || is_masp)
-                                    },
-                                );
-
-                                let (
-                                    all_targets_are_masp,
-                                    any_targets_are_masp,
-                                ) = data.targets.iter().fold(
-                                    (true, false),
-                                    |(all, any), (acc, _)| {
-                                        let is_masp =
-                                            acc.owner.eq(masp_address);
-                                        (all && is_masp, any || is_masp)
-                                    },
-                                );
-
-                                match (
-                                    all_sources_are_masp,
-                                    any_sources_are_masp,
-                                    all_targets_are_masp,
-                                    any_targets_are_masp,
-                                    has_shielded_section,
-                                ) {
-                                    (true, _, _, false, true) => {
-                                        TransactionKind::IbcUnshieldingTransfer(
-                                            (
-                                                Some(IbcMessage(ibc_data)),
-                                                data.into(),
-                                            ),
-                                        )
-                                    }
-                                    (false, _, true, _, true) => {
-                                        TransactionKind::IbcShieldingTransfer((
-                                            Some(IbcMessage(ibc_data)),
-                                            data.into(),
-                                        ))
-                                    }
-                                    (false, _, false, _, false) => {
-                                        TransactionKind::IbcTrasparentTransfer(
-                                            (
-                                                Some(IbcMessage(ibc_data)),
-                                                data.into(),
-                                            ),
-                                        )
-                                    }
-                                    _ => TransactionKind::MixedTransfer(Some(
-                                        data.into(),
-                                    )),
-                                }
+                                utils::transfer_to_tx_kind(data, masp_address)
                             } else {
                                 TransactionKind::IbcMsgTransfer(None)
                             }
                         }
                         namada_ibc::IbcMessage::NftTransfer(transfer) => {
                             if let Some(data) = transfer.transfer {
-                                let has_shielded_section =
-                                    data.shielded_section_hash.is_some();
-
-                                let (
-                                    all_sources_are_masp,
-                                    any_sources_are_masp,
-                                ) = data.sources.iter().fold(
-                                    (true, false),
-                                    |(all, any), (acc, _)| {
-                                        let is_masp =
-                                            acc.owner.eq(masp_address);
-                                        (all && is_masp, any || is_masp)
-                                    },
-                                );
-
-                                let (
-                                    all_targets_are_masp,
-                                    any_targets_are_masp,
-                                ) = data.targets.iter().fold(
-                                    (true, false),
-                                    |(all, any), (acc, _)| {
-                                        let is_masp =
-                                            acc.owner.eq(masp_address);
-                                        (all && is_masp, any || is_masp)
-                                    },
-                                );
-
-                                match (
-                                    all_sources_are_masp,
-                                    any_sources_are_masp,
-                                    all_targets_are_masp,
-                                    any_targets_are_masp,
-                                    has_shielded_section,
-                                ) {
-                                    (true, _, _, false, true) => {
-                                        TransactionKind::IbcUnshieldingTransfer(
-                                            (
-                                                Some(IbcMessage(ibc_data)),
-                                                data.into(),
-                                            ),
-                                        )
-                                    }
-                                    (false, _, true, _, true) => {
-                                        TransactionKind::IbcShieldingTransfer((
-                                            Some(IbcMessage(ibc_data)),
-                                            data.into(),
-                                        ))
-                                    }
-                                    (false, _, false, _, false) => {
-                                        TransactionKind::IbcTrasparentTransfer(
-                                            (
-                                                Some(IbcMessage(ibc_data)),
-                                                data.into(),
-                                            ),
-                                        )
-                                    }
-                                    _ => TransactionKind::MixedTransfer(Some(
-                                        data.into(),
-                                    )),
-                                }
+                                transfer_to_ibc_tx_kind(
+                                    data,
+                                    masp_address,
+                                    ibc_data,
+                                )
                             } else {
                                 TransactionKind::IbcMsgTransfer(None)
                             }

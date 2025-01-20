@@ -135,7 +135,7 @@ pub fn get_gas_estimates(
                 .for_each(|tx| match tx.kind {
                     TransactionKind::TransparentTransfer(_)
                     | TransactionKind::MixedTransfer(_) => {
-                        gas_estimate.increase_transparent_transfer()
+                        gas_estimate.increase_mixed_transfer()
                     }
                     TransactionKind::IbcMsgTransfer(_) => {
                         gas_estimate.increase_ibc_msg_transfer()
@@ -166,7 +166,10 @@ pub fn get_gas_estimates(
                         gas_estimate.increase_shielding_transfer()
                     }
                     TransactionKind::UnshieldingTransfer(_) => {
-                        gas_estimate.increase_unshielding_transfer()
+                        gas_estimate.increase_ibc_unshielding_transfer()
+                    }
+                    TransactionKind::IbcShieldingTransfer(_) => {
+                        gas_estimate.increase_ibc_shielding_transfer()
                     }
                     _ => (),
                 });
