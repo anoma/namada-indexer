@@ -3,10 +3,9 @@ use namada_sdk::ibc::core::channel::types::msgs::PacketMsg;
 use namada_sdk::ibc::core::handler::types::msgs::MsgEnvelope;
 use shared::block_result::{BlockResult, TxAttributesType};
 use shared::gas::GasEstimation;
-use shared::ser::IbcMessage;
 use shared::transaction::{
-    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionExitStatus,
-    TransactionKind, WrapperTransaction,
+    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionKind,
+    WrapperTransaction,
 };
 
 pub fn get_ibc_packets(
@@ -18,8 +17,11 @@ pub fn get_ibc_packets(
         .filter_map(|tx| {
             if matches!(
                 tx.kind,
-                TransactionKind::IbcMsgTransfer(Some(IbcMessage(_)))
-            ) && matches!(tx.exit_code, TransactionExitStatus::Applied)
+                TransactionKind::IbcMsgTransfer(Some(_))
+                    | TransactionKind::IbcTrasparentTransfer(_)
+                    | TransactionKind::IbcUnshieldingTransfer(_)
+                    | TransactionKind::IbcShieldingTransfer(_)
+            ) && tx.was_successful()
             {
                 Some(tx.tx_id.clone())
             } else {
