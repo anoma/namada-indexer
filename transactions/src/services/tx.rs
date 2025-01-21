@@ -3,10 +3,9 @@ use namada_sdk::ibc::core::channel::types::msgs::PacketMsg;
 use namada_sdk::ibc::core::handler::types::msgs::MsgEnvelope;
 use shared::block_result::{BlockResult, TxAttributesType};
 use shared::gas::GasEstimation;
-use shared::ser::IbcMessage;
 use shared::transaction::{
-    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionExitStatus,
-    TransactionKind, WrapperTransaction,
+    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionKind,
+    WrapperTransaction,
 };
 
 pub fn get_ibc_packets(
@@ -16,11 +15,7 @@ pub fn get_ibc_packets(
     let mut ibc_txs = inner_txs
         .iter()
         .filter_map(|tx| {
-            if matches!(
-                tx.kind,
-                TransactionKind::IbcMsgTransfer(Some(IbcMessage(_)))
-            ) && matches!(tx.exit_code, TransactionExitStatus::Applied)
-            {
+            if tx.is_ibc() && tx.was_successful() {
                 Some(tx.tx_id.clone())
             } else {
                 None
@@ -133,11 +128,9 @@ pub fn get_gas_estimates(
                         && inner_tx.wrapper_id.eq(&wrapper_tx.tx_id)
                 })
                 .for_each(|tx| match tx.kind {
-                    TransactionKind::TransparentTransfer(_) => {
-                        gas_estimate.increase_transparent_transfer()
-                    }
-                    TransactionKind::ShieldedTransfer(_) => {
-                        gas_estimate.increase_shielded_transfer()
+                    TransactionKind::TransparentTransfer(_)
+                    | TransactionKind::MixedTransfer(_) => {
+                        gas_estimate.increase_mixed_transfer()
                     }
                     TransactionKind::IbcMsgTransfer(_) => {
                         gas_estimate.increase_ibc_msg_transfer()
@@ -160,6 +153,18 @@ pub fn get_gas_estimates(
                     }
                     TransactionKind::RevealPk(_) => {
                         gas_estimate.increase_reveal_pk()
+                    }
+                    TransactionKind::ShieldedTransfer(_) => {
+                        gas_estimate.increase_shielded_transfer()
+                    }
+                    TransactionKind::ShieldingTransfer(_) => {
+                        gas_estimate.increase_shielding_transfer()
+                    }
+                    TransactionKind::UnshieldingTransfer(_) => {
+                        gas_estimate.increase_ibc_unshielding_transfer()
+                    }
+                    TransactionKind::IbcShieldingTransfer(_) => {
+                        gas_estimate.increase_ibc_shielding_transfer()
                     }
                     _ => (),
                 });
