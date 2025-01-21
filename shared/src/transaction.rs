@@ -311,6 +311,16 @@ impl InnerTransaction {
     pub fn was_successful(&self) -> bool {
         self.exit_code == TransactionExitStatus::Applied
     }
+
+    pub fn is_ibc(&self) -> bool {
+        matches!(
+            self.kind,
+            TransactionKind::IbcMsgTransfer(_)
+                | TransactionKind::IbcTrasparentTransfer(_)
+                | TransactionKind::IbcUnshieldingTransfer(_)
+                | TransactionKind::IbcShieldingTransfer(_)
+        )
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -159,8 +159,6 @@ impl TxAttributesType {
                     .unwrap_or_default()
                     .to_owned();
 
-                tracing::error!("{}", timeout_timestamp);
-
                 Some(Self::SendPacket(SendPacket {
                     source_port,
                     dest_port,

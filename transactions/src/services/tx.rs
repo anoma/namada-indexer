@@ -15,14 +15,7 @@ pub fn get_ibc_packets(
     let mut ibc_txs = inner_txs
         .iter()
         .filter_map(|tx| {
-            if matches!(
-                tx.kind,
-                TransactionKind::IbcMsgTransfer(Some(_))
-                    | TransactionKind::IbcTrasparentTransfer(_)
-                    | TransactionKind::IbcUnshieldingTransfer(_)
-                    | TransactionKind::IbcShieldingTransfer(_)
-            ) && tx.was_successful()
-            {
+            if tx.is_ibc() && tx.was_successful() {
                 Some(tx.tx_id.clone())
             } else {
                 None
