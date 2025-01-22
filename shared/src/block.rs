@@ -18,6 +18,7 @@ use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
+use crate::ser;
 use crate::token::{IbcToken, Token};
 use crate::transaction::{
     InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
@@ -941,47 +942,61 @@ impl Block {
     ) -> Option<Vec<BalanceChange>> {
         let change = match &tx.kind {
             TransactionKind::IbcMsgTransfer(data) => {
-                let data = data.clone().and_then(|d| {
-                    Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
-                        serde_json::from_slice::<PacketData>(&msg.packet.data)
-                            .map(|p| (msg, p))
-                            .ok()
+                Self::parse_ibc_tx_balances(data, native_token)
+                    .unwrap_or_default()
+            }
+            TransactionKind::ShieldedTransfer(data) => {
+                let data = data.as_ref()?;
+
+                [&data.sources]
+                    .iter()
+                    .flat_map(|transfer_changes| {
+                        transfer_changes.0.keys().map(|account| {
+                            BalanceChange::new(
+                                Id::from(account.owner.clone()),
+                                Token::Native(Id::from(account.token.clone())),
+                            )
+                        })
                     })
-                });
+                    .collect()
+            }
+            TransactionKind::UnshieldingTransfer(data) => {
+                let data = data.as_ref()?;
 
-                let (msg, packet_data) = data?;
-                let denom = packet_data.token.denom.to_string();
+                [&data.targets]
+                    .iter()
+                    .flat_map(|transfer_changes| {
+                        transfer_changes.0.keys().map(|account| {
+                            BalanceChange::new(
+                                Id::from(account.owner.clone()),
+                                Token::Native(Id::from(account.token.clone())),
+                            )
+                        })
+                    })
+                    .collect()
+            }
+            TransactionKind::MixedTransfer(data) => {
+                let data = data.as_ref()?;
 
-                let ibc_trace = format!(
-                    "{}/{}/{}",
-                    msg.packet.port_id_on_b,
-                    msg.packet.chan_id_on_b,
-                    packet_data.token.denom
-                );
-
-                let trace = Id::IbcTrace(ibc_trace.clone());
-                let address = namada_ibc::trace::convert_to_address(ibc_trace)
-                    .expect("Failed to convert IBC trace to address");
-
-                let mut balances = vec![BalanceChange::new(
-                    Id::Account(String::from(packet_data.receiver.as_ref())),
-                    Token::Ibc(IbcToken {
-                        address: Id::from(address.clone()),
-                        trace,
-                    }),
-                )];
-
-                // If the denom contains the namada native token, try to fetch
-                // the balance
-                if denom.contains(&native_token.to_string()) {
-                    balances.push(BalanceChange::new(
-                        Id::Account(String::from(
-                            packet_data.receiver.as_ref(),
-                        )),
-                        Token::Native(native_token.clone()),
-                    ))
-                }
-                balances
+                [&data.sources, &data.targets]
+                    .iter()
+                    .flat_map(|transfer_changes| {
+                        transfer_changes.0.keys().map(|account| {
+                            BalanceChange::new(
+                                Id::from(account.owner.clone()),
+                                Token::Native(Id::from(account.token.clone())),
+                            )
+                        })
+                    })
+                    .collect()
+            }
+            TransactionKind::IbcShieldingTransfer((data, _)) => {
+                Self::parse_ibc_tx_balances(data, native_token)
+                    .unwrap_or_default()
+            }
+            TransactionKind::IbcUnshieldingTransfer((data, _)) => {
+                Self::parse_ibc_tx_balances(data, native_token)
+                    .unwrap_or_default()
             }
             TransactionKind::TransparentTransfer(data) => {
                 let data = data.as_ref()?;
@@ -1316,5 +1331,51 @@ impl Block {
                 _ => None,
             })
             .collect()
+    }
+
+    fn parse_ibc_tx_balances(
+        data: &Option<ser::IbcMessage<Transfer>>,
+        native_token: &Id,
+    ) -> Option<Vec<BalanceChange>> {
+        // IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
+        let data = data.clone().and_then(|d| {
+            Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
+                serde_json::from_slice::<PacketData>(&msg.packet.data)
+                    .map(|p| (msg, p))
+                    .ok()
+            })
+        });
+
+        let (msg, packet_data) = data?;
+        let denom = packet_data.token.denom.to_string();
+
+        let ibc_trace = format!(
+            "{}/{}/{}",
+            msg.packet.port_id_on_b,
+            msg.packet.chan_id_on_b,
+            packet_data.token.denom
+        );
+
+        let trace = Id::IbcTrace(ibc_trace.clone());
+        let address = namada_ibc::trace::convert_to_address(ibc_trace)
+            .expect("Failed to convert IBC trace to address");
+
+        let mut balances = vec![BalanceChange::new(
+            Id::Account(String::from(packet_data.receiver.as_ref())),
+            Token::Ibc(IbcToken {
+                address: Id::from(address.clone()),
+                trace,
+            }),
+        )];
+
+        // If the denom contains the namada native token, try to fetch
+        // the balance
+        if denom.contains(&native_token.to_string()) {
+            balances.push(BalanceChange::new(
+                Id::Account(String::from(packet_data.receiver.as_ref())),
+                Token::Native(native_token.clone()),
+            ))
+        }
+        Some(balances)
     }
 }
