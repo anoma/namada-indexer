@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
-use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
@@ -316,6 +316,11 @@ pub struct Transaction {
 }
 
 #[derive(Debug, Clone)]
+pub struct MaspSectionData {
+    pub total_notes: u64,
+}
+
+#[derive(Debug, Clone)]
 pub struct WrapperTransaction {
     pub tx_id: Id,
     pub index: usize,
@@ -336,6 +341,7 @@ pub struct InnerTransaction {
     pub memo: Option<String>,
     pub data: Option<String>,
     pub extra_sections: HashMap<Id, Vec<u8>>,
+    pub masp_sections: HashMap<Id, u64>,
     pub exit_code: TransactionExitStatus,
 }
 
@@ -504,6 +510,24 @@ impl Transaction {
                             acc
                         });
 
+                    let masp_sections = transaction
+                        .sections
+                        .iter()
+                        .filter_map(|section| match section {
+                            Section::MaspTx(masp_tx) => Some((
+                                Id::from(section.get_hash()),
+                                masp_tx
+                                    .sapling_bundle()
+                                    .map(|bundle| bundle.shielded_spends.len() as u64)
+                                    .unwrap_or_default(),
+                            )),
+                            _ => None,
+                        })
+                        .fold(HashMap::new(), |mut acc, (id, data)| {
+                            acc.insert(id, data);
+                            acc
+                        });
+
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
                         index,
@@ -511,6 +535,7 @@ impl Transaction {
                         memo,
                         data: encoded_tx_data,
                         extra_sections,
+                        masp_sections,
                         exit_code: inner_tx_status,
                         kind: tx_kind,
                     };

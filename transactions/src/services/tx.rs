@@ -130,7 +130,11 @@ pub fn get_gas_estimates(
                 .for_each(|tx| match tx.kind {
                     TransactionKind::TransparentTransfer(_)
                     | TransactionKind::MixedTransfer(_) => {
-                        gas_estimate.increase_mixed_transfer()
+                        let notes = tx
+                            .clone()
+                            .masp_sections
+                            .unwrap_or(1);
+                        gas_estimate.increase_mixed_transfer(notes)
                     }
                     TransactionKind::IbcMsgTransfer(_) => {
                         gas_estimate.increase_ibc_msg_transfer()
@@ -155,16 +159,31 @@ pub fn get_gas_estimates(
                         gas_estimate.increase_reveal_pk()
                     }
                     TransactionKind::ShieldedTransfer(_) => {
-                        gas_estimate.increase_shielded_transfer()
+                        let notes = tx
+                            .clone()
+                            .masp_sections
+                            .unwrap_or(1);
+                        gas_estimate.increase_shielded_transfer(notes);
                     }
                     TransactionKind::ShieldingTransfer(_) => {
                         gas_estimate.increase_shielding_transfer()
                     }
                     TransactionKind::UnshieldingTransfer(_) => {
-                        gas_estimate.increase_ibc_unshielding_transfer()
+                        let notes = tx
+                            .clone()
+                            .masp_sections
+                            .unwrap_or(1);
+                        gas_estimate.increase_ibc_unshielding_transfer(notes)
                     }
                     TransactionKind::IbcShieldingTransfer(_) => {
                         gas_estimate.increase_ibc_shielding_transfer()
+                    }
+                    TransactionKind::IbcUnshieldingTransfer(_) => {
+                        let notes = tx
+                            .clone()
+                            .masp_sections
+                            .unwrap_or(1);
+                        gas_estimate.increase_ibc_unshielding_transfer(notes)
                     }
                     _ => (),
                 });

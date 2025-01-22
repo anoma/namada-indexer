@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 
+use namada_sdk::events::extend::{IndexedMaspData, MaspTxRef};
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
@@ -108,7 +109,7 @@ impl BatchResults {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct TxApplied {
     pub code: TxEventStatusCode,
     pub gas: u64,
@@ -116,6 +117,13 @@ pub struct TxApplied {
     pub height: u64,
     pub batch: BatchResults,
     pub info: String,
+    pub masp_refs: Option<HashMap<u64, Vec<MaspRef>>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum MaspRef {
+    Native(String),
+    Ibc(String),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -189,6 +197,34 @@ impl TxAttributesType {
                     .map(|height| u64::from_str(height).unwrap())
                     .unwrap()
                     .to_owned(),
+                masp_refs: attributes
+                    .get("masp_data_refs")
+                    .map(|data| {
+                        if let Ok(data) =
+                            serde_json::from_str::<IndexedMaspData>(data)
+                        {
+                            let refs = data
+                                .masp_refs
+                                .0
+                                .iter()
+                                .map(|masp_ref| match masp_ref {
+                                    MaspTxRef::MaspSection(masp_tx_id) => {
+                                        MaspRef::Native(masp_tx_id.to_string())
+                                    }
+                                    MaspTxRef::IbcData(hash) => {
+                                        MaspRef::Ibc(hash.to_string())
+                                    }
+                                })
+                                .collect();
+                            Some(HashMap::from_iter([(
+                                data.tx_index.0 as u64,
+                                refs,
+                            )]))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_default(),
                 batch: attributes
                     .get("batch")
                     .map(|batch_result| {

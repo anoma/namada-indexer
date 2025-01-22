@@ -57,28 +57,28 @@ impl GasEstimation {
         self.transparent_transfer += 1
     }
 
-    pub fn increase_shielded_transfer(&mut self) {
-        self.shielded_transfer += 1
+    pub fn increase_shielded_transfer(&mut self, notes: u64) {
+        self.shielded_transfer += notes
     }
 
     pub fn increase_shielding_transfer(&mut self) {
         self.shielding_transfer += 1
     }
 
-    pub fn increase_unshielding_transfer(&mut self) {
-        self.unshielding_transfer += 1
+    pub fn increase_unshielding_transfer(&mut self, notes: u64) {
+        self.unshielding_transfer += notes
     }
 
-    pub fn increase_mixed_transfer(&mut self) {
-        self.mixed_transfer += 1
+    pub fn increase_mixed_transfer(&mut self, notes: u64) {
+        self.mixed_transfer += notes
     }
 
     pub fn increase_ibc_shielding_transfer(&mut self) {
         self.ibc_shielding_transfer += 1
     }
 
-    pub fn increase_ibc_unshielding_transfer(&mut self) {
-        self.ibc_unshielding_transfer += 1
+    pub fn increase_ibc_unshielding_transfer(&mut self, notes: u64) {
+        self.ibc_unshielding_transfer += notes
     }
 
     pub fn increase_ibc_msg_transfer(&mut self) {
