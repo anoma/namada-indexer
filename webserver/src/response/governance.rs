@@ -60,6 +60,7 @@ pub enum VoteType {
     Yay,
     Nay,
     Abstain,
+    Unknown,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -229,6 +230,7 @@ impl From<GovernanceProposalVoteDb> for ProposalVote {
                 GovernanceVoteKindDb::Nay => VoteType::Nay,
                 GovernanceVoteKindDb::Yay => VoteType::Yay,
                 GovernanceVoteKindDb::Abstain => VoteType::Abstain,
+                GovernanceVoteKindDb::Unknown => VoteType::Unknown,
             },
             voter_address: value.voter_address,
         }

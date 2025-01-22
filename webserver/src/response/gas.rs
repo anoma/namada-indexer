@@ -34,3 +34,12 @@ impl From<GasPriceDb> for GasPrice {
         }
     }
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GasEstimate {
+    pub min: u64,
+    pub max: u64,
+    pub avg: u64,
+    pub total_estimates: u64,
+}

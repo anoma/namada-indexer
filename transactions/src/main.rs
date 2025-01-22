@@ -142,6 +142,8 @@ async fn crawling_fn(
 
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
+    let transaction_sources = block.sources();
+    let gas_estimates = tx_service::get_gas_estimates(&inner_txs, &wrapper_txs);
 
     let ibc_sequence_packet =
         tx_service::get_ibc_packets(&block_results, &inner_txs);
@@ -201,6 +203,16 @@ async fn crawling_fn(
                 transaction_repo::update_ibc_sequence(
                     transaction_conn,
                     ibc_ack_packet,
+                )?;
+
+                transaction_repo::insert_transactions_history(
+                    transaction_conn,
+                    transaction_sources,
+                )?;
+
+                transaction_repo::insert_gas_estimates(
+                    transaction_conn,
+                    gas_estimates,
                 )?;
 
                 anyhow::Ok(())

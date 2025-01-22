@@ -68,7 +68,7 @@ impl<'de> Deserialize<'de> for AccountsMap {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransparentTransfer {
+pub struct TransferData {
     /// Sources of this transfer
     pub sources: AccountsMap,
     /// Targets of this transfer
@@ -77,13 +77,13 @@ pub struct TransparentTransfer {
     pub shielded_section_hash: Option<MaspTxId>,
 }
 
-impl From<NamadaTransfer> for TransparentTransfer {
+impl From<NamadaTransfer> for TransferData {
     fn from(transfer: NamadaTransfer) -> Self {
         let sources = AccountsMap(transfer.sources);
         let targets = AccountsMap(transfer.targets);
         let shielded_section_hash = transfer.shielded_section_hash;
 
-        TransparentTransfer {
+        TransferData {
             sources,
             targets,
             shielded_section_hash,

@@ -5,7 +5,6 @@ use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
-use namada_sdk::masp::ShieldedTransfer;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
@@ -21,7 +20,8 @@ use crate::block::BlockHeight;
 use crate::block_result::{BlockResult, TxEventStatusCode};
 use crate::checksums::Checksums;
 use crate::id::Id;
-use crate::ser::{IbcMessage, TransparentTransfer};
+use crate::ser::{IbcMessage, TransferData};
+use crate::utils::{self, transfer_to_ibc_tx_kind};
 
 // We wrap public key in a struct so we serialize data as object instead of
 // string
@@ -66,11 +66,15 @@ where
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
-    TransparentTransfer(Option<TransparentTransfer>),
-    // TODO: remove once ShieldedTransfer can be serialized
-    #[serde(skip)]
-    ShieldedTransfer(Option<ShieldedTransfer>),
+    TransparentTransfer(Option<TransferData>),
+    ShieldedTransfer(Option<TransferData>),
+    ShieldingTransfer(Option<TransferData>),
+    UnshieldingTransfer(Option<TransferData>),
+    MixedTransfer(Option<TransferData>),
     IbcMsgTransfer(Option<IbcMessage<Transfer>>),
+    IbcTrasparentTransfer((Option<IbcMessage<Transfer>>, TransferData)),
+    IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
+    IbcUnshieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
     Unbond(Option<Unbond>),
@@ -93,15 +97,23 @@ impl TransactionKind {
         serde_json::to_string(&self).ok()
     }
 
-    pub fn from(id: &str, tx_kind_name: &str, data: &[u8]) -> Self {
+    pub fn from(
+        id: &str,
+        tx_kind_name: &str,
+        data: &[u8],
+        masp_address: &Address,
+    ) -> Self {
         match tx_kind_name {
             "tx_transfer" => {
-                let data = if let Ok(data) = Transfer::try_from_slice(data) {
-                    Some(TransparentTransfer::from(data))
+                if let Ok(transfer) = Transfer::try_from_slice(data) {
+                    utils::transfer_to_tx_kind(transfer, masp_address)
                 } else {
-                    None
-                };
-                TransactionKind::TransparentTransfer(data)
+                    TransactionKind::Unknown(Some(UnknownTransaction {
+                        id: Some(id.to_string()),
+                        name: Some(tx_kind_name.to_string()),
+                        data: Some(data.to_vec()),
+                    }))
+                }
             }
             "tx_bond" => {
                 let data = if let Ok(data) = Bond::try_from_slice(data) {
@@ -206,15 +218,38 @@ impl TransactionKind {
                 TransactionKind::ReactivateValidator(data)
             }
             "tx_ibc" => {
-                let data = if let Ok(data) =
+                if let Ok(ibc_data) =
                     namada_ibc::decode_message::<Transfer>(data)
                 {
-                    Some(data)
+                    match ibc_data.clone() {
+                        namada_ibc::IbcMessage::Envelope(_msg_envelope) => {
+                            TransactionKind::IbcMsgTransfer(Some(IbcMessage(
+                                ibc_data,
+                            )))
+                        }
+                        namada_ibc::IbcMessage::Transfer(transfer) => {
+                            if let Some(data) = transfer.transfer {
+                                utils::transfer_to_tx_kind(data, masp_address)
+                            } else {
+                                TransactionKind::IbcMsgTransfer(None)
+                            }
+                        }
+                        namada_ibc::IbcMessage::NftTransfer(transfer) => {
+                            if let Some(data) = transfer.transfer {
+                                transfer_to_ibc_tx_kind(
+                                    data,
+                                    masp_address,
+                                    ibc_data,
+                                )
+                            } else {
+                                TransactionKind::IbcMsgTransfer(None)
+                            }
+                        }
+                    }
                 } else {
                     tracing::warn!("Cannot deserialize IBC transfer");
-                    None
-                };
-                TransactionKind::IbcMsgTransfer(data.map(IbcMessage))
+                    TransactionKind::IbcMsgTransfer(None)
+                }
             }
             "tx_unjail_validator" => {
                 let data = if let Ok(data) = Address::try_from_slice(data) {
@@ -288,6 +323,8 @@ pub struct WrapperTransaction {
     pub atomic: bool,
     pub block_height: BlockHeight,
     pub exit_code: TransactionExitStatus,
+    pub total_signatures: u64,
+    pub size: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -306,12 +343,26 @@ impl InnerTransaction {
     pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
         self.extra_sections.get(&section_id).cloned()
     }
+
+    pub fn was_successful(&self) -> bool {
+        self.exit_code == TransactionExitStatus::Applied
+    }
+
+    pub fn is_ibc(&self) -> bool {
+        matches!(
+            self.kind,
+            TransactionKind::IbcMsgTransfer(_)
+                | TransactionKind::IbcTrasparentTransfer(_)
+                | TransactionKind::IbcUnshieldingTransfer(_)
+                | TransactionKind::IbcShieldingTransfer(_)
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Fee {
     pub gas: String,
-    pub gas_used: Option<String>,
+    pub gas_used: Option<u64>,
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
@@ -324,16 +375,26 @@ impl Transaction {
         block_height: BlockHeight,
         checksums: Checksums,
         block_results: &BlockResult,
+        masp_address: &Address,
     ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
+        let total_signatures = transaction
+            .clone()
+            .sections
+            .iter()
+            .filter(|section| section.signature().is_some())
+            .count() as u64;
+        let tx_size = raw_tx_bytes.len() as u64;
 
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
                 let wrapper_tx_status =
                     block_results.is_wrapper_tx_applied(&wrapper_tx_id);
-                let gas_used = block_results.gas_used(&wrapper_tx_id);
+                let gas_used = block_results
+                    .gas_used(&wrapper_tx_id)
+                    .map(|gas| gas.parse::<u64>().unwrap());
 
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
@@ -355,6 +416,8 @@ impl Transaction {
                     atomic,
                     block_height,
                     exit_code: wrapper_tx_status,
+                    total_signatures,
+                    size: tx_size,
                 };
 
                 let mut inner_txs = vec![];
@@ -393,7 +456,12 @@ impl Transaction {
                         if let Some(tx_kind_name) =
                             checksums.get_name_by_id(&id)
                         {
-                            TransactionKind::from(&id, &tx_kind_name, &tx_data)
+                            TransactionKind::from(
+                                &id,
+                                &tx_kind_name,
+                                &tx_data,
+                                masp_address,
+                            )
                         } else {
                             TransactionKind::Unknown(Some(UnknownTransaction {
                                 id: Some(id),
@@ -532,5 +600,40 @@ impl IbcAck {
             self.source_channel,
             self.sequence_number
         )
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum TransactionHistoryKind {
+    Received,
+    Sent,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct TransactionTarget {
+    pub inner_tx: Id,
+    pub address: String,
+    pub kind: TransactionHistoryKind,
+}
+
+impl TransactionTarget {
+    pub fn new(
+        inner_tx: Id,
+        address: String,
+        kind: TransactionHistoryKind,
+    ) -> Self {
+        Self {
+            inner_tx,
+            address,
+            kind,
+        }
+    }
+
+    pub fn sent(inner_tx: Id, address: String) -> Self {
+        Self::new(inner_tx, address, TransactionHistoryKind::Sent)
+    }
+
+    pub fn received(inner_tx: Id, address: String) -> Self {
+        Self::new(inner_tx, address, TransactionHistoryKind::Received)
     }
 }

@@ -2,10 +2,10 @@ use namada_sdk::ibc::core::channel::types::acknowledgement::AcknowledgementStatu
 use namada_sdk::ibc::core::channel::types::msgs::PacketMsg;
 use namada_sdk::ibc::core::handler::types::msgs::MsgEnvelope;
 use shared::block_result::{BlockResult, TxAttributesType};
-use shared::ser::IbcMessage;
+use shared::gas::GasEstimation;
 use shared::transaction::{
-    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionExitStatus,
-    TransactionKind,
+    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionKind,
+    WrapperTransaction,
 };
 
 pub fn get_ibc_packets(
@@ -15,11 +15,7 @@ pub fn get_ibc_packets(
     let mut ibc_txs = inner_txs
         .iter()
         .filter_map(|tx| {
-            if matches!(
-                tx.kind,
-                TransactionKind::IbcMsgTransfer(Some(IbcMessage(_)))
-            ) && matches!(tx.exit_code, TransactionExitStatus::Applied)
-            {
+            if tx.is_ibc() && tx.was_successful() {
                 Some(tx.tx_id.clone())
             } else {
                 None
@@ -112,4 +108,67 @@ pub fn get_ibc_ack_packet(inner_txs: &[InnerTransaction]) -> Vec<IbcAck> {
         },
         _ => None,
     }).collect()
+}
+
+pub fn get_gas_estimates(
+    inner_txs: &[InnerTransaction],
+    wrapper_txs: &[WrapperTransaction],
+) -> Vec<GasEstimation> {
+    wrapper_txs
+        .iter()
+        .map(|wrapper_tx| {
+            let mut gas_estimate = GasEstimation::new(wrapper_tx.tx_id.clone());
+            gas_estimate.signatures = wrapper_tx.total_signatures;
+            gas_estimate.size = wrapper_tx.size;
+
+            inner_txs
+                .iter()
+                .filter(|inner_tx| {
+                    inner_tx.was_successful()
+                        && inner_tx.wrapper_id.eq(&wrapper_tx.tx_id)
+                })
+                .for_each(|tx| match tx.kind {
+                    TransactionKind::TransparentTransfer(_)
+                    | TransactionKind::MixedTransfer(_) => {
+                        gas_estimate.increase_mixed_transfer()
+                    }
+                    TransactionKind::IbcMsgTransfer(_) => {
+                        gas_estimate.increase_ibc_msg_transfer()
+                    }
+                    TransactionKind::Bond(_) => gas_estimate.increase_bond(),
+                    TransactionKind::Redelegation(_) => {
+                        gas_estimate.increase_redelegation()
+                    }
+                    TransactionKind::Unbond(_) => {
+                        gas_estimate.increase_unbond()
+                    }
+                    TransactionKind::Withdraw(_) => {
+                        gas_estimate.increase_withdraw()
+                    }
+                    TransactionKind::ClaimRewards(_) => {
+                        gas_estimate.increase_claim_rewards()
+                    }
+                    TransactionKind::ProposalVote(_) => {
+                        gas_estimate.increase_vote()
+                    }
+                    TransactionKind::RevealPk(_) => {
+                        gas_estimate.increase_reveal_pk()
+                    }
+                    TransactionKind::ShieldedTransfer(_) => {
+                        gas_estimate.increase_shielded_transfer()
+                    }
+                    TransactionKind::ShieldingTransfer(_) => {
+                        gas_estimate.increase_shielding_transfer()
+                    }
+                    TransactionKind::UnshieldingTransfer(_) => {
+                        gas_estimate.increase_ibc_unshielding_transfer()
+                    }
+                    TransactionKind::IbcShieldingTransfer(_) => {
+                        gas_estimate.increase_ibc_shielding_transfer()
+                    }
+                    _ => (),
+                });
+            gas_estimate
+        })
+        .collect()
 }

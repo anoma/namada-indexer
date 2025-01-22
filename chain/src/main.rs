@@ -215,7 +215,23 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
+    let native_addresses =
+        namada_service::query_native_addresses_balance_change(Token::Native(
+            native_token.clone(),
+        ));
     let addresses = block.addresses_with_balance_change(&native_token);
+
+    let validators_addresses = if first_block_in_epoch.eq(&block_height) {
+        namada_service::get_all_consensus_validators_addresses_at(
+            &client,
+            epoch - 1,
+            native_token.clone(),
+        )
+        .await
+        .into_rpc_error()?
+    } else {
+        HashSet::default()
+    };
 
     let block_proposer_address = block
         .header
@@ -245,6 +261,8 @@ async fn crawling_fn(
         .iter()
         .chain(block_proposer_address.iter())
         .chain(pgf_receipient_addresses.iter())
+        .chain(validators_addresses.iter())
+        .chain(native_addresses.iter())
         .cloned()
         .collect::<HashSet<_>>();
 
