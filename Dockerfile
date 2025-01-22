@@ -1,5 +1,5 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.81-bookworm AS chef
-RUN apt-get update && apt-get install -y protobuf-compiler build-essential clang-tools-14 
+RUN apt-get update && apt-get install -y protobuf-compiler build-essential clang-tools-14
 
 FROM chef AS planner
 WORKDIR /app
@@ -15,7 +15,7 @@ ARG PACKAGE
 RUN cargo build --release --bin ${PACKAGE}
 
 FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y libpq5 ca-certificates
+RUN apt-get update && apt-get install -y libpq5 ca-certificates curl
 WORKDIR /app
 ARG PACKAGE
 COPY --from=builder /app/target/release/${PACKAGE} ./
