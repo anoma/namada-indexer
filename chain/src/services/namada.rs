@@ -110,7 +110,7 @@ pub async fn query_balance(
             })
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await)
 }
@@ -440,7 +440,7 @@ pub async fn query_bonds(
             Some(bonds)
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -513,7 +513,7 @@ pub async fn query_unbonds(
             }
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -528,6 +528,27 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
         .context("Failed to query Namada's current epoch")?;
 
     Ok(epoch.0 as Epoch)
+}
+
+pub async fn get_all_consensus_validators_addresses_at(
+    client: &HttpClient,
+    epoch: u32,
+    native_token: Id,
+) -> anyhow::Result<HashSet<BalanceChange>> {
+    let validators =
+        rpc::get_all_consensus_validators(client, (epoch as u64).into())
+            .await
+            .context("Failed to query Namada's current epoch")?
+            .into_iter()
+            .map(|validator| {
+                BalanceChange::new(
+                    Id::from(validator.address),
+                    Token::Native(native_token.clone()),
+                )
+            })
+            .collect::<HashSet<_>>();
+
+    Ok(validators)
 }
 
 pub async fn query_tx_code_hash(
@@ -573,7 +594,7 @@ pub async fn query_tallies(
             Some((proposal, tally_type))
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -584,30 +605,57 @@ pub async fn query_all_votes(
     client: &HttpClient,
     proposals_ids: Vec<u64>,
 ) -> anyhow::Result<HashSet<GovernanceVote>> {
-    let votes: Vec<HashSet<GovernanceVote>> =
-        futures::stream::iter(proposals_ids)
-            .filter_map(|proposal_id| async move {
-                let votes = rpc::query_proposal_votes(client, proposal_id)
-                    .await
-                    .ok()?;
+    let votes = futures::stream::iter(proposals_ids)
+        .filter_map(|proposal_id| async move {
+            let votes =
+                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
 
-                let votes = votes
-                    .into_iter()
-                    .map(|vote| GovernanceVote {
-                        proposal_id,
-                        vote: ProposalVoteKind::from(vote.data),
-                        address: Id::from(vote.delegator),
-                    })
-                    .collect::<HashSet<_>>();
+            let votes = votes
+                .into_iter()
+                .map(|vote| GovernanceVote {
+                    proposal_id,
+                    vote: ProposalVoteKind::from(vote.data),
+                    address: Id::from(vote.delegator),
+                })
+                .collect::<HashSet<_>>();
 
-                Some(votes)
+            Some(votes)
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(32)
+        .collect::<Vec<_>>()
+        .await;
+
+    let mut voter_count: HashMap<(Id, u64), u64> = HashMap::new();
+    for vote in votes.iter().flatten() {
+        *voter_count
+            .entry((vote.address.clone(), vote.proposal_id))
+            .or_insert(0) += 1;
+    }
+
+    let mut seen_voters = HashSet::new();
+    anyhow::Ok(
+        votes
+            .iter()
+            .flatten()
+            .filter(|&vote| {
+                seen_voters.insert((vote.address.clone(), vote.proposal_id))
             })
-            .map(futures::future::ready)
-            .buffer_unordered(20)
-            .collect::<Vec<_>>()
-            .await;
-
-    anyhow::Ok(votes.iter().flatten().cloned().collect())
+            .cloned()
+            .map(|mut vote| {
+                if let Some(count) =
+                    voter_count.get(&(vote.address.clone(), vote.proposal_id))
+                {
+                    if *count > 1_u64 {
+                        vote.vote = ProposalVoteKind::Unknown;
+                    }
+                    vote
+                } else {
+                    vote
+                }
+            })
+            .collect(),
+    )
 }
 
 pub async fn get_validator_set_at_epoch(
@@ -686,11 +734,39 @@ pub async fn get_validator_set_at_epoch(
                 state: validator_state
             })
         })
-        .buffer_unordered(100)
+        .buffer_unordered(32)
         .try_collect::<HashSet<_>>()
         .await?;
 
     Ok(ValidatorSet { validators, epoch })
+}
+
+pub async fn get_validator_namada_address(
+    client: &HttpClient,
+    tm_addr: &Id,
+) -> anyhow::Result<Option<Id>> {
+    let validator = RPC
+        .vp()
+        .pos()
+        .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
+        .await?;
+
+    Ok(validator.map(Id::from))
+}
+
+pub fn query_native_addresses_balance_change(
+    native_token: Token,
+) -> HashSet<BalanceChange> {
+    [
+        NamadaSdkAddress::Internal(InternalAddress::Governance),
+        NamadaSdkAddress::Internal(InternalAddress::PoS),
+        NamadaSdkAddress::Internal(InternalAddress::Masp),
+        NamadaSdkAddress::Internal(InternalAddress::Pgf),
+        NamadaSdkAddress::Internal(InternalAddress::Ibc),
+    ]
+    .into_iter()
+    .map(|address| BalanceChange::new(Id::from(address), native_token.clone()))
+    .collect::<HashSet<_>>()
 }
 
 pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
