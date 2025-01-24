@@ -128,8 +128,10 @@ pub fn get_gas_estimates(
                         && inner_tx.wrapper_id.eq(&wrapper_tx.tx_id)
                 })
                 .for_each(|tx| match tx.kind {
-                    TransactionKind::TransparentTransfer(_)
-                    | TransactionKind::MixedTransfer(_) => {
+                    TransactionKind::TransparentTransfer(_) => {
+                        gas_estimate.increase_transparent_transfer();
+                    }
+                    TransactionKind::MixedTransfer(_) => {
                         let notes = tx
                             .clone()
                             .masp_sections

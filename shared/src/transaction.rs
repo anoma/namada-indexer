@@ -510,23 +510,27 @@ impl Transaction {
                             acc
                         });
 
-                    let masp_sections = transaction
-                        .sections
-                        .iter()
-                        .filter_map(|section| match section {
-                            Section::MaspTx(masp_tx) => Some((
-                                Id::from(section.get_hash()),
-                                masp_tx
-                                    .sapling_bundle()
-                                    .map(|bundle| bundle.shielded_spends.len() as u64)
-                                    .unwrap_or_default(),
-                            )),
-                            _ => None,
-                        })
-                        .fold(HashMap::new(), |mut acc, (id, data)| {
-                            acc.insert(id, data);
-                            acc
-                        });
+                    let masp_refs = block_results.masp_refs(&wrapper_tx_id, index as u64);
+                    // let masp_sections = transaction
+                    //     .sections
+                    //     .iter()
+                    //     .find(|section| {
+                    //         section.get_hash().eq()
+                    //     })
+                        // .filter_map(|section| match section {
+                        //     Section::MaspTx(masp_tx) => Some((
+                        //         Id::from(section.get_hash()),
+                        //         masp_tx
+                        //             .sapling_bundle()
+                        //             .map(|bundle| bundle.shielded_spends.len() as u64)
+                        //             .unwrap_or_default(),
+                        //     )),
+                        //     _ => None,
+                        // })
+                        // .fold(HashMap::new(), |mut acc, (id, data)| {
+                        //     acc.insert(id, data);
+                        //     acc
+                        // });
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,

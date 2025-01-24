@@ -117,7 +117,7 @@ pub struct TxApplied {
     pub height: u64,
     pub batch: BatchResults,
     pub info: String,
-    pub masp_refs: Option<HashMap<u64, Vec<MaspRef>>>,
+    pub masp_refs: HashMap<u64, Vec<MaspRef>>,
 }
 
 #[derive(Debug, Clone)]
@@ -216,12 +216,9 @@ impl TxAttributesType {
                                     }
                                 })
                                 .collect();
-                            Some(HashMap::from_iter([(
-                                data.tx_index.0 as u64,
-                                refs,
-                            )]))
+                            HashMap::from_iter([(data.tx_index.0 as u64, refs)])
                         } else {
-                            None
+                            HashMap::default()
                         }
                     })
                     .unwrap_or_default(),
@@ -358,5 +355,23 @@ impl BlockResult {
                 false => TransactionExitStatus::Rejected,
             });
         exit_status.unwrap_or(TransactionExitStatus::Rejected)
+    }
+
+    pub fn masp_refs(&self, wrapper_hash: &Id, index: u64) -> Vec<MaspRef> {
+        self
+            .end_events
+            .iter()
+            .filter_map(|event| {
+                if let Some(TxAttributesType::TxApplied(data)) =
+                    &event.attributes
+                {
+                    Some(data.clone())
+                } else {
+                    None
+                }
+            })
+            .find(|attributes| attributes.hash.eq(wrapper_hash))
+            .map(|event| event.masp_refs.get(&index).cloned().unwrap_or_default())
+            .unwrap_or_default()
     }
 }
