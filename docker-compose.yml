@@ -27,7 +27,7 @@ include:
 services:
   chain:
     <<: *defaults
-    image: namada-indexer/chain
+    image: namada/chain-indexer
     command: "./service \
       --tendermint-url ${TENDERMINT_URL} \
       --database-url ${DATABASE_URL} \
@@ -40,7 +40,7 @@ services:
 
   governance:
     <<: *defaults
-    image: namada-indexer/governance
+    image: namada/governance-indexer
     build:
       <<: *build
       args:
@@ -49,7 +49,7 @@ services:
 
   pos:
     <<: *defaults
-    image: namada-indexer/pos
+    image: namada/pos-indexer
     build:
       <<: *build
       args:
@@ -58,7 +58,7 @@ services:
 
   rewards:
     <<: *defaults
-    image: namada-indexer/rewards
+    image: namada/rewards-indexer
     build:
       <<: *build
       args:
@@ -67,7 +67,7 @@ services:
 
   parameters:
     <<: *defaults
-    image: namada-indexer/parameters
+    image: namada/parameters-indexer
     build:
       <<: *build
       args:
@@ -76,7 +76,7 @@ services:
 
   transactions:
     <<: *defaults
-    image: namada-indexer/transaction
+    image: namada/transaction-indexer
     build:
       <<: *build
       args:
@@ -85,7 +85,7 @@ services:
 
   webserver:
     <<: *defaults
-    image: namada-indexer/webserver
+    image: namada/webserver-indexer
     build:
       context: .
       dockerfile: Dockerfile
