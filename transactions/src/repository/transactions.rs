@@ -1,12 +1,29 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use chrono::NaiveDateTime;
 use diesel::upsert::excluded;
-use diesel::{ExpressionMethods, PgConnection, RunQueryDsl};
+use diesel::{
+    ExpressionMethods, OptionalEmptyChangesetExtension, PgConnection,
+    RunQueryDsl,
+};
 use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
-use orm::schema::{crawler_state, inner_transactions, wrapper_transactions};
-use orm::transactions::{InnerTransactionInsertDb, WrapperTransactionInsertDb};
+use orm::gas::GasEstimationInsertDb;
+use orm::ibc::{IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb};
+use orm::schema::{
+    crawler_state, gas_estimations, ibc_ack, inner_transactions,
+    transaction_history, wrapper_transactions,
+};
+use orm::transactions::{
+    InnerTransactionInsertDb, TransactionHistoryInsertDb,
+    WrapperTransactionInsertDb,
+};
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
-use shared::transaction::{InnerTransaction, WrapperTransaction};
+use shared::gas::GasEstimation;
+use shared::transaction::{
+    IbcAck, IbcSequence, InnerTransaction, TransactionTarget,
+    WrapperTransaction,
+};
 
 pub fn insert_inner_transactions(
     transaction_conn: &mut PgConnection,
@@ -84,6 +101,76 @@ pub fn update_crawler_timestamp(
         .set(crawler_state::timestamp.eq(timestamp))
         .execute(transaction_conn)
         .context("Failed to update crawler timestamp in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_ibc_sequence(
+    transaction_conn: &mut PgConnection,
+    ibc_sequences: Vec<IbcSequence>,
+) -> anyhow::Result<()> {
+    diesel::insert_into(ibc_ack::table)
+        .values::<Vec<IbcAckInsertDb>>(
+            ibc_sequences
+                .into_iter()
+                .map(IbcAckInsertDb::from)
+                .collect(),
+        )
+        .execute(transaction_conn)
+        .context("Failed to update crawler state in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn update_ibc_sequence(
+    transaction_conn: &mut PgConnection,
+    ibc_acks: Vec<IbcAck>,
+) -> anyhow::Result<()> {
+    for ack in ibc_acks {
+        let ack_update = IbcSequencekStatusUpdateDb {
+            status: IbcAckStatusDb::from(ack.status.clone()),
+        };
+        diesel::update(ibc_ack::table)
+            .set(ack_update)
+            .filter(ibc_ack::dsl::id.eq(ack.id()))
+            .execute(transaction_conn)
+            .optional_empty_changeset()
+            .context("Failed to update validator metadata in db")?;
+    }
+    anyhow::Ok(())
+}
+
+pub fn insert_transactions_history(
+    transaction_conn: &mut PgConnection,
+    txs: HashSet<TransactionTarget>,
+) -> anyhow::Result<()> {
+    diesel::insert_into(transaction_history::table)
+        .values::<&Vec<TransactionHistoryInsertDb>>(
+            &txs.into_iter()
+                .map(TransactionHistoryInsertDb::from)
+                .collect::<Vec<_>>(),
+        )
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to insert transaction history in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_gas_estimates(
+    transaction_conn: &mut PgConnection,
+    gas_estimates: Vec<GasEstimation>,
+) -> anyhow::Result<()> {
+    diesel::insert_into(gas_estimations::table)
+        .values::<Vec<GasEstimationInsertDb>>(
+            gas_estimates
+                .into_iter()
+                .map(GasEstimationInsertDb::from)
+                .collect(),
+        )
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update gas estimates in db")?;
 
     anyhow::Ok(())
 }

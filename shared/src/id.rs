@@ -17,7 +17,6 @@ pub enum Id {
     IbcTrace(String),
     Hash(String),
 }
-
 impl Default for Id {
     fn default() -> Self {
         Self::Hash("".to_owned())
@@ -46,8 +45,8 @@ impl From<TendermintHash> for Id {
     }
 }
 
-impl From<TendermintAppHash> for Id {
-    fn from(value: TendermintAppHash) -> Self {
+impl From<&TendermintAppHash> for Id {
+    fn from(value: &TendermintAppHash) -> Self {
         Self::Hash(value.to_string())
     }
 }

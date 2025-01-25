@@ -22,6 +22,7 @@ production = []
 
 [dependencies]
 axum.workspace = true 
+chrono.workspace = true
 tokio.workspace = true 
 tower.workspace = true 
 tower-http.workspace = true 

@@ -12,13 +12,16 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::id::Id;
 use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
-use transactions::repository::transactions as transaction_repo;
+use transactions::repository::{
+    block as block_repo, transactions as transaction_repo,
+};
 use transactions::services::{
     db as db_service, namada as namada_service,
-    tendermint as tendermint_service,
+    tendermint as tendermint_service, tx as tx_service,
 };
 
 #[tokio::main]
@@ -114,22 +117,45 @@ async fn crawling_fn(
         .into_rpc_error()?;
     let block_results = BlockResult::from(tm_block_results_response);
 
+    let proposer_address_namada = namada_service::get_validator_namada_address(
+        &client,
+        &Id::from(&tm_block_response.block.header.proposer_address),
+    )
+    .await
+    .into_rpc_error()?;
+
+    tracing::debug!(
+        block = block_height,
+        tm_address = tm_block_response.block.header.proposer_address.to_string(),
+        namada_address = ?proposer_address_namada,
+        "Got block proposer address"
+    );
+
     let block = Block::from(
-        tm_block_response.clone(),
+        &tm_block_response,
         &block_results,
+        &proposer_address_namada,
         checksums,
-        1_u32,
+        1_u32, // placeholder, we dont need the epoch here
         block_height,
     );
 
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
+    let transaction_sources = block.sources();
+    let gas_estimates = tx_service::get_gas_estimates(&inner_txs, &wrapper_txs);
 
-    tracing::debug!(
-        block = block_height,
-        txs = inner_txs.len(),
-        "Deserialized {} txs...",
-        wrapper_txs.len() + inner_txs.len()
+    let ibc_sequence_packet =
+        tx_service::get_ibc_packets(&block_results, &inner_txs);
+    let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
+
+    tracing::info!(
+        "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
+         ibc acks events...",
+        wrapper_txs.len(),
+        inner_txs.len(),
+        ibc_sequence_packet.len(),
+        ibc_ack_packet.len()
     );
 
     // Because transaction crawler starts from block 1 we read timestamp from
@@ -151,6 +177,11 @@ async fn crawling_fn(
         conn.build_transaction()
             .read_write()
             .run(|transaction_conn| {
+                block_repo::upsert_block(
+                    transaction_conn,
+                    block,
+                    tm_block_response,
+                )?;
                 transaction_repo::insert_wrapper_transactions(
                     transaction_conn,
                     wrapper_txs,
@@ -162,6 +193,26 @@ async fn crawling_fn(
                 transaction_repo::insert_crawler_state(
                     transaction_conn,
                     crawler_state,
+                )?;
+
+                transaction_repo::insert_ibc_sequence(
+                    transaction_conn,
+                    ibc_sequence_packet,
+                )?;
+
+                transaction_repo::update_ibc_sequence(
+                    transaction_conn,
+                    ibc_ack_packet,
+                )?;
+
+                transaction_repo::insert_transactions_history(
+                    transaction_conn,
+                    transaction_sources,
+                )?;
+
+                transaction_repo::insert_gas_estimates(
+                    transaction_conn,
+                    gas_estimates,
                 )?;
 
                 anyhow::Ok(())

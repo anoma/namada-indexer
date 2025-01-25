@@ -1,11 +1,13 @@
 use diesel::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use shared::transaction::{
-    InnerTransaction, TransactionExitStatus, TransactionKind,
-    WrapperTransaction,
+    InnerTransaction, TransactionExitStatus, TransactionHistoryKind,
+    TransactionKind, TransactionTarget, WrapperTransaction,
 };
 
-use crate::schema::{inner_transactions, wrapper_transactions};
+use crate::schema::{
+    inner_transactions, transaction_history, wrapper_transactions,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::TransactionKind"]
@@ -14,7 +16,11 @@ pub enum TransactionKindDb {
     ShieldedTransfer,
     ShieldingTransfer,
     UnshieldingTransfer,
+    MixedTransfer,
     IbcMsgTransfer,
+    IbcTransparentTransfer,
+    IbcShieldingTransfer,
+    IbcUnshieldingTransfer,
     Bond,
     Redelegation,
     Unbond,
@@ -26,6 +32,9 @@ pub enum TransactionKindDb {
     ChangeCommission,
     RevealPk,
     BecomeValidator,
+    ReactivateValidator,
+    DeactivateValidator,
+    UnjailValidator,
     Unknown,
 }
 
@@ -33,31 +42,42 @@ impl From<TransactionKind> for TransactionKindDb {
     fn from(value: TransactionKind) -> Self {
         match value {
             TransactionKind::TransparentTransfer(_) => {
-                TransactionKindDb::TransparentTransfer
+                Self::TransparentTransfer
             }
-            TransactionKind::ShieldedTransfer(_) => {
-                TransactionKindDb::ShieldedTransfer
+            TransactionKind::ShieldedTransfer(_) => Self::ShieldedTransfer,
+            TransactionKind::UnshieldingTransfer(_) => {
+                Self::UnshieldingTransfer
             }
-            TransactionKind::IbcMsgTransfer(_) => {
-                TransactionKindDb::IbcMsgTransfer
+            TransactionKind::ShieldingTransfer(_) => Self::ShieldingTransfer,
+            TransactionKind::MixedTransfer(_) => Self::MixedTransfer,
+            TransactionKind::IbcMsgTransfer(_) => Self::IbcMsgTransfer,
+            TransactionKind::IbcTrasparentTransfer(_) => {
+                Self::IbcTransparentTransfer
             }
-            TransactionKind::Bond(_) => TransactionKindDb::Bond,
-            TransactionKind::Redelegation(_) => TransactionKindDb::Redelegation,
-            TransactionKind::Unbond(_) => TransactionKindDb::Unbond,
-            TransactionKind::Withdraw(_) => TransactionKindDb::Withdraw,
-            TransactionKind::ClaimRewards(_) => TransactionKindDb::ClaimRewards,
-            TransactionKind::ProposalVote(_) => TransactionKindDb::VoteProposal,
-            TransactionKind::InitProposal(_) => TransactionKindDb::InitProposal,
-            TransactionKind::MetadataChange(_) => {
-                TransactionKindDb::ChangeMetadata
+            TransactionKind::IbcShieldingTransfer(_) => {
+                Self::IbcShieldingTransfer
             }
-            TransactionKind::CommissionChange(_) => {
-                TransactionKindDb::ChangeCommission
+            TransactionKind::IbcUnshieldingTransfer(_) => {
+                Self::IbcUnshieldingTransfer
             }
-            TransactionKind::RevealPk(_) => TransactionKindDb::RevealPk,
-            TransactionKind::BecomeValidator(_) => {
-                TransactionKindDb::BecomeValidator
+            TransactionKind::Bond(_) => Self::Bond,
+            TransactionKind::Redelegation(_) => Self::Redelegation,
+            TransactionKind::Unbond(_) => Self::Unbond,
+            TransactionKind::Withdraw(_) => Self::Withdraw,
+            TransactionKind::ClaimRewards(_) => Self::ClaimRewards,
+            TransactionKind::ProposalVote(_) => Self::VoteProposal,
+            TransactionKind::InitProposal(_) => Self::InitProposal,
+            TransactionKind::MetadataChange(_) => Self::ChangeMetadata,
+            TransactionKind::CommissionChange(_) => Self::ChangeCommission,
+            TransactionKind::DeactivateValidator(_) => {
+                Self::DeactivateValidator
             }
+            TransactionKind::ReactivateValidator(_) => {
+                Self::ReactivateValidator
+            }
+            TransactionKind::RevealPk(_) => Self::RevealPk,
+            TransactionKind::BecomeValidator(_) => Self::BecomeValidator,
+            TransactionKind::UnjailValidator(_) => Self::UnjailValidator,
             TransactionKind::Unknown(_) => TransactionKindDb::Unknown,
         }
     }
@@ -109,17 +129,19 @@ impl InnerTransactionInsertDb {
 #[derive(Serialize, Queryable, Selectable, Insertable, Clone)]
 #[diesel(table_name = wrapper_transactions)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct WrapperTransactionInsertDb {
+pub struct WrapperTransactionDb {
     pub id: String,
     pub fee_payer: String,
     pub fee_token: String,
     pub gas_limit: String,
+    pub gas_used: Option<i32>,
+    pub amount_per_gas_unit: Option<String>,
     pub block_height: i32,
     pub exit_code: TransactionResultDb,
     pub atomic: bool,
 }
 
-pub type WrapperTransactionDb = WrapperTransactionInsertDb;
+pub type WrapperTransactionInsertDb = WrapperTransactionDb;
 
 impl WrapperTransactionInsertDb {
     pub fn from(tx: WrapperTransaction) -> Self {
@@ -128,9 +150,56 @@ impl WrapperTransactionInsertDb {
             fee_payer: tx.fee.gas_payer.to_string(),
             fee_token: tx.fee.gas_token.to_string(),
             gas_limit: tx.fee.gas,
+            gas_used: tx.fee.gas_used.map(|gas| gas as i32),
+            amount_per_gas_unit: Some(tx.fee.amount_per_gas_unit),
             block_height: tx.block_height as i32,
             exit_code: TransactionResultDb::from(tx.exit_code),
             atomic: tx.atomic,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::HistoryKind"]
+pub enum TransactionHistoryKindDb {
+    Received,
+    Sent,
+}
+
+impl From<TransactionHistoryKind> for TransactionHistoryKindDb {
+    fn from(value: TransactionHistoryKind) -> Self {
+        match value {
+            TransactionHistoryKind::Received => Self::Received,
+            TransactionHistoryKind::Sent => Self::Sent,
+        }
+    }
+}
+
+#[derive(Serialize, Queryable, Selectable, Clone)]
+#[diesel(table_name = transaction_history)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct TransactionHistoryDb {
+    pub id: i32,
+    pub inner_tx_id: String,
+    pub target: String,
+    pub kind: TransactionHistoryKindDb,
+}
+
+#[derive(Serialize, Insertable, Clone)]
+#[diesel(table_name = transaction_history)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct TransactionHistoryInsertDb {
+    pub inner_tx_id: String,
+    pub target: String,
+    pub kind: TransactionHistoryKindDb,
+}
+
+impl TransactionHistoryInsertDb {
+    pub fn from(target: TransactionTarget) -> Self {
+        Self {
+            inner_tx_id: target.inner_tx.to_string(),
+            target: target.address,
+            kind: TransactionHistoryKindDb::from(target.kind),
         }
     }
 }

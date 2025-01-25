@@ -19,6 +19,7 @@ pub fn upsert_validators(
                 .eq(excluded(validators::columns::max_commission)),
             validators::columns::commission
                 .eq(excluded(validators::columns::commission)),
+            validators::columns::state.eq(excluded(validators::columns::state)),
         ))
         .execute(transaction_conn)
         .context("Failed to update validators in db")?;
