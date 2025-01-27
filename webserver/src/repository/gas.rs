@@ -40,6 +40,8 @@ pub trait GasRepositoryTrait {
         shielded_transfer: u64,
         shielding_transfer: u64,
         unshielding_transfer: u64,
+        ibc_shielding_transfer: u64,
+        ibc_unshielding_transfer: u64,
         vote: u64,
         ibc: u64,
         withdraw: u64,
@@ -107,6 +109,8 @@ impl GasRepositoryTrait for GasRepository {
         shielded_transfer: u64,
         shielding_transfer: u64,
         unshielding_transfer: u64,
+        ibc_shielding_transfer: u64,
+        ibc_unshielding_transfer: u64,
         vote: u64,
         ibc: u64,
         withdraw: u64,
@@ -143,6 +147,14 @@ impl GasRepositoryTrait for GasRepository {
                 .filter(
                     gas_estimations::dsl::unshielding_transfer
                         .eq(unshielding_transfer as i32),
+                )
+                .filter(
+                    gas_estimations::dsl::ibc_unshielding_transfer
+                        .eq(ibc_unshielding_transfer as i32),
+                )
+                .filter(
+                    gas_estimations::dsl::ibc_shielding_transfer
+                        .eq(ibc_shielding_transfer as i32),
                 )
                 .filter(gas_estimations::dsl::vote_proposal.eq(vote as i32))
                 .filter(gas_estimations::dsl::ibc_msg_transfer.eq(ibc as i32))

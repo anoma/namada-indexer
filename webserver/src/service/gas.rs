@@ -60,6 +60,8 @@ impl GasService {
         shielded_transfer: u64,
         shielding_transfer: u64,
         unshielding_transfer: u64,
+        ibc_shielding_transfer: u64,
+        ibc_unshielding_transfer: u64,
         vote: u64,
         ibc: u64,
         withdraw: u64,
@@ -78,6 +80,8 @@ impl GasService {
                 shielded_transfer,
                 shielding_transfer,
                 unshielding_transfer,
+                ibc_shielding_transfer,
+                ibc_unshielding_transfer,
                 vote,
                 ibc,
                 withdraw,
@@ -129,6 +133,10 @@ impl GasService {
                 * gas.get(&TransactionKind::ShieldingTransfer).unwrap();
             estimate += unshielding_transfer
                 * gas.get(&TransactionKind::UnshieldingTransfer).unwrap();
+            estimate += ibc_unshielding_transfer
+                * gas.get(&TransactionKind::UnshieldingTransfer).unwrap();
+            estimate += ibc_shielding_transfer
+                * gas.get(&TransactionKind::ShieldingTransfer).unwrap();
             estimate += vote * gas.get(&TransactionKind::VoteProposal).unwrap();
             estimate +=
                 ibc * gas.get(&TransactionKind::IbcMsgTransfer).unwrap();
