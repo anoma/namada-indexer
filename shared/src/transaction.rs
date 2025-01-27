@@ -3,7 +3,8 @@ use std::fmt::Display;
 
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
-use namada_sdk::borsh::{BorshDeserialize, BorshSerializeExt};
+use namada_sdk::borsh::BorshDeserialize;
+use namada_sdk::events::extend::MaspTxRef;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
@@ -341,7 +342,7 @@ pub struct InnerTransaction {
     pub memo: Option<String>,
     pub data: Option<String>,
     pub extra_sections: HashMap<Id, Vec<u8>>,
-    pub masp_sections: HashMap<Id, u64>,
+    pub notes: u64,
     pub exit_code: TransactionExitStatus,
 }
 
@@ -401,6 +402,8 @@ impl Transaction {
                 let gas_used = block_results
                     .gas_used(&wrapper_tx_id)
                     .map(|gas| gas.parse::<u64>().unwrap());
+                let masp_refs =
+                    block_results.masp_refs(&wrapper_tx_id, index as u64);
 
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
@@ -510,27 +513,27 @@ impl Transaction {
                             acc
                         });
 
-                    let masp_refs = block_results.masp_refs(&wrapper_tx_id, index as u64);
-                    // let masp_sections = transaction
-                    //     .sections
-                    //     .iter()
-                    //     .find(|section| {
-                    //         section.get_hash().eq()
-                    //     })
-                        // .filter_map(|section| match section {
-                        //     Section::MaspTx(masp_tx) => Some((
-                        //         Id::from(section.get_hash()),
-                        //         masp_tx
-                        //             .sapling_bundle()
-                        //             .map(|bundle| bundle.shielded_spends.len() as u64)
-                        //             .unwrap_or_default(),
-                        //     )),
-                        //     _ => None,
-                        // })
-                        // .fold(HashMap::new(), |mut acc, (id, data)| {
-                        //     acc.insert(id, data);
-                        //     acc
-                        // });
+                    let notes = masp_refs.clone().into_iter().map(|masp_ref| {
+                        match masp_ref {
+                            MaspTxRef::MaspSection(masp_tx_id) => {
+                                 transaction
+                                .get_masp_section(&masp_tx_id)
+                                .map(|bundle| bundle.clone().into_data().sapling_bundle().map(|bundle| bundle.shielded_spends.len() + bundle.shielded_outputs.len()).unwrap_or_default()).unwrap_or_default() as u64
+                            },
+                            MaspTxRef::IbcData(hash) => {
+                                transaction.get_data_section(&hash).map(|section| match namada_sdk::ibc::decode_message::<Transfer>(&section) {
+                                    Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
+                                        if let Some(bundle) = namada_sdk::ibc::extract_masp_tx_from_envelope(&msg_envelope) {
+                                            bundle.clone().into_data().sapling_bundle().map(|bundle| bundle.shielded_spends.len() + bundle.shielded_outputs.len()).unwrap_or_default() as u64
+                                        } else {
+                                            0
+                                        }
+                                    },
+                                    _ => 0,
+                                }).unwrap_or_default()
+                            },
+                        }
+                    }).sum::<u64>();
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
@@ -539,7 +542,7 @@ impl Transaction {
                         memo,
                         data: encoded_tx_data,
                         extra_sections,
-                        masp_sections,
+                        notes,
                         exit_code: inner_tx_status,
                         kind: tx_kind,
                     };

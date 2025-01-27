@@ -132,10 +132,7 @@ pub fn get_gas_estimates(
                         gas_estimate.increase_transparent_transfer();
                     }
                     TransactionKind::MixedTransfer(_) => {
-                        let notes = tx
-                            .clone()
-                            .masp_sections
-                            .unwrap_or(1);
+                        let notes = tx.notes;
                         gas_estimate.increase_mixed_transfer(notes)
                     }
                     TransactionKind::IbcMsgTransfer(_) => {
@@ -161,30 +158,23 @@ pub fn get_gas_estimates(
                         gas_estimate.increase_reveal_pk()
                     }
                     TransactionKind::ShieldedTransfer(_) => {
-                        let notes = tx
-                            .clone()
-                            .masp_sections
-                            .unwrap_or(1);
+                        let notes = tx.notes;
                         gas_estimate.increase_shielded_transfer(notes);
                     }
                     TransactionKind::ShieldingTransfer(_) => {
-                        gas_estimate.increase_shielding_transfer()
+                        let notes = tx.notes;
+                        gas_estimate.increase_shielding_transfer(notes)
                     }
                     TransactionKind::UnshieldingTransfer(_) => {
-                        let notes = tx
-                            .clone()
-                            .masp_sections
-                            .unwrap_or(1);
-                        gas_estimate.increase_ibc_unshielding_transfer(notes)
+                        let notes = tx.notes;
+                        gas_estimate.increase_unshielding_transfer(notes)
                     }
                     TransactionKind::IbcShieldingTransfer(_) => {
-                        gas_estimate.increase_ibc_shielding_transfer()
+                        let notes = tx.notes;
+                        gas_estimate.increase_ibc_shielding_transfer(notes)
                     }
                     TransactionKind::IbcUnshieldingTransfer(_) => {
-                        let notes = tx
-                            .clone()
-                            .masp_sections
-                            .unwrap_or(1);
+                        let notes = tx.notes;
                         gas_estimate.increase_ibc_unshielding_transfer(notes)
                     }
                     _ => (),

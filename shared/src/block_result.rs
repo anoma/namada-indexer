@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::fmt;
 use std::str::FromStr;
 
 use namada_sdk::events::extend::{IndexedMaspData, MaspTxRef};
@@ -109,7 +110,7 @@ impl BatchResults {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TxApplied {
     pub code: TxEventStatusCode,
     pub gas: u64,
@@ -117,7 +118,21 @@ pub struct TxApplied {
     pub height: u64,
     pub batch: BatchResults,
     pub info: String,
-    pub masp_refs: HashMap<u64, Vec<MaspRef>>,
+    pub masp_refs: HashMap<u64, Vec<MaspTxRef>>,
+}
+
+impl fmt::Debug for TxApplied {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TxApplied")
+            .field("code", &self.code)
+            .field("gas", &self.gas)
+            .field("hash", &self.hash)
+            .field("height", &self.height)
+            .field("batch", &self.batch)
+            .field("info", &self.info)
+            .field("masp_refs_len", &self.masp_refs.len())
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -207,14 +222,7 @@ impl TxAttributesType {
                                 .masp_refs
                                 .0
                                 .iter()
-                                .map(|masp_ref| match masp_ref {
-                                    MaspTxRef::MaspSection(masp_tx_id) => {
-                                        MaspRef::Native(masp_tx_id.to_string())
-                                    }
-                                    MaspTxRef::IbcData(hash) => {
-                                        MaspRef::Ibc(hash.to_string())
-                                    }
-                                })
+                                .map(|masp_ref| masp_ref.clone())
                                 .collect();
                             HashMap::from_iter([(data.tx_index.0 as u64, refs)])
                         } else {
@@ -357,9 +365,8 @@ impl BlockResult {
         exit_status.unwrap_or(TransactionExitStatus::Rejected)
     }
 
-    pub fn masp_refs(&self, wrapper_hash: &Id, index: u64) -> Vec<MaspRef> {
-        self
-            .end_events
+    pub fn masp_refs(&self, wrapper_hash: &Id, index: u64) -> Vec<MaspTxRef> {
+        self.end_events
             .iter()
             .filter_map(|event| {
                 if let Some(TxAttributesType::TxApplied(data)) =
@@ -371,7 +378,9 @@ impl BlockResult {
                 }
             })
             .find(|attributes| attributes.hash.eq(wrapper_hash))
-            .map(|event| event.masp_refs.get(&index).cloned().unwrap_or_default())
+            .map(|event| {
+                event.masp_refs.get(&index).cloned().unwrap_or_default()
+            })
             .unwrap_or_default()
     }
 }

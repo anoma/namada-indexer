@@ -38,22 +38,6 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
-    #[diesel(postgres_type(name = "payment_kind"))]
-    pub struct PaymentKind;
-
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
-    #[diesel(postgres_type(name = "payment_recurrence"))]
-    pub struct PaymentRecurrence;
-
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
     #[diesel(postgres_type(name = "history_kind"))]
     pub struct HistoryKind;
 
@@ -64,6 +48,22 @@ pub mod sql_types {
     )]
     #[diesel(postgres_type(name = "ibc_status"))]
     pub struct IbcStatus;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_kind"))]
+    pub struct PaymentKind;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_recurrence"))]
+    pub struct PaymentRecurrence;
 
     #[derive(
         diesel::query_builder::QueryId,
@@ -202,6 +202,8 @@ diesel::table! {
         reveal_pk -> Int4,
         tx_size -> Int4,
         signatures -> Int4,
+        ibc_unshielding_transfer -> Int4,
+        ibc_shielding_transfer -> Int4,
     }
 }
 
