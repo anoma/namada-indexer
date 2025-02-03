@@ -143,6 +143,8 @@ impl GasService {
             estimate += withdraw * gas.get(&TransactionKind::Withdraw).unwrap();
             estimate +=
                 reveal_pk * gas.get(&TransactionKind::RevealPk).unwrap();
+            estimate +=
+                redelegate * gas.get(&TransactionKind::Redelegation).unwrap();
 
             Ok(GasEstimate {
                 min: estimate,
