@@ -93,6 +93,7 @@ pub trait PosRepositoryTrait {
     async fn find_rewards_by_address(
         &self,
         address: String,
+        epoch: Option<u64>,
     ) -> Result<Vec<PoSRewardDb>, String>;
 
     async fn find_rewards_by_delegator_and_validator_and_epoch(
@@ -338,15 +339,18 @@ impl PosRepositoryTrait for PosRepository {
     async fn find_rewards_by_address(
         &self,
         address: String,
+        epoch: Option<u64>,
     ) -> Result<Vec<PoSRewardDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            let epoch = pos_rewards::table
-                .select(diesel::dsl::max(pos_rewards::epoch))
-                .first::<Option<_>>(conn)
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
+            let epoch = epoch.map(|e| e as i32).unwrap_or_else(|| {
+                pos_rewards::table
+                    .select(diesel::dsl::max(pos_rewards::epoch))
+                    .first::<Option<_>>(conn)
+                    .unwrap_or(Some(0))
+                    .unwrap_or(0)
+            });
 
             pos_rewards::table
                 .filter(pos_rewards::epoch.eq(&epoch))

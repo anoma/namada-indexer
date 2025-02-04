@@ -5,8 +5,8 @@ use axum_extra::extract::Query;
 use axum_macros::debug_handler;
 
 use crate::dto::pos::{
-    AllValidatorsQueryParams, BondsDto, UnbondsDto, ValidatorQueryParams,
-    ValidatorStateDto, WithdrawsDto,
+    AllValidatorsQueryParams, BondsDto, RewardsDto, UnbondsDto,
+    ValidatorQueryParams, ValidatorStateDto, WithdrawsDto,
 };
 use crate::error::api::ApiError;
 use crate::response::pos::{
@@ -149,10 +149,14 @@ pub async fn get_withdraws(
 #[debug_handler]
 pub async fn get_rewards(
     _headers: HeaderMap,
+    query: Query<RewardsDto>,
     Path(address): Path<String>,
     State(state): State<CommonState>,
 ) -> Result<Json<Vec<Reward>>, ApiError> {
-    let rewards = state.pos_service.get_rewards_by_address(address).await?;
+    let rewards = state
+        .pos_service
+        .get_rewards_by_address(address, query.epoch)
+        .await?;
     Ok(Json(rewards))
 }
 

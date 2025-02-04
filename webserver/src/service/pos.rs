@@ -273,12 +273,13 @@ impl PosService {
     pub async fn get_rewards_by_address(
         &self,
         address: String,
+        epoch: Option<u64>,
     ) -> Result<Vec<Reward>, PoSError> {
         // TODO: could optimize and make a single query
 
         let db_rewards = self
             .pos_repo
-            .find_rewards_by_address(address)
+            .find_rewards_by_address(address, epoch)
             .await
             .map_err(PoSError::Database)?;
 
