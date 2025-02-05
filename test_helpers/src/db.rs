@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicU32;
 use std::{env, thread};
 
 use deadpool_diesel::postgres::Pool;
-use diesel::{sql_query, Connection, PgConnection, RunQueryDsl};
+use diesel::{Connection, PgConnection, RunQueryDsl, sql_query};
 use orm::migrations::run_migrations;
 use shared::error::{AsDbError, ContextDbInteractError};
 
