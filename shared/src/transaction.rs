@@ -12,7 +12,7 @@ use namada_tx::data::pos::{
     BecomeValidator, Bond, ClaimRewards, CommissionChange, MetaDataChange,
     Redelegation, Unbond, Withdraw,
 };
-use namada_tx::data::{compute_inner_tx_hash, TxType};
+use namada_tx::data::{TxType, compute_inner_tx_hash};
 use namada_tx::either::Either;
 use namada_tx::{Section, Tx};
 use serde::Serialize;

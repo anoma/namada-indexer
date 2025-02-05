@@ -30,10 +30,10 @@ use shared::id::Id;
 use shared::token::Token;
 use shared::utils::BalanceChange;
 use shared::validator::ValidatorSet;
-use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 use tendermint_rpc::HttpClient;
-use tokio_retry::strategy::{jitter, ExponentialBackoff};
+use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 use tokio_retry::Retry;
+use tokio_retry::strategy::{ExponentialBackoff, jitter};
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
