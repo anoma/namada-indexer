@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.81-bookworm AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.82-bookworm AS chef
 RUN apt-get update && apt-get install -y protobuf-compiler build-essential clang-tools-14
 
 FROM chef AS planner
