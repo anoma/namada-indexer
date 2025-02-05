@@ -1,4 +1,0 @@
-[toolchain]
-channel = "1.79.0"
-components = ["rustc", "cargo", "rust-std", "rust-docs", "rls", "rust-src", "rust-analysis", "clippy", "rustfmt"]
-targets = []

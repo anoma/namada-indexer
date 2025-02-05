@@ -1,12 +1,12 @@
 use std::collections::BTreeSet;
 
 use fake::Fake;
+use namada_governance::ProposalType;
 use namada_governance::storage::proposal::{
     AddRemove, PGFAction, PGFIbcTarget, PGFInternalTarget, PGFTarget,
     StorageProposal,
 };
 use namada_governance::utils::TallyType as NamadaTallyType;
-use namada_governance::ProposalType;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
 use namada_sdk::token::Amount;
 use rand::distributions::{Distribution, Standard};

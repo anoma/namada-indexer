@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
-use axum::Json;
 use axum_extra::extract::Query;
 use strum::VariantArray;
 

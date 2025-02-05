@@ -1,27 +1,34 @@
+RUST_STABLE := trim(read("rust-stable-version"))
+RUST_NIGTHLY := trim(read("rust-nightly-version"))
+
 devs:
-    rustup toolchain install 1.79.0 --no-self-update --component clippy,rustfmt
-    rustup toolchain install nightly-2024-06-14 --no-self-update --component clippy,rustfmt
+    rustup toolchain install {{ RUST_STABLE }} --no-self-update --component clippy,rustfmt
+    rustup toolchain install {{ RUST_NIGTHLY }} --no-self-update --component clippy,rustfmt
+
+toolchains:
+    @echo {{ RUST_STABLE }}
+    @echo {{ RUST_NIGTHLY }}
 
 build:
-    cargo build --all
+    cargo +{{ RUST_STABLE }} build --all
 
 check:
-    cargo check --all
+    cargo +{{ RUST_STABLE }} check --all
 
 fmt:
-    cargo +nightly-2024-06-14 fmt --all
+    cargo +{{ RUST_NIGTHLY }} fmt --all
 
 fmt-check:
-    cargo +nightly-2024-06-14 fmt --all --check
+    cargo +{{ RUST_NIGTHLY }} fmt --all --check
 
 test:
-    cargo test
+    cargo +{{ RUST_STABLE }} test
 
 clippy:
-    cargo clippy
+    cargo +{{ RUST_STABLE }} clippy
 
 clippy-fix:
-    cargo clippy --all --fix --allow-dirty --allow-staged
+    cargo +{{ RUST_STABLE }} clippy --all --fix --allow-dirty --allow-staged
 
 docker-up:
     docker compose up
@@ -30,7 +37,7 @@ docker-up-d:
     docker compose up -d
 
 clean:
-    cargo clean
+    cargo +{{ RUST_STABLE }} clean
 
 run-chain:
     (cd chain && ./run.sh)
