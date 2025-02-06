@@ -141,23 +141,19 @@ impl TransactionKind {
                 TransactionKind::ClaimRewards(data)
             }
             "tx_init_proposal" => {
-                let data =
-                    InitProposalData::try_from_slice(data).ok();
+                let data = InitProposalData::try_from_slice(data).ok();
                 TransactionKind::InitProposal(data)
             }
             "tx_vote_proposal" => {
-                let data =
-                    VoteProposalData::try_from_slice(data).ok();
+                let data = VoteProposalData::try_from_slice(data).ok();
                 TransactionKind::ProposalVote(data)
             }
             "tx_change_validator_metadata" => {
-                let data =
-                    MetaDataChange::try_from_slice(data).ok();
+                let data = MetaDataChange::try_from_slice(data).ok();
                 TransactionKind::MetadataChange(data)
             }
             "tx_commission_change" => {
-                let data =
-                    CommissionChange::try_from_slice(data).ok();
+                let data = CommissionChange::try_from_slice(data).ok();
                 TransactionKind::CommissionChange(data)
             }
             "tx_reveal_pk" => {
@@ -215,8 +211,7 @@ impl TransactionKind {
                 TransactionKind::UnjailValidator(data)
             }
             "tx_become_validator" => {
-                let data =
-                    BecomeValidator::try_from_slice(data).ok();
+                let data = BecomeValidator::try_from_slice(data).ok();
                 TransactionKind::BecomeValidator(data.map(Box::new))
             }
             _ => {
