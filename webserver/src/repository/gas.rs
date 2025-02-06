@@ -32,6 +32,7 @@ pub trait GasRepositoryTrait {
     #[allow(clippy::too_many_arguments)]
     async fn find_gas_estimates(
         &self,
+        token: String,
         bond: u64,
         redelegate: u64,
         claim_rewards: u64,
@@ -99,6 +100,7 @@ impl GasRepositoryTrait for GasRepository {
     #[allow(clippy::too_many_arguments)]
     async fn find_gas_estimates(
         &self,
+        token: String,
         bond: u64,
         redelegate: u64,
         claim_rewards: u64,
@@ -155,6 +157,7 @@ impl GasRepositoryTrait for GasRepository {
                         .on(gas_estimations::dsl::wrapper_id
                             .eq(wrapper_transactions::dsl::id)),
                 )
+                .filter(wrapper_transactions::dsl::fee_token.eq(token))
                 .limit(100)
                 .select((
                     min(wrapper_transactions::dsl::gas_used)

@@ -33,6 +33,7 @@ pub struct GasEstimateQuery {
     pub signatures: Option<u64>,
     #[validate(range(min = 1, max = 100000))]
     pub tx_size: Option<u64>,
+    pub token: String,
 }
 
 impl GasEstimateQuery {

@@ -218,12 +218,7 @@ impl TxAttributesType {
                         if let Ok(data) =
                             serde_json::from_str::<IndexedMaspData>(data)
                         {
-                            let refs = data
-                                .masp_refs
-                                .0
-                                .iter()
-                                .map(|masp_ref| masp_ref.clone())
-                                .collect();
+                            let refs = data.masp_refs.0.to_vec();
                             HashMap::from_iter([(data.tx_index.0 as u64, refs)])
                         } else {
                             HashMap::default()
