@@ -6,6 +6,7 @@ pub mod checksums;
 pub mod crawler;
 pub mod crawler_state;
 pub mod error;
+pub mod futures;
 pub mod gas;
 pub mod genesis;
 pub mod header;
