@@ -117,20 +117,11 @@ impl TransactionKind {
                 }
             }
             "tx_bond" => {
-                let data = if let Ok(data) = Bond::try_from_slice(data) {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = Bond::try_from_slice(data).ok();
                 TransactionKind::Bond(data)
             }
             "tx_redelegate" => {
-                let data = if let Ok(data) = Redelegation::try_from_slice(data)
-                {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = Redelegation::try_from_slice(data).ok();
                 TransactionKind::Redelegation(data)
             }
             "tx_unbond" => {
@@ -142,56 +133,31 @@ impl TransactionKind {
                 TransactionKind::Unbond(data)
             }
             "tx_withdraw" => {
-                let data = if let Ok(data) = Withdraw::try_from_slice(data) {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = Withdraw::try_from_slice(data).ok();
                 TransactionKind::Withdraw(data)
             }
             "tx_claim_rewards" => {
-                let data = if let Ok(data) = ClaimRewards::try_from_slice(data)
-                {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = ClaimRewards::try_from_slice(data).ok();
                 TransactionKind::ClaimRewards(data)
             }
             "tx_init_proposal" => {
                 let data =
-                    if let Ok(data) = InitProposalData::try_from_slice(data) {
-                        Some(data)
-                    } else {
-                        None
-                    };
+                    InitProposalData::try_from_slice(data).ok();
                 TransactionKind::InitProposal(data)
             }
             "tx_vote_proposal" => {
                 let data =
-                    if let Ok(data) = VoteProposalData::try_from_slice(data) {
-                        Some(data)
-                    } else {
-                        None
-                    };
+                    VoteProposalData::try_from_slice(data).ok();
                 TransactionKind::ProposalVote(data)
             }
             "tx_change_validator_metadata" => {
                 let data =
-                    if let Ok(data) = MetaDataChange::try_from_slice(data) {
-                        Some(data)
-                    } else {
-                        None
-                    };
+                    MetaDataChange::try_from_slice(data).ok();
                 TransactionKind::MetadataChange(data)
             }
             "tx_commission_change" => {
                 let data =
-                    if let Ok(data) = CommissionChange::try_from_slice(data) {
-                        Some(data)
-                    } else {
-                        None
-                    };
+                    CommissionChange::try_from_slice(data).ok();
                 TransactionKind::CommissionChange(data)
             }
             "tx_reveal_pk" => {
@@ -203,19 +169,11 @@ impl TransactionKind {
                 TransactionKind::RevealPk(data)
             }
             "tx_deactivate_validator" => {
-                let data = if let Ok(data) = Address::try_from_slice(data) {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = Address::try_from_slice(data).ok();
                 TransactionKind::DeactivateValidator(data)
             }
             "tx_reactivate_validator" => {
-                let data = if let Ok(data) = Address::try_from_slice(data) {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = Address::try_from_slice(data).ok();
                 TransactionKind::ReactivateValidator(data)
             }
             "tx_ibc" => {
@@ -253,20 +211,12 @@ impl TransactionKind {
                 }
             }
             "tx_unjail_validator" => {
-                let data = if let Ok(data) = Address::try_from_slice(data) {
-                    Some(data)
-                } else {
-                    None
-                };
+                let data = Address::try_from_slice(data).ok();
                 TransactionKind::UnjailValidator(data)
             }
             "tx_become_validator" => {
                 let data =
-                    if let Ok(data) = BecomeValidator::try_from_slice(data) {
-                        Some(data)
-                    } else {
-                        None
-                    };
+                    BecomeValidator::try_from_slice(data).ok();
                 TransactionKind::BecomeValidator(data.map(Box::new))
             }
             _ => {
