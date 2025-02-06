@@ -117,7 +117,10 @@ pub fn get_gas_estimates(
     wrapper_txs
         .iter()
         .map(|wrapper_tx| {
-            let mut gas_estimate = GasEstimation::new(wrapper_tx.tx_id.clone());
+            let mut gas_estimate = GasEstimation::new(
+                wrapper_tx.tx_id.clone(),
+                wrapper_tx.fee.gas_token.clone(),
+            );
             gas_estimate.signatures = wrapper_tx.total_signatures;
             gas_estimate.size = wrapper_tx.size;
 

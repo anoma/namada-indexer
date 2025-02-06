@@ -50,6 +50,7 @@ pub async fn get_gas_estimate(
     let gas = state
         .gas_service
         .estimate_gas(
+            query.token,
             query.bond.unwrap_or(0),
             query.redelegate.unwrap_or(0),
             query.claim_rewards.unwrap_or(0),

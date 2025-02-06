@@ -52,6 +52,7 @@ impl GasService {
     #[allow(clippy::too_many_arguments)]
     pub async fn estimate_gas(
         &self,
+        token: String,
         bond: u64,
         redelegate: u64,
         claim_rewards: u64,
@@ -72,6 +73,7 @@ impl GasService {
         let (min, max, avg, count) = self
             .gas_repo
             .find_gas_estimates(
+                token,
                 bond,
                 redelegate,
                 claim_rewards,

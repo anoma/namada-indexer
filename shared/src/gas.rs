@@ -27,10 +27,11 @@ pub struct GasEstimation {
     pub reveal_pk: u64,
     pub size: u64,
     pub signatures: u64,
+    pub token: Id,
 }
 
 impl GasEstimation {
-    pub fn new(tx_id: Id) -> Self {
+    pub fn new(tx_id: Id, token: Id) -> Self {
         Self {
             wrapper_id: tx_id,
             transparent_transfer: 0,
@@ -50,6 +51,7 @@ impl GasEstimation {
             reveal_pk: 0,
             size: 0,
             signatures: 0,
+            token,
         }
     }
 

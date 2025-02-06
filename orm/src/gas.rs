@@ -54,6 +54,7 @@ pub struct GasEstimationDb {
     pub reveal_pk: i32,
     pub signatures: i32,
     pub tx_size: i32,
+    pub token: String,
 }
 
 pub type GasEstimationInsertDb = GasEstimationDb;
@@ -78,6 +79,7 @@ impl From<GasEstimation> for GasEstimationInsertDb {
             reveal_pk: value.reveal_pk as i32,
             signatures: value.signatures as i32,
             tx_size: value.size as i32,
+            token: value.token.to_string(),
         }
     }
 }

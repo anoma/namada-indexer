@@ -204,6 +204,7 @@ diesel::table! {
         signatures -> Int4,
         ibc_unshielding_transfer -> Int4,
         ibc_shielding_transfer -> Int4,
+        token -> Varchar,
     }
 }
 
