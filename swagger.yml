@@ -555,6 +555,11 @@ paths:
             minimum: 1
             maximum: 100
         - in: query
+          name: token
+          schema:
+            type: string
+          required: true
+        - in: query
           name: unbond
           schema:
             type: integer
