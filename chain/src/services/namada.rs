@@ -42,6 +42,30 @@ pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
     Ok(Id::from(native_token))
 }
 
+pub async fn query_native_token_total_supply(
+    client: &HttpClient,
+) -> anyhow::Result<Amount> {
+    let native_token = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+
+    rpc::get_token_total_supply(client, &native_token)
+        .await
+        .map(Amount::from)
+        .context("Failed to query total supply of native token")
+}
+
+pub async fn query_native_token_effective_supply(
+    client: &HttpClient,
+) -> anyhow::Result<Amount> {
+    rpc::get_effective_native_supply(client)
+        .await
+        .map(Amount::from)
+        .context("Failed to query effective supply of native token")
+}
+
 pub async fn get_first_block_in_epoch(
     client: &HttpClient,
 ) -> anyhow::Result<BlockHeight> {
