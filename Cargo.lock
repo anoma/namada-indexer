@@ -6834,6 +6834,7 @@ dependencies = [
  "namada_proof_of_stake",
  "namada_sdk",
  "namada_tx",
+ "num-bigint",
  "rand",
  "serde",
  "serde_json",
