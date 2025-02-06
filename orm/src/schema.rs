@@ -38,6 +38,22 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "payment_kind"))]
+    pub struct PaymentKind;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_recurrence"))]
+    pub struct PaymentRecurrence;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "history_kind"))]
     pub struct HistoryKind;
 
@@ -278,6 +294,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::PaymentRecurrence;
+    use super::sql_types::PaymentKind;
+
+    public_good_funding (id) {
+        id -> Int4,
+        proposal_id -> Int4,
+        payment_recurrence -> PaymentRecurrence,
+        payment_kind -> PaymentKind,
+        receipient -> Varchar,
+        amount -> Numeric,
+    }
+}
+
+diesel::table! {
     revealed_pk (id) {
         id -> Int4,
         address -> Varchar,
@@ -365,6 +396,7 @@ diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
+diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
 diesel::joinable!(transaction_history -> inner_transactions (inner_tx_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 diesel::joinable!(wrapper_transactions -> blocks (block_height));
@@ -384,6 +416,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     ibc_token,
     inner_transactions,
     pos_rewards,
+    public_good_funding,
     revealed_pk,
     token,
     transaction_history,

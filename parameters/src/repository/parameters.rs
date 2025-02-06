@@ -19,6 +19,8 @@ pub fn upsert_chain_parameters(
                 .eq(excluded(chain_parameters::max_block_time)),
             chain_parameters::cubic_slashing_window_length
                 .eq(excluded(chain_parameters::cubic_slashing_window_length)),
+            chain_parameters::checksums
+                .eq(excluded(chain_parameters::checksums)),
         ))
         .execute(transaction_conn)
         .context("Failed to update chain_parameters state in db")?;

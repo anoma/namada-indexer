@@ -1,11 +1,11 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
-use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
-use axum::Json;
+use axum::response::sse::{Event, KeepAlive};
 use futures::Stream;
 use tokio_stream::StreamExt;
 

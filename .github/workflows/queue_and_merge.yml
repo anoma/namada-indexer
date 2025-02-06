@@ -34,8 +34,12 @@ jobs:
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: rust_toolchain
+        run: echo "version=$(cat $GITHUB_WORKSPACE/rust-stable-version | tr -d '\n')" >> $GITHUB_OUTPUT
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: ${{ steps.rust_toolchain.outputs.version }}
+          components: clippy
           cache: true
       - run: just clippy
 
@@ -67,8 +71,11 @@ jobs:
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: rust_toolchain
+        run: echo "version=$(cat $GITHUB_WORKSPACE/rust-stable-version | tr -d '\n')" >> $GITHUB_OUTPUT
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: ${{ steps.rust_toolchain.outputs.version }}
           cache: true
       - run: just test
         env:
@@ -97,9 +104,11 @@ jobs:
         with:
           version: "25.0"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: rust_toolchain
+        run: echo "version=$(cat $GITHUB_WORKSPACE/rust-nightly-version | tr -d '\n')" >> $GITHUB_OUTPUT
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: nightly-2024-06-14
+          toolchain: ${{ steps.rust_toolchain.outputs.version }}
           components: rustfmt
           cache: true
       - run: just fmt-check

@@ -78,12 +78,14 @@ async fn crawling_fn(
         let timestamp = Utc::now().naive_utc();
         update_crawler_timestamp(&conn, timestamp).await?;
 
-        tracing::warn!(
-            "Not enough time has passed since last crawl, skipping..."
+        tracing::trace!(
+            "Not enough time has passed since last crawl, waiting..."
         );
 
         return Err(MainError::NoAction);
     }
+
+    tracing::debug!("Querying parameters...");
 
     let parameters = namada_service::get_parameters(&client)
         .await
@@ -99,6 +101,8 @@ async fn crawling_fn(
 
     let timestamp = DateTimeUtc::now().0.timestamp();
     let crawler_state = IntervalCrawlerState { timestamp };
+
+    tracing::info!("Queried parameters successfully",);
 
     conn.interact(move |conn| {
         conn.build_transaction()
@@ -136,6 +140,8 @@ async fn crawling_fn(
     .and_then(identity)
     .into_db_error()?;
 
+    tracing::info!(sleep_for = sleep_for, "Inserted parameters into database");
+
     // Once we are done processing, we reset the instant
     *instant = Instant::now();
 
@@ -143,8 +149,6 @@ async fn crawling_fn(
 }
 
 fn can_process(instant: &MutexGuard<Instant>, sleep_for: u64) -> bool {
-    tracing::info!("Attempting to process parameters data");
-
     let time_elapsed = instant.elapsed().as_secs();
     time_elapsed >= sleep_for
 }

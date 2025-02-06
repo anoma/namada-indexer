@@ -78,7 +78,7 @@ impl From<TransactionKind> for TransactionKindDb {
             TransactionKind::RevealPk(_) => Self::RevealPk,
             TransactionKind::BecomeValidator(_) => Self::BecomeValidator,
             TransactionKind::UnjailValidator(_) => Self::UnjailValidator,
-            TransactionKind::Unknown => Self::Unknown,
+            TransactionKind::Unknown(_) => TransactionKindDb::Unknown,
         }
     }
 }

@@ -1,7 +1,7 @@
-use deadpool_diesel::postgres::Object;
 use deadpool_diesel::InteractError;
+use deadpool_diesel::postgres::Object;
 use diesel_migrations::{
-    embed_migrations, EmbeddedMigrations, MigrationHarness,
+    EmbeddedMigrations, MigrationHarness, embed_migrations,
 };
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");

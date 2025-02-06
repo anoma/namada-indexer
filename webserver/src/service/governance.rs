@@ -68,6 +68,19 @@ impl GovernanceService {
         ))
     }
 
+    pub async fn find_proposal_data(
+        &self,
+        proposal_id: u64,
+    ) -> Result<Option<Option<String>>, GovernanceError> {
+        let db_proposal = self
+            .governance_repo
+            .find_governance_proposals_by_id(proposal_id as i32)
+            .await
+            .map_err(GovernanceError::Database)?;
+
+        Ok(db_proposal.map(|proposal| proposal.data))
+    }
+
     pub async fn find_all_governance_proposals(
         &self,
         status: Option<ProposalStatus>,

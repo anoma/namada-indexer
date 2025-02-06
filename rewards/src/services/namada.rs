@@ -40,7 +40,7 @@ pub async fn query_delegation_pairs(
 
 pub async fn query_rewards(
     client: &HttpClient,
-    delegation_pairs: HashSet<DelegationPair>,
+    delegation_pairs: &HashSet<DelegationPair>,
 ) -> anyhow::Result<Vec<Reward>> {
     let mut all_rewards: Vec<Reward> = Vec::new();
 
@@ -151,7 +151,7 @@ async fn process_batch(
             );
 
             Some(Reward {
-                delegation_pair: delegation,
+                delegation_pair: delegation.clone(),
                 amount: Amount::from(reward),
             })
         })

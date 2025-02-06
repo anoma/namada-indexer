@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use futures::{StreamExt, TryStreamExt};
 use namada_core::chain::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
@@ -9,8 +9,8 @@ use namada_core::chain::{
 use namada_sdk::address::{Address as NamadaSdkAddress, InternalAddress};
 use namada_sdk::collections::HashMap;
 use namada_sdk::hash::Hash;
-use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
 use namada_sdk::ibc::IbcTokenHash;
+use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
@@ -77,7 +77,7 @@ pub async fn query_balance(
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
-            tracing::info!(
+            tracing::debug!(
                 "Fetching balance change for {} ...",
                 balance_change.address
             );
@@ -781,4 +781,19 @@ pub(super) fn to_block_height(
     block_height: BlockHeight,
 ) -> NamadaSdkBlockHeight {
     NamadaSdkBlockHeight::from(block_height as u64)
+}
+
+pub async fn get_pgf_receipients(
+    client: &HttpClient,
+    native_token: Id,
+) -> HashSet<BalanceChange> {
+    let payments = rpc::query_pgf_fundings(client).await.unwrap_or_default();
+
+    payments
+        .into_iter()
+        .map(|payment| BalanceChange {
+            address: Id::Account(payment.detail.target()),
+            token: Token::Native(native_token.clone()),
+        })
+        .collect::<HashSet<_>>()
 }

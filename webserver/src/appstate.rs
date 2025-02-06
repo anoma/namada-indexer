@@ -7,11 +7,11 @@ use deadpool_redis::{Config, Connection, Pool as CachePool};
 #[derive(Clone)]
 pub struct AppState {
     db: DbPool,
-    cache: CachePool,
+    cache: Option<CachePool>,
 }
 
 impl AppState {
-    pub fn new(db_url: String, cache_url: String) -> Self {
+    pub fn new(db_url: String, cache_url: Option<String>) -> Self {
         let max_pool_size = env::var("DATABASE_POOL_SIZE")
             .unwrap_or_else(|_| 16.to_string())
             .parse::<usize>()
@@ -35,27 +35,33 @@ impl AppState {
             }
         };
 
-        let cache_pool = Config::from_url(cache_url)
-            .create_pool(Some(deadpool_redis::Runtime::Tokio1));
-        let cache_pool = match cache_pool {
-            Ok(pool) => pool,
-            Err(e) => {
-                tracing::info!("Error building redis pool: {}", e.to_string());
-                exit(1);
-            }
-        };
+        let cache = cache_url.map(|url| {
+            let cache_pool = Config::from_url(url)
+                .create_pool(Some(deadpool_redis::Runtime::Tokio1));
 
-        Self {
-            db: pool,
-            cache: cache_pool,
-        }
+            match cache_pool {
+                Ok(pool) => pool,
+                Err(e) => {
+                    tracing::info!(
+                        "Error building redis pool: {}",
+                        e.to_string()
+                    );
+                    exit(1);
+                }
+            }
+        });
+
+        Self { db: pool, cache }
     }
 
     pub async fn get_db_connection(&self) -> Object {
         self.db.get().await.unwrap()
     }
 
-    pub async fn get_cache_connection(&self) -> Connection {
-        self.cache.get().await.unwrap()
+    pub async fn get_cache_connection(&self) -> Option<Connection> {
+        match &self.cache {
+            None => None,
+            Some(cache) => Some(cache.get().await.unwrap()),
+        }
     }
 }

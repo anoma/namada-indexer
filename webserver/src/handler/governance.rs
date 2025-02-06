@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
-use axum::Json;
 use axum_macros::debug_handler;
 
 use crate::dto::governance::{ProposalQueryParams, ProposalVotesQueryparams};
@@ -59,6 +59,25 @@ pub async fn get_governance_proposal_by_id(
 
     if let Some(proposal) = proposal {
         Ok(Json(proposal))
+    } else {
+        Err(GovernanceError::NotFound(proposal_id).into())
+    }
+}
+
+#[debug_handler]
+pub async fn get_proposal_data_by_proposal_id(
+    _headers: HeaderMap,
+    Path(proposal_id): Path<u64>,
+    State(state): State<CommonState>,
+) -> Result<String, ApiError> {
+    let proposal = state.gov_service.find_proposal_data(proposal_id).await?;
+
+    if let Some(data) = proposal {
+        if let Some(data) = data {
+            Ok(data)
+        } else {
+            Err(GovernanceError::DataNotFound(proposal_id).into())
+        }
     } else {
         Err(GovernanceError::NotFound(proposal_id).into())
     }
