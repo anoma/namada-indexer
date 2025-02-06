@@ -153,6 +153,7 @@ async fn process_batch(
             Some(Reward {
                 delegation_pair: delegation.clone(),
                 amount: Amount::from(reward),
+                epoch: epoch as i32,
             })
         })
         .map(futures::future::ready)
