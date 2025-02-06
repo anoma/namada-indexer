@@ -26,14 +26,15 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::futures::AwaitContainer;
 use shared::id::Id;
 use shared::token::Token;
 use shared::utils::BalanceChange;
 use shared::validator::ValidatorSet;
-use tendermint_rpc::HttpClient;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
+use tendermint_rpc::HttpClient;
+use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
-use tokio_retry::strategy::{ExponentialBackoff, jitter};
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
@@ -232,6 +233,46 @@ async fn crawling_fn(
         .collect::<Vec<Token>>();
 
     let addresses = block.addresses_with_balance_change(&native_token);
+
+    let _native_token_supplies = first_block_in_epoch
+        .eq(&block_height)
+        .then_some(async {
+            let total_supply_fut =
+                namada_service::query_native_token_total_supply(&client);
+            let effective_supply_fut =
+                namada_service::query_native_token_effective_supply(&client);
+
+            let (total_supply, effective_supply) =
+                futures::try_join!(total_supply_fut, effective_supply_fut)
+                    .context("Failed to query native token supplies")?;
+
+            anyhow::Ok((total_supply, effective_supply))
+        })
+        .future()
+        .await
+        .transpose()
+        .into_rpc_error()?;
+
+    let validators_addresses = if first_block_in_epoch.eq(&block_height) {
+        namada_service::get_all_consensus_validators_addresses_at(
+            &client,
+            epoch - 1,
+            native_token.clone(),
+        )
+        .await
+        .into_rpc_error()?
+    } else {
+        HashSet::default()
+    };
+
+    let block_proposer_address = block
+        .header
+        .proposer_address_namada
+        .as_ref()
+        .map(|address| BalanceChange {
+            address: Id::Account(address.clone()),
+            token: Token::Native(native_token.clone()),
+        });
 
     let pgf_receipient_addresses = if first_block_in_epoch.eq(&block_height) {
         conn.interact(move |conn| {
