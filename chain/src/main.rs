@@ -26,6 +26,7 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::futures::AwaitContainer;
 use shared::id::Id;
 use shared::token::Token;
 use shared::utils::BalanceChange;
@@ -234,6 +235,25 @@ async fn crawling_fn(
             native_token.clone(),
         ));
     let addresses = block.addresses_with_balance_change(&native_token);
+
+    let _native_token_supplies = first_block_in_epoch
+        .eq(&block_height)
+        .then_some(async {
+            let total_supply_fut =
+                namada_service::query_native_token_total_supply(&client);
+            let effective_supply_fut =
+                namada_service::query_native_token_effective_supply(&client);
+
+            let (total_supply, effective_supply) =
+                futures::try_join!(total_supply_fut, effective_supply_fut)
+                    .context("Failed to query native token supplies")?;
+
+            anyhow::Ok((total_supply, effective_supply))
+        })
+        .future()
+        .await
+        .transpose()
+        .into_rpc_error()?;
 
     let validators_addresses = if first_block_in_epoch.eq(&block_height) {
         namada_service::get_all_consensus_validators_addresses_at(
