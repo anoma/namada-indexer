@@ -18,6 +18,7 @@ use namada_sdk::rpc::{
 use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{borsh, rpc, token};
+use orm::token_supplies_per_epoch::TokenSupplies;
 use shared::balance::{Amount, Balance, Balances};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
@@ -820,4 +821,24 @@ pub async fn get_pgf_receipients(
             token: Token::Native(native_token.clone()),
         })
         .collect::<HashSet<_>>()
+}
+
+pub async fn get_token_supplies(
+    client: &HttpClient,
+    native_token: &Id,
+    epoch: u32,
+) -> anyhow::Result<TokenSupplies> {
+    let total_supply_fut = query_native_token_total_supply(client);
+    let effective_supply_fut = query_native_token_effective_supply(client);
+
+    let (total_supply, effective_supply) =
+        futures::try_join!(total_supply_fut, effective_supply_fut)
+            .context("Failed to query native token supplies")?;
+
+    anyhow::Ok(TokenSupplies {
+        address: native_token.to_string(),
+        epoch: epoch as _,
+        total: total_supply.into(),
+        effective: Some(effective_supply.into()),
+    })
 }
