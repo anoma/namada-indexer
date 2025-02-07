@@ -15,6 +15,7 @@ pub mod pos_rewards;
 pub mod revealed_pk;
 pub mod schema;
 pub mod token;
+pub mod token_supplies_per_epoch;
 pub mod transactions;
 pub mod unbond;
 pub mod validators;
