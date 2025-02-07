@@ -18,8 +18,7 @@ use namada_sdk::rpc::{
 use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{borsh, rpc, token};
-use orm::token_supplies_per_epoch::TokenSupplies;
-use shared::balance::{Amount, Balance, Balances};
+use shared::balance::{Amount, Balance, Balances, TokenSupply};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
@@ -827,7 +826,7 @@ pub async fn get_token_supplies(
     client: &HttpClient,
     native_token: &Id,
     epoch: u32,
-) -> anyhow::Result<TokenSupplies> {
+) -> anyhow::Result<TokenSupply> {
     let total_supply_fut = query_native_token_total_supply(client);
     let effective_supply_fut = query_native_token_effective_supply(client);
 
@@ -835,7 +834,7 @@ pub async fn get_token_supplies(
         futures::try_join!(total_supply_fut, effective_supply_fut)
             .context("Failed to query native token supplies")?;
 
-    anyhow::Ok(TokenSupplies {
+    anyhow::Ok(TokenSupply {
         address: native_token.to_string(),
         epoch: epoch as _,
         total: total_supply.into(),

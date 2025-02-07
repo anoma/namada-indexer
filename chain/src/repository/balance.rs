@@ -5,8 +5,8 @@ use orm::schema::{
     balance_changes, ibc_token, token, token_supplies_per_epoch,
 };
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
-use orm::token_supplies_per_epoch::TokenSupplies;
-use shared::balance::Balances;
+use orm::token_supplies_per_epoch::TokenSuppliesInsertDb;
+use shared::balance::{Balances, TokenSupply};
 use shared::token::Token;
 use shared::tuple_len::TupleLen;
 
@@ -73,19 +73,25 @@ pub fn insert_tokens(
     anyhow::Ok(())
 }
 
-pub fn insert_token_supplies(
+pub fn insert_token_supplies<S>(
     transaction_conn: &mut PgConnection,
-    supplies: Option<Vec<TokenSupplies>>,
-) -> anyhow::Result<()> {
-    if let Some(supplies) = supplies {
-        tracing::debug!(?supplies, "Adding new token supplies to db");
+    supplies: S,
+) -> anyhow::Result<()>
+where
+    S: IntoIterator<Item = TokenSupply>,
+{
+    let supplies: Vec<_> = supplies
+        .into_iter()
+        .map(TokenSuppliesInsertDb::from)
+        .collect();
 
-        diesel::insert_into(token_supplies_per_epoch::table)
-            .values(supplies)
-            .on_conflict_do_nothing()
-            .execute(transaction_conn)
-            .context("Failed to update token supplies in db")?;
-    }
+    tracing::debug!(?supplies, "Adding new token supplies to db");
+
+    diesel::insert_into(token_supplies_per_epoch::table)
+        .values(supplies)
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update token supplies in db")?;
 
     anyhow::Ok(())
 }

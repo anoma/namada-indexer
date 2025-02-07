@@ -328,7 +328,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    token_supplies_per_epoch (address) {
+    token_supplies_per_epoch (id) {
+        id -> Int4,
         #[max_length = 45]
         address -> Varchar,
         epoch -> Int4,

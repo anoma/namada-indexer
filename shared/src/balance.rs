@@ -143,6 +143,14 @@ impl Balance {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TokenSupply {
+    pub address: String,
+    pub epoch: i32,
+    pub total: BigDecimal,
+    pub effective: Option<BigDecimal>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

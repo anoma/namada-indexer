@@ -424,7 +424,7 @@ async fn crawling_fn(
 
                 repository::balance::insert_token_supplies(
                     transaction_conn,
-                    native_token_supplies.map(|supply| vec![supply]),
+                    native_token_supplies,
                 )?;
 
                 repository::block::upsert_block(
