@@ -11,6 +11,8 @@ CREATE TABLE token_supplies_per_epoch (
         FOREIGN KEY(address) REFERENCES token(address) ON DELETE CASCADE
 );
 
+ALTER TABLE token_supplies_per_epoch ADD UNIQUE (address, epoch);
+
 CREATE OR REPLACE FUNCTION check_effective_for_token_type()
 RETURNS TRIGGER AS $$
 BEGIN
