@@ -1,8 +1,11 @@
 use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
 use orm::balances::BalanceChangesInsertDb;
-use orm::schema::{balance_changes, ibc_token, token};
+use orm::schema::{
+    balance_changes, ibc_token, token, token_supplies_per_epoch,
+};
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
+use orm::token_supplies_per_epoch::TokenSupplies;
 use shared::balance::Balances;
 use shared::token::Token;
 use shared::tuple_len::TupleLen;
@@ -66,6 +69,23 @@ pub fn insert_tokens(
         .do_nothing()
         .execute(transaction_conn)
         .context("Failed to update ibc tokens in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_token_supplies(
+    transaction_conn: &mut PgConnection,
+    supplies: Option<Vec<TokenSupplies>>,
+) -> anyhow::Result<()> {
+    if let Some(supplies) = supplies {
+        tracing::debug!(?supplies, "Adding new token supplies to db");
+
+        diesel::insert_into(token_supplies_per_epoch::table)
+            .values(supplies)
+            .on_conflict_do_nothing()
+            .execute(transaction_conn)
+            .context("Failed to update token supplies in db")?;
+    }
 
     anyhow::Ok(())
 }
