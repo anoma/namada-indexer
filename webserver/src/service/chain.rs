@@ -4,7 +4,7 @@ use shared::token::{IbcToken, Token};
 use crate::appstate::AppState;
 use crate::error::chain::ChainError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::response::chain::Parameters;
+use crate::response::chain::{Parameters, TokenSupply};
 
 #[derive(Clone)]
 pub struct ChainService {
@@ -64,5 +64,23 @@ impl ChainService {
             .collect::<Vec<Token>>();
 
         Ok(tokens)
+    }
+
+    pub async fn get_token_supply(
+        &self,
+        address: String,
+        epoch: Option<i32>,
+    ) -> Result<Option<TokenSupply>, ChainError> {
+        let maybe_token_supply_db = self
+            .chain_repo
+            .get_token_supply(address, epoch)
+            .await
+            .map_err(ChainError::Database)?;
+
+        Ok(maybe_token_supply_db.map(|supply| TokenSupply {
+            address: supply.address,
+            total_supply: supply.total.to_string(),
+            effective_supply: supply.effective.map(|s| s.to_string()),
+        }))
     }
 }

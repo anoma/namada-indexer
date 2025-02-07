@@ -328,6 +328,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    token_supplies_per_epoch (id) {
+        id -> Int4,
+        #[max_length = 45]
+        address -> Varchar,
+        epoch -> Int4,
+        total -> Numeric,
+        effective -> Nullable<Numeric>,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::HistoryKind;
 
@@ -397,6 +408,7 @@ diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
+diesel::joinable!(token_supplies_per_epoch -> token (address));
 diesel::joinable!(transaction_history -> inner_transactions (inner_tx_id));
 diesel::joinable!(unbonds -> validators (validator_id));
 diesel::joinable!(wrapper_transactions -> blocks (block_height));
@@ -419,6 +431,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     public_good_funding,
     revealed_pk,
     token,
+    token_supplies_per_epoch,
     transaction_history,
     unbonds,
     validators,

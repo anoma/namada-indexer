@@ -18,7 +18,7 @@ use namada_sdk::rpc::{
 use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{borsh, rpc, token};
-use shared::balance::{Amount, Balance, Balances};
+use shared::balance::{Amount, Balance, Balances, TokenSupply};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
@@ -40,6 +40,30 @@ pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
         .await
         .context("Failed to query native token")?;
     Ok(Id::from(native_token))
+}
+
+pub async fn query_native_token_total_supply(
+    client: &HttpClient,
+) -> anyhow::Result<Amount> {
+    let native_token = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+
+    rpc::get_token_total_supply(client, &native_token)
+        .await
+        .map(Amount::from)
+        .context("Failed to query total supply of native token")
+}
+
+pub async fn query_native_token_effective_supply(
+    client: &HttpClient,
+) -> anyhow::Result<Amount> {
+    rpc::get_effective_native_supply(client)
+        .await
+        .map(Amount::from)
+        .context("Failed to query effective supply of native token")
 }
 
 pub async fn get_first_block_in_epoch(
@@ -796,4 +820,24 @@ pub async fn get_pgf_receipients(
             token: Token::Native(native_token.clone()),
         })
         .collect::<HashSet<_>>()
+}
+
+pub async fn get_token_supplies(
+    client: &HttpClient,
+    native_token: &Id,
+    epoch: u32,
+) -> anyhow::Result<TokenSupply> {
+    let total_supply_fut = query_native_token_total_supply(client);
+    let effective_supply_fut = query_native_token_effective_supply(client);
+
+    let (total_supply, effective_supply) =
+        futures::try_join!(total_supply_fut, effective_supply_fut)
+            .context("Failed to query native token supplies")?;
+
+    anyhow::Ok(TokenSupply {
+        address: native_token.to_string(),
+        epoch: epoch as _,
+        total: total_supply.into(),
+        effective: Some(effective_supply.into()),
+    })
 }

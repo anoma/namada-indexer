@@ -26,6 +26,7 @@ use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::futures::AwaitContainer;
 use shared::id::Id;
 use shared::token::Token;
 use shared::utils::BalanceChange;
@@ -235,6 +236,16 @@ async fn crawling_fn(
         ));
     let addresses = block.addresses_with_balance_change(&native_token);
 
+    let native_token_supplies = first_block_in_epoch
+        .eq(&block_height)
+        .then(|| {
+            namada_service::get_token_supplies(&client, &native_token, epoch)
+        })
+        .future()
+        .await
+        .transpose()
+        .into_rpc_error()?;
+
     let validators_addresses = if first_block_in_epoch.eq(&block_height) {
         namada_service::get_all_consensus_validators_addresses_at(
             &client,
@@ -409,6 +420,11 @@ async fn crawling_fn(
                 repository::balance::insert_tokens(
                     transaction_conn,
                     ibc_tokens,
+                )?;
+
+                repository::balance::insert_token_supplies(
+                    transaction_conn,
+                    native_token_supplies,
                 )?;
 
                 repository::block::upsert_block(

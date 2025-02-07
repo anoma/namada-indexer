@@ -9,8 +9,8 @@ toolchains:
     @echo {{ RUST_STABLE }}
     @echo {{ RUST_NIGTHLY }}
 
-build:
-    cargo +{{ RUST_STABLE }} build --all
+build *BIN:
+    cargo +{{ RUST_STABLE }} build {{ if BIN != "" { prepend("--bin ", BIN) } else { "--all" } }}
 
 check:
     cargo +{{ RUST_STABLE }} check --all
