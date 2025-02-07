@@ -1,7 +1,8 @@
 -- Your SQL goes here
 
 CREATE TABLE token_supplies_per_epoch (
-    address VARCHAR(45) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    address VARCHAR(45) NOT NULL,
     epoch INT NOT NULL,
     -- `2^256 - 1` will fit in `NUMERIC(78, 0)`
     total NUMERIC(78, 0) NOT NULL,
