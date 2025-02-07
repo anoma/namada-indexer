@@ -140,6 +140,7 @@ async fn process_batch(
                     client,
                     &delegation.validator_address.clone().into(),
                     &Some(delegation.delegator_address.clone().into()),
+                    &None,
                 )
                 .await
                 .ok()?;
