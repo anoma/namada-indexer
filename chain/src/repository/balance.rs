@@ -85,6 +85,10 @@ where
         .map(TokenSuppliesInsertDb::from)
         .collect();
 
+    if supplies.is_empty() {
+        return anyhow::Ok(());
+    }
+
     tracing::debug!(?supplies, "Adding new token supplies to db");
 
     diesel::insert_into(token_supplies_per_epoch::table)
