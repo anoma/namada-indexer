@@ -4,7 +4,8 @@ use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use orm::crawler_state::{
     ChainCrawlerStateDb, CrawlerNameDb, EpochCrawlerStateDb,
 };
-use orm::schema::crawler_state;
+use orm::schema::{crawler_state, token};
+use orm::token::TokenTypeDb;
 use shared::block::{BlockHeight, Epoch};
 use shared::crawler_state::{ChainCrawlerState, EpochCrawlerState};
 use shared::error::ContextDbInteractError;
@@ -74,4 +75,21 @@ pub async fn get_pos_crawler_state(
         last_processed_epoch: crawler_state.last_processed_epoch as Epoch,
         timestamp: crawler_state.timestamp.and_utc().timestamp(),
     })
+}
+
+pub async fn get_non_native_tokens(
+    conn: &Object,
+) -> anyhow::Result<Vec<String>> {
+    let token_addrs: Vec<String> = conn
+        .interact(move |conn| {
+            token::table
+                .filter(token::dsl::token_type.ne(TokenTypeDb::Native))
+                .select(token::dsl::address)
+                .load(conn)
+        })
+        .await
+        .context_db_interact_error()?
+        .context("Failed to read non-native token addrs from the db")?;
+
+    Ok(token_addrs)
 }

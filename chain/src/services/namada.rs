@@ -822,7 +822,7 @@ pub async fn get_pgf_receipients(
         .collect::<HashSet<_>>()
 }
 
-pub async fn get_token_supplies(
+pub async fn get_native_token_supply(
     client: &HttpClient,
     native_token: &Id,
     epoch: u32,
@@ -839,5 +839,28 @@ pub async fn get_token_supplies(
         epoch: epoch as _,
         total: total_supply.into(),
         effective: Some(effective_supply.into()),
+    })
+}
+
+pub async fn get_token_supply(
+    client: &HttpClient,
+    token: String,
+    epoch: u32,
+) -> anyhow::Result<TokenSupply> {
+    let address: NamadaSdkAddress =
+        token.parse().context("Failed to parse token address")?;
+
+    let supply = rpc::get_token_total_supply(client, &address)
+        .await
+        .map(Amount::from)
+        .with_context(|| {
+            format!("Failed to query total supply of token {token}")
+        })?;
+
+    anyhow::Ok(TokenSupply {
+        address: token,
+        epoch: epoch as _,
+        total: supply.into(),
+        effective: None,
     })
 }
