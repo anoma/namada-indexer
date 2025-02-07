@@ -1,12 +1,16 @@
 use axum::async_trait;
 use diesel::dsl::max;
 use diesel::{
-    ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, OptionalExtension,
+    QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::crawler_state::{ChainCrawlerStateDb, CrawlerNameDb};
 use orm::parameters::ParametersDb;
-use orm::schema::{chain_parameters, crawler_state, ibc_token, token};
+use orm::schema::{
+    chain_parameters, crawler_state, ibc_token, token, token_supplies_per_epoch,
+};
 use orm::token::{IbcTokenDb, TokenDb};
+use orm::token_supplies_per_epoch::TokenSuppliesDb;
 
 use crate::appstate::AppState;
 
@@ -30,6 +34,12 @@ pub trait ChainRepositoryTrait {
     async fn find_tokens(
         &self,
     ) -> Result<Vec<(TokenDb, Option<IbcTokenDb>)>, String>;
+
+    async fn get_token_supply(
+        &self,
+        address: String,
+        epoch: Option<i32>,
+    ) -> Result<Option<TokenSuppliesDb>, String>;
 }
 
 #[async_trait]
@@ -115,6 +125,49 @@ impl ChainRepositoryTrait for ChainRepository {
                     Option::<IbcTokenDb>::as_select(),
                 ))
                 .load::<(TokenDb, Option<IbcTokenDb>)>(conn)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    }
+
+    async fn get_token_supply(
+        &self,
+        address: String,
+        epoch: Option<i32>,
+    ) -> Result<Option<TokenSuppliesDb>, String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            conn.build_transaction().read_only().run(move |conn| {
+                let epoch = epoch.map_or_else(
+                    || {
+                        crawler_state::dsl::crawler_state
+                            .filter(
+                                crawler_state::dsl::name
+                                    .eq(CrawlerNameDb::Chain),
+                            )
+                            .select(max(
+                                crawler_state::dsl::last_processed_epoch,
+                            ))
+                            .first::<Option<i32>>(conn)
+                            .map(|maybe_epoch| maybe_epoch.unwrap_or(0i32))
+                    },
+                    Ok,
+                )?;
+
+                token_supplies_per_epoch::table
+                    .filter(
+                        token_supplies_per_epoch::dsl::address
+                            .eq(&address)
+                            .and(
+                                token_supplies_per_epoch::dsl::epoch.eq(&epoch),
+                            ),
+                    )
+                    .select(TokenSuppliesDb::as_select())
+                    .first(conn)
+                    .optional()
+            })
         })
         .await
         .map_err(|e| e.to_string())?

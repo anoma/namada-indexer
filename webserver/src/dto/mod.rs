@@ -1,3 +1,4 @@
+pub mod chain;
 pub mod crawler_state;
 pub mod gas;
 pub mod governance;

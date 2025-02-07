@@ -656,6 +656,29 @@ paths:
                   value:
                     - address: tnam1pkg30gnt4q0zn7j00r6hms4ajrxn6f5ysyyl7w9m
                       trace: transfer/channel-2/uatom
+  /api/v1/chain/token-supply:
+    get:
+      summary: Get the supply of some token at the given epoch
+      parameters:
+        - in: query
+          name: address
+          schema:
+            type: string
+          required: true
+          description: Address of the token
+        - in: query
+          name: epoch
+          schema:
+            type: integer
+            minimum: 0
+          description: Epoch to query
+      responses:
+        "200":
+          description: Chain token supply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenSupply"
   /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
@@ -1139,6 +1162,20 @@ components:
         address:
           type: string
         trace:
+          type: string
+    TokenSupply:
+      type: object
+      required:
+        [
+          address,
+          totalSupply,
+        ]
+      properties:
+        address:
+          type: string
+        totalSupply:
+          type: string
+        effectiveSupply:
           type: string
     Parameters:
       type: object
