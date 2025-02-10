@@ -6,7 +6,11 @@ use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::events::extend::MaspTxRef;
+use namada_sdk::hash::Hash;
 use namada_sdk::key::common::PublicKey;
+use namada_sdk::masp_primitives::transaction::components::sapling::{
+    Authorized, Bundle,
+};
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
@@ -37,12 +41,17 @@ pub struct RevealPkData {
 pub enum TransactionKind {
     TransparentTransfer(Option<TransferData>),
     ShieldedTransfer(Option<TransferData>),
+    // FIXME: why do shielding and unshielding carry an Option? we need the
+    // transfer data for those
     ShieldingTransfer(Option<TransferData>),
     UnshieldingTransfer(Option<TransferData>),
+    // FIXME: same here, why option?
     MixedTransfer(Option<TransferData>),
-    //FIXME: why options for ibc?
+    // FIXME: why options for ibc?
     IbcMsgTransfer(Option<IbcMessage<Transfer>>),
     IbcTrasparentTransfer((Option<IbcMessage<Transfer>>, TransferData)),
+    // FIXME: this is an incoming ibc shielding tx and the masp data is
+    // directly inside the tx data section
     IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
     IbcUnshieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
     Bond(Option<Bond>),
@@ -192,8 +201,8 @@ impl TransactionKind {
                                 ibc_data,
                             )))
                         }
-                        //FIXME: I believe these conversions could be wrong
                         namada_ibc::IbcMessage::Transfer(transfer) => {
+                            // FIXME: I believe these conversions could be wrong
                             if let Some(data) = transfer.transfer {
                                 utils::transfer_to_tx_kind(data, masp_address)
                             } else {
@@ -201,6 +210,7 @@ impl TransactionKind {
                             }
                         }
                         namada_ibc::IbcMessage::NftTransfer(transfer) => {
+                            // FIXME: I believe these conversions could be wrong
                             if let Some(data) = transfer.transfer {
                                 transfer_to_ibc_tx_kind(
                                     data,
@@ -390,7 +400,7 @@ impl Transaction {
                     fee,
                     atomic,
                     block_height,
-                    exit_code: wrapper_tx_status,
+                    exit_code: wrapper_tx_status.clone(),
                     total_signatures,
                     size: tx_size,
                 };
@@ -471,49 +481,83 @@ impl Transaction {
                         });
 
                     // MASP events are emitted only for successful inner txs
-                    let notes = if matches!(
-                        (wrapper_tx_status, inner_tx_status),
+                    let masp_bundle = matches!(
+                        (&wrapper_tx_status, &inner_tx_status),
                         (
-                            TransactionExitStatus::Applied,
-                            TransactionExitStatus::Applied
+                            &TransactionExitStatus::Applied,
+                            &TransactionExitStatus::Applied
                         )
-                    ) {
-                        // FIXME: actually remove the note if indeed it matches this inner tx
+                    )
+                    .then(|| {
                         if let Some(note) = masp_refs.first() {
                             {
-                                // Check if the masp ref is pointing to this inner tx
-                                match tx_kind {
-                                    TransactionKind::ShieldedTransfer(data)
+                                // Check if the masp ref is pointing to this
+                                // inner tx
+                                match &tx_kind {
+                                    TransactionKind::ShieldedTransfer(
+                                        Some(data),
+                                    )
                                     | TransactionKind::ShieldingTransfer(
-                                        data,
+                                        Some(data),
                                     )
                                     | TransactionKind::UnshieldingTransfer(
-                                        data,
+                                        Some(data),
                                     )
-                                    | TransactionKind::MixedTransfer(data) => {
-                                        if let Some(masp_ref) = data {
-                                            extract_masp_notes(note, masp_ref)
-                                        } else {
-                                            0
-                                        }
-                                    }
+                                    | TransactionKind::MixedTransfer(Some(
+                                        data,
+                                    )) => data
+                                        .shielded_section_hash
+                                        .map(|shielded_section_hash| {
+                                            extract_masp_transaction(
+                                                &transaction,
+                                                note,
+                                                &Either::Left(
+                                                    shielded_section_hash,
+                                                ),
+                                            )
+                                        })
+                                        .flatten(),
                                     TransactionKind::IbcShieldingTransfer(
-                                        data,
-                                    )
-                                    | TransactionKind::IbcUnshieldingTransfer(
-                                        data,
-                                    ) => extract_masp_notes(
+                                        (Some(IbcMessage(msg)), _),
+                                    ) => extract_masp_transaction(
+                                        &transaction,
                                         note,
-                                        data.1.shielded_section_hash,
+                                        &Either::Right(tx_commitment.data_hash),
                                     ),
-                                    _ => 0,
+                                    TransactionKind::IbcUnshieldingTransfer(
+                                        (_, data),
+                                    ) => data
+                                        .shielded_section_hash
+                                        .map(|shielded_section_hash| {
+                                            extract_masp_transaction(
+                                                &transaction,
+                                                note,
+                                                &Either::Left(
+                                                    shielded_section_hash,
+                                                ),
+                                            )
+                                        })
+                                        .flatten(),
+                                    _ => None,
                                 }
                             }
+                        } else {
+                            None
                         }
-                    } else {
-                        //FIXME: improve this
-                        0
-                    };
+                    })
+                    .flatten();
+
+                    let notes = masp_bundle.map_or(0, |bundle| {
+                        bundle.sapling_bundle().map_or(0, |bundle| {
+                            // Remove the masp ref from the collection if we
+                            // found one
+                            masp_refs.remove(0);
+
+                            bundle.shielded_spends.len()
+                                + bundle.shielded_outputs.len()
+                            // FIXME: need also the conversions here?
+                        })
+                    }) as u64;
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
@@ -531,10 +575,9 @@ impl Transaction {
                 }
 
                 if !masp_refs.is_empty() {
-                    return Err(
-                        "Not all the MASP references have been indexed"
-                            .to_string(),
-                    );
+                    return Err("Not all the MASP references have been \
+                                indexed"
+                        .to_string());
                 }
 
                 Ok((wrapper_tx, inner_txs))
@@ -553,65 +596,37 @@ impl Transaction {
     }
 }
 
-fn extract_masp_notes(
-    event_masp_ref: MaspTxRef,
-    tx_masp_ref: Either<MaspTxId, Hash>,
-) -> u64 {
+// Check if the masp reference in the event matches this inner transaction and,
+// if so, extract the relative masp data
+fn extract_masp_transaction(
+    tx: &Tx,
+    event_masp_ref: &MaspTxRef,
+    tx_masp_ref: &Either<MaspTxId, Hash>,
+) -> Option<namada_core::masp::MaspTransaction> {
     match (event_masp_ref, tx_masp_ref) {
         (MaspTxRef::MaspSection(masp_id), Either::Left(tx_id))
             if masp_id == tx_id =>
         {
-            transaction
-                .get_masp_section(&event_masp_ref)
-                //FIXME: review this
-                .map(|bundle| {
-                    bundle
-                        .clone()
-                        .into_data()
-                        .sapling_bundle()
-                        .map(|bundle| {
-                            bundle.shielded_spends.len()
-                                + bundle.shielded_outputs.len()
-                        })
-                        .unwrap_or_default()
-                })
-                .unwrap_or_default() as u64
+            tx.get_masp_section(masp_id).cloned()
         }
         (MaspTxRef::IbcData(event_hash), Either::Right(tx_hash))
             if event_hash == tx_hash =>
         {
-            transaction
-                .get_data_section(&event_hash)
+            tx.get_data_section(event_hash)
                 .map(|section| {
                     match namada_sdk::ibc::decode_message::<Transfer>(&section)
                     {
                         Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
-                            if let Some(bundle) =
-                                namada_sdk::ibc::extract_masp_tx_from_envelope(
-                                    &msg_envelope,
-                                )
-                            {
-                                //FIXME: review this
-                                bundle
-                                    .clone()
-                                    .into_data()
-                                    .sapling_bundle()
-                                    .map(|bundle| {
-                                        bundle.shielded_spends.len()
-                                            + bundle.shielded_outputs.len()
-                                    })
-                                    .unwrap_or_default()
-                                    as u64
-                            } else {
-                                0
-                            }
+                            namada_sdk::ibc::extract_masp_tx_from_envelope(
+                                &msg_envelope,
+                            )
                         }
-                        _ => 0,
+                        _ => None,
                     }
                 })
-                .unwrap_or_default()
+                .flatten()
         }
-        _ => 0,
+        _ => None,
     }
 }
 
