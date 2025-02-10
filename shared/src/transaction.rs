@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use namada_core::masp::MaspTxId;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
@@ -39,6 +40,7 @@ pub enum TransactionKind {
     ShieldingTransfer(Option<TransferData>),
     UnshieldingTransfer(Option<TransferData>),
     MixedTransfer(Option<TransferData>),
+    //FIXME: why options for ibc?
     IbcMsgTransfer(Option<IbcMessage<Transfer>>),
     IbcTrasparentTransfer((Option<IbcMessage<Transfer>>, TransferData)),
     IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
@@ -190,6 +192,7 @@ impl TransactionKind {
                                 ibc_data,
                             )))
                         }
+                        //FIXME: I believe these conversions could be wrong
                         namada_ibc::IbcMessage::Transfer(transfer) => {
                             if let Some(data) = transfer.transfer {
                                 utils::transfer_to_tx_kind(data, masp_address)
@@ -365,7 +368,7 @@ impl Transaction {
                 let gas_used = block_results
                     .gas_used(&wrapper_tx_id)
                     .map(|gas| gas.parse::<u64>().unwrap());
-                let masp_refs =
+                let mut masp_refs =
                     block_results.masp_refs(&wrapper_tx_id, index as u64);
 
                 let fee = Fee {
@@ -467,27 +470,50 @@ impl Transaction {
                             acc
                         });
 
-                    let notes = masp_refs.clone().into_iter().map(|masp_ref| {
-                        match masp_ref {
-                            MaspTxRef::MaspSection(masp_tx_id) => {
-                                 transaction
-                                .get_masp_section(&masp_tx_id)
-                                .map(|bundle| bundle.clone().into_data().sapling_bundle().map(|bundle| bundle.shielded_spends.len() + bundle.shielded_outputs.len()).unwrap_or_default()).unwrap_or_default() as u64
-                            },
-                            MaspTxRef::IbcData(hash) => {
-                                transaction.get_data_section(&hash).map(|section| match namada_sdk::ibc::decode_message::<Transfer>(&section) {
-                                    Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
-                                        if let Some(bundle) = namada_sdk::ibc::extract_masp_tx_from_envelope(&msg_envelope) {
-                                            bundle.clone().into_data().sapling_bundle().map(|bundle| bundle.shielded_spends.len() + bundle.shielded_outputs.len()).unwrap_or_default() as u64
+                    // MASP events are emitted only for successful inner txs
+                    let notes = if matches!(
+                        (wrapper_tx_status, inner_tx_status),
+                        (
+                            TransactionExitStatus::Applied,
+                            TransactionExitStatus::Applied
+                        )
+                    ) {
+                        // FIXME: actually remove the note if indeed it matches this inner tx
+                        if let Some(note) = masp_refs.first() {
+                            {
+                                // Check if the masp ref is pointing to this inner tx
+                                match tx_kind {
+                                    TransactionKind::ShieldedTransfer(data)
+                                    | TransactionKind::ShieldingTransfer(
+                                        data,
+                                    )
+                                    | TransactionKind::UnshieldingTransfer(
+                                        data,
+                                    )
+                                    | TransactionKind::MixedTransfer(data) => {
+                                        if let Some(masp_ref) = data {
+                                            extract_masp_notes(note, masp_ref)
                                         } else {
                                             0
                                         }
-                                    },
+                                    }
+                                    TransactionKind::IbcShieldingTransfer(
+                                        data,
+                                    )
+                                    | TransactionKind::IbcUnshieldingTransfer(
+                                        data,
+                                    ) => extract_masp_notes(
+                                        note,
+                                        data.1.shielded_section_hash,
+                                    ),
                                     _ => 0,
-                                }).unwrap_or_default()
-                            },
+                                }
+                            }
                         }
-                    }).sum::<u64>();
+                    } else {
+                        //FIXME: improve this
+                        0
+                    };
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
@@ -504,6 +530,13 @@ impl Transaction {
                     inner_txs.push(inner_tx);
                 }
 
+                if !masp_refs.is_empty() {
+                    return Err(
+                        "Not all the MASP references have been indexed"
+                            .to_string(),
+                    );
+                }
+
                 Ok((wrapper_tx, inner_txs))
             }
             TxType::Raw => {
@@ -517,6 +550,68 @@ impl Transaction {
 
     pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
         self.extra_sections.get(&section_id).cloned()
+    }
+}
+
+fn extract_masp_notes(
+    event_masp_ref: MaspTxRef,
+    tx_masp_ref: Either<MaspTxId, Hash>,
+) -> u64 {
+    match (event_masp_ref, tx_masp_ref) {
+        (MaspTxRef::MaspSection(masp_id), Either::Left(tx_id))
+            if masp_id == tx_id =>
+        {
+            transaction
+                .get_masp_section(&event_masp_ref)
+                //FIXME: review this
+                .map(|bundle| {
+                    bundle
+                        .clone()
+                        .into_data()
+                        .sapling_bundle()
+                        .map(|bundle| {
+                            bundle.shielded_spends.len()
+                                + bundle.shielded_outputs.len()
+                        })
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default() as u64
+        }
+        (MaspTxRef::IbcData(event_hash), Either::Right(tx_hash))
+            if event_hash == tx_hash =>
+        {
+            transaction
+                .get_data_section(&event_hash)
+                .map(|section| {
+                    match namada_sdk::ibc::decode_message::<Transfer>(&section)
+                    {
+                        Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
+                            if let Some(bundle) =
+                                namada_sdk::ibc::extract_masp_tx_from_envelope(
+                                    &msg_envelope,
+                                )
+                            {
+                                //FIXME: review this
+                                bundle
+                                    .clone()
+                                    .into_data()
+                                    .sapling_bundle()
+                                    .map(|bundle| {
+                                        bundle.shielded_spends.len()
+                                            + bundle.shielded_outputs.len()
+                                    })
+                                    .unwrap_or_default()
+                                    as u64
+                            } else {
+                                0
+                            }
+                        }
+                        _ => 0,
+                    }
+                })
+                .unwrap_or_default()
+        }
+        _ => 0,
     }
 }
 
