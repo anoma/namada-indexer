@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use shared::token::IbcRateLimit;
 use shared::transaction::{IbcAckStatus, IbcSequence};
 
-use crate::schema::{ibc_ack, ibc_rate_limits};
+use crate::schema::{ibc_ack, ibc_rate_limits, ibc_token_flows};
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::IbcStatus"]
@@ -84,4 +84,25 @@ impl From<IbcRateLimit> for IbcRateLimitsInsertDb {
             throughput_limit: rate_limit.throughput_limit,
         }
     }
+}
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = ibc_token_flows)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct IbcTokenFlowsDb {
+    pub id: i32,
+    pub address: String,
+    pub epoch: i32,
+    pub deposit: BigDecimal,
+    pub withdraw: BigDecimal,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = ibc_token_flows)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct IbcTokenFlowsInsertDb {
+    pub address: String,
+    pub epoch: i32,
+    pub deposit: BigDecimal,
+    pub withdraw: BigDecimal,
 }
