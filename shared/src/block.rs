@@ -1063,6 +1063,21 @@ impl Block {
                     Token::Native(native_token.clone()),
                 )]
             }
+            TransactionKind::UnshieldingTransfer(data) => {
+
+            }
+            TransactionKind::ShieldedTransfer(data) => {
+
+            }
+            TransactionKind::MixedTransfer(data) => {
+
+            }
+            TransactionKind::IbcShieldingTransfer(data) => {
+
+            }
+            TransactionKind::IbcUnshieldingTransfer(data) => {
+                
+            }
             _ => vec![],
         };
 
