@@ -864,3 +864,19 @@ pub async fn get_token_supply(
         effective: None,
     })
 }
+
+pub async fn get_throughput_rate_limit(
+    client: &HttpClient,
+    token: String,
+) -> anyhow::Result<Amount> {
+    let address: NamadaSdkAddress =
+        token.parse().context("Failed to parse token address")?;
+
+    let rate_limit = rpc::query_ibc_rate_limits(client, &address)
+        .await
+        .with_context(|| {
+            format!("Failed to query throughput rate limit of token {token}")
+        })?;
+
+    Ok(rate_limit.throughput_per_epoch_limit.into())
+}
