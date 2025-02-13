@@ -179,9 +179,9 @@ pub fn transfer_to_ibc_tx_kind(
                     }
                     _ => {
                         tracing::warn!("Found unsupported IBC packet data");
-                        return TransactionKind::IbcMsgTransfer(Some(
-                            ser::IbcMessage(ibc_data),
-                        ));
+                        return TransactionKind::IbcMsg(Some(ser::IbcMessage(
+                            ibc_data,
+                        )));
                     }
                 };
 
@@ -192,17 +192,17 @@ pub fn transfer_to_ibc_tx_kind(
                     .is_some();
                 if is_shielding {
                     TransactionKind::IbcShieldingTransfer((
-                        Some(ser::IbcMessage(ibc_data)),
+                        ser::IbcMessage(ibc_data),
                         transfer_data,
                     ))
                 } else {
                     TransactionKind::IbcTrasparentTransfer((
-                        Some(ser::IbcMessage(ibc_data)),
+                        ser::IbcMessage(ibc_data),
                         transfer_data,
                     ))
                 }
             } else {
-                TransactionKind::IbcMsgTransfer(Some(ser::IbcMessage(ibc_data)))
+                TransactionKind::IbcMsg(Some(ser::IbcMessage(ibc_data)))
             }
         }
         namada_ibc::IbcMessage::Transfer(transfer) => {
@@ -294,12 +294,12 @@ pub fn transfer_to_ibc_tx_kind(
 
             if transfer.transfer.is_some() {
                 TransactionKind::IbcUnshieldingTransfer((
-                    Some(ser::IbcMessage(ibc_data)),
+                    ser::IbcMessage(ibc_data),
                     transfer_data,
                 ))
             } else {
                 TransactionKind::IbcTrasparentTransfer((
-                    Some(ser::IbcMessage(ibc_data)),
+                    ser::IbcMessage(ibc_data),
                     transfer_data,
                 ))
             }

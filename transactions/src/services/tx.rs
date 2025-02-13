@@ -51,7 +51,7 @@ pub fn get_ibc_packets(
 
 pub fn get_ibc_ack_packet(inner_txs: &[InnerTransaction]) -> Vec<IbcAck> {
     inner_txs.iter().filter_map(|tx| match tx.kind.clone() {
-        TransactionKind::IbcMsgTransfer(Some(ibc_message)) => match ibc_message.0 {
+        TransactionKind::IbcMsg(Some(ibc_message)) => match ibc_message.0 {
             namada_sdk::ibc::IbcMessage::Envelope(msg_envelope) => {
                 match *msg_envelope {
                     MsgEnvelope::Packet(packet_msg) => match packet_msg {
@@ -135,7 +135,7 @@ pub fn get_gas_estimates(
                         let notes = tx.notes;
                         gas_estimate.increase_mixed_transfer(notes)
                     }
-                    TransactionKind::IbcMsgTransfer(_) => {
+                    TransactionKind::IbcMsg(_) => {
                         gas_estimate.increase_ibc_msg_transfer()
                     }
                     TransactionKind::Bond(_) => gas_estimate.increase_bond(),

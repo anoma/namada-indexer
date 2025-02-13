@@ -50,7 +50,7 @@ impl From<TransactionKind> for TransactionKindDb {
             }
             TransactionKind::ShieldingTransfer(_) => Self::ShieldingTransfer,
             TransactionKind::MixedTransfer(_) => Self::MixedTransfer,
-            TransactionKind::IbcMsgTransfer(_) => Self::IbcMsgTransfer,
+            TransactionKind::IbcMsg(_) => Self::IbcMsgTransfer,
             TransactionKind::IbcTrasparentTransfer(_) => {
                 Self::IbcTransparentTransfer
             }

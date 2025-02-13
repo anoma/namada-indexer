@@ -36,19 +36,15 @@ pub struct RevealPkData {
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
-    // FIXME: why do all these variants contain options? Cause we could fail deserialization, but is this correct? If we fail to deserialize, how can we even know the type of the tx? Because we look at the transaction's code
     TransparentTransfer(Option<TransferData>),
     ShieldedTransfer(Option<TransferData>),
     ShieldingTransfer(Option<TransferData>),
     UnshieldingTransfer(Option<TransferData>),
     MixedTransfer(Option<TransferData>),
-    // FIXME: rename, this is not necessarily a transfer, could be a client command
-    // FIXME: ah but maybe we don't want to index the other ibc txs?
-    IbcMsgTransfer(Option<IbcMessage<Transfer>>),
-    // FIXME: review these tuples and options
-    IbcTrasparentTransfer((Option<IbcMessage<Transfer>>, TransferData)),
-    IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
-    IbcUnshieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
+    IbcMsg(Option<IbcMessage<Transfer>>),
+    IbcTrasparentTransfer((IbcMessage<Transfer>, TransferData)),
+    IbcShieldingTransfer((IbcMessage<Transfer>, TransferData)),
+    IbcUnshieldingTransfer((IbcMessage<Transfer>, TransferData)),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
     Unbond(Option<Unbond>),
@@ -194,7 +190,7 @@ impl TransactionKind {
                     transfer_to_ibc_tx_kind(ibc_data, native_token)
                 } else {
                     tracing::warn!("Cannot deserialize IBC transaction");
-                    TransactionKind::IbcMsgTransfer(None)
+                    TransactionKind::IbcMsg(None)
                 }
             }
             "tx_unjail_validator" => {
@@ -304,7 +300,7 @@ impl InnerTransaction {
     pub fn is_ibc(&self) -> bool {
         matches!(
             self.kind,
-            TransactionKind::IbcMsgTransfer(_)
+            TransactionKind::IbcMsg(_)
                 | TransactionKind::IbcTrasparentTransfer(_)
                 | TransactionKind::IbcUnshieldingTransfer(_)
                 | TransactionKind::IbcShieldingTransfer(_)
