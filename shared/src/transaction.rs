@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use namada_core::masp::MaspTxId;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::events::extend::MaspTxRef;
-use namada_sdk::hash::Hash;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
@@ -477,7 +475,7 @@ impl Transaction {
                                             extract_masp_transaction(
                                                 &transaction,
                                                 note,
-                                                &Either::Left(
+                                                &MaspTxRef::MaspSection(
                                                     shielded_section_hash,
                                                 ),
                                             )
@@ -488,7 +486,9 @@ impl Transaction {
                                     ) => extract_masp_transaction(
                                         &transaction,
                                         note,
-                                        &Either::Right(tx_commitment.data_hash),
+                                        &MaspTxRef::IbcData(
+                                            tx_commitment.data_hash,
+                                        ),
                                     ),
                                     TransactionKind::IbcUnshieldingTransfer(
                                         (_, data),
@@ -498,7 +498,7 @@ impl Transaction {
                                             extract_masp_transaction(
                                                 &transaction,
                                                 note,
-                                                &Either::Left(
+                                                &MaspTxRef::MaspSection(
                                                     shielded_section_hash,
                                                 ),
                                             )
@@ -567,16 +567,15 @@ impl Transaction {
 fn extract_masp_transaction(
     tx: &Tx,
     event_masp_ref: &MaspTxRef,
-    //FIXME: use MaspTxRef here
-    tx_masp_ref: &Either<MaspTxId, Hash>,
+    tx_masp_ref: &MaspTxRef,
 ) -> Option<namada_core::masp::MaspTransaction> {
     match (event_masp_ref, tx_masp_ref) {
-        (MaspTxRef::MaspSection(masp_id), Either::Left(tx_id))
+        (MaspTxRef::MaspSection(masp_id), MaspTxRef::MaspSection(tx_id))
             if masp_id == tx_id =>
         {
             tx.get_masp_section(masp_id).cloned()
         }
-        (MaspTxRef::IbcData(event_hash), Either::Right(tx_hash))
+        (MaspTxRef::IbcData(event_hash), MaspTxRef::IbcData(tx_hash))
             if event_hash == tx_hash =>
         {
             tx.get_data_section(event_hash)
