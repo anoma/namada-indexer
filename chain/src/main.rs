@@ -28,7 +28,9 @@ use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
-use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::error::{
+    AsDbError, AsRpcError, AsTaskJoinError, ContextDbInteractError, MainError,
+};
 use shared::futures::AwaitContainer;
 use shared::id::Id;
 use shared::token::Token;
@@ -215,6 +217,22 @@ async fn crawling_fn(
 
     let (block, tm_block_response, epoch) =
         get_block(block_height, &client, checksums).await?;
+
+    let rate_limits = first_block_in_epoch.eq(&block_height).then(|| {
+        let client = Arc::clone(&client);
+
+        // start this series of queries in parallel, which take
+        // quite a while
+        tokio::spawn(async move {
+            let tokens = query_tokens(&client)
+                .await?
+                .into_iter()
+                .map(|token| token.to_string());
+
+            namada_service::get_rate_limits_for_tokens(&client, tokens, epoch)
+                .await
+        })
+    });
 
     tracing::debug!(
         block = block_height,
@@ -411,6 +429,17 @@ async fn crawling_fn(
         timestamp: timestamp_in_sec,
     };
 
+    let rate_limits =
+        rate_limits
+            .future()
+            .await
+            .map_or(Ok(vec![]), |maybe_rate_limits| {
+                maybe_rate_limits
+                    .context("Failed to await on rate limits query")
+                    .into_task_join_error()?
+                    .into_rpc_error()
+            })?;
+
     tracing::info!(
         txs = block.transactions.len(),
         ibc_tokens = ibc_tokens.len(),
@@ -442,6 +471,11 @@ async fn crawling_fn(
                 repository::balance::insert_token_supplies(
                     transaction_conn,
                     token_supplies.into_iter().flatten(),
+                )?;
+
+                repository::balance::insert_ibc_rate_limits(
+                    transaction_conn,
+                    rate_limits,
                 )?;
 
                 repository::block::upsert_block(
