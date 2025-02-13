@@ -1,8 +1,10 @@
+use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
+use namada_ibc::apps::transfer::types::{
+    packet::PacketData as FtPacketData, PORT_ID_STR as FT_PORT_ID_STR,
+};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
-use namada_ibc::IbcMessage;
 use namada_sdk::address::Address;
 use namada_sdk::token::Transfer;
-use namada_tx::either::IntoEither;
 
 use crate::id::Id;
 use crate::ser::{self, TransferData};
@@ -39,7 +41,10 @@ pub fn transfer_to_tx_kind(
     masp_address: &Address,
 ) -> TransactionKind {
     let has_shielded_section = data.shielded_section_hash.is_some();
-    if has_shielded_section && data.sources.is_empty() && data.targets.is_empty() {
+    if has_shielded_section
+        && data.sources.is_empty()
+        && data.targets.is_empty()
+    {
         // For fully shielded transaction we don't explicitly write the masp address in the sources nor targets
         return TransactionKind::ShieldedTransfer(Some(data.into()));
     }
@@ -84,113 +89,224 @@ pub fn transfer_to_tx_kind(
 }
 
 pub fn transfer_to_ibc_tx_kind(
-    masp_address: &Address,
-    ibc_data: IbcMessage<Transfer>,
+    ibc_data: namada_ibc::IbcMessage<Transfer>,
+    native_token: Address,
 ) -> TransactionKind {
-    match ibc_data {
+    match &ibc_data {
         namada_ibc::IbcMessage::Envelope(msg_envelope) => {
-            // FIXME: improve here
-            // Look for a possible shilding transaction in the envelope
-            //FIXME: why don't we use the transaction data? Cause we reextract it later, should we just cache it here?
-            if let Some(shielding) =
-                namada_ibc::extract_masp_tx_from_envelope(&envelope)
+            if let MsgEnvelope::Packet(
+                namada_ibc::core::channel::types::msgs::PacketMsg::Recv(msg),
+            ) = msg_envelope.as_ref()
             {
-                //FIXME: ok can I construct data from here? Maybe from the packet
-                //FIXME: I could justs populate it with source IBC and target masp, but I need the token and the amount
-                //FIXME: no we also need the actual original sender in the other chain
-                TransactionKind::IbcShieldingTransfer((Some(ibc_data), data))
+                // Extract transfer info from the packet
+                let transfer_data = match msg.packet.port_id_on_b.as_str() {
+                    FT_PORT_ID_STR => {
+                        let packet_data =
+                            serde_json::from_slice::<FtPacketData>(
+                                &msg.packet.data,
+                            )
+                            .expect("Could not deserialize IBC fungible token packet");
+
+                        let (token, denominated_amount) = if packet_data
+                            .token
+                            .denom
+                            .to_string()
+                            .contains(&native_token.to_string())
+                        {
+                            (
+                                native_token.clone(),
+                                namada_sdk::token::DenominatedAmount::native(
+                                    namada_sdk::token::Amount::from_str(
+                                        &packet_data.token.amount.to_string(),
+                                        0,
+                                    )
+                                    .expect("Failed conversion of IBC amount to Namada one"),
+                                ),
+                            )
+                        } else {
+                            let ibc_trace = format!(
+                                "{}/{}/{}",
+                                msg.packet.port_id_on_b,
+                                msg.packet.chan_id_on_b,
+                                packet_data.token.denom
+                            );
+                            (
+                                namada_ibc::trace::convert_to_address(
+                                    ibc_trace,
+                                )
+                                .expect(
+                                    "Failed to convert IBC trace to address",
+                                ),
+                                namada_sdk::token::DenominatedAmount::new(
+                                    namada_sdk::token::Amount::from_str(
+                                        &packet_data.token.amount.to_string(),
+                                        0,
+                                    )
+                                    .expect("Failed conversion of IBC amount to Namada one"),
+                                    0.into(),
+                                ),
+                            )
+                        };
+
+                        TransferData {
+                            // TODO: support indexing addresses as string to allow for ibc sources
+                            sources: crate::ser::AccountsMap(
+                                [(
+                                    namada_sdk::token::Account {
+                                        owner: namada_sdk::address::IBC,
+                                        token: token.clone(),
+                                    },
+                                    denominated_amount,
+                                )]
+                                .into(),
+                            ),
+                            targets: crate::ser::AccountsMap(
+                                [(
+                                    namada_sdk::token::Account {
+                                        owner: packet_data.receiver.try_into().expect("Failed to convert IBC signer to address"),
+                                        token,
+                                    },
+                                    denominated_amount,
+                                )]
+                                .into(),
+                            ),
+                            shielded_section_hash: None,
+                        }
+                    }
+                    NFT_PORT_ID_STR => {
+                        // TODO: add support for indexing nfts
+                        todo!("IBC NFTs are not yet supported for indexing purposes")
+                    }
+                    _ => {
+                        tracing::warn!("Found unsupported IBC packet data");
+                        return TransactionKind::IbcMsgTransfer(Some(
+                            ser::IbcMessage(ibc_data),
+                        ));
+                    }
+                };
+
+                let is_shielding =
+                    namada_sdk::ibc::extract_masp_tx_from_envelope(
+                        &msg_envelope,
+                    )
+                    .is_some();
+                if is_shielding {
+                    TransactionKind::IbcShieldingTransfer((
+                        Some(ser::IbcMessage(ibc_data)),
+                        transfer_data,
+                    ))
+                } else {
+                    TransactionKind::IbcTrasparentTransfer((
+                        Some(ser::IbcMessage(ibc_data)),
+                        transfer_data,
+                    ))
+                }
             } else {
-                TransactionKind::IbcMsgTransfer(Some(IbcMessage(ibc_data)))
+                TransactionKind::IbcMsgTransfer(Some(ser::IbcMessage(ibc_data)))
             }
         }
         namada_ibc::IbcMessage::Transfer(transfer) => {
-            match transfer.transfer {
-                Some(shielded_transfer) => shielded_transfer_to_ibc_tx_kind(shielded_transfer, masp_address, ibc_data),
-                None => {
-                    // Transparent transfer, extract data from the ibc packet
-                    //FIXME: todo
-                }
+            let (token, denominated_amount) = if transfer
+                .message
+                .packet_data
+                .token
+                .denom
+                .to_string()
+                .contains(&native_token.to_string())
+            {
+                (
+                    native_token.clone(),
+                    namada_sdk::token::DenominatedAmount::native(
+                        namada_sdk::token::Amount::from_str(
+                            &transfer
+                                .message
+                                .packet_data
+                                .token
+                                .amount
+                                .to_string(),
+                            0,
+                        )
+                        .expect(
+                            "Failed conversion of IBC amount to Namada one",
+                        ),
+                    ),
+                )
+            } else {
+                let ibc_trace = format!(
+                    "{}/{}/{}",
+                    transfer.message.port_id_on_a,
+                    transfer.message.chan_id_on_a,
+                    transfer.message.packet_data.token.denom
+                );
+                (
+                    namada_ibc::trace::convert_to_address(ibc_trace)
+                        .expect("Failed to convert IBC trace to address"),
+                    namada_sdk::token::DenominatedAmount::new(
+                        namada_sdk::token::Amount::from_str(
+                            &transfer
+                                .message
+                                .packet_data
+                                .token
+                                .amount
+                                .to_string(),
+                            0,
+                        )
+                        .expect(
+                            "Failed conversion of IBC amount to Namada one",
+                        ),
+                        0.into(),
+                    ),
+                )
+            };
+
+            let transfer_data = TransferData {
+                sources: crate::ser::AccountsMap(
+                    [(
+                        namada_sdk::token::Account {
+                            owner: transfer
+                                .message
+                                .packet_data
+                                .sender
+                                .to_owned()
+                                .try_into()
+                                .expect(
+                                    "Failed to convert IBC signer to address",
+                                ),
+                            token: token.clone(),
+                        },
+                        denominated_amount,
+                    )]
+                    .into(),
+                ),
+                targets: crate::ser::AccountsMap(
+                    [(
+                        namada_sdk::token::Account {
+                            // TODO: support indexing addresses as string to allow for ibc targets
+                            owner: namada_sdk::address::IBC,
+                            token,
+                        },
+                        denominated_amount,
+                    )]
+                    .into(),
+                ),
+                shielded_section_hash: None,
+            };
+
+            if transfer.transfer.is_some() {
+                TransactionKind::IbcUnshieldingTransfer((
+                    Some(ser::IbcMessage(ibc_data)),
+                    transfer_data,
+                ))
+            } else {
+                TransactionKind::IbcTrasparentTransfer((
+                    Some(ser::IbcMessage(ibc_data)),
+                    transfer_data,
+                ))
             }
         }
-        namada_ibc::IbcMessage::NftTransfer(nft_transfer) => {
-            match nft_transfer.transfer {
-                Some(shielded_nft_transfer) => shielded_transfer_to_ibc_tx_kind(shielded_nft_transfer, masp_address, ibc_data)
-                None => {
-                    // Transparent transfer, extract data from the ibc packet
-                    //FIXME: todo
-                }
-            }
+        namada_ibc::IbcMessage::NftTransfer(_nft_transfer) => {
+            // TODO: add support for indexing nfts
+            todo!("IBC NFTs are not yet supported for indexing purposes")
         }
-    }
-}
-
-// FIXME: clean this up
-fn get_transfer_data_from_ibc_packet(ibc_msg: IbcMessage<Transfer>) -> TransferData {
-    let mut transfer = TransferData::default();
-        
-    match ibc_msg {
-        namada_ibc::IbcMessage::Envelope(msg_envelope) => {
-        }
-        namada_ibc::IbcMessage::Transfer(transfer) => {
-            let a = transfer.message.packet_data;
-            //FIXME: do we also need the data from other chains, i.e. senders/receivers not on namada?
-            //FIXME: all wrong here, get the entry and increment
-            transfer.sources.insert(a.sender, a.token);
-            transfer.targets.insert(a.receiver, a.token); 
-            //FIXME: also need to look at the possible shielding/unshieldign
-            
-        }
-        namada_ibc::IbcMessage::NftTransfer(nft_transfer) => {
-    }}
-
-    transfer
-}
-
-fn shielded_transfer_to_ibc_tx_kind(
-    data: Transfer,
-    masp_address: &Address,
-    ibc_data: IbcMessage<Transfer>,
-) -> TransactionKind {
-    let (all_sources_are_masp, any_sources_are_masp) = data
-        .sources
-        .iter()
-        .fold((true, false), |(all, any), (acc, _)| {
-            let is_masp = acc.owner.eq(masp_address);
-            (all && is_masp, any || is_masp)
-        });
-
-    let (all_targets_are_masp, any_targets_are_masp) = data
-        .targets
-        .iter()
-        .fold((true, false), |(all, any), (acc, _)| {
-            let is_masp = acc.owner.eq(masp_address);
-            (all && is_masp, any || is_masp)
-        });
-
-    //FIXME: does this make sense for ibc?
-    //FIXME: so, first of all, dependign on the packet we already know if it is unshielding or shielding. Also in this function it  cannot be transparent. Also I believe it can't possibly be mixed for ibc cause the packet ultimately supports a single sender and single receiver
-    //FIXME: actually I think transfer is not even used for shielded ibc txs, only its shielded field. The rest of the fields are only used if masp fee payment
-    //FIXME: ah so this is a problem, I need to merge the shielded data, I need both the fee target and the actual ibc target on the other chain
-    match (
-        all_sources_are_masp,
-        any_sources_are_masp,
-        all_targets_are_masp,
-        any_targets_are_masp,
-    ) {
-        (true, _, _, false) => TransactionKind::IbcUnshieldingTransfer((
-            Some(ser::IbcMessage(ibc_data)),
-            data.into(),
-        )),
-        (false, _, true, _) => TransactionKind::IbcShieldingTransfer((
-            Some(ser::IbcMessage(ibc_data)),
-            data.into(),
-        )),
-        //FIXME: this can't happen
-        (false, _, false, _) => TransactionKind::IbcTrasparentTransfer((
-            Some(ser::IbcMessage(ibc_data)),
-            data.into(),
-        )),
-        //FIXME: this can't happen
-        _ => TransactionKind::MixedTransfer(Some(data.into())),
     }
 }

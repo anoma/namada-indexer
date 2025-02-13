@@ -117,7 +117,9 @@ impl Block {
         checksums: Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
+        native_token: &Address,
     ) -> Self {
+        //FIXME: make this a const in this file
         let masp_address = Address::Internal(InternalAddress::Masp);
         let transactions = block_response
             .block
@@ -132,6 +134,7 @@ impl Block {
                     checksums.clone(),
                     block_results,
                     &masp_address,
+                    native_token,
                 )
                 .map_err(|reason| {
                     tracing::info!("Couldn't deserialize tx due to {}", reason);
@@ -396,6 +399,7 @@ impl Block {
                             IbcMessage::Transfer(transfer) => {
                                 let sources = transfer
                                     .clone()
+                                    //FIXME: wrong here too and in the ones below
                                     .transfer
                                     .unwrap_or_default()
                                     .sources
@@ -875,6 +879,8 @@ impl Block {
                     && tx.exit_code == TransactionExitStatus::Applied
             })
             .filter_map(|tx| match &tx.kind {
+                //FIXME: why filtering only on msg transfers? We should also cover the other ibc cases
+                //FIXME: ah no maybe we are just interested at seeing what enters namada so we only need the recv envelope
                 TransactionKind::IbcMsgTransfer(data) => {
                     let data = data.clone().and_then(|d| {
                         Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
@@ -888,6 +894,7 @@ impl Block {
 
                     let (msg, packet_data) = data?;
 
+                    //FIXME: what if we are transfering the native token?
                     let ibc_trace = format!(
                         "{}/{}/{}",
                         msg.packet.port_id_on_b,
@@ -1337,7 +1344,6 @@ impl Block {
         data: &Option<ser::IbcMessage<Transfer>>,
         native_token: &Id,
     ) -> Option<Vec<BalanceChange>> {
-        // IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
         let data = data.clone().and_then(|d| {
             Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
                 serde_json::from_slice::<PacketData>(&msg.packet.data)
@@ -1360,6 +1366,7 @@ impl Block {
         let address = namada_ibc::trace::convert_to_address(ibc_trace)
             .expect("Failed to convert IBC trace to address");
 
+        // FIXME: recheck this
         let mut balances = vec![BalanceChange::new(
             Id::Account(String::from(packet_data.receiver.as_ref())),
             Token::Ibc(IbcToken {

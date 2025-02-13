@@ -8,16 +8,13 @@ use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::events::extend::MaspTxRef;
 use namada_sdk::hash::Hash;
 use namada_sdk::key::common::PublicKey;
-use namada_sdk::masp_primitives::transaction::components::sapling::{
-    Authorized, Bundle,
-};
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
     BecomeValidator, Bond, ClaimRewards, CommissionChange, MetaDataChange,
     Redelegation, Unbond, Withdraw,
 };
-use namada_tx::data::{TxType, compute_inner_tx_hash};
+use namada_tx::data::{compute_inner_tx_hash, TxType};
 use namada_tx::either::Either;
 use namada_tx::{Section, Tx};
 use serde::Serialize;
@@ -39,19 +36,17 @@ pub struct RevealPkData {
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
+    // FIXME: why do all these variants contain options? Cause we could fail deserialization, but is this correct? If we fail to deserialize, how can we even know the type of the tx? Because we look at the transaction's code
     TransparentTransfer(Option<TransferData>),
     ShieldedTransfer(Option<TransferData>),
-    // FIXME: why do shielding and unshielding carry an Option? we need the
-    // transfer data for those
     ShieldingTransfer(Option<TransferData>),
     UnshieldingTransfer(Option<TransferData>),
-    // FIXME: same here, why option?
     MixedTransfer(Option<TransferData>),
-    // FIXME: why options for ibc?
+    // FIXME: rename, this is not necessarily a transfer, could be a client command
+    // FIXME: ah but maybe we don't want to index the other ibc txs?
     IbcMsgTransfer(Option<IbcMessage<Transfer>>),
+    // FIXME: review these tuples and options
     IbcTrasparentTransfer((Option<IbcMessage<Transfer>>, TransferData)),
-    // FIXME: this is an incoming ibc shielding tx and the masp data is
-    // directly inside the tx data section
     IbcShieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
     IbcUnshieldingTransfer((Option<IbcMessage<Transfer>>, TransferData)),
     Bond(Option<Bond>),
@@ -80,8 +75,10 @@ impl TransactionKind {
         tx_kind_name: &str,
         data: &[u8],
         masp_address: &Address,
+        native_token: Address,
     ) -> Self {
         match tx_kind_name {
+            //FIXME: review all these if let Ok
             "tx_transfer" => {
                 if let Ok(transfer) = Transfer::try_from_slice(data) {
                     utils::transfer_to_tx_kind(transfer, masp_address)
@@ -195,35 +192,9 @@ impl TransactionKind {
                 if let Ok(ibc_data) =
                     namada_ibc::decode_message::<Transfer>(data)
                 {
-                    match ibc_data.clone() {
-                        namada_ibc::IbcMessage::Envelope(_msg_envelope) => {
-                            TransactionKind::IbcMsgTransfer(Some(IbcMessage(
-                                ibc_data,
-                            )))
-                        }
-                        namada_ibc::IbcMessage::Transfer(transfer) => {
-                            // FIXME: I believe these conversions could be wrong
-                            if let Some(data) = transfer.transfer {
-                                utils::transfer_to_tx_kind(data, masp_address)
-                            } else {
-                                TransactionKind::IbcMsgTransfer(None)
-                            }
-                        }
-                        namada_ibc::IbcMessage::NftTransfer(transfer) => {
-                            // FIXME: I believe these conversions could be wrong
-                            if let Some(data) = transfer.transfer {
-                                transfer_to_ibc_tx_kind(
-                                    data,
-                                    masp_address,
-                                    ibc_data,
-                                )
-                            } else {
-                                TransactionKind::IbcMsgTransfer(None)
-                            }
-                        }
-                    }
+                    transfer_to_ibc_tx_kind(ibc_data, native_token)
                 } else {
-                    tracing::warn!("Cannot deserialize IBC transfer");
+                    tracing::warn!("Cannot deserialize IBC transaction");
                     TransactionKind::IbcMsgTransfer(None)
                 }
             }
@@ -359,6 +330,7 @@ impl Transaction {
         checksums: Checksums,
         block_results: &BlockResult,
         masp_address: &Address,
+        native_token: &Address,
     ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
             Tx::try_from(raw_tx_bytes).map_err(|e| e.to_string())?;
@@ -445,6 +417,7 @@ impl Transaction {
                                 &tx_kind_name,
                                 &tx_data,
                                 masp_address,
+                                native_token.to_owned(),
                             )
                         } else {
                             TransactionKind::Unknown
@@ -518,7 +491,7 @@ impl Transaction {
                                         })
                                         .flatten(),
                                     TransactionKind::IbcShieldingTransfer(
-                                        (Some(IbcMessage(msg)), _),
+                                        (_, _),
                                     ) => extract_masp_transaction(
                                         &transaction,
                                         note,
@@ -555,7 +528,7 @@ impl Transaction {
 
                             bundle.shielded_spends.len()
                                 + bundle.shielded_outputs.len()
-                            // FIXME: need also the conversions here?
+                            // FIXME: need also the conversions here? Yes
                         })
                     }) as u64;
 
@@ -601,6 +574,7 @@ impl Transaction {
 fn extract_masp_transaction(
     tx: &Tx,
     event_masp_ref: &MaspTxRef,
+    //FIXME: use MaspTxRef here
     tx_masp_ref: &Either<MaspTxId, Hash>,
 ) -> Option<namada_core::masp::MaspTransaction> {
     match (event_masp_ref, tx_masp_ref) {
