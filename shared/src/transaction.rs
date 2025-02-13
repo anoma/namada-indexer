@@ -455,7 +455,7 @@ impl Transaction {
                         )
                     )
                     .then(|| {
-                        if let Some(note) = masp_refs.first() {
+                        if let Some(note) = masp_refs.0.first() {
                             {
                                 // Check if the masp ref is pointing to this
                                 // inner tx
@@ -517,7 +517,7 @@ impl Transaction {
                         bundle.sapling_bundle().map_or(0, |bundle| {
                             // Remove the masp ref from the collection if we
                             // found one
-                            masp_refs.remove(0);
+                            masp_refs.0.remove(0);
 
                             bundle.shielded_spends.len()
                                 + bundle.shielded_outputs.len()
@@ -540,7 +540,7 @@ impl Transaction {
                     inner_txs.push(inner_tx);
                 }
 
-                if !masp_refs.is_empty() {
+                if !masp_refs.0.is_empty() {
                     return Err("Not all the MASP references have been \
                                 indexed"
                         .to_string());

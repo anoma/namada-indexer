@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::str::FromStr;
 
-use namada_sdk::events::extend::{IndexedMaspData, MaspTxRef};
+use namada_sdk::events::extend::{IndexedMaspData, MaspTxRefs};
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
@@ -118,7 +118,7 @@ pub struct TxApplied {
     pub height: u64,
     pub batch: BatchResults,
     pub info: String,
-    pub masp_refs: HashMap<u64, Vec<MaspTxRef>>,
+    pub masp_refs: HashMap<u64, MaspTxRefs>,
 }
 
 impl fmt::Debug for TxApplied {
@@ -224,7 +224,10 @@ impl TxAttributesType {
                                 .iter()
                                 .map(|masp_ref| masp_ref.clone())
                                 .collect();
-                            HashMap::from_iter([(data.tx_index.0 as u64, refs)])
+                            HashMap::from_iter([(
+                                data.tx_index.0 as u64,
+                                MaspTxRefs(refs),
+                            )])
                         } else {
                             HashMap::default()
                         }
@@ -365,7 +368,7 @@ impl BlockResult {
         exit_status.unwrap_or(TransactionExitStatus::Rejected)
     }
 
-    pub fn masp_refs(&self, wrapper_hash: &Id, index: u64) -> Vec<MaspTxRef> {
+    pub fn masp_refs(&self, wrapper_hash: &Id, index: u64) -> MaspTxRefs {
         self.end_events
             .iter()
             .filter_map(|event| {
