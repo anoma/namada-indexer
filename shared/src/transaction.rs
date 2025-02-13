@@ -521,7 +521,7 @@ impl Transaction {
 
                             bundle.shielded_spends.len()
                                 + bundle.shielded_outputs.len()
-                            // FIXME: need also the conversions here? Yes
+                                + bundle.shielded_converts.len()
                         })
                     }) as u64;
 
