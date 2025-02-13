@@ -181,8 +181,12 @@ impl Block {
         self.inner_txs()
             .into_iter()
             .flat_map(|tx| match tx.kind {
-                TransactionKind::TransparentTransfer(transparent_transfer) => {
-                    if let Some(data) = transparent_transfer {
+                TransactionKind::TransparentTransfer(transfer)
+                | TransactionKind::MixedTransfer(transfer)
+                | TransactionKind::ShieldedTransfer(transfer)
+                | TransactionKind::UnshieldingTransfer(transfer)
+                | TransactionKind::ShieldingTransfer(transfer) => {
+                    if let Some(data) = transfer {
                         let sources = data
                             .sources
                             .0
@@ -210,370 +214,36 @@ impl Block {
                         vec![]
                     }
                 }
-                TransactionKind::MixedTransfer(transparent_transfer) => {
-                    if let Some(data) = transparent_transfer {
-                        let sources = data
-                            .sources
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::sent(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        let targets = data
-                            .targets
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::received(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        [sources, targets].concat()
-                    } else {
-                        vec![]
-                    }
-                }
-                TransactionKind::ShieldedTransfer(transparent_transfer) => {
-                    if let Some(data) = transparent_transfer {
-                        let sources = data
-                            .sources
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::sent(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        let targets = data
-                            .targets
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::received(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        [sources, targets].concat()
-                    } else {
-                        vec![]
-                    }
-                }
-                TransactionKind::UnshieldingTransfer(transparent_transfer) => {
-                    if let Some(data) = transparent_transfer {
-                        let sources = data
-                            .sources
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::sent(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        let targets = data
-                            .targets
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::received(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        [sources, targets].concat()
-                    } else {
-                        vec![]
-                    }
-                }
-                TransactionKind::ShieldingTransfer(transparent_transfer) => {
-                    if let Some(data) = transparent_transfer {
-                        let sources = data
-                            .sources
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::sent(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        let targets = data
-                            .targets
-                            .0
-                            .keys()
-                            .map(|account| {
-                                TransactionTarget::received(
-                                    tx.tx_id.clone(),
-                                    account.owner.to_string(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        [sources, targets].concat()
-                    } else {
-                        vec![]
-                    }
-                }
-                TransactionKind::IbcMsg(ibc_message) => {
-                    if let Some(data) = ibc_message {
-                        match data.0 {
-                            IbcMessage::Envelope(_) => vec![],
-                            IbcMessage::Transfer(msg_transfer) => {
-                                if let Some(transfer) = msg_transfer.transfer {
-                                    let sources = transfer
-                                        .sources
-                                        .keys()
-                                        .map(|account| {
-                                            TransactionTarget::sent(
-                                                tx.tx_id.clone(),
-                                                account.owner.to_string(),
-                                            )
-                                        })
-                                        .collect::<Vec<_>>();
-                                    let targets = transfer
-                                        .targets
-                                        .keys()
-                                        .map(|account| {
-                                            TransactionTarget::sent(
-                                                tx.tx_id.clone(),
-                                                account.owner.to_string(),
-                                            )
-                                        })
-                                        .collect::<Vec<_>>();
-                                    [sources, targets].concat()
-                                } else {
-                                    vec![]
-                                }
-                            }
-                            IbcMessage::NftTransfer(msg_nft_transfer) => {
-                                if let Some(transfer) =
-                                    msg_nft_transfer.transfer
-                                {
-                                    let sources = transfer
-                                        .sources
-                                        .keys()
-                                        .map(|account| {
-                                            TransactionTarget::sent(
-                                                tx.tx_id.clone(),
-                                                account.owner.to_string(),
-                                            )
-                                        })
-                                        .collect::<Vec<_>>();
-                                    let targets = transfer
-                                        .targets
-                                        .keys()
-                                        .map(|account| {
-                                            TransactionTarget::sent(
-                                                tx.tx_id.clone(),
-                                                account.owner.to_string(),
-                                            )
-                                        })
-                                        .collect::<Vec<_>>();
-                                    [sources, targets].concat()
-                                } else {
-                                    vec![]
-                                }
-                            }
-                        }
-                    } else {
-                        vec![]
-                    }
-                }
-                TransactionKind::IbcTrasparentTransfer((ibc_message, _)) => {
-                    match ibc_message.0 {
-                        IbcMessage::Transfer(transfer) => {
-                            let sources = transfer
-                                .clone()
-                                //FIXME: wrong here too and in the ones below
-                                .transfer
-                                .unwrap_or_default()
-                                .sources
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            let targets = transfer
-                                .transfer
-                                .unwrap_or_default()
-                                .targets
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            [sources, targets].concat()
-                        }
-                        IbcMessage::NftTransfer(transfer) => {
-                            let sources = transfer
-                                .clone()
-                                .transfer
-                                .unwrap_or_default()
-                                .sources
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            let targets = transfer
-                                .transfer
-                                .unwrap_or_default()
-                                .targets
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            [sources, targets].concat()
-                        }
-                        _ => vec![],
-                    }
-                }
-                TransactionKind::IbcShieldingTransfer((ibc_message, _)) => {
-                    match ibc_message.0 {
-                        IbcMessage::Transfer(transfer) => {
-                            let sources = transfer
-                                .clone()
-                                .transfer
-                                .unwrap_or_default()
-                                .sources
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            let targets = transfer
-                                .transfer
-                                .unwrap_or_default()
-                                .targets
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            [sources, targets].concat()
-                        }
-                        IbcMessage::NftTransfer(transfer) => {
-                            let sources = transfer
-                                .clone()
-                                .transfer
-                                .unwrap_or_default()
-                                .sources
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            let targets = transfer
-                                .transfer
-                                .unwrap_or_default()
-                                .targets
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            [sources, targets].concat()
-                        }
-                        _ => vec![],
-                    }
-                }
-                TransactionKind::IbcUnshieldingTransfer((ibc_message, _)) => {
-                    match ibc_message.0 {
-                        IbcMessage::Transfer(transfer) => {
-                            let sources = transfer
-                                .clone()
-                                .transfer
-                                .unwrap_or_default()
-                                .sources
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            let targets = transfer
-                                .transfer
-                                .unwrap_or_default()
-                                .targets
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            [sources, targets].concat()
-                        }
-                        IbcMessage::NftTransfer(transfer) => {
-                            let sources = transfer
-                                .clone()
-                                .transfer
-                                .unwrap_or_default()
-                                .sources
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            let targets = transfer
-                                .transfer
-                                .unwrap_or_default()
-                                .targets
-                                .keys()
-                                .map(|account| {
-                                    TransactionTarget::sent(
-                                        tx.tx_id.clone(),
-                                        account.owner.to_string(),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            [sources, targets].concat()
-                        }
-                        _ => vec![],
-                    }
+                // IbcMsg only contains non-transfer ibc packets
+                TransactionKind::IbcMsg(_) => vec![],
+                // FIXME: double check if the ibc data carried here is used anywhere
+                // FIXME: actually we should join these ibc variants with the normal transfer variants
+                TransactionKind::IbcTrasparentTransfer((_, transfer))
+                | TransactionKind::IbcShieldingTransfer((_, transfer))
+                | TransactionKind::IbcUnshieldingTransfer((_, transfer)) => {
+                    let sources = transfer
+                        .sources
+                        .0
+                        .keys()
+                        .map(|account| {
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                account.owner.to_string(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    let targets = transfer
+                        .targets
+                        .0
+                        .keys()
+                        .map(|account| {
+                            TransactionTarget::received(
+                                tx.tx_id.clone(),
+                                account.owner.to_string(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    [sources, targets].concat()
                 }
                 TransactionKind::Bond(bond) => {
                     if let Some(data) = bond {

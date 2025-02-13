@@ -563,7 +563,6 @@ async fn get_block(
     block_height: u32,
     client: &HttpClient,
     checksums: Checksums,
-    // FIXME: this should be set once the chain starts so maybe we can cache this and avoid multiple queries?
     native_token: &namada_sdk::address::Address,
 ) -> Result<(Block, TendermintBlockResponse, u32), MainError> {
     tracing::debug!(block = block_height, "Query block...");
