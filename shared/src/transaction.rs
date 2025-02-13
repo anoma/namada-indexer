@@ -74,14 +74,13 @@ impl TransactionKind {
     pub fn from(
         tx_kind_name: &str,
         data: &[u8],
-        masp_address: &Address,
         native_token: Address,
     ) -> Self {
         match tx_kind_name {
             //FIXME: review all these if let Ok
             "tx_transfer" => {
                 if let Ok(transfer) = Transfer::try_from_slice(data) {
-                    utils::transfer_to_tx_kind(transfer, masp_address)
+                    utils::transfer_to_tx_kind(transfer)
                 } else {
                     TransactionKind::Unknown
                 }
@@ -329,7 +328,6 @@ impl Transaction {
         block_height: BlockHeight,
         checksums: Checksums,
         block_results: &BlockResult,
-        masp_address: &Address,
         native_token: &Address,
     ) -> Result<(WrapperTransaction, Vec<InnerTransaction>), String> {
         let transaction =
@@ -416,7 +414,6 @@ impl Transaction {
                             TransactionKind::from(
                                 &tx_kind_name,
                                 &tx_data,
-                                masp_address,
                                 native_token.to_owned(),
                             )
                         } else {

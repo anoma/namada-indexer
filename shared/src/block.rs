@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
-use namada_ibc::IbcMessage;
 use namada_ibc::apps::transfer::types::packet::PacketData;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
+use namada_ibc::IbcMessage;
+use namada_ibc::IbcMessage;
 use namada_sdk::address::{Address, InternalAddress};
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::token::Transfer;
@@ -119,8 +120,6 @@ impl Block {
         block_height: BlockHeight,
         native_token: &Address,
     ) -> Self {
-        //FIXME: make this a const in this file
-        let masp_address = Address::Internal(InternalAddress::Masp);
         let transactions = block_response
             .block
             .data
@@ -133,7 +132,6 @@ impl Block {
                     block_height,
                     checksums.clone(),
                     block_results,
-                    &masp_address,
                     native_token,
                 )
                 .map_err(|reason| {

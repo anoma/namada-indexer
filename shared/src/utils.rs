@@ -11,6 +11,9 @@ use crate::ser::{self, TransferData};
 use crate::token::Token;
 use crate::transaction::TransactionKind;
 
+pub(crate) const MASP_ADDRESS: Address =
+    Address::Internal(namada_sdk::address::InternalAddress::Masp);
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BalanceChange {
     pub address: Id,
@@ -36,10 +39,7 @@ pub struct DelegationPair {
     pub delegator_address: Id,
 }
 
-pub fn transfer_to_tx_kind(
-    data: Transfer,
-    masp_address: &Address,
-) -> TransactionKind {
+pub fn transfer_to_tx_kind(data: Transfer) -> TransactionKind {
     let has_shielded_section = data.shielded_section_hash.is_some();
     if has_shielded_section
         && data.sources.is_empty()
@@ -53,7 +53,7 @@ pub fn transfer_to_tx_kind(
         .sources
         .iter()
         .fold((true, false), |(all, any), (acc, _)| {
-            let is_masp = acc.owner.eq(masp_address);
+            let is_masp = acc.owner.eq(&MASP_ADDRESS);
             (all && is_masp, any || is_masp)
         });
 
@@ -61,7 +61,7 @@ pub fn transfer_to_tx_kind(
         .targets
         .iter()
         .fold((true, false), |(all, any), (acc, _)| {
-            let is_masp = acc.owner.eq(masp_address);
+            let is_masp = acc.owner.eq(&MASP_ADDRESS);
             (all && is_masp, any || is_masp)
         });
 
