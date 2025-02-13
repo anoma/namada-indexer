@@ -260,6 +260,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    ibc_rate_limits (id) {
+        id -> Int4,
+        #[max_length = 45]
+        address -> Varchar,
+        epoch -> Int4,
+        throughput_limit -> Numeric,
+    }
+}
+
+diesel::table! {
     ibc_token (address) {
         #[max_length = 45]
         address -> Varchar,
@@ -404,6 +414,7 @@ diesel::joinable!(balance_changes -> token (token));
 diesel::joinable!(bonds -> validators (validator_id));
 diesel::joinable!(gas_estimations -> wrapper_transactions (wrapper_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(ibc_rate_limits -> token (address));
 diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
@@ -425,6 +436,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     governance_proposals,
     governance_votes,
     ibc_ack,
+    ibc_rate_limits,
     ibc_token,
     inner_transactions,
     pos_rewards,
