@@ -99,7 +99,11 @@ pub fn transfer_to_ibc_tx_kind(
             ) = msg_envelope.as_ref()
             {
                 // Extract transfer info from the packet
-                let transfer_data = match msg.packet.port_id_on_b.as_str() {
+                let (transfer_data, token_id) = match msg
+                    .packet
+                    .port_id_on_b
+                    .as_str()
+                {
                     FT_PORT_ID_STR => {
                         let packet_data =
                             serde_json::from_slice::<FtPacketData>(
@@ -107,7 +111,7 @@ pub fn transfer_to_ibc_tx_kind(
                             )
                             .expect("Could not deserialize IBC fungible token packet");
 
-                        let (token, denominated_amount) = if packet_data
+                        let (token, token_id, denominated_amount) = if packet_data
                             .token
                             .denom
                             .to_string()
@@ -115,6 +119,7 @@ pub fn transfer_to_ibc_tx_kind(
                         {
                             (
                                 native_token.clone(),
+                                crate::token::Token::Native(native_token.into()),
                                 namada_sdk::token::DenominatedAmount::native(
                                     namada_sdk::token::Amount::from_str(
                                         &packet_data.token.amount.to_string(),
@@ -130,13 +135,16 @@ pub fn transfer_to_ibc_tx_kind(
                                 msg.packet.chan_id_on_b,
                                 packet_data.token.denom
                             );
-                            (
+                            let token_address = 
                                 namada_ibc::trace::convert_to_address(
-                                    ibc_trace,
+                                    ibc_trace.clone(),
                                 )
                                 .expect(
                                     "Failed to convert IBC trace to address",
-                                ),
+                                );
+                            (
+                                token_address.clone(),
+                                crate::token::Token::Ibc(crate::token::IbcToken { address: token_address.into(), trace: Id::IbcTrace(ibc_trace)  }),
                                 namada_sdk::token::DenominatedAmount::new(
                                     namada_sdk::token::Amount::from_str(
                                         &packet_data.token.amount.to_string(),
@@ -148,7 +156,7 @@ pub fn transfer_to_ibc_tx_kind(
                             )
                         };
 
-                        TransferData {
+                        (TransferData {
                             sources: crate::ser::AccountsMap(
                                 [(
                                     namada_sdk::token::Account {
@@ -170,7 +178,8 @@ pub fn transfer_to_ibc_tx_kind(
                                 .into(),
                             ),
                             shielded_section_hash: None,
-                        }
+                        },
+                        token_id)
                     }
                     NFT_PORT_ID_STR => {
                         // TODO: add support for indexing nfts
@@ -191,12 +200,12 @@ pub fn transfer_to_ibc_tx_kind(
                     .is_some();
                 if is_shielding {
                     TransactionKind::IbcShieldingTransfer((
-                        ser::IbcMessage(ibc_data),
+                        token_id,
                         transfer_data,
                     ))
                 } else {
                     TransactionKind::IbcTrasparentTransfer((
-                        ser::IbcMessage(ibc_data),
+                        token_id,
                         transfer_data,
                     ))
                 }
@@ -205,7 +214,7 @@ pub fn transfer_to_ibc_tx_kind(
             }
         }
         namada_ibc::IbcMessage::Transfer(transfer) => {
-            let (token, denominated_amount) = if transfer
+            let (token, token_id, denominated_amount) = if transfer
                 .message
                 .packet_data
                 .token
@@ -215,6 +224,7 @@ pub fn transfer_to_ibc_tx_kind(
             {
                 (
                     native_token.clone(),
+                                crate::token::Token::Native(native_token.into()),
                     namada_sdk::token::DenominatedAmount::native(
                         namada_sdk::token::Amount::from_str(
                             &transfer
@@ -237,9 +247,13 @@ pub fn transfer_to_ibc_tx_kind(
                     transfer.message.chan_id_on_a,
                     transfer.message.packet_data.token.denom
                 );
+                let token_address = 
+                    namada_ibc::trace::convert_to_address(ibc_trace.clone())
+                        .expect("Failed to convert IBC trace to address");
                 (
-                    namada_ibc::trace::convert_to_address(ibc_trace)
-                        .expect("Failed to convert IBC trace to address"),
+                    token_address.clone(),
+                    
+                                crate::token::Token::Ibc(crate::token::IbcToken { address: token_address.into(), trace: Id::IbcTrace(ibc_trace)  }),
                     namada_sdk::token::DenominatedAmount::new(
                         namada_sdk::token::Amount::from_str(
                             &transfer
@@ -292,12 +306,12 @@ pub fn transfer_to_ibc_tx_kind(
 
             if transfer.transfer.is_some() {
                 TransactionKind::IbcUnshieldingTransfer((
-                    ser::IbcMessage(ibc_data),
+                    token_id,
                     transfer_data,
                 ))
             } else {
                 TransactionKind::IbcTrasparentTransfer((
-                    ser::IbcMessage(ibc_data),
+                    token_id,
                     transfer_data,
                 ))
             }

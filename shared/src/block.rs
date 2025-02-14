@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
-use namada_ibc::apps::transfer::types::packet::PacketData;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::IbcMessage;
@@ -19,7 +18,6 @@ use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
-use crate::ser;
 use crate::token::{IbcToken, Token};
 use crate::transaction::{
     InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
@@ -533,36 +531,18 @@ impl Block {
                     && tx.exit_code == TransactionExitStatus::Applied
             })
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::IbcTrasparentTransfer((data, _))
-                | TransactionKind::IbcShieldingTransfer((data, _))
-                | TransactionKind::IbcUnshieldingTransfer((data, _)) => {
-                    let data = Self::ibc_msg_recv_packet(data.0.to_owned())
-                        .and_then(|msg| {
-                            serde_json::from_slice::<PacketData>(
-                                &msg.packet.data,
-                            )
-                            .map(|p| (msg, p))
-                            .ok()
-                        });
-
-                    let (msg, packet_data) = data?;
-
-                    let ibc_trace = format!(
-                        "{}/{}/{}",
-                        msg.packet.port_id_on_b,
-                        msg.packet.chan_id_on_b,
-                        packet_data.token.denom
-                    );
-
-                    let trace = Id::IbcTrace(ibc_trace.clone());
-                    let address =
-                        namada_ibc::trace::convert_to_address(ibc_trace)
-                            .expect("Failed to convert IBC trace to address");
-                    Some(IbcToken {
-                        address: Id::from(address.clone()),
-                        trace,
-                    })
-                }
+                TransactionKind::IbcTrasparentTransfer((
+                    Token::Ibc(ibc_token),
+                    _,
+                ))
+                | TransactionKind::IbcShieldingTransfer((
+                    Token::Ibc(ibc_token),
+                    _,
+                ))
+                | TransactionKind::IbcUnshieldingTransfer((
+                    Token::Ibc(ibc_token),
+                    _,
+                )) => Some(ibc_token.to_owned()),
                 _ => None,
             })
             .collect()
@@ -621,12 +601,20 @@ impl Block {
                     })
                     .collect()
             }
-            // FIXME: If data is only used here to extract the ibc token we should change it with the ibc token directly in TransactionKind
-            TransactionKind::IbcTrasparentTransfer((data, _))
-            | TransactionKind::IbcShieldingTransfer((data, _))
-            | TransactionKind::IbcUnshieldingTransfer((data, _)) => {
-                Self::parse_ibc_tx_balances(data, native_token)
-                    .unwrap_or_default()
+            TransactionKind::IbcTrasparentTransfer((token, data))
+            | TransactionKind::IbcShieldingTransfer((token, data))
+            | TransactionKind::IbcUnshieldingTransfer((token, data)) => {
+                [&data.sources, &data.targets]
+                    .iter()
+                    .flat_map(|transfer_changes| {
+                        transfer_changes.0.keys().map(|account| {
+                            BalanceChange::new(
+                                Id::from(account.owner.clone()),
+                                token.to_owned(),
+                            )
+                        })
+                    })
+                    .collect()
             }
             TransactionKind::Bond(data) => {
                 let data = data.as_ref()?;
@@ -955,53 +943,5 @@ impl Block {
                 _ => None,
             })
             .collect()
-    }
-
-    fn parse_ibc_tx_balances(
-        data: &ser::IbcMessage<Transfer>,
-        native_token: &Id,
-    ) -> Option<Vec<BalanceChange>> {
-        //FIXME: wrong, we should also check the other packets
-        let data =
-            Self::ibc_msg_recv_packet(data.0.to_owned()).and_then(|msg| {
-                serde_json::from_slice::<PacketData>(&msg.packet.data)
-                    .map(|p| (msg, p))
-                    .ok()
-            });
-
-        let (msg, packet_data) = data?;
-        let denom = packet_data.token.denom.to_string();
-
-        let ibc_trace = format!(
-            "{}/{}/{}",
-            msg.packet.port_id_on_b,
-            msg.packet.chan_id_on_b,
-            packet_data.token.denom
-        );
-
-        let trace = Id::IbcTrace(ibc_trace.clone());
-        let address = namada_ibc::trace::convert_to_address(ibc_trace)
-            .expect("Failed to convert IBC trace to address");
-
-        // FIXME: recheck this, I think it's wrong, why do we only care about the receiver?
-        let mut balances = vec![BalanceChange::new(
-            Id::Account(String::from(packet_data.receiver.as_ref())),
-            Token::Ibc(IbcToken {
-                address: Id::from(address.clone()),
-                trace,
-            }),
-        )];
-
-        // If the denom contains the namada native token, try to fetch
-        // the balance
-        //FIXME: why this? we can fetch the balance also of ibc tokens
-        //FIXME: we should just fix the usage of ibc token to check if it really is a foreign token or not
-        if denom.contains(&native_token.to_string()) {
-            balances.push(BalanceChange::new(
-                Id::Account(String::from(packet_data.receiver.as_ref())),
-                Token::Native(native_token.clone()),
-            ))
-        }
-        Some(balances)
     }
 }

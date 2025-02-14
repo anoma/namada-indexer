@@ -41,9 +41,9 @@ pub enum TransactionKind {
     MixedTransfer(Option<TransferData>),
     /// Generic, non-transfer, IBC messages
     IbcMsg(Option<IbcMessage<Transfer>>),
-    IbcTrasparentTransfer((IbcMessage<Transfer>, TransferData)),
-    IbcShieldingTransfer((IbcMessage<Transfer>, TransferData)),
-    IbcUnshieldingTransfer((IbcMessage<Transfer>, TransferData)),
+    IbcTrasparentTransfer((crate::token::Token, TransferData)),
+    IbcShieldingTransfer((crate::token::Token, TransferData)),
+    IbcUnshieldingTransfer((crate::token::Token, TransferData)),
     Bond(Option<Bond>),
     Redelegation(Option<Redelegation>),
     Unbond(Option<Unbond>),
