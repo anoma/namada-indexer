@@ -78,7 +78,6 @@ async fn main() -> Result<(), MainError> {
 
 async fn crawling_fn(
     block_height: u32,
-    //FIXME: arc without mutexes?
     client: Arc<HttpClient>,
     conn: Arc<Object>,
     checksums: Checksums,

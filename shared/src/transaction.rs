@@ -12,7 +12,7 @@ use namada_tx::data::pos::{
     BecomeValidator, Bond, ClaimRewards, CommissionChange, MetaDataChange,
     Redelegation, Unbond, Withdraw,
 };
-use namada_tx::data::{compute_inner_tx_hash, TxType};
+use namada_tx::data::{TxType, compute_inner_tx_hash};
 use namada_tx::either::Either;
 use namada_tx::{Section, Tx};
 use serde::Serialize;
@@ -469,9 +469,8 @@ impl Transaction {
                                     )
                                     | TransactionKind::MixedTransfer(Some(
                                         data,
-                                    )) => data
-                                        .shielded_section_hash
-                                        .map(|shielded_section_hash| {
+                                    )) => data.shielded_section_hash.and_then(
+                                        |shielded_section_hash| {
                                             extract_masp_transaction(
                                                 &transaction,
                                                 note,
@@ -479,8 +478,8 @@ impl Transaction {
                                                     shielded_section_hash,
                                                 ),
                                             )
-                                        })
-                                        .flatten(),
+                                        },
+                                    ),
                                     TransactionKind::IbcShieldingTransfer(
                                         (_, _),
                                     ) => extract_masp_transaction(
@@ -492,9 +491,8 @@ impl Transaction {
                                     ),
                                     TransactionKind::IbcUnshieldingTransfer(
                                         (_, data),
-                                    ) => data
-                                        .shielded_section_hash
-                                        .map(|shielded_section_hash| {
+                                    ) => data.shielded_section_hash.and_then(
+                                        |shielded_section_hash| {
                                             extract_masp_transaction(
                                                 &transaction,
                                                 note,
@@ -502,8 +500,8 @@ impl Transaction {
                                                     shielded_section_hash,
                                                 ),
                                             )
-                                        })
-                                        .flatten(),
+                                        },
+                                    ),
                                     _ => None,
                                 }
                             }
@@ -578,19 +576,16 @@ fn extract_masp_transaction(
         (MaspTxRef::IbcData(event_hash), MaspTxRef::IbcData(tx_hash))
             if event_hash == tx_hash =>
         {
-            tx.get_data_section(event_hash)
-                .map(|section| {
-                    match namada_sdk::ibc::decode_message::<Transfer>(&section)
-                    {
-                        Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
-                            namada_sdk::ibc::extract_masp_tx_from_envelope(
-                                &msg_envelope,
-                            )
-                        }
-                        _ => None,
+            tx.get_data_section(event_hash).and_then(|section| {
+                match namada_sdk::ibc::decode_message::<Transfer>(&section) {
+                    Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
+                        namada_sdk::ibc::extract_masp_tx_from_envelope(
+                            &msg_envelope,
+                        )
                     }
-                })
-                .flatten()
+                    _ => None,
+                }
+            })
         }
         _ => None,
     }

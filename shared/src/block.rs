@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
+use namada_ibc::IbcMessage;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::IbcMessage;
