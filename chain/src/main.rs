@@ -120,9 +120,12 @@ async fn crawling_fn(
     let native_token = namada_service::get_native_token(&client)
         .await
         .into_rpc_error()?;
+    let native_token_address: namada_sdk::address::Address =
+        native_token.clone().into();
 
     let (block, tm_block_response, epoch) =
-        get_block(block_height, &client, checksums, native_token).await?;
+        get_block(block_height, &client, checksums, &native_token_address)
+            .await?;
 
     tracing::debug!(
         block = block_height,
@@ -410,11 +413,13 @@ async fn try_initial_query(
         .await
         .into_rpc_error()?;
 
-    let native_token = namada_service::get_native_token(client)
-        .await
-        .into_rpc_error()?;
+    let native_token: namada_sdk::address::Address =
+        namada_service::get_native_token(client)
+            .await
+            .into_rpc_error()?
+            .into();
     let (block, tm_block_response, epoch) =
-        get_block(block_height, client, checksums.clone(), native_token)
+        get_block(block_height, client, checksums.clone(), &native_token)
             .await?;
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
