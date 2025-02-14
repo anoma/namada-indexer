@@ -149,7 +149,6 @@ pub fn transfer_to_ibc_tx_kind(
                         };
 
                         TransferData {
-                            // TODO: support indexing addresses as string to allow for ibc sources
                             sources: crate::ser::AccountsMap(
                                 [(
                                     namada_sdk::token::Account {
@@ -281,7 +280,6 @@ pub fn transfer_to_ibc_tx_kind(
                 targets: crate::ser::AccountsMap(
                     [(
                         namada_sdk::token::Account {
-                            // TODO: support indexing addresses as string to allow for ibc targets
                             owner: namada_sdk::address::IBC,
                             token,
                         },

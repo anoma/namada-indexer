@@ -39,6 +39,7 @@ pub enum TransactionKind {
     ShieldingTransfer(Option<TransferData>),
     UnshieldingTransfer(Option<TransferData>),
     MixedTransfer(Option<TransferData>),
+    /// Generic, non-transfer, IBC messages
     IbcMsg(Option<IbcMessage<Transfer>>),
     IbcTrasparentTransfer((IbcMessage<Transfer>, TransferData)),
     IbcShieldingTransfer((IbcMessage<Transfer>, TransferData)),
@@ -71,7 +72,6 @@ impl TransactionKind {
         native_token: Address,
     ) -> Self {
         match tx_kind_name {
-            //FIXME: review all these if let Ok
             "tx_transfer" => {
                 if let Ok(transfer) = Transfer::try_from_slice(data) {
                     utils::transfer_to_tx_kind(transfer)

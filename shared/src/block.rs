@@ -214,10 +214,8 @@ impl Block {
                         vec![]
                     }
                 }
-                // IbcMsg only contains non-transfer ibc packets
+                // IbcMsg is only used for non-transfer ibc packets
                 TransactionKind::IbcMsg(_) => vec![],
-                // FIXME: double check if the ibc data carried here is used anywhere
-                // FIXME: actually we should join these ibc variants with the normal transfer variants
                 TransactionKind::IbcTrasparentTransfer((_, transfer))
                 | TransactionKind::IbcShieldingTransfer((_, transfer))
                 | TransactionKind::IbcUnshieldingTransfer((_, transfer)) => {
@@ -535,22 +533,20 @@ impl Block {
                     && tx.exit_code == TransactionExitStatus::Applied
             })
             .filter_map(|tx| match &tx.kind {
-                //FIXME: why filtering only on msg transfers? We should also cover the other ibc cases
-                //FIXME: ah no maybe we are just interested at seeing what enters namada so we only need the recv envelope
-                TransactionKind::IbcMsg(data) => {
-                    let data = data.clone().and_then(|d| {
-                        Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
+                TransactionKind::IbcTrasparentTransfer((data, _))
+                | TransactionKind::IbcShieldingTransfer((data, _))
+                | TransactionKind::IbcUnshieldingTransfer((data, _)) => {
+                    let data = Self::ibc_msg_recv_packet(data.0.to_owned())
+                        .and_then(|msg| {
                             serde_json::from_slice::<PacketData>(
                                 &msg.packet.data,
                             )
                             .map(|p| (msg, p))
                             .ok()
-                        })
-                    });
+                        });
 
                     let (msg, packet_data) = data?;
 
-                    //FIXME: what if we are transfering the native token?
                     let ibc_trace = format!(
                         "{}/{}/{}",
                         msg.packet.port_id_on_b,
@@ -604,41 +600,13 @@ impl Block {
         native_token: &Id,
     ) -> Option<Vec<BalanceChange>> {
         let change = match &tx.kind {
-            TransactionKind::IbcMsg(data) => {
-                Self::parse_ibc_tx_balances(data.as_ref(), native_token)
-                    .unwrap_or_default()
-            }
-            TransactionKind::ShieldedTransfer(data) => {
-                let data = data.as_ref()?;
-
-                [&data.sources]
-                    .iter()
-                    .flat_map(|transfer_changes| {
-                        transfer_changes.0.keys().map(|account| {
-                            BalanceChange::new(
-                                Id::from(account.owner.clone()),
-                                Token::Native(Id::from(account.token.clone())),
-                            )
-                        })
-                    })
-                    .collect()
-            }
-            TransactionKind::UnshieldingTransfer(data) => {
-                let data = data.as_ref()?;
-
-                [&data.targets]
-                    .iter()
-                    .flat_map(|transfer_changes| {
-                        transfer_changes.0.keys().map(|account| {
-                            BalanceChange::new(
-                                Id::from(account.owner.clone()),
-                                Token::Native(Id::from(account.token.clone())),
-                            )
-                        })
-                    })
-                    .collect()
-            }
-            TransactionKind::MixedTransfer(data) => {
+            TransactionKind::IbcMsg(_) => Default::default(),
+            // Shielded transfers don't move any transparent balance
+            TransactionKind::ShieldedTransfer(_) => Default::default(),
+            TransactionKind::ShieldingTransfer(data)
+            | TransactionKind::UnshieldingTransfer(data)
+            | TransactionKind::MixedTransfer(data)
+            | TransactionKind::TransparentTransfer(data) => {
                 let data = data.as_ref()?;
 
                 [&data.sources, &data.targets]
@@ -653,28 +621,12 @@ impl Block {
                     })
                     .collect()
             }
-            TransactionKind::IbcShieldingTransfer((data, _)) => {
-                Self::parse_ibc_tx_balances(Some(data), native_token)
+            // FIXME: If data is only used here to extract the ibc token we should change it with the ibc token directly in TransactionKind
+            TransactionKind::IbcTrasparentTransfer((data, _))
+            | TransactionKind::IbcShieldingTransfer((data, _))
+            | TransactionKind::IbcUnshieldingTransfer((data, _)) => {
+                Self::parse_ibc_tx_balances(data, native_token)
                     .unwrap_or_default()
-            }
-            TransactionKind::IbcUnshieldingTransfer((data, _)) => {
-                Self::parse_ibc_tx_balances(Some(data), native_token)
-                    .unwrap_or_default()
-            }
-            TransactionKind::TransparentTransfer(data) => {
-                let data = data.as_ref()?;
-
-                [&data.sources, &data.targets]
-                    .iter()
-                    .flat_map(|transfer_changes| {
-                        transfer_changes.0.keys().map(|account| {
-                            BalanceChange::new(
-                                Id::from(account.owner.clone()),
-                                Token::Native(Id::from(account.token.clone())),
-                            )
-                        })
-                    })
-                    .collect()
             }
             TransactionKind::Bond(data) => {
                 let data = data.as_ref()?;
@@ -726,14 +678,23 @@ impl Block {
                     Token::Native(native_token.clone()),
                 )]
             }
-            _ => vec![],
+            TransactionKind::Redelegation(_)
+            | TransactionKind::CommissionChange(_)
+            | TransactionKind::RevealPk(_)
+            | TransactionKind::DeactivateValidator(_)
+            | TransactionKind::Unknown(_)
+            | TransactionKind::UnjailValidator(_)
+            | TransactionKind::MetadataChange(_)
+            | TransactionKind::ReactivateValidator(_)
+            | TransactionKind::Unbond(_)
+            | TransactionKind::BecomeValidator(_)
+            | TransactionKind::ProposalVote(_) => Default::default(),
         };
 
         Some(change)
     }
 
     pub fn ibc_msg_recv_packet(
-        // TODO: not sure if token::Transfer is the right type here
         msg: IbcMessage<Transfer>,
     ) -> Option<MsgRecvPacket> {
         // Early return if the message is not an Envelope
@@ -997,16 +958,16 @@ impl Block {
     }
 
     fn parse_ibc_tx_balances(
-        data: Option<&ser::IbcMessage<Transfer>>,
+        data: &ser::IbcMessage<Transfer>,
         native_token: &Id,
     ) -> Option<Vec<BalanceChange>> {
-        let data = data.and_then(|d| {
-            Self::ibc_msg_recv_packet(d.0.to_owned()).and_then(|msg| {
+        //FIXME: wrong, we should also check the other packets
+        let data =
+            Self::ibc_msg_recv_packet(data.0.to_owned()).and_then(|msg| {
                 serde_json::from_slice::<PacketData>(&msg.packet.data)
                     .map(|p| (msg, p))
                     .ok()
-            })
-        });
+            });
 
         let (msg, packet_data) = data?;
         let denom = packet_data.token.denom.to_string();
@@ -1022,7 +983,7 @@ impl Block {
         let address = namada_ibc::trace::convert_to_address(ibc_trace)
             .expect("Failed to convert IBC trace to address");
 
-        // FIXME: recheck this
+        // FIXME: recheck this, I think it's wrong, why do we only care about the receiver?
         let mut balances = vec![BalanceChange::new(
             Id::Account(String::from(packet_data.receiver.as_ref())),
             Token::Ibc(IbcToken {
@@ -1033,6 +994,8 @@ impl Block {
 
         // If the denom contains the namada native token, try to fetch
         // the balance
+        //FIXME: why this? we can fetch the balance also of ibc tokens
+        //FIXME: we should just fix the usage of ibc token to check if it really is a foreign token or not
         if denom.contains(&native_token.to_string()) {
             balances.push(BalanceChange::new(
                 Id::Account(String::from(packet_data.receiver.as_ref())),
