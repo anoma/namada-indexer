@@ -61,11 +61,17 @@ impl IbcRepositoryTrait for IbcRepository {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
+            use diesel::Column;
+
             diesel::alias!(ibc_rate_limits as ibc_rate_limits_alias: IbcRateLimitsAlias);
 
             // NB: We're using a raw select because `CAST` is not available in the diesel dsl. :(
             let select_statement = diesel::dsl::sql::<(diesel::sql_types::Text, diesel::sql_types::Text)>(
-                "ibc_rate_limits.address, CAST(ibc_rate_limits.throughput_limit AS TEXT)",
+                &format!(
+                    "{}, CAST({} AS TEXT)",
+                    ibc_rate_limits::dsl::address::NAME,
+                    ibc_rate_limits::dsl::throughput_limit::NAME,
+                ),
             );
 
             let max_epoch_where_clause =
