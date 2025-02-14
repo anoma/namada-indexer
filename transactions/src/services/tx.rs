@@ -10,20 +10,20 @@ use shared::transaction::{
 
 pub fn get_ibc_packets(
     block_results: &BlockResult,
-    inner_txs: &[InnerTransaction],
+    txs: &[(WrapperTransaction, Vec<InnerTransaction>)],
 ) -> Vec<IbcSequence> {
-    let mut ibc_txs = inner_txs
-        .iter()
-        .filter_map(|tx| {
-            if tx.is_ibc() && tx.was_successful() {
-                Some(tx.tx_id.clone())
-            } else {
-                None
+    let mut ibc_txs: Vec<_> = txs.iter().rev().fold(
+        Default::default(),
+        |mut acc, (wrapper_tx, inner_txs)| {
+            // Extract successful ibc transactions from each batch
+            for inner_tx in inner_txs {
+                if inner_tx.is_ibc() && inner_tx.was_successful(wrapper_tx) {
+                    acc.push(inner_tx.tx_id.to_owned())
+                }
             }
-        })
-        .collect::<Vec<_>>();
-
-    ibc_txs.reverse();
+            acc
+        },
+    );
 
     block_results
         .end_events
@@ -113,20 +113,22 @@ pub fn get_ibc_ack_packet(inner_txs: &[InnerTransaction]) -> Vec<IbcAck> {
 }
 
 pub fn get_gas_estimates(
-    inner_txs: &[InnerTransaction],
-    wrapper_txs: &[WrapperTransaction],
+    txs: &[(WrapperTransaction, Vec<InnerTransaction>)],
 ) -> Vec<GasEstimation> {
-    wrapper_txs
-        .iter()
-        .map(|wrapper_tx| {
+    txs.iter()
+        .map(|(wrapper_tx, inner_txs)| {
             let mut gas_estimate = GasEstimation::new(wrapper_tx.tx_id.clone());
             gas_estimate.signatures = wrapper_tx.total_signatures;
             gas_estimate.size = wrapper_tx.size;
+            // FIXME: must index the gas only if the wrapper was successful and
+            // ALL the inner were successful FIXME: also do the
+            // migration, diesel command + write the sql up and down to cancel
+            // everything in the gas_estimates table (do not drop the table)
 
             inner_txs
                 .iter()
                 .filter(|inner_tx| {
-                    inner_tx.was_successful()
+                    inner_tx.was_successful(wrapper_tx)
                         && inner_tx.wrapper_id.eq(&wrapper_tx.tx_id)
                 })
                 .for_each(|tx| match tx.kind {

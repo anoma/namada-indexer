@@ -49,6 +49,7 @@ pub enum TxEventStatusCode {
 impl From<&str> for TxEventStatusCode {
     fn from(value: &str) -> Self {
         match value {
+            // FIXME: what???
             "0" | "1" => Self::Ok,
             _ => Self::Fail,
         }
@@ -102,11 +103,10 @@ impl From<TxResult<String>> for BatchResults {
 }
 
 impl BatchResults {
-    pub fn is_successful(&self, tx_id: &Id) -> bool {
-        match self.batch_results.get(tx_id) {
-            Some(result) => *result,
-            None => false,
-        }
+    fn is_successful(&self, tx_id: &Id) -> bool {
+        // FIXME: maybe better to return error if I can't find the inner tx in
+        // this batch
+        self.batch_results.get(tx_id).map_or(false, |res| *res)
     }
 }
 
