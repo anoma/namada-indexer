@@ -27,7 +27,7 @@ pub trait IbcRepositoryTrait {
         &self,
         token_address: Option<String>,
         matching_rate_limit: Option<BigDecimal>,
-    ) -> Result<Vec<(String, BigDecimal)>, String>;
+    ) -> Result<Vec<(String, String)>, String>;
 }
 
 #[async_trait]
@@ -55,17 +55,17 @@ impl IbcRepositoryTrait for IbcRepository {
 
     async fn get_throughput_limits(
         &self,
-        token_address: Option<String>,
+        matching_token_address: Option<String>,
         matching_rate_limit: Option<BigDecimal>,
-    ) -> Result<Vec<(String, BigDecimal)>, String> {
+    ) -> Result<Vec<(String, String)>, String> {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
             diesel::alias!(ibc_rate_limits as ibc_rate_limits_alias: IbcRateLimitsAlias);
 
-            let select_statement = (
-                ibc_rate_limits::dsl::address,
-                ibc_rate_limits::dsl::throughput_limit,
+            // NB: We're using a raw select because `CAST` is not available in the diesel dsl. :(
+            let select_statement = diesel::dsl::sql::<(diesel::sql_types::Text, diesel::sql_types::Text)>(
+                "ibc_rate_limits.address, CAST(ibc_rate_limits.throughput_limit AS TEXT)",
             );
 
             let max_epoch_where_clause =
@@ -73,10 +73,10 @@ impl IbcRepositoryTrait for IbcRepository {
                     .select(diesel::dsl::max(ibc_rate_limits_alias.field(ibc_rate_limits::dsl::epoch)))
                     .single_value());
 
-            match (token_address, matching_rate_limit) {
+            match (matching_token_address, matching_rate_limit) {
                 (None, None) => ibc_rate_limits::table
-                    .select(select_statement)
                     .filter(max_epoch_where_clause)
+                    .select(select_statement)
                     .load(conn),
                 (Some(token), None) => ibc_rate_limits::table
                     .filter(ibc_rate_limits::dsl::address.eq(&token))
