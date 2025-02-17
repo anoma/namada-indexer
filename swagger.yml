@@ -815,36 +815,9 @@ paths:
                         ]
                     timestamp:
                       type: number
-                    last_processed_block_height: 
+                    last_processed_block:
                       type: number
-  /api/v1/chain/history:
-    get:
-      summary: Get a paginated list of transaction for a list of addresses
-      parameters:
-        - in: query
-          name: addresses
-          schema:
-            type: array
-            items:
-              type: string
-            minItems: 1
-            maxItems: 10
-          description: The list of address. Must contain at least 1 element
-      responses:
-        "200":
-          description: Pagined historic transaction list.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [results, pagination]
-                properties:
-                  results:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/TransactionHistory"
-                  pagination:
-                    $ref: "#/components/schemas/Pagination"
+
 components:
   schemas:
     Validator:
