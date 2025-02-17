@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
-use axum::Json;
 use axum_macros::debug_handler;
 
 use crate::dto::gas::GasEstimateQuery;

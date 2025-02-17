@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
+use fake::Fake;
 use fake::faker::company::en::{CatchPhrase, CompanyName};
 use fake::faker::internet::en::{DomainSuffix, SafeEmail, Username};
-use fake::Fake;
 use namada_proof_of_stake::types::ValidatorState as NamadaValidatorState;
 use rand::distributions::{Distribution, Standard};
 
