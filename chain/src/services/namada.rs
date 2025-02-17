@@ -23,7 +23,7 @@ use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::proposal::{GovernanceProposal, TallyType};
-use shared::token::{IbcToken, Token};
+use shared::token::{IbcRateLimit, IbcToken, Token};
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use shared::validator::{Validator, ValidatorSet, ValidatorState};
@@ -863,4 +863,47 @@ pub async fn get_token_supply(
         total: supply.into(),
         effective: None,
     })
+}
+
+pub async fn get_throughput_rate_limit(
+    client: &HttpClient,
+    token: String,
+    epoch: u32,
+) -> anyhow::Result<IbcRateLimit> {
+    let address: NamadaSdkAddress =
+        token.parse().context("Failed to parse token address")?;
+
+    let rate_limit = rpc::query_ibc_rate_limits(client, &address)
+        .await
+        .with_context(|| {
+            format!("Failed to query throughput rate limit of token {token}")
+        })?;
+
+    Ok(IbcRateLimit {
+        epoch,
+        address: token,
+        throughput_limit: Amount::from(rate_limit.throughput_per_epoch_limit)
+            .into(),
+    })
+}
+
+pub async fn get_rate_limits_for_tokens<I>(
+    client: &HttpClient,
+    tokens: I,
+    epoch: u32,
+) -> anyhow::Result<Vec<IbcRateLimit>>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut buffer = vec![];
+
+    let mut stream = futures::stream::iter(tokens)
+        .map(|address| get_throughput_rate_limit(client, address, epoch))
+        .buffer_unordered(32);
+
+    while let Some(maybe_address) = stream.next().await {
+        buffer.push(maybe_address?);
+    }
+
+    Ok(buffer)
 }

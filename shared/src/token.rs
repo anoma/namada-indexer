@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use bigdecimal::BigDecimal;
+
 use crate::id::Id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -21,4 +23,14 @@ impl Display for Token {
             Token::Native(token) => write!(f, "{}", token),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct IbcRateLimit {
+    /// Address of the token in Namada
+    pub address: String,
+    /// Epoch of the indexed rate limit
+    pub epoch: u32,
+    /// Throughput limit of token `address` at epoch `epoch`
+    pub throughput_limit: BigDecimal,
 }

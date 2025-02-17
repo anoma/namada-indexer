@@ -145,6 +145,10 @@ impl ApplicationServer {
                 )
                 .route("/ibc/:tx_id/status", get(ibc_handler::get_ibc_status))
                 .route(
+                    "/ibc/rate-limits",
+                    get(ibc_handler::get_ibc_rate_limits),
+                )
+                .route(
                     "/pgf/payments",
                     get(pgf_service::get_pgf_continuous_payments),
                 )

@@ -1,9 +1,11 @@
+use bigdecimal::BigDecimal;
 use diesel::prelude::Queryable;
 use diesel::{AsChangeset, Insertable, Selectable};
 use serde::{Deserialize, Serialize};
+use shared::token::IbcRateLimit;
 use shared::transaction::{IbcAckStatus, IbcSequence};
 
-use crate::schema::ibc_ack;
+use crate::schema::{ibc_ack, ibc_rate_limits};
 
 #[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::IbcStatus"]
@@ -53,4 +55,33 @@ impl From<IbcSequence> for IbcAckInsertDb {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct IbcSequencekStatusUpdateDb {
     pub status: IbcAckStatusDb,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = ibc_rate_limits)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct IbcRateLimitsDb {
+    pub id: i32,
+    pub address: String,
+    pub epoch: i32,
+    pub throughput_limit: BigDecimal,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = ibc_rate_limits)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct IbcRateLimitsInsertDb {
+    pub address: String,
+    pub epoch: i32,
+    pub throughput_limit: BigDecimal,
+}
+
+impl From<IbcRateLimit> for IbcRateLimitsInsertDb {
+    fn from(rate_limit: IbcRateLimit) -> Self {
+        Self {
+            address: rate_limit.address,
+            epoch: rate_limit.epoch as _,
+            throughput_limit: rate_limit.throughput_limit,
+        }
+    }
 }

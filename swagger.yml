@@ -25,6 +25,31 @@ paths:
                     type: string
                   version:
                     type: string
+  /api/v1/ibc/rate-limits:
+    get:
+      summary: Get the rate limits of IBC tokens
+      parameters:
+        - in: query
+          name: tokenAddress
+          schema:
+            type: integer
+            minimum: 0
+          description: Optional address of the token to query
+        - in: query
+          name: throughputLimit
+          schema:
+            type: integer
+            minimum: 0
+          description: Optional throughput limit to filter with
+      responses:
+        "200":
+          description: List of IBC tokens and their rate limits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IbcRateLimit"
   /api/v1/pos/validator:
     get:
       summary: Get all validators, paginated
@@ -1404,4 +1429,12 @@ components:
           type: string
           enum: [received, sent]
         block_height:
+          type: string
+    IbcRateLimit:
+      type: object
+      required: [tokenAddress, throughputLimit]
+      properties:
+        tokenAddress:
+          type: string
+        throughputLimit:
           type: string

@@ -8,6 +8,8 @@ pub enum MainError {
     RpcError,
     #[error("Can't commit block to database")]
     Database,
+    #[error("Failed to join async task")]
+    TaskJoinError,
 }
 
 pub trait AsRpcError<T> {
@@ -34,6 +36,20 @@ impl<T> AsDbError<T> for anyhow::Result<T> {
         self.map_err(|reason| {
             tracing::error!(?reason, "Database error");
             MainError::Database
+        })
+    }
+}
+
+pub trait AsTaskJoinError<T> {
+    fn into_task_join_error(self) -> Result<T, MainError>;
+}
+
+impl<T> AsTaskJoinError<T> for anyhow::Result<T> {
+    #[inline]
+    fn into_task_join_error(self) -> Result<T, MainError> {
+        self.map_err(|reason| {
+            tracing::error!(?reason, "{}", MainError::TaskJoinError);
+            MainError::TaskJoinError
         })
     }
 }

@@ -1,13 +1,15 @@
 use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
 use orm::balances::BalanceChangesInsertDb;
+use orm::ibc::IbcRateLimitsInsertDb;
 use orm::schema::{
-    balance_changes, ibc_token, token, token_supplies_per_epoch,
+    balance_changes, ibc_rate_limits, ibc_token, token,
+    token_supplies_per_epoch,
 };
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
 use orm::token_supplies_per_epoch::TokenSuppliesInsertDb;
 use shared::balance::{Balances, TokenSupply};
-use shared::token::Token;
+use shared::token::{IbcRateLimit, Token};
 use shared::tuple_len::TupleLen;
 
 use super::utils::MAX_PARAM_SIZE;
@@ -96,6 +98,31 @@ where
         .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to update token supplies in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_ibc_rate_limits<S>(
+    transaction_conn: &mut PgConnection,
+    supplies: S,
+) -> anyhow::Result<()>
+where
+    S: IntoIterator<Item = IbcRateLimit>,
+{
+    let limits: Vec<_> = supplies
+        .into_iter()
+        .map(IbcRateLimitsInsertDb::from)
+        .collect();
+
+    if limits.is_empty() {
+        return anyhow::Ok(());
+    }
+
+    diesel::insert_into(ibc_rate_limits::table)
+        .values(limits)
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update rate limits in db")?;
 
     anyhow::Ok(())
 }
