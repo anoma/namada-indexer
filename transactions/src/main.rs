@@ -131,6 +131,11 @@ async fn crawling_fn(
         "Got block proposer address"
     );
 
+    let native_token: namada_sdk::address::Address =
+        namada_service::get_native_token(&client)
+            .await
+            .into_rpc_error()?
+            .into();
     let block = Block::from(
         &tm_block_response,
         &block_results,
@@ -138,6 +143,7 @@ async fn crawling_fn(
         checksums,
         1_u32, // placeholder, we dont need the epoch here
         block_height,
+        &native_token,
     );
 
     let inner_txs = block.inner_txs();

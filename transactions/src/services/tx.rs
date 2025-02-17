@@ -38,7 +38,9 @@ pub fn get_ibc_packets(
                         source_channel: packet.source_channel.clone(),
                         dest_channel: packet.dest_channel.clone(),
                         timeout: packet.timeout_timestamp,
-                        tx_id: ibc_txs.pop().unwrap(),
+                        tx_id: ibc_txs
+                            .pop()
+                            .expect("Ibc ack should have a corresponding tx."),
                     }),
                     _ => None,
                 }
@@ -51,7 +53,7 @@ pub fn get_ibc_packets(
 
 pub fn get_ibc_ack_packet(inner_txs: &[InnerTransaction]) -> Vec<IbcAck> {
     inner_txs.iter().filter_map(|tx| match tx.kind.clone() {
-        TransactionKind::IbcMsgTransfer(Some(ibc_message)) => match ibc_message.0 {
+        TransactionKind::IbcMsg(Some(ibc_message)) => match ibc_message.0 {
             namada_sdk::ibc::IbcMessage::Envelope(msg_envelope) => {
                 match *msg_envelope {
                     MsgEnvelope::Packet(packet_msg) => match packet_msg {
@@ -128,11 +130,14 @@ pub fn get_gas_estimates(
                         && inner_tx.wrapper_id.eq(&wrapper_tx.tx_id)
                 })
                 .for_each(|tx| match tx.kind {
-                    TransactionKind::TransparentTransfer(_)
-                    | TransactionKind::MixedTransfer(_) => {
-                        gas_estimate.increase_mixed_transfer()
+                    TransactionKind::TransparentTransfer(_) => {
+                        gas_estimate.increase_transparent_transfer();
                     }
-                    TransactionKind::IbcMsgTransfer(_) => {
+                    TransactionKind::MixedTransfer(_) => {
+                        let notes = tx.notes;
+                        gas_estimate.increase_mixed_transfer(notes)
+                    }
+                    TransactionKind::IbcMsg(_) => {
                         gas_estimate.increase_ibc_msg_transfer()
                     }
                     TransactionKind::Bond(_) => gas_estimate.increase_bond(),
@@ -155,16 +160,24 @@ pub fn get_gas_estimates(
                         gas_estimate.increase_reveal_pk()
                     }
                     TransactionKind::ShieldedTransfer(_) => {
-                        gas_estimate.increase_shielded_transfer()
+                        let notes = tx.notes;
+                        gas_estimate.increase_shielded_transfer(notes);
                     }
                     TransactionKind::ShieldingTransfer(_) => {
-                        gas_estimate.increase_shielding_transfer()
+                        let notes = tx.notes;
+                        gas_estimate.increase_shielding_transfer(notes)
                     }
                     TransactionKind::UnshieldingTransfer(_) => {
-                        gas_estimate.increase_ibc_unshielding_transfer()
+                        let notes = tx.notes;
+                        gas_estimate.increase_unshielding_transfer(notes)
                     }
                     TransactionKind::IbcShieldingTransfer(_) => {
-                        gas_estimate.increase_ibc_shielding_transfer()
+                        let notes = tx.notes;
+                        gas_estimate.increase_ibc_shielding_transfer(notes)
+                    }
+                    TransactionKind::IbcUnshieldingTransfer(_) => {
+                        let notes = tx.notes;
+                        gas_estimate.increase_ibc_unshielding_transfer(notes)
                     }
                     _ => (),
                 });

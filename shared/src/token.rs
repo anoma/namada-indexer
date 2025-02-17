@@ -1,14 +1,16 @@
 use std::fmt::Display;
 
+use serde::Serialize;
+
 use crate::id::Id;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct IbcToken {
     pub address: Id,
     pub trace: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum Token {
     Ibc(IbcToken),
     Native(Id),
