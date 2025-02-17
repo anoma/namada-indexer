@@ -116,73 +116,70 @@ pub fn get_gas_estimates(
     txs: &[(WrapperTransaction, Vec<InnerTransaction>)],
 ) -> Vec<GasEstimation> {
     txs.iter()
+        .filter(|(wrapper_tx, inner_txs)| {
+            inner_txs
+                .iter()
+                // We can only index gas if all the inner transactions of the
+                // batch were successfully executed, otherwise we'd end up
+                // inserting in the db a gas value which is not guaranteed to be
+                // enough for such a batch
+                .all(|inner_tx| inner_tx.was_successful(wrapper_tx))
+        })
         .map(|(wrapper_tx, inner_txs)| {
             let mut gas_estimate = GasEstimation::new(wrapper_tx.tx_id.clone());
             gas_estimate.signatures = wrapper_tx.total_signatures;
             gas_estimate.size = wrapper_tx.size;
-            // FIXME: must index the gas only if the wrapper was successful and
-            // ALL the inner were successful FIXME: also do the
-            // migration, diesel command + write the sql up and down to cancel
-            // everything in the gas_estimates table (do not drop the table)
 
-            inner_txs
-                .iter()
-                .filter(|inner_tx| {
-                    inner_tx.was_successful(wrapper_tx)
-                        && inner_tx.wrapper_id.eq(&wrapper_tx.tx_id)
-                })
-                .for_each(|tx| match tx.kind {
-                    TransactionKind::TransparentTransfer(_) => {
-                        gas_estimate.increase_transparent_transfer();
-                    }
-                    TransactionKind::MixedTransfer(_) => {
-                        let notes = tx.notes;
-                        gas_estimate.increase_mixed_transfer(notes)
-                    }
-                    TransactionKind::IbcMsg(_) => {
-                        gas_estimate.increase_ibc_msg_transfer()
-                    }
-                    TransactionKind::Bond(_) => gas_estimate.increase_bond(),
-                    TransactionKind::Redelegation(_) => {
-                        gas_estimate.increase_redelegation()
-                    }
-                    TransactionKind::Unbond(_) => {
-                        gas_estimate.increase_unbond()
-                    }
-                    TransactionKind::Withdraw(_) => {
-                        gas_estimate.increase_withdraw()
-                    }
-                    TransactionKind::ClaimRewards(_) => {
-                        gas_estimate.increase_claim_rewards()
-                    }
-                    TransactionKind::ProposalVote(_) => {
-                        gas_estimate.increase_vote()
-                    }
-                    TransactionKind::RevealPk(_) => {
-                        gas_estimate.increase_reveal_pk()
-                    }
-                    TransactionKind::ShieldedTransfer(_) => {
-                        let notes = tx.notes;
-                        gas_estimate.increase_shielded_transfer(notes);
-                    }
-                    TransactionKind::ShieldingTransfer(_) => {
-                        let notes = tx.notes;
-                        gas_estimate.increase_shielding_transfer(notes)
-                    }
-                    TransactionKind::UnshieldingTransfer(_) => {
-                        let notes = tx.notes;
-                        gas_estimate.increase_unshielding_transfer(notes)
-                    }
-                    TransactionKind::IbcShieldingTransfer(_) => {
-                        let notes = tx.notes;
-                        gas_estimate.increase_ibc_shielding_transfer(notes)
-                    }
-                    TransactionKind::IbcUnshieldingTransfer(_) => {
-                        let notes = tx.notes;
-                        gas_estimate.increase_ibc_unshielding_transfer(notes)
-                    }
-                    _ => (),
-                });
+            inner_txs.iter().for_each(|tx| match tx.kind {
+                TransactionKind::TransparentTransfer(_) => {
+                    gas_estimate.increase_transparent_transfer();
+                }
+                TransactionKind::MixedTransfer(_) => {
+                    let notes = tx.notes;
+                    gas_estimate.increase_mixed_transfer(notes)
+                }
+                TransactionKind::IbcMsg(_) => {
+                    gas_estimate.increase_ibc_msg_transfer()
+                }
+                TransactionKind::Bond(_) => gas_estimate.increase_bond(),
+                TransactionKind::Redelegation(_) => {
+                    gas_estimate.increase_redelegation()
+                }
+                TransactionKind::Unbond(_) => gas_estimate.increase_unbond(),
+                TransactionKind::Withdraw(_) => {
+                    gas_estimate.increase_withdraw()
+                }
+                TransactionKind::ClaimRewards(_) => {
+                    gas_estimate.increase_claim_rewards()
+                }
+                TransactionKind::ProposalVote(_) => {
+                    gas_estimate.increase_vote()
+                }
+                TransactionKind::RevealPk(_) => {
+                    gas_estimate.increase_reveal_pk()
+                }
+                TransactionKind::ShieldedTransfer(_) => {
+                    let notes = tx.notes;
+                    gas_estimate.increase_shielded_transfer(notes);
+                }
+                TransactionKind::ShieldingTransfer(_) => {
+                    let notes = tx.notes;
+                    gas_estimate.increase_shielding_transfer(notes)
+                }
+                TransactionKind::UnshieldingTransfer(_) => {
+                    let notes = tx.notes;
+                    gas_estimate.increase_unshielding_transfer(notes)
+                }
+                TransactionKind::IbcShieldingTransfer(_) => {
+                    let notes = tx.notes;
+                    gas_estimate.increase_ibc_shielding_transfer(notes)
+                }
+                TransactionKind::IbcUnshieldingTransfer(_) => {
+                    let notes = tx.notes;
+                    gas_estimate.increase_ibc_unshielding_transfer(notes)
+                }
+                _ => (),
+            });
             gas_estimate
         })
         .collect()
