@@ -123,14 +123,24 @@ pub struct TxApplied {
 
 impl fmt::Debug for TxApplied {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            code,
+            gas,
+            hash,
+            height,
+            batch,
+            info,
+            masp_refs,
+        } = self;
+
         f.debug_struct("TxApplied")
-            .field("code", &self.code)
-            .field("gas", &self.gas)
-            .field("hash", &self.hash)
-            .field("height", &self.height)
-            .field("batch", &self.batch)
-            .field("info", &self.info)
-            .field("masp_refs_len", &self.masp_refs.len())
+            .field("code", code)
+            .field("gas", gas)
+            .field("hash", hash)
+            .field("height", height)
+            .field("batch", batch)
+            .field("info", info)
+            .field("masp_refs_len", &masp_refs.len())
             .finish()
     }
 }

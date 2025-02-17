@@ -512,11 +512,10 @@ impl Transaction {
                     .flatten();
 
                     let notes = masp_bundle.map_or(0, |bundle| {
+                        // Remove the masp ref from the collection if we
+                        // found one
+                        masp_refs.0.remove(0);
                         bundle.sapling_bundle().map_or(0, |bundle| {
-                            // Remove the masp ref from the collection if we
-                            // found one
-                            masp_refs.0.remove(0);
-
                             bundle.shielded_spends.len()
                                 + bundle.shielded_outputs.len()
                                 + bundle.shielded_converts.len()

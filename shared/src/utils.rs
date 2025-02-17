@@ -330,7 +330,11 @@ pub fn transfer_to_ibc_tx_kind(
                     )]
                     .into(),
                 ),
-                shielded_section_hash: None,
+                shielded_section_hash: transfer
+                    .transfer
+                    .clone()
+                    .map(|t| t.shielded_section_hash)
+                    .unwrap_or_default(),
             };
 
             if transfer.transfer.is_some() {

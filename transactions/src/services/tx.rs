@@ -38,7 +38,9 @@ pub fn get_ibc_packets(
                         source_channel: packet.source_channel.clone(),
                         dest_channel: packet.dest_channel.clone(),
                         timeout: packet.timeout_timestamp,
-                        tx_id: ibc_txs.pop().unwrap(),
+                        tx_id: ibc_txs
+                            .pop()
+                            .expect("Ibc ack should have a corresponding tx."),
                     }),
                     _ => None,
                 }

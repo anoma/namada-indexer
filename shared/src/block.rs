@@ -4,9 +4,7 @@ use std::str::FromStr;
 use namada_ibc::IbcMessage;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
-use namada_ibc::IbcMessage;
-use namada_ibc::IbcMessage;
-use namada_sdk::address::{Address, InternalAddress};
+use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::token::Transfer;
 use subtle_encoding::hex;
@@ -671,7 +669,7 @@ impl Block {
             | TransactionKind::CommissionChange(_)
             | TransactionKind::RevealPk(_)
             | TransactionKind::DeactivateValidator(_)
-            | TransactionKind::Unknown(_)
+            | TransactionKind::Unknown
             | TransactionKind::UnjailValidator(_)
             | TransactionKind::MetadataChange(_)
             | TransactionKind::ReactivateValidator(_)
