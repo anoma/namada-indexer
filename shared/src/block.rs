@@ -19,8 +19,8 @@ use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
 use crate::transaction::{
-    InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
-    TransactionTarget, WrapperTransaction,
+    InnerTransaction, Transaction, TransactionKind, TransactionTarget,
+    WrapperTransaction,
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
@@ -400,15 +400,19 @@ impl Block {
     ) -> Vec<GovernanceProposal> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::InitProposal(data) => {
-                    let init_proposal_data = data.clone().unwrap(); // safe as we filter before (not the best pattern)
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
 
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::InitProposal(Some(init_proposal_data)) => {
                     let proposal_content_bytes = tx
                         .get_section_data_by_id(Id::from(
                             init_proposal_data.content,
@@ -455,9 +459,9 @@ impl Block {
 
                     Some(GovernanceProposal {
                         id: current_id,
-                        author: Id::from(init_proposal_data.author),
+                        author: Id::from(init_proposal_data.author.to_owned()),
                         r#type: GovernanceProposalKind::from(
-                            init_proposal_data.r#type,
+                            init_proposal_data.r#type.to_owned(),
                         ),
                         data: proposal_data,
                         voting_start_epoch: Epoch::from(
@@ -480,16 +484,24 @@ impl Block {
     pub fn pos_rewards(&self) -> HashSet<(Id, Id)> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::ClaimRewards(data) => {
-                    let data = data.clone().unwrap();
-                    let validator = data.validator;
-                    let source = data.source.unwrap_or(validator.clone());
+                TransactionKind::ClaimRewards(Some(data)) => {
+                    let validator = data.validator.to_owned();
+                    let source = data
+                        .source
+                        .to_owned()
+                        .unwrap_or_else(|| validator.clone());
 
                     Some((Id::from(source), Id::from(validator)))
                 }
@@ -501,19 +513,23 @@ impl Block {
     pub fn governance_votes(&self) -> HashSet<GovernanceVote> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::ProposalVote(data) => {
-                    let vote_proposal_data = data.clone().unwrap();
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
 
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::ProposalVote(Some(vote_proposal_data)) => {
                     Some(GovernanceVote {
                         proposal_id: vote_proposal_data.id,
-                        vote: vote_proposal_data.vote.into(),
-                        address: Id::from(vote_proposal_data.voter),
+                        vote: vote_proposal_data.vote.to_owned().into(),
+                        address: Id::from(vote_proposal_data.voter.to_owned()),
                     })
                 }
                 _ => None,
@@ -524,11 +540,17 @@ impl Block {
     pub fn ibc_tokens(&self) -> HashSet<IbcToken> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
                 TransactionKind::IbcTrasparentTransfer((
                     Token::Ibc(ibc_token),
@@ -705,14 +727,20 @@ impl Block {
     pub fn new_validators(&self) -> HashSet<Validator> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::BecomeValidator(data) => {
-                    let data = data.clone().unwrap();
+                TransactionKind::BecomeValidator(Some(data)) => {
+                    let data = data.to_owned();
                     Some(Validator {
                         address: Id::from(data.address),
                         voting_power: "0".to_string(),
@@ -737,23 +765,27 @@ impl Block {
     pub fn update_validators_state(&self) -> HashSet<ValidatorStateChange> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::DeactivateValidator(data) => {
-                    let data = data.clone().unwrap();
+                TransactionKind::DeactivateValidator(Some(data)) => {
                     Some(ValidatorStateChange {
-                        address: Id::from(data),
+                        address: Id::from(data.to_owned()),
                         state: ValidatorState::Deactivating,
                     })
                 }
-                TransactionKind::ReactivateValidator(data) => {
-                    let data = data.clone().unwrap();
+                TransactionKind::ReactivateValidator(Some(data)) => {
                     Some(ValidatorStateChange {
-                        address: Id::from(data),
+                        address: Id::from(data.to_owned()),
                         state: ValidatorState::Reactivating,
                     })
                 }
@@ -765,16 +797,24 @@ impl Block {
     pub fn bond_addresses(&self) -> HashSet<BondAddresses> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::Bond(data) => {
-                    let bond_data = data.clone().unwrap();
-                    let source_address =
-                        bond_data.source.unwrap_or(bond_data.validator.clone());
+                TransactionKind::Bond(Some(bond_data)) => {
+                    let bond_data = bond_data.to_owned();
+                    let source_address = bond_data
+                        .source
+                        .unwrap_or_else(|| bond_data.validator.clone())
+                        .to_owned();
                     let target_address = bond_data.validator;
 
                     Some(vec![BondAddresses {
@@ -782,11 +822,11 @@ impl Block {
                         target: Id::from(target_address),
                     }])
                 }
-                TransactionKind::Unbond(data) => {
-                    let unbond_data = data.clone().unwrap();
+                TransactionKind::Unbond(Some(unbond_data)) => {
+                    let unbond_data = unbond_data.to_owned();
                     let source_address = unbond_data
                         .source
-                        .unwrap_or(unbond_data.validator.clone());
+                        .unwrap_or_else(|| unbond_data.validator.clone());
                     let validator_address = unbond_data.validator;
 
                     Some(vec![BondAddresses {
@@ -794,21 +834,22 @@ impl Block {
                         target: Id::from(validator_address),
                     }])
                 }
-                TransactionKind::Redelegation(data) => {
-                    let redelegation_data = data.clone().unwrap();
-                    let owner = redelegation_data.owner;
-                    let source_validator = redelegation_data.src_validator;
-                    let destination_validator =
-                        redelegation_data.dest_validator;
+                TransactionKind::Redelegation(Some(redelegation_data)) => {
+                    let namada_tx::data::pos::Redelegation {
+                        src_validator,
+                        dest_validator,
+                        owner,
+                        amount: _,
+                    } = redelegation_data.to_owned();
 
                     Some(vec![
                         BondAddresses {
                             source: Id::from(owner.clone()),
-                            target: Id::from(source_validator),
+                            target: Id::from(src_validator),
                         },
                         BondAddresses {
                             source: Id::from(owner),
-                            target: Id::from(destination_validator),
+                            target: Id::from(dest_validator),
                         },
                     ])
                 }
@@ -821,18 +862,24 @@ impl Block {
     pub fn unbond_addresses(&self) -> HashSet<UnbondAddresses> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::Unbond(data) => {
-                    let unbond_data = data.clone().unwrap();
+                TransactionKind::Unbond(Some(data)) => {
+                    let unbond_data = data.to_owned();
 
                     let source_address = unbond_data
                         .source
-                        .unwrap_or(unbond_data.validator.clone());
+                        .unwrap_or_else(|| unbond_data.validator.clone());
                     let validator_address = unbond_data.validator;
 
                     Some(UnbondAddresses {
@@ -848,18 +895,24 @@ impl Block {
     pub fn withdraw_addresses(&self) -> HashSet<UnbondAddresses> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::Withdraw(data) => {
-                    let withdraw_data = data.clone().unwrap();
+                TransactionKind::Withdraw(Some(data)) => {
+                    let withdraw_data = data.to_owned();
 
                     let source_address = withdraw_data
                         .source
-                        .unwrap_or(withdraw_data.validator.clone());
+                        .unwrap_or_else(|| withdraw_data.validator.clone());
                     let validator_address = withdraw_data.validator;
 
                     Some(UnbondAddresses {
@@ -875,28 +928,39 @@ impl Block {
     pub fn validator_metadata(&self) -> Vec<ValidatorMetadataChange> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::MetadataChange(data) => {
-                    let metadata_change_data = data.clone().unwrap();
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
 
-                    let source_address = metadata_change_data.validator;
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::MetadataChange(Some(data)) => {
+                    let namada_tx::data::pos::MetaDataChange {
+                        validator,
+                        email,
+                        description,
+                        website,
+                        discord_handle,
+                        avatar,
+                        name,
+                        commission_rate,
+                    } = data.to_owned();
 
                     Some(ValidatorMetadataChange {
-                        address: Id::from(source_address),
-                        commission: metadata_change_data
-                            .commission_rate
-                            .map(|c| c.to_string()),
-                        name: metadata_change_data.name,
-                        email: metadata_change_data.email,
-                        description: metadata_change_data.description,
-                        website: metadata_change_data.website,
-                        discord_handler: metadata_change_data.discord_handle,
-                        avatar: metadata_change_data.avatar,
+                        address: Id::from(validator),
+                        commission: commission_rate.map(|c| c.to_string()),
+                        name,
+                        email,
+                        description,
+                        website,
+                        discord_handler: discord_handle,
+                        avatar,
                     })
                 }
                 TransactionKind::CommissionChange(data) => {
@@ -925,20 +989,22 @@ impl Block {
     pub fn revealed_pks(&self) -> Vec<(PublicKey, Id)> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::RevealPk(data) => {
-                    let namada_public_key = data.clone().unwrap().public_key;
-
-                    Some((
-                        PublicKey::from(namada_public_key.clone()),
-                        Id::from(namada_public_key),
-                    ))
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
                 }
+
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::RevealPk(Some(reveal_pk_data)) => Some((
+                    PublicKey::from(reveal_pk_data.public_key.to_owned()),
+                    Id::from(reveal_pk_data.public_key.to_owned()),
+                )),
                 _ => None,
             })
             .collect()

@@ -149,10 +149,10 @@ async fn crawling_fn(
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
     let transaction_sources = block.sources();
-    let gas_estimates = tx_service::get_gas_estimates(&inner_txs, &wrapper_txs);
+    let gas_estimates = tx_service::get_gas_estimates(&block.transactions);
 
     let ibc_sequence_packet =
-        tx_service::get_ibc_packets(&block_results, &inner_txs);
+        tx_service::get_ibc_packets(&block_results, &block.transactions);
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
 
     tracing::info!(

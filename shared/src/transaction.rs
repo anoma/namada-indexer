@@ -291,8 +291,11 @@ impl InnerTransaction {
         self.extra_sections.get(&section_id).cloned()
     }
 
-    pub fn was_successful(&self) -> bool {
-        self.exit_code == TransactionExitStatus::Applied
+    /// An inner transaction is successful only if both the inner tx itself and
+    /// the containing wrapper are marked as applied
+    pub fn was_successful(&self, wrapper_tx: &WrapperTransaction) -> bool {
+        wrapper_tx.exit_code == TransactionExitStatus::Applied
+            && self.exit_code == TransactionExitStatus::Applied
     }
 
     pub fn is_ibc(&self) -> bool {
