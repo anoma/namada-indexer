@@ -1,12 +1,45 @@
+use bigdecimal::BigDecimal;
 use namada_sdk::ibc::core::channel::types::acknowledgement::AcknowledgementStatus;
 use namada_sdk::ibc::core::channel::types::msgs::PacketMsg;
 use namada_sdk::ibc::core::handler::types::msgs::MsgEnvelope;
-use shared::block_result::{BlockResult, TxAttributesType};
+use shared::block_result::{
+    BlockResult, FungibleTokenPacket, TxAttributesType,
+};
 use shared::gas::GasEstimation;
 use shared::transaction::{
-    IbcAck, IbcAckStatus, IbcSequence, InnerTransaction, TransactionKind,
-    WrapperTransaction,
+    IbcAck, IbcAckStatus, IbcSequence, IbcTokenAction, InnerTransaction,
+    TransactionKind, WrapperTransaction, ibc_denom,
 };
+
+pub fn get_ibc_token_flows(
+    block_results: &BlockResult,
+) -> impl Iterator<Item = (IbcTokenAction, String, BigDecimal)> + use<'_> {
+    block_results.end_events.iter().filter_map(|event| {
+        let attributes = event.attributes.as_ref()?;
+
+        match attributes {
+            TxAttributesType::FungibleTokenPacket {
+                is_ack: true,
+                success: true,
+                packet: FungibleTokenPacket { denom, amount, .. },
+            } => Some((
+                IbcTokenAction::Withdraw,
+                ibc_denom(denom),
+                amount.clone(),
+            )),
+            TxAttributesType::FungibleTokenPacket {
+                is_ack: false,
+                success: true,
+                packet: FungibleTokenPacket { denom, amount, .. },
+            } => Some((
+                IbcTokenAction::Deposit,
+                ibc_denom(denom),
+                amount.clone(),
+            )),
+            _ => None,
+        }
+    })
+}
 
 pub fn get_ibc_packets(
     block_results: &BlockResult,

@@ -741,3 +741,17 @@ impl TransactionTarget {
         Self::new(inner_tx, address, TransactionHistoryKind::Received)
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum IbcTokenAction {
+    Deposit,
+    Withdraw,
+}
+
+pub fn ibc_denom(trace: &str) -> String {
+    if trace.contains('/') {
+        namada_ibc::trace::calc_hash(trace)
+    } else {
+        trace.to_owned()
+    }
+}
