@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
@@ -753,5 +754,34 @@ pub fn ibc_denom(trace: &str) -> String {
         namada_ibc::trace::calc_hash(trace)
     } else {
         trace.to_owned()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IbcTokenFlow {
+    pub epoch: u32,
+    pub address: String,
+    pub deposit: BigDecimal,
+    pub withdraw: BigDecimal,
+}
+
+impl IbcTokenFlow {
+    pub fn new(
+        action: IbcTokenAction,
+        address: String,
+        amount: BigDecimal,
+        epoch: u32,
+    ) -> Self {
+        let (deposit, withdraw) = match action {
+            IbcTokenAction::Deposit => (amount, 0u64.into()),
+            IbcTokenAction::Withdraw => (0u64.into(), amount),
+        };
+
+        Self {
+            address,
+            deposit,
+            withdraw,
+            epoch,
+        }
     }
 }

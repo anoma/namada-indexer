@@ -9,10 +9,13 @@ use diesel::{
 };
 use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
 use orm::gas::GasEstimationInsertDb;
-use orm::ibc::{IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb};
+use orm::ibc::{
+    IbcAckInsertDb, IbcAckStatusDb, IbcSequencekStatusUpdateDb,
+    IbcTokenFlowsInsertDb,
+};
 use orm::schema::{
-    crawler_state, gas_estimations, ibc_ack, inner_transactions,
-    transaction_history, wrapper_transactions,
+    crawler_state, gas_estimations, ibc_ack, ibc_token_flows,
+    inner_transactions, transaction_history, wrapper_transactions,
 };
 use orm::transactions::{
     InnerTransactionInsertDb, TransactionHistoryInsertDb,
@@ -21,7 +24,7 @@ use orm::transactions::{
 use shared::crawler_state::{BlockCrawlerState, CrawlerName};
 use shared::gas::GasEstimation;
 use shared::transaction::{
-    IbcAck, IbcSequence, InnerTransaction, TransactionTarget,
+    IbcAck, IbcSequence, IbcTokenFlow, InnerTransaction, TransactionTarget,
     WrapperTransaction,
 };
 
@@ -171,6 +174,51 @@ pub fn insert_gas_estimates(
         .on_conflict_do_nothing()
         .execute(transaction_conn)
         .context("Failed to update gas estimates in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn upsert_ibc_token_flows<I>(
+    transaction_conn: &mut PgConnection,
+    flows: I,
+) -> anyhow::Result<()>
+where
+    I: IntoIterator<Item = IbcTokenFlow>,
+{
+    let flows: Vec<_> = flows
+        .into_iter()
+        .map(
+            |IbcTokenFlow {
+                 address,
+                 epoch,
+                 deposit,
+                 withdraw,
+             }| {
+                IbcTokenFlowsInsertDb {
+                    address,
+                    deposit,
+                    withdraw,
+                    epoch: epoch as _,
+                }
+            },
+        )
+        .collect();
+
+    diesel::insert_into(ibc_token_flows::table)
+        .values(&flows)
+        .on_conflict((
+            ibc_token_flows::dsl::epoch,
+            ibc_token_flows::dsl::address,
+        ))
+        .do_update()
+        .set((
+            ibc_token_flows::dsl::deposit.eq(ibc_token_flows::dsl::deposit
+                + excluded(ibc_token_flows::dsl::deposit)),
+            ibc_token_flows::dsl::withdraw.eq(ibc_token_flows::dsl::withdraw
+                + excluded(ibc_token_flows::dsl::withdraw)),
+        ))
+        .execute(transaction_conn)
+        .context("Failed to upsert ibc token flows in db")?;
 
     anyhow::Ok(())
 }

@@ -13,6 +13,7 @@ use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
+use shared::transaction::IbcTokenFlow;
 use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
@@ -163,6 +164,18 @@ async fn crawling_fn(
         tx_service::get_ibc_packets(&block_results, &block.transactions);
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
 
+    let ibc_token_flows = {
+        let epoch = namada_service::get_current_epoch(&client)
+            .await
+            .into_rpc_error()?;
+
+        tx_service::get_ibc_token_flows(&block_results)
+            .map(move |(action, ibc_token, amount)| {
+                IbcTokenFlow::new(action, ibc_token, amount, epoch)
+            })
+            .collect::<Vec<_>>()
+    };
+
     tracing::info!(
         "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
          ibc acks events...",
@@ -220,6 +233,11 @@ async fn crawling_fn(
                 transaction_repo::update_ibc_sequence(
                     transaction_conn,
                     ibc_ack_packet,
+                )?;
+
+                transaction_repo::upsert_ibc_token_flows(
+                    transaction_conn,
+                    ibc_token_flows,
                 )?;
 
                 transaction_repo::insert_transactions_history(
