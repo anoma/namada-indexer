@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use anyhow::Context;
 use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
@@ -749,12 +750,33 @@ pub enum IbcTokenAction {
     Withdraw,
 }
 
-pub fn ibc_denom(trace: &str) -> String {
+pub fn ibc_denom_sent(trace: &str) -> String {
     if trace.contains('/') {
-        namada_ibc::trace::calc_hash(trace)
+        namada_ibc::trace::ibc_token(trace).to_string()
     } else {
         trace.to_owned()
     }
+}
+
+pub fn ibc_denom_received(
+    ibc_denom: &str,
+    src_port_id: &str,
+    src_channel_id: &str,
+    dest_port_id: &str,
+    dest_channel_id: &str,
+) -> anyhow::Result<String> {
+    let addr = namada_ibc::received_ibc_token(
+        ibc_denom,
+        &src_port_id.parse().context("Failed to parse src port")?,
+        &src_channel_id.parse().context("Failed to parse src chan")?,
+        &dest_port_id.parse().context("Failed to parse dst port")?,
+        &dest_channel_id
+            .parse()
+            .context("Failed to parse dst chan")?,
+    )
+    .context("Failed to parse received ibc token addr")?;
+
+    Ok(addr.to_string())
 }
 
 #[derive(Debug, Clone)]

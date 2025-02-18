@@ -1,19 +1,31 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
+use namada_core::token::Amount as NamadaAmount;
+use namada_ibc::apps::transfer::types::packet::PacketData as Ics20PacketData;
 use namada_sdk::events::extend::{IndexedMaspData, MaspTxRefs};
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
+use crate::balance::Amount;
 use crate::id::Id;
-use crate::transaction::TransactionExitStatus;
+use crate::transaction::{IbcTokenAction, TransactionExitStatus};
+
+#[derive(Debug, Clone)]
+pub enum IbcCorePacketKind {
+    Send,
+    Recv,
+    Ack,
+    Timeout,
+}
 
 #[derive(Debug, Clone)]
 pub enum EventKind {
     Applied,
-    SendPacket,
+    IbcCore(IbcCorePacketKind),
     FungibleTokenPacket,
     Unknown,
 }
@@ -22,7 +34,8 @@ impl From<&String> for EventKind {
     fn from(value: &String) -> Self {
         match value.as_str() {
             "tx/applied" => Self::Applied,
-            "send_packet" => Self::SendPacket,
+            "send_packet" => Self::IbcCore(IbcCorePacketKind::Send),
+            "recv_packet" => Self::IbcCore(IbcCorePacketKind::Recv),
             "fungible_token_packet" => Self::FungibleTokenPacket,
             _ => Self::Unknown,
         }
@@ -152,13 +165,16 @@ pub enum MaspRef {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct SendPacket {
+pub struct IbcPacket {
     pub source_port: String,
     pub dest_port: String,
     pub source_channel: String,
     pub dest_channel: String,
     pub timeout_timestamp: u64,
+    // TODO: use height domain type
+    pub timeout_height: String,
     pub sequence: String,
+    pub data: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -173,7 +189,8 @@ pub struct FungibleTokenPacket {
 #[derive(Debug, Clone)]
 pub enum TxAttributesType {
     TxApplied(TxApplied),
-    SendPacket(SendPacket),
+    SendPacket(IbcPacket),
+    RecvPacket(IbcPacket),
     FungibleTokenPacket {
         is_ack: bool,
         success: bool,
@@ -221,7 +238,15 @@ impl TxAttributesType {
                     },
                 })
             }
-            EventKind::SendPacket => {
+            EventKind::IbcCore(
+                kind @ (IbcCorePacketKind::Ack | IbcCorePacketKind::Timeout),
+            ) => {
+                tracing::warn!(?kind, "Received unhandled IBC packet kind");
+                None
+            }
+            EventKind::IbcCore(
+                kind @ (IbcCorePacketKind::Send | IbcCorePacketKind::Recv),
+            ) => {
                 let source_port =
                     attributes.get("packet_src_port").unwrap().to_owned();
                 let dest_port =
@@ -238,14 +263,25 @@ impl TxAttributesType {
                     .parse::<u64>()
                     .unwrap_or_default()
                     .to_owned();
+                let timeout_height =
+                    attributes.get("packet_timeout_height").unwrap().to_owned();
+                let data = attributes.get("packet_data").unwrap().to_owned();
 
-                Some(Self::SendPacket(SendPacket {
+                let constructor = match kind {
+                    IbcCorePacketKind::Send => Self::SendPacket,
+                    IbcCorePacketKind::Recv => Self::RecvPacket,
+                    _ => unreachable!(),
+                };
+
+                Some(constructor(IbcPacket {
                     source_port,
                     dest_port,
                     source_channel,
                     dest_channel,
                     timeout_timestamp,
+                    timeout_height,
                     sequence,
+                    data,
                 }))
             }
             EventKind::Applied => Some(Self::TxApplied(TxApplied {
@@ -296,6 +332,57 @@ impl TxAttributesType {
                 info: attributes.get("info").unwrap().to_owned(),
             })),
         }
+    }
+
+    pub fn as_fungible_token_packet(
+        &self,
+    ) -> Option<(
+        IbcTokenAction,
+        Option<&IbcPacket>,
+        Cow<'_, FungibleTokenPacket>,
+    )> {
+        let (action, packet) = match self {
+            Self::SendPacket(packet) => (IbcTokenAction::Withdraw, packet),
+            Self::RecvPacket(packet) => (IbcTokenAction::Deposit, packet),
+            Self::FungibleTokenPacket {
+                is_ack: true,
+                success: true,
+                packet,
+            } => {
+                return Some((
+                    IbcTokenAction::Withdraw,
+                    None,
+                    Cow::Borrowed(packet),
+                ));
+            }
+            Self::FungibleTokenPacket {
+                is_ack: false,
+                success: true,
+                packet,
+            } => {
+                return Some((
+                    IbcTokenAction::Deposit,
+                    None,
+                    Cow::Borrowed(packet),
+                ));
+            }
+            _ => return None,
+        };
+
+        let packet_data: Ics20PacketData =
+            serde_json::from_str(&packet.data).ok()?;
+        let ibc_amount: NamadaAmount =
+            packet_data.token.amount.try_into().ok()?;
+
+        let ics20_packet = FungibleTokenPacket {
+            memo: packet_data.memo.to_string(),
+            sender: packet_data.sender.to_string(),
+            receiver: packet_data.receiver.to_string(),
+            denom: packet_data.token.denom.to_string(),
+            amount: Amount::from(ibc_amount).into(),
+        };
+
+        Some((action, Some(packet), Cow::Owned(ics20_packet)))
     }
 }
 

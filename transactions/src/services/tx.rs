@@ -2,42 +2,42 @@ use bigdecimal::BigDecimal;
 use namada_sdk::ibc::core::channel::types::acknowledgement::AcknowledgementStatus;
 use namada_sdk::ibc::core::channel::types::msgs::PacketMsg;
 use namada_sdk::ibc::core::handler::types::msgs::MsgEnvelope;
-use shared::block_result::{
-    BlockResult, FungibleTokenPacket, TxAttributesType,
-};
+use shared::block_result::{BlockResult, TxAttributesType};
 use shared::gas::GasEstimation;
 use shared::transaction::{
     IbcAck, IbcAckStatus, IbcSequence, IbcTokenAction, InnerTransaction,
-    TransactionKind, WrapperTransaction, ibc_denom,
+    TransactionKind, WrapperTransaction, ibc_denom_received, ibc_denom_sent,
 };
 
 pub fn get_ibc_token_flows(
     block_results: &BlockResult,
 ) -> impl Iterator<Item = (IbcTokenAction, String, BigDecimal)> + use<'_> {
     block_results.end_events.iter().filter_map(|event| {
-        let attributes = event.attributes.as_ref()?;
+        let (action, original_packet, fungible_token_packet) =
+            event.attributes.as_ref()?.as_fungible_token_packet()?;
 
-        match attributes {
-            TxAttributesType::FungibleTokenPacket {
-                is_ack: true,
-                success: true,
-                packet: FungibleTokenPacket { denom, amount, .. },
-            } => Some((
-                IbcTokenAction::Withdraw,
-                ibc_denom(denom),
-                amount.clone(),
-            )),
-            TxAttributesType::FungibleTokenPacket {
-                is_ack: false,
-                success: true,
-                packet: FungibleTokenPacket { denom, amount, .. },
-            } => Some((
-                IbcTokenAction::Deposit,
-                ibc_denom(denom),
-                amount.clone(),
-            )),
-            _ => None,
-        }
+        let denom = match &action {
+            IbcTokenAction::Withdraw => {
+                ibc_denom_sent(&fungible_token_packet.denom)
+            }
+            IbcTokenAction::Deposit => {
+                let packet = original_packet?;
+
+                ibc_denom_received(
+                    &fungible_token_packet.denom,
+                    &packet.source_port,
+                    &packet.source_channel,
+                    &packet.dest_port,
+                    &packet.dest_channel,
+                )
+                .inspect_err(|err| {
+                    tracing::debug!(?err, "Failed to parse received IBC denom");
+                })
+                .ok()?
+            }
+        };
+
+        Some((action, denom, fungible_token_packet.amount.clone()))
     })
 }
 
