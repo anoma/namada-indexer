@@ -178,7 +178,15 @@ pub fn get_gas_estimates(
                     let notes = tx.notes;
                     gas_estimate.increase_ibc_unshielding_transfer(notes)
                 }
-                _ => (),
+                TransactionKind::IbcTrasparentTransfer(_)
+                | TransactionKind::InitProposal(_)
+                | TransactionKind::MetadataChange(_)
+                | TransactionKind::CommissionChange(_)
+                | TransactionKind::BecomeValidator(_)
+                | TransactionKind::ReactivateValidator(_)
+                | TransactionKind::DeactivateValidator(_)
+                | TransactionKind::UnjailValidator(_)
+                | TransactionKind::Unknown => (),
             });
             gas_estimate
         })
