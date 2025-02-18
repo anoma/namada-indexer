@@ -215,8 +215,15 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
+    let native_token = namada_service::get_native_token(&client)
+        .await
+        .into_rpc_error()?;
+    let native_token_address: namada_sdk::address::Address =
+        native_token.clone().into();
+
     let (block, tm_block_response, epoch) =
-        get_block(block_height, &client, checksums).await?;
+        get_block(block_height, &client, checksums, &native_token_address)
+            .await?;
 
     let rate_limits = first_block_in_epoch.eq(&block_height).then(|| {
         let client = Arc::clone(&client);
@@ -240,10 +247,6 @@ async fn crawling_fn(
         "Deserialized {} txs...",
         block.transactions.len()
     );
-
-    let native_token = namada_service::get_native_token(&client)
-        .await
-        .into_rpc_error()?;
 
     let ibc_tokens = block
         .ibc_tokens()
@@ -587,8 +590,14 @@ async fn try_initial_query(
         .await
         .into_rpc_error()?;
 
+    let native_token: namada_sdk::address::Address =
+        namada_service::get_native_token(client)
+            .await
+            .into_rpc_error()?
+            .into();
     let (block, tm_block_response, epoch) =
-        get_block(block_height, client, checksums.clone()).await?;
+        get_block(block_height, client, checksums.clone(), &native_token)
+            .await?;
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
@@ -736,6 +745,7 @@ async fn get_block(
     block_height: u32,
     client: &HttpClient,
     checksums: Checksums,
+    native_token: &namada_sdk::address::Address,
 ) -> Result<(Block, TendermintBlockResponse, u32), MainError> {
     tracing::debug!(block = block_height, "Query block...");
     let tm_block_response =
@@ -784,6 +794,7 @@ async fn get_block(
         checksums,
         epoch,
         block_height,
+        native_token,
     );
 
     Ok((block, tm_block_response, epoch))

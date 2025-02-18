@@ -1,6 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::fmt;
 use std::str::FromStr;
 
+use namada_sdk::events::extend::{IndexedMaspData, MaspTxRefs};
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
@@ -47,7 +49,7 @@ pub enum TxEventStatusCode {
 impl From<&str> for TxEventStatusCode {
     fn from(value: &str) -> Self {
         match value {
-            "0" | "1" => Self::Ok,
+            "0" => Self::Ok,
             _ => Self::Fail,
         }
     }
@@ -100,15 +102,12 @@ impl From<TxResult<String>> for BatchResults {
 }
 
 impl BatchResults {
-    pub fn is_successful(&self, tx_id: &Id) -> bool {
-        match self.batch_results.get(tx_id) {
-            Some(result) => *result,
-            None => false,
-        }
+    fn is_successful(&self, tx_id: &Id) -> bool {
+        self.batch_results.get(tx_id).map_or(false, |res| *res)
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone)]
 pub struct TxApplied {
     pub code: TxEventStatusCode,
     pub gas: u64,
@@ -116,6 +115,37 @@ pub struct TxApplied {
     pub height: u64,
     pub batch: BatchResults,
     pub info: String,
+    pub masp_refs: HashMap<u64, MaspTxRefs>,
+}
+
+impl fmt::Debug for TxApplied {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            code,
+            gas,
+            hash,
+            height,
+            batch,
+            info,
+            masp_refs,
+        } = self;
+
+        f.debug_struct("TxApplied")
+            .field("code", code)
+            .field("gas", gas)
+            .field("hash", hash)
+            .field("height", height)
+            .field("batch", batch)
+            .field("info", info)
+            .field("masp_refs_len", &masp_refs.len())
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum MaspRef {
+    Native(String),
+    Ibc(String),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -189,6 +219,22 @@ impl TxAttributesType {
                     .map(|height| u64::from_str(height).unwrap())
                     .unwrap()
                     .to_owned(),
+                masp_refs: attributes
+                    .get("masp_data_refs")
+                    .map(|data| {
+                        if let Ok(data) =
+                            serde_json::from_str::<IndexedMaspData>(data)
+                        {
+                            let refs = data.masp_refs.0.to_vec();
+                            HashMap::from_iter([(
+                                data.tx_index.0 as u64,
+                                MaspTxRefs(refs),
+                            )])
+                        } else {
+                            HashMap::default()
+                        }
+                    })
+                    .unwrap_or_default(),
                 batch: attributes
                     .get("batch")
                     .map(|batch_result| {
@@ -322,5 +368,24 @@ impl BlockResult {
                 false => TransactionExitStatus::Rejected,
             });
         exit_status.unwrap_or(TransactionExitStatus::Rejected)
+    }
+
+    pub fn masp_refs(&self, wrapper_hash: &Id, index: u64) -> MaspTxRefs {
+        self.end_events
+            .iter()
+            .filter_map(|event| {
+                if let Some(TxAttributesType::TxApplied(data)) =
+                    &event.attributes
+                {
+                    Some(data.clone())
+                } else {
+                    None
+                }
+            })
+            .find(|attributes| attributes.hash.eq(wrapper_hash))
+            .map(|event| {
+                event.masp_refs.get(&index).cloned().unwrap_or_default()
+            })
+            .unwrap_or_default()
     }
 }

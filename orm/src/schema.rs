@@ -202,6 +202,8 @@ diesel::table! {
         reveal_pk -> Int4,
         tx_size -> Int4,
         signatures -> Int4,
+        ibc_unshielding_transfer -> Int4,
+        ibc_shielding_transfer -> Int4,
     }
 }
 
