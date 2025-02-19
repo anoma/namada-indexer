@@ -17,7 +17,7 @@ impl Display for LogFormat {
     }
 }
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Clone)]
 pub struct LogConfig {
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,

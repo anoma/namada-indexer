@@ -32,6 +32,7 @@ deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
 futures.workspace = true
+rlimit.workspace = true
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

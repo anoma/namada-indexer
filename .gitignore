@@ -84,3 +84,6 @@ rust-project.json
 .vscode
 
 swagger-codegen.json
+
+# Ignore docker compose override files
+docker-compose.override*

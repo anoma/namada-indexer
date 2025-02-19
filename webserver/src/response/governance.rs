@@ -7,6 +7,8 @@ use orm::governance_proposal::{
 };
 use orm::governance_votes::{GovernanceProposalVoteDb, GovernanceVoteKindDb};
 use serde::{Deserialize, Serialize};
+use sha256::digest;
+use subtle_encoding::hex;
 
 use super::utils::{epoch_progress, time_between_epochs};
 
@@ -183,12 +185,20 @@ impl Proposal {
                     TallyType::LessOneHalfOverOneThirdNay
                 }
             },
-            data: value.data,
+            data: match value.kind {
+                GovernanceProposalKindDb::DefaultWithWasm => {
+                    value.data.map(|data| {
+                        let hex_decoded_bytes =
+                            hex::decode(data).unwrap_or_default();
+                        digest(hex_decoded_bytes)
+                    })
+                }
+                _ => value.data,
+            },
             author: value.author,
             start_epoch: value.start_epoch.to_string(),
             end_epoch: value.end_epoch.to_string(),
             activation_epoch: value.activation_epoch.to_string(),
-
             start_time: start_time.to_string(),
             end_time: end_time.to_string(),
             current_time: time_now.to_string(),

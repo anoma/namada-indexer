@@ -97,3 +97,11 @@ impl From<SharedToken> for Token {
         }
     }
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenSupply {
+    pub address: String,
+    pub total_supply: String,
+    pub effective_supply: Option<String>,
+}

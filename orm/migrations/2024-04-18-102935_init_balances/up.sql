@@ -9,9 +9,7 @@ CREATE TABLE balance_changes (
   CONSTRAINT fk_balances_token FOREIGN KEY(token) REFERENCES token(address) ON DELETE CASCADE
 );
 
-ALTER TABLE balance_changes ADD UNIQUE (owner, token, height);
-
-CREATE INDEX index_balance_changes_owner_token_height ON balance_changes (owner, token, height);
+CREATE UNIQUE INDEX index_balance_changes_owner_token_height ON balance_changes (owner, token, height);
 
 CREATE VIEW balances AS
 SELECT

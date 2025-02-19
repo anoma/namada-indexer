@@ -5,11 +5,11 @@ on:
   pull_request:
     branches:
       - main
-      - '*-maint'
+      - "*-maint"
   push:
     branches:
       - main
-      - '*-maint'
+      - "*-maint"
 
 concurrency:
   group: ${{ github.ref }}
@@ -108,7 +108,7 @@ jobs:
         run: echo "version=$(cat $GITHUB_WORKSPACE/rust-nightly-version | tr -d '\n')" >> $GITHUB_OUTPUT
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: ${{ steps.rust_toolchain.outputs.version }}
+          toolchain: nightly-2024-06-14
           components: rustfmt
           cache: true
       - run: just fmt-check
@@ -116,7 +116,7 @@ jobs:
   docker:
     name: Docker
     runs-on: ubuntu-latest
-    # if: ${{ github.event_name == 'merge_group' || github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'merge_group' || github.event_name == 'pull_request' }}
     env:
       GIT_LFS_SKIP_SMUDGE: 1
       REGISTRY_URL: ghcr.io
@@ -166,7 +166,7 @@ jobs:
           context: .
           file: Dockerfile
           build-args: PACKAGE=${{ matrix.docker.package }}
-          push: ${{ github.event.pull_request.head.repo.full_name == 'anoma/namada-indexer' || github.event_name == 'push'  }}
+          push: ${{ github.event.pull_request.head.repo.full_name == 'anoma/namada-indexer' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

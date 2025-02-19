@@ -19,11 +19,10 @@ use tower_http::trace::TraceLayer;
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, block as block_handlers,
-    chain as chain_handlers, crawler_state as crawler_state_handlers,
-    gas as gas_handlers, governance as gov_handlers, ibc as ibc_handler,
-    pk as pk_handlers, pos as pos_handlers,
-    transaction as transaction_handlers,
+    balance as balance_handlers, chain as chain_handlers,
+    crawler_state as crawler_state_handlers, gas as gas_handlers,
+    governance as gov_handlers, pgf as pgf_service, pk as pk_handlers,
+    pos as pos_handlers, transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -70,6 +69,10 @@ impl ApplicationServer {
                 )
                 .route("/pos/reward/:address", get(pos_handlers::get_rewards))
                 .route(
+                    "/pos/reward/:delegator/:validator/:epoch",
+                    get(pos_handlers::get_rewards_by_delegator_and_validator_and_epoch),
+                )
+                .route(
                     "/pos/voting-power",
                     get(pos_handlers::get_total_voting_power),
                 )
@@ -84,6 +87,10 @@ impl ApplicationServer {
                 .route(
                     "/gov/proposal/:id",
                     get(gov_handlers::get_governance_proposal_by_id),
+                )
+                .route(
+                    "/gov/proposal/:id/data",
+                    get(gov_handlers::get_proposal_data_by_proposal_id),
                 )
                 .route(
                     "/gov/proposal/:id/votes",
@@ -128,6 +135,10 @@ impl ApplicationServer {
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route("/chain/token", get(chain_handlers::get_tokens))
                 .route(
+                    "/chain/token-supply",
+                    get(chain_handlers::get_token_supply),
+                )
+                .route(
                     "/chain/block/latest",
                     get(chain_handlers::get_last_processed_block),
                 )
@@ -136,6 +147,14 @@ impl ApplicationServer {
                     get(chain_handlers::get_last_processed_epoch),
                 )
                 .route("/ibc/:tx_id/status", get(ibc_handler::get_ibc_status))
+                .route(
+                    "/pgf/payments",
+                    get(pgf_service::get_pgf_continuous_payments),
+                )
+                .route(
+                    "/pgf/paymenents/:proposal_id",
+                    get(pgf_service::get_pgf_payment_by_proposal_id),
+                )
                 .route(
                     "/crawlers/timestamps",
                     get(crawler_state_handlers::get_crawlers_timestamps),

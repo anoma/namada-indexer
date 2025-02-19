@@ -28,6 +28,7 @@ namada_proof_of_stake.workspace = true
 namada_ibc.workspace = true
 namada_sdk.workspace = true
 namada_tx.workspace = true
+num-bigint.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 subtle-encoding.workspace = true

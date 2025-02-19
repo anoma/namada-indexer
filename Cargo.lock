@@ -820,9 +820,9 @@ dependencies = [
 
 [[package]]
 name = "bzip2-sys"
-version = "0.1.12+1.0.8"
+version = "0.1.11+1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72ebc2f1a417f01e1da30ef264ee86ae31d2dcd2d603ea283d3c244a883ca2a9"
+checksum = "736a955f3fa7875102d57c82b8cac37ec45224a07fd32d58f9f7a186b6cd4cdc"
 dependencies = [
  "cc",
  "libc",
@@ -872,9 +872,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.14"
+version = "1.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c3d1b2e905a3a7b00a6141adb0e4c0bb941d11caf55349d863942a1cc44e3c9"
+checksum = "755717a7de9ec452bf7f3f1a3099085deabd7f2962b861dae91ecd7a365903d2"
 dependencies = [
  "jobserver",
  "libc",
@@ -932,6 +932,7 @@ dependencies = [
  "namada_sdk",
  "namada_token",
  "orm",
+ "rlimit",
  "serde_json",
  "shared",
  "subtle-encoding",
@@ -980,9 +981,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.29"
+version = "4.5.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8acebd8ad879283633b343856142139f2da2317c96b05b4dd6181c61e2480184"
+checksum = "3e77c3243bd94243c03672cb5154667347c457ca271254724f9f393aee1c05ff"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1000,9 +1001,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.29"
+version = "4.5.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6ba32cbda51c7e1dfd49acc1457ba1a7dec5b64fe360e828acb13ca8dc9c2f9"
+checksum = "1b26884eb4b57140e4d2d93652abfa49498b938b3c9179f9fc487b0acc3edad7"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1136,26 +1137,6 @@ name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
-
-[[package]]
-name = "const_format"
-version = "0.2.34"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "126f97965c8ad46d6d9163268ff28432e8f6a1196a55578867832e3049df63dd"
-dependencies = [
- "const_format_proc_macros",
-]
-
-[[package]]
-name = "const_format_proc_macros"
-version = "0.2.34"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d57c2eccfb16dbac1f4e61e206105db5820c9d26c3c472bc17c774259ef7744"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-xid",
-]
 
 [[package]]
 name = "const_panic"
@@ -1354,9 +1335,9 @@ dependencies = [
 
 [[package]]
 name = "data-encoding"
-version = "2.8.0"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "575f75dfd25738df5b91b8e43e14d44bda14637a58fae779fd2b064f8bf3e010"
+checksum = "0e60eed09d8c01d3cee5b7d30acb059b76614c918fa0f992e0dd6eeb10daad6f"
 
 [[package]]
 name = "deadpool"
@@ -1649,9 +1630,9 @@ dependencies = [
 
 [[package]]
 name = "document-features"
-version = "0.2.11"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95249b50c6c185bee49034bcb378a49dc2b5dff0be90ff6616d31d64febab05d"
+checksum = "cb6969eaabd2421f8a2775cfd2471a2b634372b4a25d41e3bd647b79912850a0"
 dependencies = [
  "litrs",
 ]
@@ -1834,9 +1815,9 @@ dependencies = [
 
 [[package]]
 name = "equivalent"
-version = "1.0.2"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
+checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "errno"
@@ -2020,7 +2001,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syn 2.0.98",
- "toml 0.8.20",
+ "toml 0.8.19",
  "walkdir",
 ]
 
@@ -2587,6 +2568,7 @@ dependencies = [
  "namada_governance",
  "namada_sdk",
  "orm",
+ "serde_json",
  "shared",
  "tendermint-rpc",
  "tokio",
@@ -3684,9 +3666,9 @@ dependencies = [
 
 [[package]]
 name = "impl-codec"
-version = "0.7.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d40b9d5e17727407e55028eafc22b2dc68781786e6d7eb8a21103f5058e3a14"
+checksum = "b67aa010c1e3da95bf151bd8b4c059b2ed7e75387cdb969b4f8f2723a43f9941"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -3847,6 +3829,15 @@ name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -4222,7 +4213,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd01039851e82f8799046eabbb354056283fb265c8ec0996af940f4e85a380ff"
 dependencies = [
  "serde",
- "toml 0.8.20",
+ "toml 0.8.19",
 ]
 
 [[package]]
@@ -4250,9 +4241,9 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.8.4"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3b1c9bd4fe1f0f8b387f6eb9eb3b4a1aa26185e5750efb9140301703f62cd1b"
+checksum = "b8402cab7aefae129c6977bb0ff1b8fd9a04eb5b51efc50a70bea51cda0c7924"
 dependencies = [
  "adler2",
 ]
@@ -4412,9 +4403,9 @@ dependencies = [
 
 [[package]]
 name = "namada_account"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36327365adb3633d0f2648632ab6bae7bbec716a629d9586261ea0e65ac878f9"
+checksum = "5f335922400920714e17d11d9cdd7b9a8d3f940af4e6e893b7366d316292906f"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4425,20 +4416,20 @@ dependencies = [
 
 [[package]]
 name = "namada_controller"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8496f7a6f0bd5f75ea45b31878f6104a94fc2c06e24024c200facde3948a2a8b"
+checksum = "3c1edc2c07be9f4c84afe5b0544e9f28b1a77fcc639d6257e8eea99048bb2e11"
 dependencies = [
  "namada_core",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "namada_core"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e1e7d7a14314f4a6e38a5b06dbdc951f4e52c90798fa9110bdbe656035f7f9"
+checksum = "5900512708b62297f6f1117c723a8011d9568603464c5cf2c5e79e319c1ea2f2"
 dependencies = [
  "bech32 0.8.1",
  "borsh",
@@ -4471,7 +4462,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.9.9",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "tendermint",
  "tendermint-proto",
  "thiserror 1.0.69",
@@ -4486,9 +4477,9 @@ dependencies = [
 
 [[package]]
 name = "namada_ethereum_bridge"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "469ed0e3e893a5f087b789a0e3867999018ab71a2f4bcabed8d986de2b11bccf"
+checksum = "03b11e9ec7948667c49bce080f84bf7b7e0b2e9c04cf7598719912895473d71f"
 dependencies = [
  "borsh",
  "ethers",
@@ -4508,16 +4499,16 @@ dependencies = [
  "namada_vote_ext",
  "namada_vp_env",
  "serde",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_events"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f28f84187fbc44791275fa4952be63294694de7db3f2ea81bc746aae9245ab7"
+checksum = "4bf20fdf208b023c428c4903055e9ca80c9be6cfbf5f1bb141b4294f8a3cf5b7"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4530,9 +4521,9 @@ dependencies = [
 
 [[package]]
 name = "namada_gas"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5607513be0283bc05f8e725f5066baadbefeb4ee17f2a24c251d7cb0956e0708"
+checksum = "37458e96ad6a40266eae93f9025dacc45792b94a87cbca0501121c54b9bff034"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4544,9 +4535,9 @@ dependencies = [
 
 [[package]]
 name = "namada_governance"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50a233e8f2546d63f3b589f2c245bc6829e9e6efdd2cc665c24c939588e71cc1"
+checksum = "2b622caeffd4537a4287c163393e64a5dd42e534d8e414e5c58c51ef6df53037"
 dependencies = [
  "borsh",
  "itertools 0.12.1",
@@ -4561,16 +4552,16 @@ dependencies = [
  "namada_vp_env",
  "serde",
  "serde_json",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_ibc"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f369f565635018e2e8179b827e0561f8eba8e056d317f62d6dc00f1dcf3ba4b"
+checksum = "7cdfc658cb16ccfa6feb5715c51ec5f8a7e710583bf2e555184fc3f2e1b376ca"
 dependencies = [
  "borsh",
  "data-encoding",
@@ -4597,16 +4588,16 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.9.9",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_io"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e6bca372c83fa8b35edd1dbdece4988cf08d504e1c352459d3d14e3721439c4"
+checksum = "33bcf982dd78a7362023c0cecae42a9c238f0bd0cd58270c7a75da5c7e209479"
 dependencies = [
  "async-trait",
  "kdam",
@@ -4618,9 +4609,9 @@ dependencies = [
 
 [[package]]
 name = "namada_macros"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd5c0e9b0b36223a9c26534264aa7927ce20c87b915c77b86cff731b4cbd3a3d"
+checksum = "38413441a6922d964ea799c62356997b238d344a55e88be00b8602fe775183a8"
 dependencies = [
  "data-encoding",
  "proc-macro2",
@@ -4631,9 +4622,9 @@ dependencies = [
 
 [[package]]
 name = "namada_merkle_tree"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a001376a4c0ea072732b2cd4d5d3f78695e82380a94325a8776b242a29607536"
+checksum = "600d96a3b747ed855586da96251a87d4efe220728b398eaafc38f6719c75b406"
 dependencies = [
  "borsh",
  "eyre",
@@ -4647,9 +4638,9 @@ dependencies = [
 
 [[package]]
 name = "namada_parameters"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60bd7fa7200709ae0aa7240538a832747fcf2462ad77cea567f695e2da2b4ee9"
+checksum = "67d712f44924917a32635b5f4131ee624678e7d3f7b79367b98d32fb6fc4a6bf"
 dependencies = [
  "namada_core",
  "namada_macros",
@@ -4657,15 +4648,15 @@ dependencies = [
  "namada_systems",
  "namada_tx",
  "namada_vp_env",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "namada_proof_of_stake"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef905f3a1090618dd0a58ea34bd5616dc6e4bd21257ff6fb1261559a09060ea2"
+checksum = "611eef4c7190047369f368f37a877c18271a0902a9003b83e9f9683282ee0159"
 dependencies = [
  "borsh",
  "itertools 0.12.1",
@@ -4681,25 +4672,25 @@ dependencies = [
  "namada_vp_env",
  "once_cell",
  "serde",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_replay_protection"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80038ab8e44ada228fa734dd879b370086c9583f93d32e006ce6391f6c058246"
+checksum = "226eaaa2937a042a57eed898f4cb27cfd232cdca18ae0c6de3183c9ea55f8510"
 dependencies = [
  "namada_core",
 ]
 
 [[package]]
 name = "namada_sdk"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74830a07f38ef718ae5c2fe0bc2eb050a707893281029f9e0f6c9bc47bbf608f"
+checksum = "2bb7c847a6e8029cfdeca115c0a90a84e3d707297c1c6d67cef7c1ade8c4736b"
 dependencies = [
  "async-trait",
  "bech32 0.8.1",
@@ -4754,7 +4745,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.9.9",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "tempfile",
  "tendermint-rpc",
  "thiserror 1.0.69",
@@ -4768,9 +4759,9 @@ dependencies = [
 
 [[package]]
 name = "namada_shielded_token"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad515f349f1ae992653c9666f6b7558c09453ef99e92969f266a224b42238b3"
+checksum = "5c167fc367f3470a41e5b8588cf305bdee3ebb20c164a5a07b97bf6deef3efbd"
 dependencies = [
  "async-trait",
  "borsh",
@@ -4800,7 +4791,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.9.9",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "tempfile",
  "thiserror 1.0.69",
  "tracing",
@@ -4810,9 +4801,9 @@ dependencies = [
 
 [[package]]
 name = "namada_state"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f868b0d64963623d77b6b1dbdd0624c7e6eb29ca3f20fd586af817d4ccb1d5c"
+checksum = "739e5dcc776eca2d4123f635eab684e166179acc6772ac6fa042a62630996bd2"
 dependencies = [
  "borsh",
  "clru",
@@ -4827,16 +4818,16 @@ dependencies = [
  "namada_systems",
  "namada_tx",
  "patricia_tree",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_storage"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fee1f0c36142fa626092aed6a7d0c5307b01273db69acb5c1916786a0140682"
+checksum = "623af60fb48c2c3e5e055ed13112d796cf6b6bef6ed8847e596f3bf53d8b3356"
 dependencies = [
  "borsh",
  "itertools 0.12.1",
@@ -4847,16 +4838,16 @@ dependencies = [
  "namada_replay_protection",
  "regex",
  "serde",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_systems"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a88db174b1c8c35d161d454defdf73b8476d1ab7e6aee4d2d26f96a3776e0cc4"
+checksum = "2e724e408a59a825feab250a2c6d93411d9b0b300173de34569405ea7f8dcdb3"
 dependencies = [
  "namada_core",
  "namada_events",
@@ -4865,9 +4856,9 @@ dependencies = [
 
 [[package]]
 name = "namada_token"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47a21856a13cc72aba5d3fb4618d540be9bed82a9f683ca7dd1827df02159729"
+checksum = "1a0095d2860e1e272686d0d7aba75f7ae055bcd990a2c4c1adc893d130211aa9"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4884,9 +4875,9 @@ dependencies = [
 
 [[package]]
 name = "namada_trans_token"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2981eec5a1504a6ac9af1ccb27ea8ea94c623626afd9e925e7119c8e56c7814d"
+checksum = "16613604bc4e19f81862469ddd3f0e88d9b77a31a2108f2ca22c29a7181c90b8"
 dependencies = [
  "konst",
  "namada_core",
@@ -4902,9 +4893,9 @@ dependencies = [
 
 [[package]]
 name = "namada_tx"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aefda89026758e610f6d70a3ae170b8026b1bb5486fa98cf42795b892c9ad24a"
+checksum = "9436c7749234a2cef1c434cedd3f5f60f48aabb06c1775b9f11b4ddf79d8592e"
 dependencies = [
  "ark-bls12-381",
  "bitflags 2.8.0",
@@ -4932,9 +4923,9 @@ dependencies = [
 
 [[package]]
 name = "namada_tx_env"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18caae5ad2bcf23351b8d0ce1bc514275fdaefbdac70020ba85a2104965bc84e"
+checksum = "ae15336c0833c0e97f2cd50264eb5f9b52762dc934d486122d6030f56d9c0a9f"
 dependencies = [
  "namada_core",
  "namada_events",
@@ -4943,9 +4934,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vm"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f61b7368a19e88b5e9f609c9570f2a9e6e136a3a98b7e28a52b3acc293b91070"
+checksum = "a2437a3a1c846bb27ec18dabf7a7e0120e02333ecd2e4d5b9f6c2a4bc58d357d"
 dependencies = [
  "borsh",
  "clru",
@@ -4958,7 +4949,7 @@ dependencies = [
  "namada_token",
  "namada_tx",
  "namada_vp",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
  "wasmparser",
@@ -4966,9 +4957,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vote_ext"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8c5c26dc325095b5f05c8d757ee1cba15d0ba4b322951f60846dd9051dbb142"
+checksum = "bdafd352d6ef1c02209a21e1c1430f3314b6cd671238a4f089e84f57f676b4fe"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4979,9 +4970,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vp"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b243c5cb002be038b86f0b06d54235d2038dfc377520f65821bd18e2799b577"
+checksum = "2a1955ba218e4664e49bb48800a592120a85bd6993a9ba54777c0fdf758df3a3"
 dependencies = [
  "namada_core",
  "namada_events",
@@ -4989,16 +4980,16 @@ dependencies = [
  "namada_state",
  "namada_tx",
  "namada_vp_env",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tracing",
 ]
 
 [[package]]
 name = "namada_vp_env"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f848379196686d56976f7312b2b76779977225030f5321be8979dd91b0862058"
+checksum = "a0d9187de3ef59f801cb01e56eda7d77a0acb20d1893db981733087b3d03b9ff"
 dependencies = [
  "derivative",
  "masp_primitives",
@@ -5007,14 +4998,14 @@ dependencies = [
  "namada_gas",
  "namada_storage",
  "namada_tx",
- "smooth-operator 0.7.2",
+ "smooth-operator",
 ]
 
 [[package]]
 name = "namada_wallet"
-version = "0.47.2"
+version = "0.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "357cee6871d1a25ecd0ab2a580db1fbca820d74d2d3138bac6a9e8fade8985a4"
+checksum = "9978a98261a71a06a96694b50237b5e62401e39d50ca85968247218bde9efcf0"
 dependencies = [
  "bimap",
  "borsh",
@@ -5032,7 +5023,7 @@ dependencies = [
  "rand_core",
  "serde",
  "slip10_ed25519",
- "smooth-operator 0.7.2",
+ "smooth-operator",
  "thiserror 1.0.69",
  "tiny-bip39",
  "toml 0.5.11",
@@ -5269,9 +5260,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.20.3"
+version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
+checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "opaque-debug"
@@ -5306,9 +5297,9 @@ dependencies = [
 
 [[package]]
 name = "openssl"
-version = "0.10.71"
+version = "0.10.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e14130c6a98cd258fdcb0fb6d744152343ff729cbfcb28c656a9d12b999fbcd"
+checksum = "61cfb4e166a8bb8c9b55c500bc2308550148ece889be90f609377e58140f42c6"
 dependencies = [
  "bitflags 2.8.0",
  "cfg-if",
@@ -5338,9 +5329,9 @@ checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.106"
+version = "0.9.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bb61ea9811cc39e3c2069f40b8b8e2e70d8569b361f879786cc7ed48b777cdd"
+checksum = "8b22d5b84be05a8d6947c7cb71f7c849aa0f112acd4bf51c2a7c1c988ac0a9dc"
 dependencies = [
  "cc",
  "libc",
@@ -5422,7 +5413,7 @@ dependencies = [
  "orm",
  "serde_json",
  "shared",
- "smooth-operator 0.7.0",
+ "smooth-operator",
  "tendermint-rpc",
  "tokio",
  "tokio-retry",
@@ -5432,30 +5423,28 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "3.7.4"
+version = "3.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9fde3d0718baf5bc92f577d652001da0f8d54cd03a7974e118d04fc888dc23d"
+checksum = "306800abfa29c7f16596b5970a588435e3d5b3149683d00c12b699cc19f895ee"
 dependencies = [
  "arrayvec",
  "bitvec",
  "byte-slice-cast",
- "const_format",
  "impl-trait-for-tuples",
  "parity-scale-codec-derive",
- "rustversion",
  "serde",
 ]
 
 [[package]]
 name = "parity-scale-codec-derive"
-version = "3.7.4"
+version = "3.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "581c837bb6b9541ce7faa9377c20616e4fb7650f6b0f68bc93c827ee504fb7b3"
+checksum = "d830939c76d294956402033aee57a6da7b438f2294eb94864c37b0569053a42c"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.98",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -5836,7 +5825,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d15600a7d856470b7d278b3fe0e311fe28c2526348549f8ef2ff7db3299c87f5"
 dependencies = [
  "fixed-hash",
- "impl-codec 0.7.1",
+ "impl-codec 0.7.0",
  "impl-serde 0.5.0",
  "uint 0.10.0",
 ]
@@ -5901,9 +5890,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.13.5"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
+checksum = "2c0fef6c4230e4ccf618a35c59d7ede15dea37de8427500f50aff708806e42ec"
 dependencies = [
  "bytes",
  "prost-derive",
@@ -5911,12 +5900,12 @@ dependencies = [
 
 [[package]]
 name = "prost-build"
-version = "0.13.5"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
+checksum = "d0f3e5beed80eb580c68e2c600937ac2c4eedabdfd5ef1e5b7ea4f3fba84497b"
 dependencies = [
- "heck 0.5.0",
- "itertools 0.14.0",
+ "heck 0.4.1",
+ "itertools 0.11.0",
  "log",
  "multimap",
  "once_cell",
@@ -5931,12 +5920,12 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.13.5"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
+checksum = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.98",
@@ -5944,9 +5933,9 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.13.5"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
+checksum = "cc2f1e56baa61e93533aebc21af4d2134b70f66275e0fcdf3cbe43d77ff7e8fc"
 dependencies = [
  "prost",
 ]
@@ -6255,14 +6244,15 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.17.9"
+version = "0.17.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e75ec5e92c4d8aede845126adc388046234541629e76029599ed35a003c7ed24"
+checksum = "c17fa4cb658e3583423e915b9f3acc01cceaee1860e33d59ebae66adc3a2dc0d"
 dependencies = [
  "cc",
  "cfg-if",
  "getrandom 0.2.15",
  "libc",
+ "spin 0.9.8",
  "untrusted 0.9.0",
  "windows-sys 0.52.0",
 ]
@@ -6303,6 +6293,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "rlimit"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7043b63bd0cd1aaa628e476b80e6d4023a3b50eb32789f2728908107bd0c793a"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -6399,7 +6398,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f56a14d1f48b391359b22f731fd4bd7e43c97f3c50eee276f3aa09c94784d3e"
 dependencies = [
  "log",
- "ring 0.17.9",
+ "ring 0.17.8",
  "rustls-webpki",
  "sct",
 ]
@@ -6431,7 +6430,7 @@ version = "0.101.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b6275d1ee7a1cd780b64aca7726599a1dbc893b1e64144529e55c3c2f745765"
 dependencies = [
- "ring 0.17.9",
+ "ring 0.17.8",
  "untrusted 0.9.0",
 ]
 
@@ -6546,7 +6545,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
 dependencies = [
- "ring 0.17.9",
+ "ring 0.17.8",
  "untrusted 0.9.0",
 ]
 
@@ -6811,6 +6810,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha256"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18278f6a914fa3070aa316493f7d2ddfb9ac86ebc06fa3b83bffda487e9065b0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "hex",
+ "sha2 0.10.8",
+ "tokio",
+]
+
+[[package]]
 name = "sha3"
 version = "0.10.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6849,6 +6861,7 @@ dependencies = [
  "namada_proof_of_stake",
  "namada_sdk",
  "namada_tx",
+ "num-bigint",
  "rand",
  "serde",
  "serde_json",
@@ -6937,17 +6950,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.14.0"
+version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcf8323ef1faaee30a44a340193b1ac6814fd9b7b4e88e9d4519a3e4abe1cfd"
-
-[[package]]
-name = "smooth-operator"
-version = "0.7.0"
-source = "git+https://github.com/heliaxdev/smooth-operator?tag=v0.7.0#0e182707f5e5bb9c6e0efa2d235dc9efd715d0a1"
-dependencies = [
- "smooth-operator-impl 0.7.0",
-]
+checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "smooth-operator"
@@ -6955,17 +6960,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b6dece39b9b4d19edc6399498b056d1511135b70b5adf7822affdedf5715598"
 dependencies = [
- "smooth-operator-impl 0.7.2",
-]
-
-[[package]]
-name = "smooth-operator-impl"
-version = "0.7.0"
-source = "git+https://github.com/heliaxdev/smooth-operator?tag=v0.7.0#0e182707f5e5bb9c6e0efa2d235dc9efd715d0a1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.98",
+ "smooth-operator-impl",
 ]
 
 [[package]]
@@ -7195,9 +7190,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tempfile"
-version = "3.17.0"
+version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a40f762a77d2afa88c2d919489e390a12bdd261ed568e60cfa7e48d4e20f0d33"
+checksum = "38c246215d7d24f48ae091a2902398798e05d978b24315d6efbc00ede9a8bb91"
 dependencies = [
  "cfg-if",
  "fastrand",
@@ -7247,7 +7242,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tendermint",
- "toml 0.8.20",
+ "toml 0.8.19",
  "url",
 ]
 
@@ -7614,9 +7609,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.8.20"
+version = "0.8.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd87a5cdd6ffab733b2f74bc4fd7ee5fff6634124999ac278c35fc78c6120148"
+checksum = "a1ed1f98e3fdc28d6d910e6737ae6ab1a93bf1985935a1193e68f93eeb68d24e"
 dependencies = [
  "serde",
  "serde_spanned",
@@ -7635,15 +7630,15 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.22.24"
+version = "0.22.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b4795ff5edd201c7cd6dca065ae59972ce77d1b80fa0a84d94950ece7d1474"
+checksum = "02a8b472d1a3d7c18e2d61a489aee3453fd9031c33e4f55bd533f4a7adca1bee"
 dependencies = [
  "indexmap 2.7.1",
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.7.2",
+ "winnow 0.7.1",
 ]
 
 [[package]]
@@ -8298,9 +8293,11 @@ dependencies = [
  "orm",
  "serde",
  "serde_json",
+ "sha256",
  "shared",
  "strum",
  "strum_macros",
+ "subtle-encoding",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
@@ -8511,9 +8508,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.7.2"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59690dea168f2198d1a3b0cac23b8063efcd11012f10ae4698f284808c8ef603"
+checksum = "86e376c75f4f43f44db463cf729e0d3acbf954d13e22c51e26e4c264b4ab545f"
 dependencies = [
  "memchr",
 ]

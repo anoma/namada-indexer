@@ -31,6 +31,39 @@ pub struct RevealPkData {
     pub public_key: PublicKey,
 }
 
+// Capture details for unknown transactions so we can store them in the db
+#[derive(Serialize, Debug, Clone)]
+pub struct UnknownTransaction {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "serialize_optional_bytes_to_hex")]
+    pub data: Option<Vec<u8>>,
+}
+
+fn serialize_optional_bytes_to_hex<S>(
+    bytes: &Option<Vec<u8>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    bytes
+        .as_ref()
+        .map(|b| {
+            let mut s = String::with_capacity(2 + (b.len() * 2)); // "0x" + 2 chars per byte
+            s.push_str("0x");
+            for byte in b {
+                use std::fmt::Write;
+                write!(s, "{:02x}", byte).unwrap();
+            }
+            s
+        })
+        .serialize(serializer)
+}
+
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum TransactionKind {
@@ -55,10 +88,7 @@ pub enum TransactionKind {
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
     BecomeValidator(Option<Box<BecomeValidator>>),
-    ReactivateValidator(Option<Address>),
-    DeactivateValidator(Option<Address>),
-    UnjailValidator(Option<Address>),
-    Unknown,
+    Unknown(Option<UnknownTransaction>),
 }
 
 impl TransactionKind {
@@ -66,11 +96,7 @@ impl TransactionKind {
         serde_json::to_string(&self).ok()
     }
 
-    pub fn from(
-        tx_kind_name: &str,
-        data: &[u8],
-        native_token: Address,
-    ) -> Self {
+    pub fn from(id: &str, tx_kind_name: &str, data: &[u8]) -> Self {
         match tx_kind_name {
             "tx_transfer" => {
                 if let Ok(transfer) = Transfer::try_from_slice(data) {
@@ -210,7 +236,11 @@ impl TransactionKind {
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
-                TransactionKind::Unknown
+                TransactionKind::Unknown(Some(UnknownTransaction {
+                    id: Some(id.to_string()),
+                    name: Some(tx_kind_name.to_string()),
+                    data: Some(data.to_vec()),
+                }))
             }
         }
     }
@@ -253,12 +283,6 @@ pub struct Transaction {
 
 pub struct MaspSectionData {
     pub total_notes: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct Transaction2 {
-    pub wrapper: WrapperTransaction,
-    pub inners: InnerTransaction,
 }
 
 #[derive(Debug, Clone)]
@@ -408,16 +432,20 @@ impl Transaction {
                         if let Some(tx_kind_name) =
                             checksums.get_name_by_id(&id)
                         {
-                            TransactionKind::from(
-                                &tx_kind_name,
-                                &tx_data,
-                                native_token.to_owned(),
-                            )
+                            TransactionKind::from(&id, &tx_kind_name, &tx_data)
                         } else {
-                            TransactionKind::Unknown
+                            TransactionKind::Unknown(Some(UnknownTransaction {
+                                id: Some(id),
+                                name: None,
+                                data: Some(tx_data.clone()),
+                            }))
                         }
                     } else {
-                        TransactionKind::Unknown
+                        TransactionKind::Unknown(Some(UnknownTransaction {
+                            id: None,
+                            name: None,
+                            data: Some(tx_data.clone()),
+                        }))
                     };
 
                     let encoded_tx_data = if !tx_data.is_empty() {

@@ -17,22 +17,27 @@ use chain::services::{
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use deadpool_diesel::postgres::Object;
+use futures::future::FutureExt;
+use futures::stream::StreamExt;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::run_migrations;
+use repository::pgf as namada_pgf_repository;
+use shared::balance::TokenSupply;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
+use shared::futures::AwaitContainer;
 use shared::id::Id;
 use shared::token::Token;
 use shared::utils::BalanceChange;
 use shared::validator::ValidatorSet;
-use tendermint_rpc::HttpClient;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
+use tendermint_rpc::HttpClient;
+use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
-use tokio_retry::strategy::{ExponentialBackoff, jitter};
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
@@ -63,18 +68,106 @@ async fn main() -> Result<(), MainError> {
         .context_db_interact_error()
         .into_db_error()?;
 
-    initial_query(
-        &client,
-        &conn,
-        checksums.clone(),
-        config.initial_query_retry_time,
-        config.initial_query_retry_attempts,
-    )
-    .await?;
+    rlimit::increase_nofile_limit(10240).unwrap();
+    rlimit::increase_nofile_limit(u64::MAX).unwrap();
 
-    let crawler_state = db_service::get_chain_crawler_state(&conn)
-        .await
-        .into_db_error()?;
+    // See if we can start from existing crawler_state
+    let crawler_state = match (
+        config.backfill_from,
+        db_service::try_get_chain_crawler_state(&conn)
+            .await
+            .into_db_error()?,
+    ) {
+        (Some(height), _) => {
+            tracing::warn!("Backfilling from block height {}", height);
+            Some(ChainCrawlerState {
+                last_processed_block: height,
+                last_processed_epoch: 0,
+                first_block_in_epoch: 0,
+                timestamp: 0,
+            })
+        }
+        (None, Some(crawler_state)) => {
+            tracing::info!(
+                "Found chain crawler state, attempting initial crawl at block \
+                 {}...",
+                crawler_state.last_processed_block
+            );
+
+            // Try to run crawler_fn with the last processed block
+            let crawl_result = crawling_fn(
+                crawler_state.last_processed_block,
+                client.clone(),
+                conn.clone(),
+                checksums.clone(),
+                true,
+            )
+            .await;
+
+            match crawl_result {
+                Err(MainError::RpcError) => {
+                    // If there was an RpcError, it likely means the block was
+                    // pruned from the node. We need to do
+                    // an initial_query in that case.
+                    tracing::error!(
+                        "Failed to query block {}, starting from \
+                         initial_query ...",
+                        crawler_state.last_processed_block,
+                    );
+                    None
+                }
+                Err(_) => {
+                    // If any other type of error occurred, we should not
+                    // increment last_processed_block but
+                    // crawl from there without initial_query
+                    tracing::info!(
+                        "Initial crawl had an error (not RpcError), \
+                         continuing from block {}...",
+                        crawler_state.last_processed_block
+                    );
+                    Some(crawler_state)
+                }
+                Ok(_) => {
+                    // If the crawl was successful, increment last_processed
+                    // block and continue from there.
+                    let next_block = crawler_state.last_processed_block + 1;
+                    tracing::info!(
+                        "Initial crawl was successful, continuing from block \
+                         {}...",
+                        next_block
+                    );
+                    Some(ChainCrawlerState {
+                        last_processed_block: next_block,
+                        ..crawler_state
+                    })
+                }
+            }
+        }
+        (None, None) => {
+            tracing::info!(
+                "No chain crawler state found, starting from initial_query..."
+            );
+            None
+        }
+    };
+
+    // Handle cases where we need to perform initial query
+    let crawler_state = match crawler_state {
+        Some(state) => state,
+        None => {
+            initial_query(
+                &client,
+                &conn,
+                config.initial_query_retry_time,
+                config.initial_query_retry_attempts,
+            )
+            .await?;
+
+            db_service::get_chain_crawler_state(&conn)
+                .await
+                .into_db_error()?
+        }
+    };
 
     crawl(
         move |block_height| {
@@ -83,6 +176,7 @@ async fn main() -> Result<(), MainError> {
                 client.clone(),
                 conn.clone(),
                 checksums.clone(),
+                config.backfill_from.is_none(),
             )
         },
         crawler_state.last_processed_block,
@@ -96,6 +190,7 @@ async fn crawling_fn(
     client: Arc<HttpClient>,
     conn: Arc<Object>,
     checksums: Checksums,
+    should_update_crawler_state: bool,
 ) -> Result<(), MainError> {
     let should_process = can_process(block_height, client.clone()).await?;
 
@@ -140,11 +235,31 @@ async fn crawling_fn(
         .map(Token::Ibc)
         .collect::<Vec<Token>>();
 
-    let native_addresses =
-        namada_service::query_native_addresses_balance_change(Token::Native(
-            native_token.clone(),
-        ));
     let addresses = block.addresses_with_balance_change(&native_token);
+
+    let token_supplies = first_block_in_epoch
+        .eq(&block_height)
+        .then_some(async {
+            let native_fut = namada_service::get_native_token_supply(
+                &client,
+                &native_token,
+                epoch,
+            )
+            .map(|result| result.into_rpc_error());
+
+            let non_native_fut =
+                query_non_native_supplies(&client, &conn, epoch);
+
+            let (native, mut non_native) =
+                futures::try_join!(native_fut, non_native_fut)?;
+
+            non_native.push(native);
+
+            Ok(non_native)
+        })
+        .future()
+        .await
+        .transpose()?;
 
     let validators_addresses = if first_block_in_epoch.eq(&block_height) {
         namada_service::get_all_consensus_validators_addresses_at(
@@ -167,11 +282,23 @@ async fn crawling_fn(
             token: Token::Native(native_token.clone()),
         });
 
-    let all_balance_changed_addresses = addresses
-        .iter()
-        .chain(block_proposer_address.iter())
-        .chain(validators_addresses.iter())
-        .chain(native_addresses.iter())
+    let pgf_receipient_addresses = if first_block_in_epoch.eq(&block_height) {
+        conn.interact(move |conn| {
+            namada_pgf_repository::get_pgf_receipients_balance_changes(
+                conn,
+                &native_token,
+            )
+        })
+        .await
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?
+    } else {
+        HashSet::default()
+    };
+
+    let all_balance_changed_addresses = pgf_receipient_addresses
+        .union(&addresses)
         .cloned()
         .collect::<HashSet<_>>();
 
@@ -182,13 +309,7 @@ async fn crawling_fn(
     )
     .await
     .into_rpc_error()?;
-
-    tracing::debug!(
-        block = block_height,
-        addresses = all_balance_changed_addresses.len(),
-        "Updating balance for {} addresses...",
-        all_balance_changed_addresses.len()
-    );
+    tracing::info!("Updating balance for {} addresses...", addresses.len());
 
     let next_governance_proposal_id =
         namada_service::query_next_governance_id(&client, block_height)
@@ -306,6 +427,11 @@ async fn crawling_fn(
                     ibc_tokens,
                 )?;
 
+                repository::balance::insert_token_supplies(
+                    transaction_conn,
+                    token_supplies.into_iter().flatten(),
+                )?;
+
                 repository::block::upsert_block(
                     transaction_conn,
                     block,
@@ -365,10 +491,12 @@ async fn crawling_fn(
                     revealed_pks,
                 )?;
 
-                repository::crawler_state::upsert_crawler_state(
-                    transaction_conn,
-                    crawler_state,
-                )?;
+                if should_update_crawler_state {
+                    repository::crawler_state::upsert_crawler_state(
+                        transaction_conn,
+                        crawler_state,
+                    )?;
+                }
 
                 anyhow::Ok(())
             })
@@ -621,4 +749,31 @@ async fn get_block(
     );
 
     Ok((block, tm_block_response, epoch))
+}
+
+async fn query_non_native_supplies(
+    client: &HttpClient,
+    conn: &Object,
+    epoch: u32,
+) -> Result<Vec<TokenSupply>, MainError> {
+    let token_addresses = db_service::get_non_native_tokens(conn)
+        .await
+        .into_db_error()?;
+
+    let mut buffer = Vec::with_capacity(1);
+
+    let mut stream = futures::stream::iter(token_addresses)
+        .map(|address| async move {
+            namada_service::get_token_supply(client, address, epoch)
+                .await
+                .into_rpc_error()
+        })
+        .buffer_unordered(32);
+
+    while let Some(maybe_supply) = stream.next().await {
+        let supply = maybe_supply?;
+        buffer.push(supply);
+    }
+
+    Ok(buffer)
 }

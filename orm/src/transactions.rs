@@ -72,13 +72,7 @@ impl From<TransactionKind> for TransactionKindDb {
             TransactionKind::DeactivateValidator(_) => {
                 Self::DeactivateValidator
             }
-            TransactionKind::ReactivateValidator(_) => {
-                Self::ReactivateValidator
-            }
-            TransactionKind::RevealPk(_) => Self::RevealPk,
-            TransactionKind::BecomeValidator(_) => Self::BecomeValidator,
-            TransactionKind::UnjailValidator(_) => Self::UnjailValidator,
-            TransactionKind::Unknown => Self::Unknown,
+            TransactionKind::Unknown(_) => TransactionKindDb::Unknown,
         }
     }
 }

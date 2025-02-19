@@ -5,7 +5,8 @@ use diesel::{
     RunQueryDsl,
 };
 use orm::governance_proposal::{
-    GovernanceProposalResultDb, GovernanceProposalUpdateStatusDb,
+    GovernanceProposalKindDb, GovernanceProposalResultDb,
+    GovernanceProposalUpdateStatusDb,
 };
 use orm::schema::governance_proposals;
 use shared::utils::GovernanceProposalShort;
@@ -39,6 +40,37 @@ pub fn get_all_running_proposals(
             })
         })
         .collect::<Result<Vec<GovernanceProposalShort>, _>>()
+}
+
+pub fn get_all_pgf_executed_proposals_data(
+    conn: &mut PgConnection,
+    current_epoch: u32,
+) -> anyhow::Result<Vec<(u64, Option<String>)>> {
+    governance_proposals::table
+        .filter(
+            governance_proposals::dsl::result
+                .eq(GovernanceProposalResultDb::Passed)
+                .and(
+                    governance_proposals::dsl::activation_epoch
+                        .eq(current_epoch as i32),
+                )
+                .and(
+                    governance_proposals::dsl::kind
+                        .eq(GovernanceProposalKindDb::PgfFunding),
+                ),
+        )
+        .select((
+            governance_proposals::dsl::id,
+            governance_proposals::dsl::data,
+        ))
+        .load_iter::<(i32, Option<String>), DefaultLoadingMode>(conn)
+        .context("Failed to get governance proposal ids from db")?
+        .map(|result| {
+            let (id, data) =
+                result.context("Failed to deserialize proposal from db")?;
+            anyhow::Ok((id as u64, data))
+        })
+        .collect::<Result<Vec<(u64, Option<String>)>, _>>()
 }
 
 pub fn update_proposal_status(
