@@ -74,6 +74,10 @@ impl Amount {
     pub fn fake() -> Self {
         Self(NamadaAmount::from_u64((0..10000000).fake::<u64>()))
     }
+
+    pub fn zero() -> Self {
+        Self(NamadaAmount::zero())
+    }
 }
 
 pub type Denomination = u8;

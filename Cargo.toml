@@ -8,7 +8,7 @@ authors = ["Heliax <hello@heliax.dev>"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
-version = "1.1.6"
+version = "1.1.8"
 
 [workspace.dependencies]
 clokwerk = "0.4.0"
@@ -40,15 +40,15 @@ axum-extra = { version = "0.9.3", features = ["query"] }
 chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
-namada_core = "0.47.1"
-namada_sdk = { version = "0.47.1", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_tx = "0.47.1"
-namada_governance = "0.47.1"
-namada_ibc = "0.47.1"
-namada_token = "0.47.1"
-namada_parameters = "0.47.1"
-namada_proof_of_stake = "0.47.1"
 num-bigint = "0.4.6"
+namada_core = "0.47.2"
+namada_sdk = { version = "0.47.2", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_tx = "0.47.2"
+namada_governance = "0.47.2"
+namada_ibc = "0.47.2"
+namada_token = "0.47.2"
+namada_parameters = "0.47.2"
+namada_proof_of_stake = "0.47.2"
 tendermint = "0.40.1"
 tendermint-config = "0.40.1"
 tendermint-rpc = { version = "0.40.1", features = ["http-client"] }

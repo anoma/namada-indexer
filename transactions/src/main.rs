@@ -139,6 +139,11 @@ async fn crawling_fn(
         "Got block proposer address"
     );
 
+    let native_token: namada_sdk::address::Address =
+        namada_service::get_native_token(&client)
+            .await
+            .into_rpc_error()?
+            .into();
     let block = Block::from(
         &tm_block_response,
         &block_results,
@@ -146,15 +151,16 @@ async fn crawling_fn(
         checksums,
         1_u32, // placeholder, we dont need the epoch here
         block_height,
+        &native_token,
     );
 
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
     let transaction_sources = block.sources();
-    let gas_estimates = tx_service::get_gas_estimates(&inner_txs, &wrapper_txs);
+    let gas_estimates = tx_service::get_gas_estimates(&block.transactions);
 
     let ibc_sequence_packet =
-        tx_service::get_ibc_packets(&block_results, &inner_txs);
+        tx_service::get_ibc_packets(&block_results, &block.transactions);
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
 
     tracing::info!(
