@@ -165,9 +165,10 @@ async fn crawling_fn(
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
 
     let ibc_token_flows = {
-        let epoch = namada_service::get_current_epoch(&client)
-            .await
-            .into_rpc_error()?;
+        let epoch =
+            namada_service::get_epoch_at_block_height(&client, block_height)
+                .await
+                .into_rpc_error()?;
 
         tx_service::get_ibc_token_flows(&block_results)
             .map(move |(action, ibc_token, amount)| {
