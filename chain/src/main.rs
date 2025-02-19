@@ -259,24 +259,7 @@ async fn crawling_fn(
 
     let token_supplies = first_block_in_epoch
         .eq(&block_height)
-        .then_some(async {
-            let native_fut = namada_service::get_native_token_supply(
-                &client,
-                &native_token,
-                epoch,
-            )
-            .map(|result| result.into_rpc_error());
-
-            let non_native_fut =
-                query_non_native_supplies(&client, &conn, epoch);
-
-            let (native, mut non_native) =
-                futures::try_join!(native_fut, non_native_fut)?;
-
-            non_native.push(native);
-
-            Ok(non_native)
-        })
+        .then(|| query_token_supplies(&client, &conn, &native_token, epoch))
         .future()
         .await
         .transpose()?;
@@ -814,4 +797,24 @@ async fn query_non_native_supplies(
     }
 
     Ok(buffer)
+}
+
+async fn query_token_supplies(
+    client: &HttpClient,
+    conn: &Object,
+    native_token: &Id,
+    epoch: u32,
+) -> Result<Vec<TokenSupply>, MainError> {
+    let native_fut =
+        namada_service::get_native_token_supply(client, native_token, epoch)
+            .map(|result| result.into_rpc_error());
+
+    let non_native_fut = query_non_native_supplies(client, conn, epoch);
+
+    let (native, non_native) = futures::try_join!(native_fut, non_native_fut)?;
+
+    let mut supplies = non_native;
+    supplies.push(native);
+
+    Ok(supplies)
 }
