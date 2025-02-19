@@ -9,7 +9,9 @@ use crate::dto::ibc::{
     IbcRateLimit as IbcRateLimitDto, IbcTokenFlow as IbcTokenFlowDto,
 };
 use crate::error::api::ApiError;
-use crate::response::ibc::{IbcAck, IbcRateLimit, IbcTokenFlow};
+use crate::response::ibc::{
+    IbcAck, IbcRateLimit, IbcTokenFlow, IbcTokenThroughput,
+};
 use crate::state::common::CommonState;
 
 #[debug_handler]
@@ -50,4 +52,15 @@ pub async fn get_ibc_token_flows(
         .await?;
 
     Ok(Json(token_flows))
+}
+
+#[debug_handler]
+pub async fn get_ibc_token_throughput(
+    //_headers: HeaderMap,
+    Path(token): Path<String>,
+    State(state): State<CommonState>,
+) -> Result<Json<IbcTokenThroughput>, ApiError> {
+    let throughput = state.ibc_service.get_token_throughput(token).await?;
+
+    Ok(Json(throughput))
 }

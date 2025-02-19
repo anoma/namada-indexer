@@ -33,6 +33,11 @@ pub trait IbcRepositoryTrait {
         &self,
         token_address: Option<String>,
     ) -> Result<Vec<(String, String, String)>, String>;
+
+    async fn get_token_throughput(
+        &self,
+        token_address: String,
+    ) -> Result<(String, String), String>;
 }
 
 #[async_trait]
@@ -158,6 +163,53 @@ impl IbcRepositoryTrait for IbcRepository {
                     .load(conn),
             }
             .map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+
+    async fn get_token_throughput(
+        &self,
+        token: String,
+    ) -> Result<(String, String), String> {
+        let conn = self.app_state.get_db_connection().await;
+
+        conn.interact(move |conn| {
+            use diesel::Column;
+            use diesel::JoinOnDsl;
+
+            diesel::alias!(ibc_token_flows as ibc_token_flows_alias: IbcTokenFlowsAlias);
+
+            // NB: We're using a raw select because `CAST` is not available in the diesel dsl. :(
+            let select_statement =
+                diesel::dsl::sql::<(
+                    diesel::sql_types::Text,
+                    diesel::sql_types::Text
+                )>(
+                    &format!(
+                        "CAST(ABS({} - {}) AS TEXT), CAST({} AS TEXT)",
+                        ibc_token_flows::dsl::withdraw::NAME,
+                        ibc_token_flows::dsl::deposit::NAME,
+                        ibc_rate_limits::dsl::throughput_limit::NAME,
+                    ),
+                );
+
+            let max_epoch_where_clause =
+                ibc_token_flows::dsl::epoch.nullable().eq(ibc_token_flows_alias
+                    .select(diesel::dsl::max(ibc_token_flows_alias.field(ibc_token_flows::dsl::epoch)))
+                    .single_value());
+
+            ibc_token_flows::table
+                .inner_join(
+                    ibc_rate_limits::table.on(
+                        ibc_token_flows::dsl::address.eq(ibc_rate_limits::dsl::address),
+                    ),
+                )
+                .filter(ibc_token_flows::dsl::address.eq(&token))
+                .filter(max_epoch_where_clause)
+                .select(select_statement)
+                .first(conn)
+                .map_err(|e| e.to_string())
         })
         .await
         .map_err(|e| e.to_string())?

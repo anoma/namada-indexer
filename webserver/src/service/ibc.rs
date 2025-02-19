@@ -4,7 +4,9 @@ use orm::ibc::IbcAckStatusDb;
 use crate::appstate::AppState;
 use crate::error::ibc::IbcError;
 use crate::repository::ibc::{IbcRepository, IbcRepositoryTrait};
-use crate::response::ibc::{IbcAck, IbcAckStatus, IbcRateLimit, IbcTokenFlow};
+use crate::response::ibc::{
+    IbcAck, IbcAckStatus, IbcRateLimit, IbcTokenFlow, IbcTokenThroughput,
+};
 
 #[derive(Clone)]
 pub struct IbcService {
@@ -86,6 +88,29 @@ impl IbcService {
 
                 // SAFETY: We have asserted the safety of the conversion above
                 std::mem::transmute(flows)
+            })
+    }
+
+    pub async fn get_token_throughput(
+        &self,
+        token: String,
+    ) -> Result<IbcTokenThroughput, IbcError> {
+        self.ibc_repo
+            .get_token_throughput(token)
+            .await
+            .map_err(IbcError::Database)
+            .map(|throughput| unsafe {
+                // NB: Transmute this value. It's faster than destructing
+                // the vec and creating a new one, just to convert between
+                // types.
+
+                const _: () = assert_conversion_safety::<
+                    (String, String),
+                    IbcTokenThroughput,
+                >();
+
+                // SAFETY: We have asserted the safety of the conversion above
+                std::mem::transmute(throughput)
             })
     }
 }

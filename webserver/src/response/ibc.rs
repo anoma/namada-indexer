@@ -30,3 +30,10 @@ pub struct IbcTokenFlow {
     pub withdraw: String,
     pub deposit: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IbcTokenThroughput {
+    pub throughput: String,
+    pub limit: String,
+}
