@@ -22,3 +22,11 @@ pub struct IbcRateLimit {
     pub token_address: String,
     pub throughput_limit: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IbcTokenFlow {
+    pub token_address: String,
+    pub withdraw: String,
+    pub deposit: String,
+}

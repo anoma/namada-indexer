@@ -149,6 +149,10 @@ impl ApplicationServer {
                     get(ibc_handler::get_ibc_rate_limits),
                 )
                 .route(
+                    "/ibc/token-flows",
+                    get(ibc_handler::get_ibc_token_flows),
+                )
+                .route(
                     "/pgf/payments",
                     get(pgf_service::get_pgf_continuous_payments),
                 )

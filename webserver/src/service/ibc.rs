@@ -4,7 +4,7 @@ use orm::ibc::IbcAckStatusDb;
 use crate::appstate::AppState;
 use crate::error::ibc::IbcError;
 use crate::repository::ibc::{IbcRepository, IbcRepositoryTrait};
-use crate::response::ibc::{IbcAck, IbcAckStatus, IbcRateLimit};
+use crate::response::ibc::{IbcAck, IbcAckStatus, IbcRateLimit, IbcTokenFlow};
 
 #[derive(Clone)]
 pub struct IbcService {
@@ -48,22 +48,6 @@ impl IbcService {
         matching_token_address: Option<String>,
         matching_rate_limit: Option<BigDecimal>,
     ) -> Result<Vec<IbcRateLimit>, IbcError> {
-        const _: () = {
-            // NB: Statically assert that the cast we will
-            // perform below is safe.
-            if std::mem::size_of::<(String, String)>()
-                != std::mem::size_of::<IbcRateLimit>()
-            {
-                panic!("IbcRateLimit size is invalid");
-            }
-
-            if std::mem::align_of::<(String, String)>()
-                != std::mem::align_of::<IbcRateLimit>()
-            {
-                panic!("IbcRateLimit alignment is invalid");
-            }
-        };
-
         self.ibc_repo
             .get_throughput_limits(matching_token_address, matching_rate_limit)
             .await
@@ -73,9 +57,46 @@ impl IbcService {
                 // the vec and creating a new one, just to convert between
                 // types.
 
-                // SAFETY: We have asserted above that `IbcRateLimit` is
-                // compatible with the type `(String, BigDecimal)`.
+                const _: () =
+                    assert_conversion_safety::<(String, String), IbcRateLimit>(
+                    );
+
+                // SAFETY: We have asserted the safety of the conversion above
                 std::mem::transmute(limits)
             })
+    }
+
+    pub async fn get_token_flows(
+        &self,
+        matching_token_address: Option<String>,
+    ) -> Result<Vec<IbcTokenFlow>, IbcError> {
+        self.ibc_repo
+            .get_token_flows(matching_token_address)
+            .await
+            .map_err(IbcError::Database)
+            .map(|flows| unsafe {
+                // NB: Transmute this value. It's faster than destructing
+                // the vec and creating a new one, just to convert between
+                // types.
+
+                const _: () = assert_conversion_safety::<
+                    (String, String, String),
+                    IbcTokenFlow,
+                >();
+
+                // SAFETY: We have asserted the safety of the conversion above
+                std::mem::transmute(flows)
+            })
+    }
+}
+
+#[allow(dead_code)]
+const fn assert_conversion_safety<From, To>() {
+    if std::mem::size_of::<From>() != std::mem::size_of::<To>() {
+        panic!("size is invalid");
+    }
+
+    if std::mem::align_of::<From>() != std::mem::align_of::<To>() {
+        panic!("alignment is invalid");
     }
 }
