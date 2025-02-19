@@ -12,7 +12,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 ARG PACKAGE
-RUN cargo build --release --bin ${PACKAGE}
+RUN cargo build --release --locked --bin ${PACKAGE}
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libpq5 ca-certificates curl
