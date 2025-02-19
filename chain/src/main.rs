@@ -259,24 +259,7 @@ async fn crawling_fn(
 
     let token_supplies = first_block_in_epoch
         .eq(&block_height)
-        .then_some(async {
-            let native_fut = namada_service::get_native_token_supply(
-                &client,
-                &native_token,
-                epoch,
-            )
-            .map(|result| result.into_rpc_error());
-
-            let non_native_fut =
-                query_non_native_supplies(&client, &conn, epoch);
-
-            let (native, mut non_native) =
-                futures::try_join!(native_fut, non_native_fut)?;
-
-            non_native.push(native);
-
-            Ok(non_native)
-        })
+        .then(|| query_token_supplies(&client, &conn, &native_token, epoch))
         .future()
         .await
         .transpose()?;
@@ -592,6 +575,25 @@ async fn try_initial_query(
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
+    let rate_limits_fut = async {
+        namada_service::get_rate_limits_for_tokens(
+            client,
+            tokens.iter().map(|token| token.to_string()),
+            epoch,
+        )
+        .await
+        .into_rpc_error()
+    };
+    let token_supplies_fut = async {
+        let native_token = namada_service::get_native_token(client)
+            .await
+            .into_rpc_error()?;
+        query_token_supplies(client, conn, &native_token, epoch).await
+    };
+
+    let (rate_limits, token_supplies) =
+        futures::try_join!(rate_limits_fut, token_supplies_fut)?;
+
     // This can sometimes fail if the last block height in the node has moved
     // forward after we queried for it. In that case, query_all_balances
     // returns an Err indicating that it can only be used for
@@ -653,6 +655,16 @@ async fn try_initial_query(
                     transaction_conn,
                     block,
                     tm_block_response,
+                )?;
+
+                repository::balance::insert_token_supplies(
+                    transaction_conn,
+                    token_supplies,
+                )?;
+
+                repository::balance::insert_ibc_rate_limits(
+                    transaction_conn,
+                    rate_limits,
                 )?;
 
                 tracing::debug!(
@@ -814,4 +826,24 @@ async fn query_non_native_supplies(
     }
 
     Ok(buffer)
+}
+
+async fn query_token_supplies(
+    client: &HttpClient,
+    conn: &Object,
+    native_token: &Id,
+    epoch: u32,
+) -> Result<Vec<TokenSupply>, MainError> {
+    let native_fut =
+        namada_service::get_native_token_supply(client, native_token, epoch)
+            .map(|result| result.into_rpc_error());
+
+    let non_native_fut = query_non_native_supplies(client, conn, epoch);
+
+    let (native, non_native) = futures::try_join!(native_fut, non_native_fut)?;
+
+    let mut supplies = non_native;
+    supplies.push(native);
+
+    Ok(supplies)
 }
