@@ -10,7 +10,7 @@ toolchains:
     @echo {{ RUST_NIGTHLY }}
 
 build *BIN:
-    cargo +{{ RUST_STABLE }} build {{ if BIN != "" { prepend("--bin ", BIN) } else { "--all" } }}
+    cargo +{{ RUST_STABLE }} build --locked {{ if BIN != "" { prepend("--bin ", BIN) } else { "--all" } }}
 
 check:
     cargo +{{ RUST_STABLE }} check --all
