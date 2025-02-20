@@ -37,6 +37,7 @@ use shared::token::Token;
 use shared::utils::BalanceChange;
 use shared::validator::ValidatorSet;
 use tendermint_rpc::HttpClient;
+use tendermint_rpc::client::CompatMode;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 use tokio_retry::Retry;
 use tokio_retry::strategy::{ExponentialBackoff, jitter};
@@ -45,7 +46,11 @@ use tokio_retry::strategy::{ExponentialBackoff, jitter};
 async fn main() -> Result<(), MainError> {
     let config = AppConfig::parse();
 
-    let client = HttpClient::new(config.tendermint_url.as_str()).unwrap();
+    let client =
+        HttpClient::builder(config.tendermint_url.as_str().parse().unwrap())
+            .compat_mode(CompatMode::V0_37)
+            .build()
+            .unwrap();
 
     let mut checksums = Checksums::default();
     for code_path in Checksums::code_paths() {
