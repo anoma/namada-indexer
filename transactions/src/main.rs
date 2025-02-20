@@ -15,6 +15,7 @@ use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::transaction::IbcTokenFlow;
 use tendermint_rpc::HttpClient;
+use tendermint_rpc::client::CompatMode;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
@@ -31,8 +32,12 @@ async fn main() -> Result<(), MainError> {
 
     config.log.init();
 
-    let client =
-        Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
+    let client = Arc::new(
+        HttpClient::builder(config.tendermint_url.as_str().parse().unwrap())
+            .compat_mode(CompatMode::V0_37)
+            .build()
+            .unwrap(),
+    );
 
     let mut checksums = Checksums::default();
     for code_path in Checksums::code_paths() {

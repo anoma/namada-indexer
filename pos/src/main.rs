@@ -16,6 +16,7 @@ use shared::crawler;
 use shared::crawler_state::{CrawlerName, EpochCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use tendermint_rpc::HttpClient;
+use tendermint_rpc::client::CompatMode;
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
@@ -23,8 +24,12 @@ async fn main() -> Result<(), MainError> {
 
     config.log.init();
 
-    let client =
-        Arc::new(HttpClient::new(config.tendermint_url.as_str()).unwrap());
+    let client = Arc::new(
+        HttpClient::builder(config.tendermint_url.as_str().parse().unwrap())
+            .compat_mode(CompatMode::V0_37)
+            .build()
+            .unwrap(),
+    );
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
