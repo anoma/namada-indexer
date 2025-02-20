@@ -7811,6 +7811,7 @@ name = "transactions"
 version = "2.0.1"
 dependencies = [
  "anyhow",
+ "bigdecimal",
  "chrono",
  "clap",
  "clap-verbosity-flag",

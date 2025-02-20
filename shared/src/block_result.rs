@@ -1,18 +1,32 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::str::FromStr;
 
+use bigdecimal::BigDecimal;
+use namada_core::token::Amount as NamadaAmount;
+use namada_ibc::apps::transfer::types::packet::PacketData as Ics20PacketData;
 use namada_sdk::events::extend::{IndexedMaspData, MaspTxRefs};
 use namada_tx::data::TxResult;
 use tendermint_rpc::endpoint::block_results::Response as TendermintBlockResultResponse;
 
+use crate::balance::Amount;
 use crate::id::Id;
-use crate::transaction::TransactionExitStatus;
+use crate::transaction::{IbcTokenAction, TransactionExitStatus};
+
+#[derive(Debug, Clone)]
+pub enum IbcCorePacketKind {
+    Send,
+    Recv,
+    Ack,
+    Timeout,
+}
 
 #[derive(Debug, Clone)]
 pub enum EventKind {
     Applied,
-    SendPacket,
+    IbcCore(IbcCorePacketKind),
+    FungibleTokenPacket,
     Unknown,
 }
 
@@ -20,7 +34,9 @@ impl From<&String> for EventKind {
     fn from(value: &String) -> Self {
         match value.as_str() {
             "tx/applied" => Self::Applied,
-            "send_packet" => Self::SendPacket,
+            "send_packet" => Self::IbcCore(IbcCorePacketKind::Send),
+            "recv_packet" => Self::IbcCore(IbcCorePacketKind::Recv),
+            "fungible_token_packet" => Self::FungibleTokenPacket,
             _ => Self::Unknown,
         }
     }
@@ -149,19 +165,37 @@ pub enum MaspRef {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct SendPacket {
+pub struct IbcPacket {
     pub source_port: String,
     pub dest_port: String,
     pub source_channel: String,
     pub dest_channel: String,
     pub timeout_timestamp: u64,
+    // TODO: use height domain type
+    pub timeout_height: String,
     pub sequence: String,
+    pub data: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct FungibleTokenPacket {
+    pub sender: String,
+    pub receiver: String,
+    pub denom: String,
+    pub memo: String,
+    pub amount: BigDecimal,
 }
 
 #[derive(Debug, Clone)]
 pub enum TxAttributesType {
     TxApplied(TxApplied),
-    SendPacket(SendPacket),
+    SendPacket(IbcPacket),
+    RecvPacket(IbcPacket),
+    FungibleTokenPacket {
+        is_ack: bool,
+        success: bool,
+        packet: FungibleTokenPacket,
+    },
 }
 
 impl TxAttributesType {
@@ -171,7 +205,48 @@ impl TxAttributesType {
     ) -> Option<Self> {
         match event_kind {
             EventKind::Unknown => None,
-            EventKind::SendPacket => {
+            EventKind::FungibleTokenPacket => {
+                let (is_ack, success) =
+                    if let Some(success) = attributes.get("success") {
+                        (false, success == "\u{1}" || success == "true")
+                    } else {
+                        (
+                            true,
+                            attributes
+                                .get("acknowledgement")
+                                .map(|ack| ack.starts_with("result:"))
+                                .unwrap_or_default(),
+                        )
+                    };
+
+                let sender = attributes.get("sender")?.to_owned();
+                let receiver = attributes.get("receiver")?.to_owned();
+                let denom = attributes.get("denom")?.to_owned();
+                let memo = attributes.get("memo")?.to_owned();
+                let amount =
+                    attributes.get("amount")?.parse::<BigDecimal>().ok()?;
+
+                Some(TxAttributesType::FungibleTokenPacket {
+                    is_ack,
+                    success,
+                    packet: FungibleTokenPacket {
+                        sender,
+                        receiver,
+                        denom,
+                        memo,
+                        amount,
+                    },
+                })
+            }
+            EventKind::IbcCore(
+                kind @ (IbcCorePacketKind::Ack | IbcCorePacketKind::Timeout),
+            ) => {
+                tracing::warn!(?kind, "Received unhandled IBC packet kind");
+                None
+            }
+            EventKind::IbcCore(
+                kind @ (IbcCorePacketKind::Send | IbcCorePacketKind::Recv),
+            ) => {
                 let source_port =
                     attributes.get("packet_src_port").unwrap().to_owned();
                 let dest_port =
@@ -188,14 +263,25 @@ impl TxAttributesType {
                     .parse::<u64>()
                     .unwrap_or_default()
                     .to_owned();
+                let timeout_height =
+                    attributes.get("packet_timeout_height").unwrap().to_owned();
+                let data = attributes.get("packet_data").unwrap().to_owned();
 
-                Some(Self::SendPacket(SendPacket {
+                let constructor = match kind {
+                    IbcCorePacketKind::Send => Self::SendPacket,
+                    IbcCorePacketKind::Recv => Self::RecvPacket,
+                    _ => unreachable!(),
+                };
+
+                Some(constructor(IbcPacket {
                     source_port,
                     dest_port,
                     source_channel,
                     dest_channel,
                     timeout_timestamp,
+                    timeout_height,
                     sequence,
+                    data,
                 }))
             }
             EventKind::Applied => Some(Self::TxApplied(TxApplied {
@@ -246,6 +332,57 @@ impl TxAttributesType {
                 info: attributes.get("info").unwrap().to_owned(),
             })),
         }
+    }
+
+    pub fn as_fungible_token_packet(
+        &self,
+    ) -> Option<(
+        IbcTokenAction,
+        Option<&IbcPacket>,
+        Cow<'_, FungibleTokenPacket>,
+    )> {
+        let (action, packet) = match self {
+            Self::SendPacket(packet) => (IbcTokenAction::Withdraw, packet),
+            Self::RecvPacket(packet) => (IbcTokenAction::Deposit, packet),
+            Self::FungibleTokenPacket {
+                is_ack: true,
+                success: true,
+                packet,
+            } => {
+                return Some((
+                    IbcTokenAction::Withdraw,
+                    None,
+                    Cow::Borrowed(packet),
+                ));
+            }
+            Self::FungibleTokenPacket {
+                is_ack: false,
+                success: true,
+                packet,
+            } => {
+                return Some((
+                    IbcTokenAction::Deposit,
+                    None,
+                    Cow::Borrowed(packet),
+                ));
+            }
+            _ => return None,
+        };
+
+        let packet_data: Ics20PacketData =
+            serde_json::from_str(&packet.data).ok()?;
+        let ibc_amount: NamadaAmount =
+            packet_data.token.amount.try_into().ok()?;
+
+        let ics20_packet = FungibleTokenPacket {
+            memo: packet_data.memo.to_string(),
+            sender: packet_data.sender.to_string(),
+            receiver: packet_data.receiver.to_string(),
+            denom: packet_data.token.denom.to_string(),
+            amount: Amount::from(ibc_amount).into(),
+        };
+
+        Some((action, Some(packet), Cow::Owned(ics20_packet)))
     }
 }
 
@@ -387,5 +524,201 @@ impl BlockResult {
                 event.masp_refs.get(&index).cloned().unwrap_or_default()
             })
             .unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestAttribute {
+        key: String,
+        value: String,
+    }
+
+    struct TestEvent {
+        kind: String,
+        attributes: Vec<TestAttribute>,
+    }
+
+    #[test]
+    fn ibc_fungible_token_events() {
+        let mut events: Vec<_> = example_events()
+            .into_iter()
+            .filter_map(|test_event| {
+                let kind = EventKind::from(&test_event.kind);
+                let attributes = test_event
+                    .attributes
+                    .into_iter()
+                    .map(|TestAttribute { key, value }| (key, value))
+                    .collect();
+
+                let parsed_attributes =
+                    TxAttributesType::deserialize(&kind, &attributes);
+
+                parsed_attributes.as_ref()?;
+
+                Some(Event {
+                    kind,
+                    attributes: parsed_attributes,
+                })
+            })
+            .collect();
+
+        assert_eq!(events.len(), 1);
+        assert!(matches!(
+            events.remove(0),
+            Event {
+                kind: EventKind::FungibleTokenPacket,
+                attributes: Some(
+                    TxAttributesType::FungibleTokenPacket {
+                        is_ack: true,
+                        success: true,
+                        packet: FungibleTokenPacket {
+                            sender,
+                            receiver,
+                            denom,
+                            memo,
+                            amount,
+                        },
+                    },
+                ),
+            }
+            if
+                sender == "osmo1m8wg4vxkefhs374qxmmqpyusgz289wmulex5qdwpfx7jnrxzer5s9cv83q"
+                    && receiver == "mantra1drlcrf9drkhwayf37dephlxc0uqg5zcqjd7er8"
+                    && denom == "transfer/channel-85077/uom"
+                    && memo.is_empty()
+                    && amount == "19582".parse().unwrap()
+        ));
+    }
+
+    fn example_events() -> Vec<TestEvent> {
+        vec![
+            TestEvent {
+                kind: "acknowledge_packet".to_owned(),
+                attributes: vec![
+                    TestAttribute {
+                        key: "packet_timeout_height".to_owned(),
+                        value: "0-0".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_timeout_timestamp".to_owned(),
+                        value: "1739790400335658800".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_sequence".to_owned(),
+                        value: "56446".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_src_port".to_owned(),
+                        value: "transfer".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_src_channel".to_owned(),
+                        value: "channel-85077".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_dst_port".to_owned(),
+                        value: "transfer".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_dst_channel".to_owned(),
+                        value: "channel-0".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_channel_ordering".to_owned(),
+                        value: "ORDER_UNORDERED".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "packet_connection".to_owned(),
+                        value: "connection-2766".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "connection_id".to_owned(),
+                        value: "connection-2766".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "msg_index".to_owned(),
+                        value: "1".to_owned(),
+                    },
+                ],
+            },
+            TestEvent {
+                kind: "fungible_token_packet".to_owned(),
+                attributes: vec![
+                    TestAttribute {
+                        key: "module".to_owned(),
+                        value: "transfer".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "sender".to_owned(),
+                        value: "osmo1m8wg4vxkefhs374qxmmqpyusgz289wmulex5qdwpfx7jnrxzer5s9cv83q".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "receiver".to_owned(),
+                        value: "mantra1drlcrf9drkhwayf37dephlxc0uqg5zcqjd7er8".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "denom".to_owned(),
+                        value: "transfer/channel-85077/uom".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "amount".to_owned(),
+                        value: "19582".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "memo".to_owned(),
+                        value: "".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "acknowledgement".to_owned(),
+                        value: "result:\"\\001\" ".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "msg_index".to_owned(),
+                        value: "1".to_owned(),
+                    },
+                ],
+            },
+            TestEvent {
+                kind: "fungible_token_packet".to_owned(),
+                attributes: vec![
+                    TestAttribute {
+                        key: "success".to_owned(),
+                        value: "\u{1}".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "msg_index".to_owned(),
+                        value: "1".to_owned(),
+                    },
+                ],
+            },
+            TestEvent {
+                kind: "ibc_transfer".to_owned(),
+                attributes: vec![
+                    TestAttribute {
+                        key: "sender".to_owned(),
+                        value: "noble1dljdlrhg8s9kj2yq2u90q4e6kdxll8njpywgzh".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "receiver".to_owned(),
+                        value: "mantra1dljdlrhg8s9kj2yq2u90q4e6kdxll8njzv3yer".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "amount".to_owned(),
+                        value: "4995952207".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "denom".to_owned(),
+                        value: "uusdc".to_owned(),
+                    },
+                    TestAttribute {
+                        key: "memo".to_owned(),
+                        value: "".to_owned(),
+                    },
+                ],
+            },
+        ]
     }
 }

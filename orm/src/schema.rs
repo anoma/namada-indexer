@@ -280,6 +280,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    ibc_token_flows (id) {
+        id -> Int4,
+        #[max_length = 45]
+        address -> Varchar,
+        epoch -> Int4,
+        deposit -> Numeric,
+        withdraw -> Numeric,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::TransactionKind;
     use super::sql_types::TransactionResult;
@@ -418,6 +429,7 @@ diesel::joinable!(gas_estimations -> wrapper_transactions (wrapper_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
 diesel::joinable!(ibc_rate_limits -> token (address));
 diesel::joinable!(ibc_token -> token (address));
+diesel::joinable!(ibc_token_flows -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
@@ -440,6 +452,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     ibc_ack,
     ibc_rate_limits,
     ibc_token,
+    ibc_token_flows,
     inner_transactions,
     pos_rewards,
     public_good_funding,

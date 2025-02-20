@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use anyhow::Context;
+use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
@@ -739,5 +741,69 @@ impl TransactionTarget {
 
     pub fn received(inner_tx: Id, address: String) -> Self {
         Self::new(inner_tx, address, TransactionHistoryKind::Received)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum IbcTokenAction {
+    Deposit,
+    Withdraw,
+}
+
+pub fn ibc_denom_sent(trace: &str) -> String {
+    if trace.contains('/') {
+        namada_ibc::trace::ibc_token(trace).to_string()
+    } else {
+        trace.to_owned()
+    }
+}
+
+pub fn ibc_denom_received(
+    ibc_denom: &str,
+    src_port_id: &str,
+    src_channel_id: &str,
+    dest_port_id: &str,
+    dest_channel_id: &str,
+) -> anyhow::Result<String> {
+    let addr = namada_ibc::received_ibc_token(
+        ibc_denom,
+        &src_port_id.parse().context("Failed to parse src port")?,
+        &src_channel_id.parse().context("Failed to parse src chan")?,
+        &dest_port_id.parse().context("Failed to parse dst port")?,
+        &dest_channel_id
+            .parse()
+            .context("Failed to parse dst chan")?,
+    )
+    .context("Failed to parse received ibc token addr")?;
+
+    Ok(addr.to_string())
+}
+
+#[derive(Debug, Clone)]
+pub struct IbcTokenFlow {
+    pub epoch: u32,
+    pub address: String,
+    pub deposit: BigDecimal,
+    pub withdraw: BigDecimal,
+}
+
+impl IbcTokenFlow {
+    pub fn new(
+        action: IbcTokenAction,
+        address: String,
+        amount: BigDecimal,
+        epoch: u32,
+    ) -> Self {
+        let (deposit, withdraw) = match action {
+            IbcTokenAction::Deposit => (amount, 0u64.into()),
+            IbcTokenAction::Withdraw => (0u64.into(), amount),
+        };
+
+        Self {
+            address,
+            deposit,
+            withdraw,
+            epoch,
+        }
     }
 }
