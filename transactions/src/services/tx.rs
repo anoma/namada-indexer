@@ -171,7 +171,7 @@ pub fn get_gas_estimates(
                     let notes = tx.notes;
                     gas_estimate.increase_mixed_transfer(notes)
                 }
-                TransactionKind::IbcMsg(_) => {
+                TransactionKind::IbcTrasparentTransfer(_) => {
                     gas_estimate.increase_ibc_msg_transfer()
                 }
                 TransactionKind::Bond(_) => gas_estimate.increase_bond(),
@@ -211,7 +211,7 @@ pub fn get_gas_estimates(
                     let notes = tx.notes;
                     gas_estimate.increase_ibc_unshielding_transfer(notes)
                 }
-                TransactionKind::IbcTrasparentTransfer(_)
+                TransactionKind::IbcMsg(_)
                 | TransactionKind::InitProposal(_)
                 | TransactionKind::MetadataChange(_)
                 | TransactionKind::CommissionChange(_)
