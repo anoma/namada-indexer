@@ -24,7 +24,7 @@ use crate::transaction::{
     WrapperTransaction,
 };
 use crate::unbond::UnbondAddresses;
-use crate::utils::BalanceChange;
+use crate::utils::{BalanceChange, MASP_ADDRESS};
 use crate::validator::{
     Validator, ValidatorMetadataChange, ValidatorState, ValidatorStateChange,
 };
@@ -436,6 +436,45 @@ impl Block {
                             direction: MaspEntryDirection::Out,
                             inner_tx_id: tx.tx_id.clone(),
                         })
+                        .collect()
+                }
+                TransactionKind::MixedTransfer(Some(transfer_data)) => {
+                    transfer_data
+                        .sources
+                        .0
+                        .iter()
+                        .filter_map(|(source, denominated_amount)| {
+                            if source.owner == MASP_ADDRESS {
+                                Some(MaspEntry {
+                                    token_address: source.token.to_string(),
+                                    timestamp: self.header.timestamp,
+                                    raw_amount: denominated_amount
+                                        .amount()
+                                        .into(),
+                                    direction: MaspEntryDirection::Out,
+                                    inner_tx_id: tx.tx_id.clone(),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .chain(transfer_data.targets.0.iter().filter_map(
+                            |(target, denominated_amount)| {
+                                if target.owner == MASP_ADDRESS {
+                                    Some(MaspEntry {
+                                        token_address: target.token.to_string(),
+                                        timestamp: self.header.timestamp,
+                                        raw_amount: denominated_amount
+                                            .amount()
+                                            .into(),
+                                        direction: MaspEntryDirection::In,
+                                        inner_tx_id: tx.tx_id.clone(),
+                                    })
+                                } else {
+                                    None
+                                }
+                            },
+                        ))
                         .collect()
                 }
                 TransactionKind::IbcShieldingTransfer((_, transfer_data)) => {
