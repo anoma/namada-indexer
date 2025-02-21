@@ -22,7 +22,9 @@ pub struct GasEstimateQuery {
     #[validate(range(min = 1, max = 100))]
     pub vote: Option<u64>,
     #[validate(range(min = 1, max = 100))]
-    pub ibc: Option<u64>,
+    pub ibc_shielding_transfer: Option<u64>,
+    #[validate(range(min = 1, max = 100))]
+    pub ibc_unshielding_transfer: Option<u64>,
     #[validate(range(min = 1, max = 100))]
     pub withdraw: Option<u64>,
     #[validate(range(min = 1, max = 100))]
@@ -47,7 +49,8 @@ impl GasEstimateQuery {
             self.unshielding_transfer,
             self.vote,
             self.withdraw,
-            self.ibc,
+            self.ibc_shielding_transfer,
+            self.ibc_unshielding_transfer,
             self.reveal_pk,
             self.redelegate,
         ]

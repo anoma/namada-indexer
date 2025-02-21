@@ -652,7 +652,13 @@ paths:
             minimum: 1
             maximum: 100
         - in: query
-          name: ibc
+          name: ibc_unshielding_transfer
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: ibc_shielding_transfer
           schema:
             type: integer
             minimum: 1
