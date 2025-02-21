@@ -150,12 +150,18 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?
             .into();
+
+    let epoch =
+        namada_service::get_epoch_at_block_height(&client, block_height)
+            .await
+            .into_rpc_error()?;
+
     let block = Block::from(
         &tm_block_response,
         &block_results,
         &proposer_address_namada,
         checksums,
-        1_u32, // placeholder, we dont need the epoch here
+        epoch,
         block_height,
         &native_token,
     );
