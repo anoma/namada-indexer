@@ -5,5 +5,5 @@ use serde::{Deserialize, Serialize};
 pub struct CrawlersTimestamps {
     pub name: String,
     pub timestamp: i64,
-    pub last_processed_block: Option<i32>
+    pub last_processed_block_height: Option<i32>,
 }

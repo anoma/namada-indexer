@@ -16,6 +16,9 @@ pub enum ValidatorState {
     BelowThreshold,
     Inactive,
     Jailed,
+    Deactivating,
+    Reactivating,
+    Unjailing,
     Unknown,
 }
 
@@ -27,6 +30,9 @@ impl From<ValidatorStateDb> for ValidatorState {
             ValidatorStateDb::BelowThreshold => Self::BelowThreshold,
             ValidatorStateDb::Inactive => Self::Inactive,
             ValidatorStateDb::Jailed => Self::Jailed,
+            ValidatorStateDb::Deactivating => Self::Deactivating,
+            ValidatorStateDb::Reactivating => Self::Reactivating,
+            ValidatorStateDb::Unjailing => Self::Unjailing,
             ValidatorStateDb::Unknown => Self::Unknown,
         }
     }

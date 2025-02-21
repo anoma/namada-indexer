@@ -102,6 +102,7 @@ impl PosService {
         &self,
         address: String,
         page: u64,
+        active_at: Option<i32>,
     ) -> Result<(Vec<Bond>, u64, u64), PoSError> {
         let pos_state = self
             .pos_repo
@@ -111,7 +112,7 @@ impl PosService {
 
         let (db_bonds, total_pages, total_items) = self
             .pos_repo
-            .find_bonds_by_address(address, page as i64)
+            .find_bonds_by_address(address, page as i64, active_at)
             .await
             .map_err(PoSError::Database)?;
 
@@ -154,10 +155,11 @@ impl PosService {
         &self,
         address: String,
         page: u64,
+        active_at: Option<i32>,
     ) -> Result<(Vec<Unbond>, u64, u64), PoSError> {
         let (db_unbonds, total_pages, total_items) = self
             .pos_repo
-            .find_unbonds_by_address(address, page as i64)
+            .find_unbonds_by_address(address, page as i64, active_at)
             .await
             .map_err(PoSError::Database)?;
 

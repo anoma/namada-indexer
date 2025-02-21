@@ -1,17 +1,20 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
-use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
-use axum::Json;
+use axum::response::sse::{Event, KeepAlive};
+use axum_extra::extract::Query;
 use futures::Stream;
 use tokio_stream::StreamExt;
 
+use crate::dto::chain::TokenSupply as TokenSupplyDto;
 use crate::error::api::ApiError;
 use crate::response::chain::{
     LastProcessedBlock, LastProcessedEpoch, Parameters, RpcUrl, Token,
+    TokenSupply as TokenSupplyRsp,
 };
 use crate::state::common::CommonState;
 
@@ -98,4 +101,15 @@ pub async fn get_last_processed_epoch(
     Ok(Json(LastProcessedEpoch {
         epoch: last_processed_block.to_string(),
     }))
+}
+
+pub async fn get_token_supply(
+    Query(query): Query<TokenSupplyDto>,
+    State(state): State<CommonState>,
+) -> Result<Json<Option<TokenSupplyRsp>>, ApiError> {
+    let supply = state
+        .chain_service
+        .get_token_supply(query.address, query.epoch)
+        .await?;
+    Ok(Json(supply))
 }

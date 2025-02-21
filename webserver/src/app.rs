@@ -10,19 +10,20 @@ use axum_prometheus::PrometheusMetricLayer;
 use lazy_static::lazy_static;
 use namada_sdk::tendermint_rpc::HttpClient;
 use serde_json::json;
+use tower::ServiceBuilder;
 use tower::buffer::BufferLayer;
 use tower::limit::RateLimitLayer;
-use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::appstate::AppState;
 use crate::config::AppConfig;
 use crate::handler::{
-    balance as balance_handlers, chain as chain_handlers,
-    crawler_state as crawler_state_handlers, gas as gas_handlers,
-    governance as gov_handlers, pgf as pgf_service, pk as pk_handlers,
-    pos as pos_handlers, transaction as transaction_handlers,
+    balance as balance_handlers, block as block_handlers,
+    chain as chain_handlers, crawler_state as crawler_state_handlers,
+    gas as gas_handlers, governance as gov_handlers, ibc as ibc_handler,
+    pgf as pgf_service, pk as pk_handlers, pos as pos_handlers,
+    transaction as transaction_handlers,
 };
 use crate::state::common::CommonState;
 
@@ -113,6 +114,7 @@ impl ApplicationServer {
                     get(pk_handlers::get_revealed_pk),
                 )
                 .route("/gas", get(gas_handlers::get_gas))
+                .route("/gas/estimate", get(gas_handlers::get_gas_estimate))
                 .route(
                     "/gas-price/:token",
                     get(gas_handlers::get_gas_price_by_token),
@@ -126,9 +128,17 @@ impl ApplicationServer {
                     "/chain/inner/:id",
                     get(transaction_handlers::get_inner_tx),
                 )
+                .route(
+                    "/chain/history",
+                    get(transaction_handlers::get_transaction_history),
+                )
                 .route("/chain/parameters", get(chain_handlers::get_parameters))
                 .route("/chain/rpc-url", get(chain_handlers::get_rpc_url))
                 .route("/chain/token", get(chain_handlers::get_tokens))
+                .route(
+                    "/chain/token-supply",
+                    get(chain_handlers::get_token_supply),
+                )
                 .route(
                     "/chain/block/latest",
                     get(chain_handlers::get_last_processed_block),
@@ -136,6 +146,19 @@ impl ApplicationServer {
                 .route(
                     "/chain/epoch/latest",
                     get(chain_handlers::get_last_processed_epoch),
+                )
+                .route("/ibc/:tx_id/status", get(ibc_handler::get_ibc_status))
+                .route(
+                    "/ibc/rate-limits",
+                    get(ibc_handler::get_ibc_rate_limits),
+                )
+                .route(
+                    "/ibc/token-flows",
+                    get(ibc_handler::get_ibc_token_flows),
+                )
+                .route(
+                    "/ibc/token-throughput/:token",
+                    get(ibc_handler::get_ibc_token_throughput),
                 )
                 .route(
                     "/pgf/payments",
@@ -152,6 +175,14 @@ impl ApplicationServer {
                 // Server sent events endpoints
                 .route("/chain/status", get(chain_handlers::chain_status))
                 .route(
+                    "/block/height/:value",
+                    get(block_handlers::get_block_by_height),
+                )
+                .route(
+                    "/block/timestamp/:value",
+                    get(block_handlers::get_block_by_timestamp),
+                )
+                .route(
                     "/metrics",
                     get(|| async move { metric_handle.render() }),
                 )
@@ -167,7 +198,7 @@ impl ApplicationServer {
             .nest("/api/v1", routes)
             .merge(Router::new().route(
                 "/health",
-                get(|| async { env!("VERGEN_GIT_SHA").to_string() }),
+                get(|| async { json!({"commit": env!("VERGEN_GIT_SHA").to_string(), "version": env!("CARGO_PKG_VERSION") }).to_string() }),
             ))
             .layer(
                 ServiceBuilder::new()

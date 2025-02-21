@@ -1,4 +1,5 @@
-use anyhow::Context;
+use anyhow::{Context, anyhow};
+use namada_sdk::chain::BlockHeight as NamadaSdkBlockHeight;
 use namada_sdk::hash::Hash;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
@@ -38,6 +39,22 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
     Ok(epoch.0 as Epoch)
 }
 
+pub async fn get_epoch_at_block_height(
+    client: &HttpClient,
+    block_height: BlockHeight,
+) -> anyhow::Result<Epoch> {
+    let block_height = NamadaSdkBlockHeight::from(block_height as u64);
+    let epoch = rpc::query_epoch_at_height(client, block_height)
+        .await
+        .with_context(|| {
+            format!("Failed to query Namada's epoch at height {block_height}")
+        })?
+        .ok_or_else(|| {
+            anyhow!("No Namada epoch found for height {block_height}")
+        })?;
+    Ok(epoch.0 as Epoch)
+}
+
 pub async fn query_tx_code_hash(
     client: &HttpClient,
     tx_code_path: &str,
@@ -54,4 +71,17 @@ pub async fn query_tx_code_hash(
     } else {
         None
     }
+}
+
+pub async fn get_validator_namada_address(
+    client: &HttpClient,
+    tm_addr: &Id,
+) -> anyhow::Result<Option<Id>> {
+    let validator = RPC
+        .vp()
+        .pos()
+        .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
+        .await?;
+
+    Ok(validator.map(Id::from))
 }

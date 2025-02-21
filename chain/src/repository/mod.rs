@@ -1,4 +1,5 @@
 pub mod balance;
+pub mod block;
 pub mod crawler_state;
 pub mod gov;
 pub mod pgf;

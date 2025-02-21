@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
-use axum::Json;
 use axum_extra::extract::Query;
 use axum_macros::debug_handler;
 
@@ -57,7 +57,7 @@ pub async fn get_bonds(
 
     let (bonds, total_pages, total_bonds) = state
         .pos_service
-        .get_bonds_by_address(address, page)
+        .get_bonds_by_address(address, page, query.active_at)
         .await?;
 
     let response =
@@ -97,7 +97,7 @@ pub async fn get_unbonds(
 
     let (unbonds, total_pages, total_unbonds) = state
         .pos_service
-        .get_unbonds_by_address(address, page)
+        .get_unbonds_by_address(address, page, query.active_at)
         .await?;
 
     let response =

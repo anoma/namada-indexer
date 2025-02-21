@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
-use namada_ibc::apps::transfer::types::packet::PacketData;
+use namada_ibc::IbcMessage;
 use namada_ibc::core::channel::types::msgs::{MsgRecvPacket, PacketMsg};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
-use namada_ibc::IbcMessage;
+use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::token::Transfer;
 use subtle_encoding::hex;
@@ -19,12 +19,14 @@ use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
 use crate::transaction::{
-    InnerTransaction, Transaction, TransactionExitStatus, TransactionKind,
+    InnerTransaction, Transaction, TransactionKind, TransactionTarget,
     WrapperTransaction,
 };
 use crate::unbond::UnbondAddresses;
 use crate::utils::BalanceChange;
-use crate::validator::{Validator, ValidatorMetadataChange, ValidatorState};
+use crate::validator::{
+    Validator, ValidatorMetadataChange, ValidatorState, ValidatorStateChange,
+};
 use crate::vote::GovernanceVote;
 
 pub type Epoch = u32;
@@ -107,11 +109,13 @@ pub struct Block {
 
 impl Block {
     pub fn from(
-        block_response: TendermintBlockResponse,
+        block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
+        proposer_address_namada: &Option<Id>,
         checksums: Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
+        native_token: &Address,
     ) -> Self {
         let transactions = block_response
             .block
@@ -125,6 +129,7 @@ impl Block {
                     block_height,
                     checksums.clone(),
                     block_results,
+                    native_token,
                 )
                 .map_err(|reason| {
                     tracing::info!("Couldn't deserialize tx due to {}", reason);
@@ -138,14 +143,17 @@ impl Block {
             header: BlockHeader {
                 height: block_response.block.header.height.value()
                     as BlockHeight,
-                proposer_address: block_response
+                proposer_address_tm: block_response
                     .block
                     .header
                     .proposer_address
                     .to_string()
                     .to_lowercase(),
+                proposer_address_namada: proposer_address_namada
+                    .as_ref()
+                    .map(Id::to_string),
                 timestamp: block_response.block.header.time.to_string(),
-                app_hash: Id::from(block_response.block.header.app_hash),
+                app_hash: Id::from(&block_response.block.header.app_hash),
             },
             transactions,
             epoch,
@@ -166,21 +174,245 @@ impl Block {
             .collect()
     }
 
+    pub fn sources(&self) -> HashSet<TransactionTarget> {
+        self.inner_txs()
+            .into_iter()
+            .flat_map(|tx| match tx.kind {
+                TransactionKind::TransparentTransfer(transfer)
+                | TransactionKind::MixedTransfer(transfer)
+                | TransactionKind::ShieldedTransfer(transfer)
+                | TransactionKind::UnshieldingTransfer(transfer)
+                | TransactionKind::ShieldingTransfer(transfer) => {
+                    if let Some(data) = transfer {
+                        let sources = data
+                            .sources
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::sent(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let targets = data
+                            .targets
+                            .0
+                            .keys()
+                            .map(|account| {
+                                TransactionTarget::received(
+                                    tx.tx_id.clone(),
+                                    account.owner.to_string(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        [sources, targets].concat()
+                    } else {
+                        vec![]
+                    }
+                }
+                // IbcMsg is only used for non-transfer ibc packets
+                TransactionKind::IbcMsg(_) => vec![],
+                TransactionKind::IbcTrasparentTransfer((_, transfer))
+                | TransactionKind::IbcShieldingTransfer((_, transfer))
+                | TransactionKind::IbcUnshieldingTransfer((_, transfer)) => {
+                    let sources = transfer
+                        .sources
+                        .0
+                        .keys()
+                        .map(|account| {
+                            TransactionTarget::sent(
+                                tx.tx_id.clone(),
+                                account.owner.to_string(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    let targets = transfer
+                        .targets
+                        .0
+                        .keys()
+                        .map(|account| {
+                            TransactionTarget::received(
+                                tx.tx_id.clone(),
+                                account.owner.to_string(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    [sources, targets].concat()
+                }
+                TransactionKind::Bond(bond) => {
+                    if let Some(data) = bond {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Redelegation(redelegation) => {
+                    if let Some(data) = redelegation {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            data.owner.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Unbond(unbond) => {
+                    if let Some(data) = unbond {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Withdraw(withdraw) => {
+                    if let Some(data) = withdraw {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ClaimRewards(claim_rewards) => {
+                    if let Some(data) = claim_rewards {
+                        let source =
+                            data.source.unwrap_or(data.validator.clone());
+                        vec![TransactionTarget::sent(
+                            tx.tx_id.clone(),
+                            source.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ProposalVote(vote_proposal_data) => {
+                    if let Some(data) = vote_proposal_data {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.voter.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::InitProposal(init_proposal_data) => {
+                    if let Some(data) = init_proposal_data {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.author.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::MetadataChange(meta_data_change) => {
+                    if let Some(data) = meta_data_change {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.validator.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::CommissionChange(commission_change) => {
+                    if let Some(data) = commission_change {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.validator.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::RevealPk(reveal_pk_data) => {
+                    if let Some(data) = reveal_pk_data {
+                        let source = Address::from(&data.public_key);
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            source.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::BecomeValidator(become_validator) => {
+                    if let Some(data) = become_validator {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.address.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::ReactivateValidator(address) => {
+                    if let Some(data) = address {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::DeactivateValidator(address) => {
+                    if let Some(data) = address {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::UnjailValidator(address) => {
+                    if let Some(data) = address {
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            data.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::Unknown(_) => vec![],
+            })
+            .collect::<HashSet<_>>()
+    }
+
     pub fn governance_proposal(
         &self,
         mut next_proposal_id: u64,
     ) -> Vec<GovernanceProposal> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::InitProposal(data) => {
-                    let init_proposal_data = data.clone().unwrap(); // safe as we filter before (not the best pattern)
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
 
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::InitProposal(Some(init_proposal_data)) => {
                     let proposal_content_bytes = tx
                         .get_section_data_by_id(Id::from(
                             init_proposal_data.content,
@@ -227,9 +459,9 @@ impl Block {
 
                     Some(GovernanceProposal {
                         id: current_id,
-                        author: Id::from(init_proposal_data.author),
+                        author: Id::from(init_proposal_data.author.to_owned()),
                         r#type: GovernanceProposalKind::from(
-                            init_proposal_data.r#type,
+                            init_proposal_data.r#type.to_owned(),
                         ),
                         data: proposal_data,
                         voting_start_epoch: Epoch::from(
@@ -252,16 +484,24 @@ impl Block {
     pub fn pos_rewards(&self) -> HashSet<(Id, Id)> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::ClaimRewards(data) => {
-                    let data = data.clone().unwrap();
-                    let validator = data.validator;
-                    let source = data.source.unwrap_or(validator.clone());
+                TransactionKind::ClaimRewards(Some(data)) => {
+                    let validator = data.validator.to_owned();
+                    let source = data
+                        .source
+                        .to_owned()
+                        .unwrap_or_else(|| validator.clone());
 
                     Some((Id::from(source), Id::from(validator)))
                 }
@@ -273,19 +513,23 @@ impl Block {
     pub fn governance_votes(&self) -> HashSet<GovernanceVote> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::ProposalVote(data) => {
-                    let vote_proposal_data = data.clone().unwrap();
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
 
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::ProposalVote(Some(vote_proposal_data)) => {
                     Some(GovernanceVote {
                         proposal_id: vote_proposal_data.id,
-                        vote: vote_proposal_data.vote.into(),
-                        address: Id::from(vote_proposal_data.voter),
+                        vote: vote_proposal_data.vote.to_owned().into(),
+                        address: Id::from(vote_proposal_data.voter.to_owned()),
                     })
                 }
                 _ => None,
@@ -296,41 +540,30 @@ impl Block {
     pub fn ibc_tokens(&self) -> HashSet<IbcToken> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::IbcMsgTransfer(data) => {
-                    let data = data.clone().and_then(|d| {
-                        Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
-                            serde_json::from_slice::<PacketData>(
-                                &msg.packet.data,
-                            )
-                            .map(|p| (msg, p))
-                            .ok()
-                        })
-                    });
-
-                    let (msg, packet_data) = data?;
-
-                    let ibc_trace = format!(
-                        "{}/{}/{}",
-                        msg.packet.port_id_on_b,
-                        msg.packet.chan_id_on_b,
-                        packet_data.token.denom
-                    );
-
-                    let trace = Id::IbcTrace(ibc_trace.clone());
-                    let address =
-                        namada_ibc::trace::convert_to_address(ibc_trace)
-                            .expect("Failed to convert IBC trace to address");
-                    Some(IbcToken {
-                        address: Id::from(address.clone()),
-                        trace,
-                    })
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
                 }
+
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::IbcTrasparentTransfer((
+                    Token::Ibc(ibc_token),
+                    _,
+                ))
+                | TransactionKind::IbcShieldingTransfer((
+                    Token::Ibc(ibc_token),
+                    _,
+                ))
+                | TransactionKind::IbcUnshieldingTransfer((
+                    Token::Ibc(ibc_token),
+                    _,
+                )) => Some(ibc_token.to_owned()),
                 _ => None,
             })
             .collect()
@@ -368,52 +601,13 @@ impl Block {
         native_token: &Id,
     ) -> Option<Vec<BalanceChange>> {
         let change = match &tx.kind {
-            TransactionKind::IbcMsgTransfer(data) => {
-                let data = data.clone().and_then(|d| {
-                    Self::ibc_msg_recv_packet(d.0).and_then(|msg| {
-                        serde_json::from_slice::<PacketData>(&msg.packet.data)
-                            .map(|p| (msg, p))
-                            .ok()
-                    })
-                });
-
-                let (msg, packet_data) = data?;
-                let denom = packet_data.token.denom.to_string();
-
-                // If the denom is the native token, we can just return the
-                // receiver
-                if denom.contains(&native_token.to_string()) {
-                    vec![BalanceChange::new(
-                        Id::Account(String::from(
-                            packet_data.receiver.as_ref(),
-                        )),
-                        Token::Native(native_token.clone()),
-                    )]
-                } else {
-                    let ibc_trace = format!(
-                        "{}/{}/{}",
-                        msg.packet.port_id_on_b,
-                        msg.packet.chan_id_on_b,
-                        packet_data.token.denom
-                    );
-
-                    let trace = Id::IbcTrace(ibc_trace.clone());
-                    let address =
-                        namada_ibc::trace::convert_to_address(ibc_trace)
-                            .expect("Failed to convert IBC trace to address");
-
-                    vec![BalanceChange::new(
-                        Id::Account(String::from(
-                            packet_data.receiver.as_ref(),
-                        )),
-                        Token::Ibc(IbcToken {
-                            address: Id::from(address.clone()),
-                            trace,
-                        }),
-                    )]
-                }
-            }
-            TransactionKind::TransparentTransfer(data) => {
+            TransactionKind::IbcMsg(_) => Default::default(),
+            // Shielded transfers don't move any transparent balance
+            TransactionKind::ShieldedTransfer(_) => Default::default(),
+            TransactionKind::ShieldingTransfer(data)
+            | TransactionKind::UnshieldingTransfer(data)
+            | TransactionKind::MixedTransfer(data)
+            | TransactionKind::TransparentTransfer(data) => {
                 let data = data.as_ref()?;
 
                 [&data.sources, &data.targets]
@@ -423,6 +617,21 @@ impl Block {
                             BalanceChange::new(
                                 Id::from(account.owner.clone()),
                                 Token::Native(Id::from(account.token.clone())),
+                            )
+                        })
+                    })
+                    .collect()
+            }
+            TransactionKind::IbcTrasparentTransfer((token, data))
+            | TransactionKind::IbcShieldingTransfer((token, data))
+            | TransactionKind::IbcUnshieldingTransfer((token, data)) => {
+                [&data.sources, &data.targets]
+                    .iter()
+                    .flat_map(|transfer_changes| {
+                        transfer_changes.0.keys().map(|account| {
+                            BalanceChange::new(
+                                Id::from(account.owner.clone()),
+                                token.to_owned(),
                             )
                         })
                     })
@@ -478,14 +687,23 @@ impl Block {
                     Token::Native(native_token.clone()),
                 )]
             }
-            _ => vec![],
+            TransactionKind::Redelegation(_)
+            | TransactionKind::CommissionChange(_)
+            | TransactionKind::RevealPk(_)
+            | TransactionKind::DeactivateValidator(_)
+            | TransactionKind::Unknown(_)
+            | TransactionKind::UnjailValidator(_)
+            | TransactionKind::MetadataChange(_)
+            | TransactionKind::ReactivateValidator(_)
+            | TransactionKind::Unbond(_)
+            | TransactionKind::BecomeValidator(_)
+            | TransactionKind::ProposalVote(_) => Default::default(),
         };
 
         Some(change)
     }
 
     pub fn ibc_msg_recv_packet(
-        // TODO: not sure if token::Transfer is the right type here
         msg: IbcMessage<Transfer>,
     ) -> Option<MsgRecvPacket> {
         // Early return if the message is not an Envelope
@@ -506,17 +724,23 @@ impl Block {
         Some(recv_msg)
     }
 
-    pub fn validators(&self) -> HashSet<Validator> {
+    pub fn new_validators(&self) -> HashSet<Validator> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::BecomeValidator(data) => {
-                    let data = data.clone().unwrap();
+                TransactionKind::BecomeValidator(Some(data)) => {
+                    let data = data.to_owned();
                     Some(Validator {
                         address: Id::from(data.address),
                         voting_power: "0".to_string(),
@@ -538,19 +762,59 @@ impl Block {
             .collect()
     }
 
+    pub fn update_validators_state(&self) -> HashSet<ValidatorStateChange> {
+        self.transactions
+            .iter()
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::DeactivateValidator(Some(data)) => {
+                    Some(ValidatorStateChange {
+                        address: Id::from(data.to_owned()),
+                        state: ValidatorState::Deactivating,
+                    })
+                }
+                TransactionKind::ReactivateValidator(Some(data)) => {
+                    Some(ValidatorStateChange {
+                        address: Id::from(data.to_owned()),
+                        state: ValidatorState::Reactivating,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn bond_addresses(&self) -> HashSet<BondAddresses> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::Bond(data) => {
-                    let bond_data = data.clone().unwrap();
-                    let source_address =
-                        bond_data.source.unwrap_or(bond_data.validator.clone());
+                TransactionKind::Bond(Some(bond_data)) => {
+                    let bond_data = bond_data.to_owned();
+                    let source_address = bond_data
+                        .source
+                        .unwrap_or_else(|| bond_data.validator.clone())
+                        .to_owned();
                     let target_address = bond_data.validator;
 
                     Some(vec![BondAddresses {
@@ -558,11 +822,11 @@ impl Block {
                         target: Id::from(target_address),
                     }])
                 }
-                TransactionKind::Unbond(data) => {
-                    let unbond_data = data.clone().unwrap();
+                TransactionKind::Unbond(Some(unbond_data)) => {
+                    let unbond_data = unbond_data.to_owned();
                     let source_address = unbond_data
                         .source
-                        .unwrap_or(unbond_data.validator.clone());
+                        .unwrap_or_else(|| unbond_data.validator.clone());
                     let validator_address = unbond_data.validator;
 
                     Some(vec![BondAddresses {
@@ -570,21 +834,22 @@ impl Block {
                         target: Id::from(validator_address),
                     }])
                 }
-                TransactionKind::Redelegation(data) => {
-                    let redelegation_data = data.clone().unwrap();
-                    let owner = redelegation_data.owner;
-                    let source_validator = redelegation_data.src_validator;
-                    let destination_validator =
-                        redelegation_data.dest_validator;
+                TransactionKind::Redelegation(Some(redelegation_data)) => {
+                    let namada_tx::data::pos::Redelegation {
+                        src_validator,
+                        dest_validator,
+                        owner,
+                        amount: _,
+                    } = redelegation_data.to_owned();
 
                     Some(vec![
                         BondAddresses {
                             source: Id::from(owner.clone()),
-                            target: Id::from(source_validator),
+                            target: Id::from(src_validator),
                         },
                         BondAddresses {
                             source: Id::from(owner),
-                            target: Id::from(destination_validator),
+                            target: Id::from(dest_validator),
                         },
                     ])
                 }
@@ -597,18 +862,24 @@ impl Block {
     pub fn unbond_addresses(&self) -> HashSet<UnbondAddresses> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::Unbond(data) => {
-                    let unbond_data = data.clone().unwrap();
+                TransactionKind::Unbond(Some(data)) => {
+                    let unbond_data = data.to_owned();
 
                     let source_address = unbond_data
                         .source
-                        .unwrap_or(unbond_data.validator.clone());
+                        .unwrap_or_else(|| unbond_data.validator.clone());
                     let validator_address = unbond_data.validator;
 
                     Some(UnbondAddresses {
@@ -624,18 +895,24 @@ impl Block {
     pub fn withdraw_addresses(&self) -> HashSet<UnbondAddresses> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
+
+                acc
             })
+            .iter()
             .filter_map(|tx| match &tx.kind {
-                TransactionKind::Withdraw(data) => {
-                    let withdraw_data = data.clone().unwrap();
+                TransactionKind::Withdraw(Some(data)) => {
+                    let withdraw_data = data.to_owned();
 
                     let source_address = withdraw_data
                         .source
-                        .unwrap_or(withdraw_data.validator.clone());
+                        .unwrap_or_else(|| withdraw_data.validator.clone());
                     let validator_address = withdraw_data.validator;
 
                     Some(UnbondAddresses {
@@ -651,28 +928,39 @@ impl Block {
     pub fn validator_metadata(&self) -> Vec<ValidatorMetadataChange> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::MetadataChange(data) => {
-                    let metadata_change_data = data.clone().unwrap();
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
+                }
 
-                    let source_address = metadata_change_data.validator;
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::MetadataChange(Some(data)) => {
+                    let namada_tx::data::pos::MetaDataChange {
+                        validator,
+                        email,
+                        description,
+                        website,
+                        discord_handle,
+                        avatar,
+                        name,
+                        commission_rate,
+                    } = data.to_owned();
 
                     Some(ValidatorMetadataChange {
-                        address: Id::from(source_address),
-                        commission: metadata_change_data
-                            .commission_rate
-                            .map(|c| c.to_string()),
-                        name: metadata_change_data.name,
-                        email: metadata_change_data.email,
-                        description: metadata_change_data.description,
-                        website: metadata_change_data.website,
-                        discord_handler: metadata_change_data.discord_handle,
-                        avatar: metadata_change_data.avatar,
+                        address: Id::from(validator),
+                        commission: commission_rate.map(|c| c.to_string()),
+                        name,
+                        email,
+                        description,
+                        website,
+                        discord_handler: discord_handle,
+                        avatar,
                     })
                 }
                 TransactionKind::CommissionChange(data) => {
@@ -701,20 +989,22 @@ impl Block {
     pub fn revealed_pks(&self) -> Vec<(PublicKey, Id)> {
         self.transactions
             .iter()
-            .flat_map(|(_, txs)| txs)
-            .filter(|tx| {
-                tx.data.is_some()
-                    && tx.exit_code == TransactionExitStatus::Applied
-            })
-            .filter_map(|tx| match &tx.kind {
-                TransactionKind::RevealPk(data) => {
-                    let namada_public_key = data.clone().unwrap().public_key;
-
-                    Some((
-                        PublicKey::from(namada_public_key.clone()),
-                        Id::from(namada_public_key),
-                    ))
+            .fold(vec![], |mut acc, (wrapper_tx, inner_txs)| {
+                // Extract successful inner txs
+                for inner_tx in inner_txs {
+                    if inner_tx.was_successful(wrapper_tx) {
+                        acc.push(inner_tx)
+                    }
                 }
+
+                acc
+            })
+            .iter()
+            .filter_map(|tx| match &tx.kind {
+                TransactionKind::RevealPk(Some(reveal_pk_data)) => Some((
+                    PublicKey::from(reveal_pk_data.public_key.to_owned()),
+                    Id::from(reveal_pk_data.public_key.to_owned()),
+                )),
                 _ => None,
             })
             .collect()

@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
-use axum::Json;
 use axum_extra::extract::Query;
 use strum::VariantArray;
 
@@ -41,7 +41,7 @@ pub async fn get_crawlers_timestamps(
                     || CrawlersTimestamps {
                         name: variant.to_string(),
                         timestamp: 0,
-                        last_processed_block: None
+                        last_processed_block_height: None,
                     },
                     |ct| ct.clone(),
                 )

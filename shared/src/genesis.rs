@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tendermint::{chain, consensus, validator, AppHash, Time};
+use tendermint::{AppHash, Time, chain, consensus, validator};
 use tendermint_rpc::dialect::LatestDialect;
 use tendermint_rpc::request::RequestMessage;
 use tendermint_rpc::{

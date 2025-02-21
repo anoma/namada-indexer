@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use futures::{StreamExt, TryStreamExt};
 use namada_core::chain::{
     BlockHeight as NamadaSdkBlockHeight, Epoch as NamadaSdkEpoch,
@@ -9,8 +9,8 @@ use namada_core::chain::{
 use namada_sdk::address::{Address as NamadaSdkAddress, InternalAddress};
 use namada_sdk::collections::HashMap;
 use namada_sdk::hash::Hash;
-use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
 use namada_sdk::ibc::IbcTokenHash;
+use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_proposal_by_id, query_storage_value,
@@ -18,12 +18,12 @@ use namada_sdk::rpc::{
 use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{borsh, rpc, token};
-use shared::balance::{Amount, Balance, Balances};
+use shared::balance::{Amount, Balance, Balances, TokenSupply};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
 use shared::id::Id;
 use shared::proposal::{GovernanceProposal, TallyType};
-use shared::token::{IbcToken, Token};
+use shared::token::{IbcRateLimit, IbcToken, Token};
 use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use shared::validator::{Validator, ValidatorSet, ValidatorState};
@@ -40,6 +40,30 @@ pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
         .await
         .context("Failed to query native token")?;
     Ok(Id::from(native_token))
+}
+
+pub async fn query_native_token_total_supply(
+    client: &HttpClient,
+) -> anyhow::Result<Amount> {
+    let native_token = RPC
+        .shell()
+        .native_token(client)
+        .await
+        .context("Failed to query native token")?;
+
+    rpc::get_token_total_supply(client, &native_token)
+        .await
+        .map(Amount::from)
+        .context("Failed to query total supply of native token")
+}
+
+pub async fn query_native_token_effective_supply(
+    client: &HttpClient,
+) -> anyhow::Result<Amount> {
+    rpc::get_effective_native_supply(client)
+        .await
+        .map(Amount::from)
+        .context("Failed to query effective supply of native token")
 }
 
 pub async fn get_first_block_in_epoch(
@@ -77,7 +101,7 @@ pub async fn query_balance(
 ) -> anyhow::Result<Balances> {
     Ok(futures::stream::iter(balance_changes)
         .filter_map(|balance_change| async move {
-            tracing::info!(
+            tracing::debug!(
                 "Fetching balance change for {} ...",
                 balance_change.address
             );
@@ -110,7 +134,7 @@ pub async fn query_balance(
             })
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await)
 }
@@ -440,7 +464,7 @@ pub async fn query_bonds(
             Some(bonds)
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -513,7 +537,7 @@ pub async fn query_unbonds(
             }
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -528,6 +552,27 @@ pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
         .context("Failed to query Namada's current epoch")?;
 
     Ok(epoch.0 as Epoch)
+}
+
+pub async fn get_all_consensus_validators_addresses_at(
+    client: &HttpClient,
+    epoch: u32,
+    native_token: Id,
+) -> anyhow::Result<HashSet<BalanceChange>> {
+    let validators =
+        rpc::get_all_consensus_validators(client, (epoch as u64).into())
+            .await
+            .context("Failed to query Namada's current epoch")?
+            .into_iter()
+            .map(|validator| {
+                BalanceChange::new(
+                    Id::from(validator.address),
+                    Token::Native(native_token.clone()),
+                )
+            })
+            .collect::<HashSet<_>>();
+
+    Ok(validators)
 }
 
 pub async fn query_tx_code_hash(
@@ -573,7 +618,7 @@ pub async fn query_tallies(
             Some((proposal, tally_type))
         })
         .map(futures::future::ready)
-        .buffer_unordered(20)
+        .buffer_unordered(32)
         .collect::<Vec<_>>()
         .await;
 
@@ -584,30 +629,57 @@ pub async fn query_all_votes(
     client: &HttpClient,
     proposals_ids: Vec<u64>,
 ) -> anyhow::Result<HashSet<GovernanceVote>> {
-    let votes: Vec<HashSet<GovernanceVote>> =
-        futures::stream::iter(proposals_ids)
-            .filter_map(|proposal_id| async move {
-                let votes = rpc::query_proposal_votes(client, proposal_id)
-                    .await
-                    .ok()?;
+    let votes = futures::stream::iter(proposals_ids)
+        .filter_map(|proposal_id| async move {
+            let votes =
+                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
 
-                let votes = votes
-                    .into_iter()
-                    .map(|vote| GovernanceVote {
-                        proposal_id,
-                        vote: ProposalVoteKind::from(vote.data),
-                        address: Id::from(vote.delegator),
-                    })
-                    .collect::<HashSet<_>>();
+            let votes = votes
+                .into_iter()
+                .map(|vote| GovernanceVote {
+                    proposal_id,
+                    vote: ProposalVoteKind::from(vote.data),
+                    address: Id::from(vote.delegator),
+                })
+                .collect::<HashSet<_>>();
 
-                Some(votes)
+            Some(votes)
+        })
+        .map(futures::future::ready)
+        .buffer_unordered(32)
+        .collect::<Vec<_>>()
+        .await;
+
+    let mut voter_count: HashMap<(Id, u64), u64> = HashMap::new();
+    for vote in votes.iter().flatten() {
+        *voter_count
+            .entry((vote.address.clone(), vote.proposal_id))
+            .or_insert(0) += 1;
+    }
+
+    let mut seen_voters = HashSet::new();
+    anyhow::Ok(
+        votes
+            .iter()
+            .flatten()
+            .filter(|&vote| {
+                seen_voters.insert((vote.address.clone(), vote.proposal_id))
             })
-            .map(futures::future::ready)
-            .buffer_unordered(20)
-            .collect::<Vec<_>>()
-            .await;
-
-    anyhow::Ok(votes.iter().flatten().cloned().collect())
+            .cloned()
+            .map(|mut vote| {
+                if let Some(count) =
+                    voter_count.get(&(vote.address.clone(), vote.proposal_id))
+                {
+                    if *count > 1_u64 {
+                        vote.vote = ProposalVoteKind::Unknown;
+                    }
+                    vote
+                } else {
+                    vote
+                }
+            })
+            .collect(),
+    )
 }
 
 pub async fn get_validator_set_at_epoch(
@@ -686,11 +758,39 @@ pub async fn get_validator_set_at_epoch(
                 state: validator_state
             })
         })
-        .buffer_unordered(100)
+        .buffer_unordered(32)
         .try_collect::<HashSet<_>>()
         .await?;
 
     Ok(ValidatorSet { validators, epoch })
+}
+
+pub async fn get_validator_namada_address(
+    client: &HttpClient,
+    tm_addr: &Id,
+) -> anyhow::Result<Option<Id>> {
+    let validator = RPC
+        .vp()
+        .pos()
+        .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
+        .await?;
+
+    Ok(validator.map(Id::from))
+}
+
+pub fn query_native_addresses_balance_change(
+    native_token: Token,
+) -> HashSet<BalanceChange> {
+    [
+        NamadaSdkAddress::Internal(InternalAddress::Governance),
+        NamadaSdkAddress::Internal(InternalAddress::PoS),
+        NamadaSdkAddress::Internal(InternalAddress::Masp),
+        NamadaSdkAddress::Internal(InternalAddress::Pgf),
+        NamadaSdkAddress::Internal(InternalAddress::Ibc),
+    ]
+    .into_iter()
+    .map(|address| BalanceChange::new(Id::from(address), native_token.clone()))
+    .collect::<HashSet<_>>()
 }
 
 pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
@@ -720,4 +820,90 @@ pub async fn get_pgf_receipients(
             token: Token::Native(native_token.clone()),
         })
         .collect::<HashSet<_>>()
+}
+
+pub async fn get_native_token_supply(
+    client: &HttpClient,
+    native_token: &Id,
+    epoch: u32,
+) -> anyhow::Result<TokenSupply> {
+    let total_supply_fut = query_native_token_total_supply(client);
+    let effective_supply_fut = query_native_token_effective_supply(client);
+
+    let (total_supply, effective_supply) =
+        futures::try_join!(total_supply_fut, effective_supply_fut)
+            .context("Failed to query native token supplies")?;
+
+    anyhow::Ok(TokenSupply {
+        address: native_token.to_string(),
+        epoch: epoch as _,
+        total: total_supply.into(),
+        effective: Some(effective_supply.into()),
+    })
+}
+
+pub async fn get_token_supply(
+    client: &HttpClient,
+    token: String,
+    epoch: u32,
+) -> anyhow::Result<TokenSupply> {
+    let address: NamadaSdkAddress =
+        token.parse().context("Failed to parse token address")?;
+
+    let supply = rpc::get_token_total_supply(client, &address)
+        .await
+        .map(Amount::from)
+        .with_context(|| {
+            format!("Failed to query total supply of token {token}")
+        })?;
+
+    anyhow::Ok(TokenSupply {
+        address: token,
+        epoch: epoch as _,
+        total: supply.into(),
+        effective: None,
+    })
+}
+
+pub async fn get_throughput_rate_limit(
+    client: &HttpClient,
+    token: String,
+    epoch: u32,
+) -> anyhow::Result<IbcRateLimit> {
+    let address: NamadaSdkAddress =
+        token.parse().context("Failed to parse token address")?;
+
+    let rate_limit = rpc::query_ibc_rate_limits(client, &address)
+        .await
+        .with_context(|| {
+            format!("Failed to query throughput rate limit of token {token}")
+        })?;
+
+    Ok(IbcRateLimit {
+        epoch,
+        address: token,
+        throughput_limit: Amount::from(rate_limit.throughput_per_epoch_limit)
+            .into(),
+    })
+}
+
+pub async fn get_rate_limits_for_tokens<I>(
+    client: &HttpClient,
+    tokens: I,
+    epoch: u32,
+) -> anyhow::Result<Vec<IbcRateLimit>>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut buffer = vec![];
+
+    let mut stream = futures::stream::iter(tokens)
+        .map(|address| get_throughput_rate_limit(client, address, epoch))
+        .buffer_unordered(32);
+
+    while let Some(maybe_address) = stream.next().await {
+        buffer.push(maybe_address?);
+    }
+
+    Ok(buffer)
 }

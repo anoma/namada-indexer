@@ -1,10 +1,15 @@
 use anyhow::Context;
 use diesel::{PgConnection, RunQueryDsl};
 use orm::balances::BalanceChangesInsertDb;
-use orm::schema::{balance_changes, ibc_token, token};
+use orm::ibc::IbcRateLimitsInsertDb;
+use orm::schema::{
+    balance_changes, ibc_rate_limits, ibc_token, token,
+    token_supplies_per_epoch,
+};
 use orm::token::{IbcTokenInsertDb, TokenInsertDb};
-use shared::balance::Balances;
-use shared::token::Token;
+use orm::token_supplies_per_epoch::TokenSuppliesInsertDb;
+use shared::balance::{Balances, TokenSupply};
+use shared::token::{IbcRateLimit, Token};
 use shared::tuple_len::TupleLen;
 
 use super::utils::MAX_PARAM_SIZE;
@@ -70,8 +75,62 @@ pub fn insert_tokens(
     anyhow::Ok(())
 }
 
+pub fn insert_token_supplies<S>(
+    transaction_conn: &mut PgConnection,
+    supplies: S,
+) -> anyhow::Result<()>
+where
+    S: IntoIterator<Item = TokenSupply>,
+{
+    let supplies: Vec<_> = supplies
+        .into_iter()
+        .map(TokenSuppliesInsertDb::from)
+        .collect();
+
+    if supplies.is_empty() {
+        return anyhow::Ok(());
+    }
+
+    tracing::debug!(?supplies, "Adding new token supplies to db");
+
+    diesel::insert_into(token_supplies_per_epoch::table)
+        .values(supplies)
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update token supplies in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_ibc_rate_limits<S>(
+    transaction_conn: &mut PgConnection,
+    supplies: S,
+) -> anyhow::Result<()>
+where
+    S: IntoIterator<Item = IbcRateLimit>,
+{
+    let limits: Vec<_> = supplies
+        .into_iter()
+        .map(IbcRateLimitsInsertDb::from)
+        .collect();
+
+    if limits.is_empty() {
+        return anyhow::Ok(());
+    }
+
+    diesel::insert_into(ibc_rate_limits::table)
+        .values(limits)
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update rate limits in db")?;
+
+    anyhow::Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+
+    use std::collections::HashSet;
 
     use anyhow::Context;
     use diesel::{
@@ -80,6 +139,8 @@ mod tests {
     use namada_sdk::token::Amount as NamadaAmount;
     use namada_sdk::uint::MAX_SIGNED_VALUE;
     use orm::balances::BalanceDb;
+    use orm::blocks::BlockInsertDb;
+    use orm::schema::blocks;
     use orm::views::balances;
     use shared::balance::{Amount, Balance};
     use shared::id::Id;
@@ -130,6 +191,8 @@ mod tests {
 
             insert_tokens(conn, vec![token.clone()])?;
 
+            seed_blocks_from_balances(conn, &[balance.clone()])?;
+
             insert_balances(conn, vec![balance.clone()])?;
 
             let queried_balance = query_balance_by_address(conn, owner, token)?;
@@ -175,6 +238,7 @@ mod tests {
                 ..(balance.clone())
             };
 
+            seed_blocks_from_balances(conn, &[new_balance.clone()])?;
             insert_balances(conn, vec![new_balance])?;
 
             let queried_balance =
@@ -376,6 +440,8 @@ mod tests {
 
             seed_tokens_from_balance(conn, fake_balances.clone())?;
 
+            seed_blocks_from_balances(conn, &fake_balances)?;
+
             insert_balances(conn, fake_balances.clone())?;
 
             assert_eq!(query_all_balances(conn)?.len(), fake_balances.len());
@@ -410,6 +476,7 @@ mod tests {
 
             insert_tokens(conn, vec![token.clone()])?;
 
+            seed_blocks_from_balances(conn, &[balance.clone()])?;
             insert_balances(conn, vec![balance.clone()])?;
 
             let queried_balance = query_balance_by_address(conn, owner, token)?;
@@ -441,6 +508,8 @@ mod tests {
                 .collect::<Vec<_>>();
 
             insert_tokens(conn, vec![token])?;
+
+            seed_blocks_from_balances(conn, &balances)?;
 
             let res = insert_balances(conn, balances);
 
@@ -475,6 +544,8 @@ mod tests {
 
             seed_tokens_from_balance(conn, balances.clone())?;
 
+            seed_blocks_from_balances(conn, &balances)?;
+
             let res = insert_balances(conn, balances);
 
             assert!(res.is_ok());
@@ -500,11 +571,32 @@ mod tests {
         anyhow::Ok(())
     }
 
+    fn seed_blocks_from_balances(
+        conn: &mut PgConnection,
+        balances: &[Balance],
+    ) -> anyhow::Result<()> {
+        for height in balances
+            .iter()
+            .map(|balance| balance.height as i32)
+            .collect::<HashSet<_>>()
+        {
+            diesel::insert_into(blocks::table)
+                .values::<&BlockInsertDb>(&BlockInsertDb::fake(height))
+                .on_conflict_do_nothing()
+                .execute(conn)
+                .context("Failed to insert block in db")?;
+        }
+
+        anyhow::Ok(())
+    }
+
     fn seed_balance(
         conn: &mut PgConnection,
         balances: Vec<Balance>,
     ) -> anyhow::Result<()> {
         seed_tokens_from_balance(conn, balances.clone())?;
+
+        seed_blocks_from_balances(conn, &balances)?;
 
         diesel::insert_into(balance_changes::table)
             .values::<&Vec<BalanceChangesInsertDb>>(

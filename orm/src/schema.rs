@@ -54,6 +54,22 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "history_kind"))]
+    pub struct HistoryKind;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "ibc_status"))]
+    pub struct IbcStatus;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "token_type"))]
     pub struct TokenType;
 
@@ -98,6 +114,19 @@ diesel::table! {
         #[max_length = 64]
         token -> Varchar,
         raw_amount -> Numeric,
+    }
+}
+
+diesel::table! {
+    blocks (height) {
+        height -> Int4,
+        #[max_length = 64]
+        hash -> Nullable<Varchar>,
+        #[max_length = 64]
+        app_hash -> Nullable<Varchar>,
+        timestamp -> Nullable<Timestamp>,
+        proposer -> Nullable<Varchar>,
+        epoch -> Nullable<Int4>,
     }
 }
 
@@ -155,6 +184,30 @@ diesel::table! {
 }
 
 diesel::table! {
+    gas_estimations (id) {
+        id -> Int4,
+        #[max_length = 64]
+        wrapper_id -> Varchar,
+        transparent_transfer -> Int4,
+        shielded_transfer -> Int4,
+        shielding_transfer -> Int4,
+        unshielding_transfer -> Int4,
+        ibc_msg_transfer -> Int4,
+        bond -> Int4,
+        redelegation -> Int4,
+        unbond -> Int4,
+        withdraw -> Int4,
+        claim_rewards -> Int4,
+        vote_proposal -> Int4,
+        reveal_pk -> Int4,
+        tx_size -> Int4,
+        signatures -> Int4,
+        ibc_unshielding_transfer -> Int4,
+        ibc_shielding_transfer -> Int4,
+    }
+}
+
+diesel::table! {
     gas_price (token) {
         token -> Varchar,
         amount -> Numeric,
@@ -197,10 +250,43 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::IbcStatus;
+
+    ibc_ack (id) {
+        id -> Varchar,
+        tx_hash -> Varchar,
+        timeout -> Int8,
+        status -> IbcStatus,
+    }
+}
+
+diesel::table! {
+    ibc_rate_limits (id) {
+        id -> Int4,
+        #[max_length = 45]
+        address -> Varchar,
+        epoch -> Int4,
+        throughput_limit -> Numeric,
+    }
+}
+
+diesel::table! {
     ibc_token (address) {
         #[max_length = 45]
         address -> Varchar,
         ibc_trace -> Varchar,
+    }
+}
+
+diesel::table! {
+    ibc_token_flows (id) {
+        id -> Int4,
+        #[max_length = 45]
+        address -> Varchar,
+        epoch -> Int4,
+        deposit -> Numeric,
+        withdraw -> Numeric,
     }
 }
 
@@ -267,6 +353,30 @@ diesel::table! {
 }
 
 diesel::table! {
+    token_supplies_per_epoch (id) {
+        id -> Int4,
+        #[max_length = 45]
+        address -> Varchar,
+        epoch -> Int4,
+        total -> Numeric,
+        effective -> Nullable<Numeric>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::HistoryKind;
+
+    transaction_history (id) {
+        id -> Int4,
+        #[max_length = 64]
+        inner_tx_id -> Varchar,
+        target -> Varchar,
+        kind -> HistoryKind,
+    }
+}
+
+diesel::table! {
     unbonds (id) {
         id -> Int4,
         address -> Varchar,
@@ -309,33 +419,49 @@ diesel::table! {
         block_height -> Int4,
         exit_code -> TransactionResult,
         atomic -> Bool,
+        gas_used -> Nullable<Int4>,
+        amount_per_gas_unit -> Nullable<Varchar>,
     }
 }
 
+diesel::joinable!(balance_changes -> blocks (height));
 diesel::joinable!(balance_changes -> token (token));
 diesel::joinable!(bonds -> validators (validator_id));
+diesel::joinable!(gas_estimations -> wrapper_transactions (wrapper_id));
 diesel::joinable!(governance_votes -> governance_proposals (proposal_id));
+diesel::joinable!(ibc_rate_limits -> token (address));
 diesel::joinable!(ibc_token -> token (address));
+diesel::joinable!(ibc_token_flows -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
+diesel::joinable!(token_supplies_per_epoch -> token (address));
+diesel::joinable!(transaction_history -> inner_transactions (inner_tx_id));
 diesel::joinable!(unbonds -> validators (validator_id));
+diesel::joinable!(wrapper_transactions -> blocks (block_height));
 
 diesel::allow_tables_to_appear_in_same_query!(
     balance_changes,
+    blocks,
     bonds,
     chain_parameters,
     crawler_state,
     gas,
+    gas_estimations,
     gas_price,
     governance_proposals,
     governance_votes,
+    ibc_ack,
+    ibc_rate_limits,
     ibc_token,
+    ibc_token_flows,
     inner_transactions,
     pos_rewards,
     public_good_funding,
     revealed_pk,
     token,
+    token_supplies_per_epoch,
+    transaction_history,
     unbonds,
     validators,
     wrapper_transactions,

@@ -8,7 +8,7 @@ authors = ["Heliax <hello@heliax.dev>"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
-version = "1.0.0"
+version = "2.0.1"
 
 [workspace.dependencies]
 clokwerk = "0.4.0"
@@ -40,25 +40,26 @@ axum-extra = { version = "0.9.3", features = ["query"] }
 chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
-namada_core = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-namada_sdk = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_tx = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-namada_governance = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-namada_ibc = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-namada_token = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-namada_parameters = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-namada_proof_of_stake = { git = "https://github.com/anoma/namada", branch = "fraccaman/rpc-pgf-payments" }
-tendermint = "0.38.0"
-tendermint-config = "0.38.0"
-tendermint-rpc = { version = "0.38.0", features = ["http-client"] }
-tendermint-proto = "0.38.0"
+num-bigint = "0.4.6"
+namada_core = "0.47.2"
+namada_sdk = { version = "0.47.2", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_tx = "0.47.2"
+namada_governance = "0.47.2"
+namada_ibc = "0.47.2"
+namada_token = "0.47.2"
+namada_parameters = "0.47.2"
+namada_proof_of_stake = "0.47.2"
+tendermint = "0.40.1"
+tendermint-config = "0.40.1"
+tendermint-rpc = { version = "0.40.1", features = ["http-client"] }
+tendermint-proto = "0.40.1"
 subtle-encoding = "0.5.1"
 bimap = { version = "0.6.3", features = ["serde"] }
 async-stream = "0.3.5"
 futures-core = "0.3.30"
 futures-util = "0.3.30"
 futures = "0.3.30"
-smooth-operator = {git = "https://github.com/heliaxdev/smooth-operator", tag = "v0.7.0"}
+smooth-operator = "0.7.2"
 tokio-stream = "0.1.15"
 tokio-retry = "0.3"
 thiserror = "1.0.56"
@@ -87,3 +88,4 @@ bigdecimal = "0.4.5"
 strum = "0.26.3"
 strum_macros = "0.26.3"
 sha256 = "1.5.0"
+rlimit = "0.10.2"
