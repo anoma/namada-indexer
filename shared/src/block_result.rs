@@ -328,7 +328,7 @@ impl TxAttributesType {
                             serde_json::from_str(batch_result).unwrap();
                         BatchResults::from(tx_result)
                     })
-                    .unwrap(),
+                    .unwrap_or_default(),
                 info: attributes.get("info").unwrap().to_owned(),
             })),
         }
