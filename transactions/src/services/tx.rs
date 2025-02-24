@@ -172,7 +172,7 @@ pub fn get_gas_estimates(
                     gas_estimate.increase_mixed_transfer(notes)
                 }
                 TransactionKind::IbcTrasparentTransfer(_) => {
-                    gas_estimate.increase_ibc_msg_transfer()
+                    gas_estimate.increase_ibc_transparent_transfer()
                 }
                 TransactionKind::Bond(_) => gas_estimate.increase_bond(),
                 TransactionKind::Redelegation(_) => {
