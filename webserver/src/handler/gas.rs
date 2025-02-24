@@ -61,6 +61,7 @@ pub async fn get_gas_estimate(
             query.vote.unwrap_or(0),
             query.ibc_unshielding_transfer.unwrap_or(0),
             query.ibc_shielding_transfer.unwrap_or(0),
+            query.ibc_transparent_transfer.unwrap_or(0),
             query.withdraw.unwrap_or(0),
             query.reveal_pk.unwrap_or(0),
             query.signatures.unwrap_or(2),

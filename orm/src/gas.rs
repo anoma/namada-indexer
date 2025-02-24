@@ -66,7 +66,7 @@ impl From<GasEstimation> for GasEstimationInsertDb {
             shielded_transfer: value.shielded_transfer as i32,
             shielding_transfer: value.shielding_transfer as i32,
             unshielding_transfer: value.unshielding_transfer as i32,
-            ibc_msg_transfer: value.ibc_msg_transfer as i32,
+            ibc_msg_transfer: value.transparent_transfer as i32,
             ibc_unshielding_transfer: value.ibc_unshielding_transfer as i32,
             ibc_shielding_transfer: value.ibc_shielding_transfer as i32,
             bond: value.bond as i32,

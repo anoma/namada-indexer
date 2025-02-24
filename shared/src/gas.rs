@@ -16,7 +16,7 @@ pub struct GasEstimation {
     pub ibc_unshielding_transfer: u64,
     pub ibc_shielding_transfer: u64,
     pub unshielding_transfer: u64,
-    pub ibc_msg_transfer: u64,
+    pub ibc_transparent_transfer: u64,
     pub mixed_transfer: u64,
     pub bond: u64,
     pub redelegation: u64,
@@ -39,7 +39,7 @@ impl GasEstimation {
             unshielding_transfer: 0,
             ibc_shielding_transfer: 0,
             ibc_unshielding_transfer: 0,
-            ibc_msg_transfer: 0,
+            ibc_transparent_transfer: 0,
             mixed_transfer: 0,
             bond: 0,
             redelegation: 0,
@@ -81,8 +81,8 @@ impl GasEstimation {
         self.ibc_unshielding_transfer += notes
     }
 
-    pub fn increase_ibc_msg_transfer(&mut self) {
-        self.ibc_msg_transfer += 1
+    pub fn increase_ibc_transparent_transfer(&mut self) {
+        self.ibc_transparent_transfer += 1
     }
 
     pub fn increase_bond(&mut self) {
