@@ -183,6 +183,7 @@ impl GovernanceRepoTrait for GovernanceRepo {
     }
 }
 
+#[allow(clippy::needless_lifetimes)]
 impl<'a> GovernanceRepo {
     fn governance_proposals(
         &self,
