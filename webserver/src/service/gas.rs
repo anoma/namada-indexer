@@ -1,33 +1,23 @@
-use std::collections::HashMap;
-
 use bigdecimal::ToPrimitive;
 
 use crate::appstate::AppState;
 use crate::error::gas::GasError;
 use crate::repository::gas::{GasRepository, GasRepositoryTrait};
-use crate::response::gas::{Gas, GasEstimate, GasPrice};
+use crate::response::gas::{GasEstimate, GasPrice};
 use crate::response::transaction::TransactionKind;
 
 #[derive(Clone)]
 pub struct GasService {
     gas_repo: GasRepository,
+    default_gas_table: DefaultGasTable,
 }
 
 impl GasService {
     pub fn new(app_state: AppState) -> Self {
         Self {
             gas_repo: GasRepository::new(app_state),
+            default_gas_table: DefaultGasTable::default(),
         }
-    }
-
-    pub async fn get_gas(&self) -> Vec<Gas> {
-        self.gas_repo
-            .get_gas()
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(Gas::from)
-            .collect()
     }
 
     pub async fn get_gas_price_by_token(
@@ -94,7 +84,7 @@ impl GasService {
             .map(|(min, max, avg, count)| {
                 let min = min.map(|gas| gas as u64);
                 let max = max.map(|gas| gas as u64);
-                let avg = avg.map(|gas| gas.to_i64().unwrap() as u64);
+                let avg = avg.map(|gas| gas.to_f64().unwrap() as u64);
                 let count = count as u64;
                 (min, max, avg, count)
             })?;
@@ -108,39 +98,55 @@ impl GasService {
                 total_estimates: count,
             })
         } else {
-            let gas = self
-                .gas_repo
-                .get_gas()
-                .await
-                .unwrap_or_default()
-                .into_iter()
-                .map(Gas::from)
-                .fold(HashMap::new(), |mut acc, gas| {
-                    acc.insert(gas.tx_kind, gas.gas_limit);
-                    acc
-                });
-
             let mut estimate = 0;
-            estimate += bond * gas.get(&TransactionKind::Bond).unwrap();
+            estimate += bond
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::Bond);
             estimate += claim_rewards
-                * gas.get(&TransactionKind::ClaimRewards).unwrap();
-            estimate += unbond * gas.get(&TransactionKind::Unbond).unwrap();
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::ClaimRewards);
+            estimate += unbond
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::Unbond);
             estimate += transparent_transfer
-                * gas.get(&TransactionKind::TransparentTransfer).unwrap();
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::TransparentTransfer);
             estimate += shielded_transfer
-                * gas.get(&TransactionKind::ShieldedTransfer).unwrap();
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::ShieldedTransfer);
             estimate += shielding_transfer
-                * gas.get(&TransactionKind::ShieldingTransfer).unwrap();
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::ShieldingTransfer);
             estimate += unshielding_transfer
-                * gas.get(&TransactionKind::UnshieldingTransfer).unwrap();
-            estimate += vote * gas.get(&TransactionKind::VoteProposal).unwrap();
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::UnshieldingTransfer);
+            estimate += vote
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::VoteProposal);
             estimate += ibc_shielding_transfer
-                * gas.get(&TransactionKind::IbcShieldingTransfer).unwrap();
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::IbcShieldingTransfer);
             estimate += ibc_unshielding_transfer
-                * gas.get(&TransactionKind::IbcUnshieldingTransfer).unwrap();
-            estimate += withdraw * gas.get(&TransactionKind::Withdraw).unwrap();
-            estimate +=
-                reveal_pk * gas.get(&TransactionKind::RevealPk).unwrap();
+                * self.default_gas_table.get_gas_by_tx_kind(
+                    TransactionKind::IbcUnshieldingTransfer,
+                );
+            estimate += withdraw
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::Withdraw);
+            estimate += reveal_pk
+                * self
+                    .default_gas_table
+                    .get_gas_by_tx_kind(TransactionKind::RevealPk);
 
             Ok(GasEstimate {
                 min: estimate,
@@ -148,6 +154,34 @@ impl GasService {
                 avg: estimate,
                 total_estimates: 0,
             })
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct DefaultGasTable {}
+
+impl DefaultGasTable {
+    fn get_gas_by_tx_kind(&self, tx_kind: TransactionKind) -> u64 {
+        match tx_kind {
+            TransactionKind::Bond => 50000,
+            TransactionKind::ClaimRewards => 50000,
+            TransactionKind::Unbond => 50000,
+            TransactionKind::TransparentTransfer => 50000,
+            TransactionKind::ShieldedTransfer => 50000,
+            TransactionKind::ShieldingTransfer => 50000,
+            TransactionKind::UnshieldingTransfer => 50000,
+            TransactionKind::VoteProposal => 50000,
+            TransactionKind::IbcShieldingTransfer => 50000,
+            TransactionKind::IbcUnshieldingTransfer => 50000,
+            TransactionKind::Withdraw => 50000,
+            TransactionKind::RevealPk => 25000,
+            TransactionKind::MixedTransfer => 50000,
+            TransactionKind::Redelegation => 100000,
+            TransactionKind::InitProposal => 50000,
+            TransactionKind::IbcMsgTransfer => 50000,
+            TransactionKind::IbcTransparentTransfer => 50000,
+            _ => 0,
         }
     }
 }

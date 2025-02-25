@@ -115,7 +115,6 @@ impl ApplicationServer {
                     "/revealed-public-key/:address",
                     get(pk_handlers::get_revealed_pk),
                 )
-                .route("/gas", get(gas_handlers::get_gas))
                 .route("/gas/estimate", get(gas_handlers::get_gas_estimate))
                 .route(
                     "/gas-price/:token",

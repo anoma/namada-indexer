@@ -6,8 +6,8 @@ use diesel::{
     ExpressionMethods, IntoSql, JoinOnDsl, QueryDsl, RunQueryDsl,
     SelectableHelper,
 };
-use orm::gas::{GasDb, GasPriceDb};
-use orm::schema::{gas, gas_estimations, gas_price, wrapper_transactions};
+use orm::gas::GasPriceDb;
+use orm::schema::{gas_estimations, gas_price, wrapper_transactions};
 
 use crate::appstate::AppState;
 
@@ -19,8 +19,6 @@ pub struct GasRepository {
 #[async_trait]
 pub trait GasRepositoryTrait {
     fn new(app_state: AppState) -> Self;
-
-    async fn get_gas(&self) -> Result<Vec<GasDb>, String>;
 
     async fn find_gas_price_by_token(
         &self,
@@ -55,17 +53,6 @@ pub trait GasRepositoryTrait {
 impl GasRepositoryTrait for GasRepository {
     fn new(app_state: AppState) -> Self {
         Self { app_state }
-    }
-
-    async fn get_gas(&self) -> Result<Vec<GasDb>, String> {
-        let conn = self.app_state.get_db_connection().await;
-
-        conn.interact(move |conn| {
-            gas::table.select(GasDb::as_select()).get_results(conn)
-        })
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
     }
 
     async fn find_gas_price_by_token(

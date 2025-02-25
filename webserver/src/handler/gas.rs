@@ -5,18 +5,8 @@ use axum_macros::debug_handler;
 
 use crate::dto::gas::GasEstimateQuery;
 use crate::error::api::ApiError;
-use crate::response::gas::{Gas, GasEstimate, GasPrice};
+use crate::response::gas::{GasEstimate, GasPrice};
 use crate::state::common::CommonState;
-
-#[debug_handler]
-pub async fn get_gas(
-    _headers: HeaderMap,
-    State(state): State<CommonState>,
-) -> Result<Json<Vec<Gas>>, ApiError> {
-    let gas = state.gas_service.get_gas().await;
-
-    Ok(Json(gas))
-}
 
 #[debug_handler]
 pub async fn get_gas_price_by_token(

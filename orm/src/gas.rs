@@ -4,16 +4,7 @@ use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use shared::gas::{GasEstimation, GasPrice};
 
-use crate::schema::{gas, gas_estimations, gas_price};
-use crate::transactions::TransactionKindDb;
-
-#[derive(Clone, Queryable, Selectable)]
-#[diesel(table_name = gas)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct GasDb {
-    pub tx_kind: TransactionKindDb,
-    pub gas_limit: i32,
-}
+use crate::schema::{gas_estimations, gas_price};
 
 #[derive(Clone, Queryable, Selectable, Insertable)]
 #[diesel(table_name = gas_price)]

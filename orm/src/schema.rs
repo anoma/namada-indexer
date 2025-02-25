@@ -38,22 +38,6 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
-    #[diesel(postgres_type(name = "payment_kind"))]
-    pub struct PaymentKind;
-
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
-    #[diesel(postgres_type(name = "payment_recurrence"))]
-    pub struct PaymentRecurrence;
-
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
     #[diesel(postgres_type(name = "history_kind"))]
     pub struct HistoryKind;
 
@@ -64,6 +48,22 @@ pub mod sql_types {
     )]
     #[diesel(postgres_type(name = "ibc_status"))]
     pub struct IbcStatus;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_kind"))]
+    pub struct PaymentKind;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_recurrence"))]
+    pub struct PaymentRecurrence;
 
     #[derive(
         diesel::query_builder::QueryId,
@@ -169,17 +169,6 @@ diesel::table! {
         first_block_in_epoch -> Nullable<Int4>,
         last_processed_epoch -> Nullable<Int4>,
         timestamp -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::TransactionKind;
-
-    gas (id) {
-        id -> Int4,
-        tx_kind -> TransactionKind,
-        gas_limit -> Int4,
     }
 }
 
@@ -444,7 +433,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     bonds,
     chain_parameters,
     crawler_state,
-    gas,
     gas_estimations,
     gas_price,
     governance_proposals,
