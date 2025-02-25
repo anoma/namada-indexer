@@ -306,14 +306,16 @@ pub async fn query_all_bonds_and_unbonds(
     type UnbondKey = (Source, Validator, WithdrawEpoch);
     type UnbondsMap = HashMap<UnbondKey, NamadaSdkAmount>;
 
-    // TODO: do retries
-    let bonds_and_unbonds = bonds_and_unbonds(
-        client,
-        &source.map(NamadaSdkAddress::from),
-        &target.map(NamadaSdkAddress::from),
-    )
-    .await
-    .context("Failed to query all bonds and unbonds")?;
+    let source = source.map(NamadaSdkAddress::from);
+    let target = target.map(NamadaSdkAddress::from);
+
+    let operation = || async {
+        bonds_and_unbonds(client, &source, &target)
+            .await
+            .context("Failed to query bonds and unbonds")
+    };
+
+    let bonds_and_unbonds = default_retry(operation).await?;
 
     let mut bonds: BondsMap = HashMap::new();
     let mut unbonds: UnbondsMap = HashMap::new();
