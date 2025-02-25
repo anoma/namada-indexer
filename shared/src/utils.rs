@@ -1,6 +1,8 @@
 use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
-use namada_ibc::apps::transfer::types::PORT_ID_STR as FT_PORT_ID_STR;
 use namada_ibc::apps::transfer::types::packet::PacketData as FtPacketData;
+use namada_ibc::apps::transfer::types::{
+    PORT_ID_STR as FT_PORT_ID_STR, TracePrefix,
+};
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_sdk::address::Address;
 use namada_sdk::token::Transfer;
@@ -114,31 +116,58 @@ pub fn transfer_to_ibc_tx_kind(
                                  packet",
                             );
 
-                        let (token, token_id, denominated_amount) =
-                            if packet_data
-                                .token
-                                .denom
-                                .to_string()
-                                .contains(&native_token.to_string())
-                            {
-                                (
-                                native_token.clone(),
-                                crate::token::Token::Native(native_token.into()),
-                                namada_sdk::token::DenominatedAmount::native(
-                                    namada_sdk::token::Amount::from_str(
-                                        packet_data.token.amount.to_string(),
-                                        0,
-                                    )
-                                    .expect("Failed conversion of IBC amount to Namada one"),
-                                ),
-                            )
+                        let prefix = TracePrefix::new(
+                            msg.packet.port_id_on_a.clone(),
+                            msg.packet.chan_id_on_a.clone(),
+                        );
+
+                        let maybe_ibc_trace = if !packet_data
+                            .token
+                            .denom
+                            .trace_path
+                            .starts_with(&prefix)
+                        {
+                            // NOTE: this is a token native to chain A
+                            Some(format!(
+                                "{}/{}/{}",
+                                msg.packet.port_id_on_b,
+                                msg.packet.chan_id_on_b,
+                                packet_data.token.denom
+                            ))
+                        } else {
+                            // NOTE: this token is not native to chain A. it
+                            // could be NAM,
+                            // but also some other token from any other chain
+                            // that is neither
+                            // Namada (i.e. chain B) nor chain A.
+
+                            let mut denom = packet_data.token.denom.clone();
+
+                            denom.trace_path.remove_prefix(&prefix);
+
+                            if denom.trace_path.is_empty() {
+                                // NOTE: this token is native to Namada.
+                                // WE ARE ASSUMING WE HAVE NAM. this could be a
+                                // mistake,
+                                // if in the future we enable the ethereum
+                                // bridge, or mint
+                                // other kinds of tokens other than NAM.
+                                None
                             } else {
-                                let ibc_trace = format!(
+                                // NOTE: this token is not native to Namada. we
+                                // need to wrap it
+                                // with a new trace prefix.
+                                Some(format!(
                                     "{}/{}/{}",
                                     msg.packet.port_id_on_b,
                                     msg.packet.chan_id_on_b,
                                     packet_data.token.denom
-                                );
+                                ))
+                            }
+                        };
+
+                        let (token, token_id, denominated_amount) =
+                            if let Some(ibc_trace) = maybe_ibc_trace {
                                 let token_address =
                                     namada_ibc::trace::convert_to_address(
                                         ibc_trace.clone(),
@@ -168,6 +197,30 @@ pub fn transfer_to_ibc_tx_kind(
                                              to Namada one",
                                         ),
                                         0.into(),
+                                    ),
+                                )
+                            } else {
+                                if !packet_data
+                                    .token
+                                    .denom
+                                    .to_string()
+                                    .contains(&native_token.to_string())
+                                {
+                                    panic!(
+                                        "Attempting to add native token other \
+                                         than NAM to the database"
+                                    );
+                                }
+
+                                (
+                                    native_token.clone(),
+                                    crate::token::Token::Native(native_token.into()),
+                                    namada_sdk::token::DenominatedAmount::native(
+                                        namada_sdk::token::Amount::from_str(
+                                            packet_data.token.amount.to_string(),
+                                            0,
+                                        )
+                                        .expect("Failed conversion of IBC amount to Namada one"),
                                     ),
                                 )
                             };
@@ -268,12 +321,8 @@ pub fn transfer_to_ibc_tx_kind(
                     ),
                 )
             } else {
-                let ibc_trace = format!(
-                    "{}/{}/{}",
-                    transfer.message.port_id_on_a,
-                    transfer.message.chan_id_on_a,
-                    transfer.message.packet_data.token.denom
-                );
+                let ibc_trace =
+                    transfer.message.packet_data.token.denom.to_string();
                 let token_address =
                     namada_ibc::trace::convert_to_address(ibc_trace.clone())
                         .expect("Failed to convert IBC trace to address");
