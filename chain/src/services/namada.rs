@@ -13,11 +13,11 @@ use namada_sdk::ibc::IbcTokenHash;
 use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
-    bonds_and_unbonds, query_proposal_by_id, query_storage_value,
+    bonds_and_unbonds, query_native_token, query_proposal_by_id,
 };
 use namada_sdk::state::Key;
 use namada_sdk::token::Amount as NamadaSdkAmount;
-use namada_sdk::{borsh, rpc, token};
+use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances, TokenSupply};
 use shared::block::{BlockHeight, Epoch};
 use shared::bond::{Bond, BondAddresses, Bonds};
@@ -31,51 +31,65 @@ use shared::vote::{GovernanceVote, ProposalVoteKind};
 use subtle_encoding::hex;
 use tendermint_rpc::HttpClient;
 
-use super::utils::query_storage_prefix;
+use super::utils::{
+    default_retry, query_storage_bytes, query_storage_prefix,
+    query_storage_value,
+};
 
 pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
-    let native_token = RPC
-        .shell()
-        .native_token(client)
-        .await
-        .context("Failed to query native token")?;
-    Ok(Id::from(native_token))
+    let operation = || async {
+        RPC.shell()
+            .native_token(client)
+            .await
+            .context("Failed to query native token")
+            .map(Id::from)
+    };
+
+    default_retry(operation).await
 }
 
 pub async fn query_native_token_total_supply(
     client: &HttpClient,
+    native_token: &Id,
 ) -> anyhow::Result<Amount> {
-    let native_token = RPC
-        .shell()
-        .native_token(client)
-        .await
-        .context("Failed to query native token")?;
+    let native_token = NamadaSdkAddress::from_str(&native_token.to_string())
+        .context("Failed to parse native token address")?;
 
-    rpc::get_token_total_supply(client, &native_token)
-        .await
-        .map(Amount::from)
-        .context("Failed to query total supply of native token")
+    let operation = || async {
+        rpc::get_token_total_supply(client, &native_token)
+            .await
+            .map(Amount::from)
+            .context("Failed to query total supply of native token")
+    };
+
+    default_retry(operation).await
 }
 
 pub async fn query_native_token_effective_supply(
     client: &HttpClient,
 ) -> anyhow::Result<Amount> {
-    rpc::get_effective_native_supply(client)
-        .await
-        .map(Amount::from)
-        .context("Failed to query effective supply of native token")
+    let operation = || async {
+        rpc::get_effective_native_supply(client)
+            .await
+            .map(Amount::from)
+            .context("Failed to query effective supply of native token")
+    };
+
+    default_retry(operation).await
 }
 
 pub async fn get_first_block_in_epoch(
     client: &HttpClient,
 ) -> anyhow::Result<BlockHeight> {
-    let block_height = RPC
-        .shell()
-        .first_block_height_of_current_epoch(client)
-        .await
-        .context("Failed to query native token")?;
+    let operation = || async {
+        RPC.shell()
+            .first_block_height_of_current_epoch(client)
+            .await
+            .context("Failed to query native token")
+            .map(|height| height.0 as BlockHeight)
+    };
 
-    Ok(block_height.0 as BlockHeight)
+    default_retry(operation).await
 }
 
 pub async fn get_epoch_at_block_height(
@@ -83,15 +97,22 @@ pub async fn get_epoch_at_block_height(
     block_height: BlockHeight,
 ) -> anyhow::Result<Epoch> {
     let block_height = to_block_height(block_height);
-    let epoch = rpc::query_epoch_at_height(client, block_height)
-        .await
-        .with_context(|| {
-            format!("Failed to query Namada's epoch at height {block_height}")
-        })?
-        .ok_or_else(|| {
-            anyhow!("No Namada epoch found for height {block_height}")
-        })?;
-    Ok(epoch.0 as Epoch)
+    let operation = || async {
+        let epoch = rpc::query_epoch_at_height(client, block_height)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to query Namada's epoch at height {block_height}"
+                )
+            })?
+            .ok_or_else(|| {
+                anyhow!("No Namada epoch found for height {block_height}")
+            })?;
+
+        Ok(epoch.0 as Epoch)
+    };
+
+    default_retry(operation).await
 }
 
 pub async fn query_balance(
@@ -117,14 +138,17 @@ pub async fn query_balance(
             }
             .into();
 
-            let amount = rpc::get_token_balance(
-                client,
-                &token_addr,
-                &owner,
-                Some(to_block_height(block_height)),
-            )
-            .await
-            .unwrap_or_default();
+            let operation = || async {
+                rpc::get_token_balance(
+                    client,
+                    &token_addr,
+                    &owner,
+                    Some(to_block_height(block_height)),
+                )
+                .await
+                .context("Faile querying balance")
+            };
+            let amount = default_retry(operation).await.ok()?;
 
             Some(Balance {
                 owner: balance_change.address.clone(),
@@ -141,11 +165,7 @@ pub async fn query_balance(
 
 pub async fn query_tokens(client: &HttpClient) -> anyhow::Result<Vec<Token>> {
     let ibc_tokens = query_ibc_tokens(client).await?;
-    let native_token = RPC
-        .shell()
-        .native_token(client)
-        .await
-        .context("Failed to query native token")?;
+    let native_token = query_native_token(client).await?;
 
     let tokens = ibc_tokens
         .into_iter()
@@ -169,6 +189,7 @@ async fn query_ibc_tokens(
     let mut tokens: HashSet<IbcToken> = HashSet::new();
     let ibc_traces =
         query_storage_prefix::<String>(client, &prefix, None).await?;
+
     if let Some(ibc_traces) = ibc_traces {
         for (key, ibc_trace) in ibc_traces {
             if let Some((_, hash)) = is_ibc_trace_key(&key) {
@@ -226,8 +247,7 @@ async fn add_balance(
         &balance_prefix,
         Some(height),
     )
-    .await
-    .context("Failed to query all balances")?;
+    .await?;
 
     if let Some(balances) = balances {
         for (key, balance) in balances {
@@ -253,15 +273,19 @@ async fn add_balance(
 pub async fn query_last_block_height(
     client: &HttpClient,
 ) -> anyhow::Result<BlockHeight> {
-    let last_block = RPC
-        .shell()
-        .last_block(client)
-        .await
-        .context("Failed to query Namada's last committed block")?;
+    let operation = || async {
+        let height = RPC
+            .shell()
+            .last_block(client)
+            .await
+            .context("Failed to query Namada's last committed block")?
+            .map(|height| height.height.0 as BlockHeight)
+            .unwrap_or_default();
 
-    Ok(last_block
-        .map(|b| b.height.0 as BlockHeight)
-        .unwrap_or_default())
+        Ok(height)
+    };
+
+    default_retry(operation).await
 }
 
 // TODO: this can be improved / optimized(bonds and unbonds can be processed in
@@ -282,6 +306,7 @@ pub async fn query_all_bonds_and_unbonds(
     type UnbondKey = (Source, Validator, WithdrawEpoch);
     type UnbondsMap = HashMap<UnbondKey, NamadaSdkAmount>;
 
+    // TODO: do retries
     let bonds_and_unbonds = bonds_and_unbonds(
         client,
         &source.map(NamadaSdkAddress::from),
@@ -348,10 +373,11 @@ pub async fn query_all_proposals(
 ) -> anyhow::Result<Vec<GovernanceProposal>> {
     let last_proposal_id_key =
         namada_governance::storage::keys::get_counter_key();
-    let last_proposal_id: u64 =
-        query_storage_value(client, &last_proposal_id_key)
+    let last_proposal_id =
+        query_storage_value::<u64>(client, &last_proposal_id_key, None)
             .await
-            .unwrap();
+            .context("Failed to query last proposal id")?
+            .unwrap_or_default();
 
     let mut proposals: Vec<GovernanceProposal> = vec![];
 
@@ -398,9 +424,11 @@ pub async fn query_proposal_code(
 ) -> anyhow::Result<Vec<u8>> {
     let proposal_code_key =
         namada_governance::storage::keys::get_proposal_code_key(proposal_id);
-    let proposal_code = query_storage_value(client, &proposal_code_key)
-        .await
-        .expect("Proposal code should be written to storage.");
+    let proposal_code =
+        query_storage_value::<Vec<u8>>(client, &proposal_code_key, None)
+            .await
+            .expect("Proposal code should be written to storage.")
+            .unwrap_or_default();
 
     anyhow::Ok(proposal_code)
 }
@@ -419,21 +447,14 @@ pub async fn query_next_governance_id(
 
     let proposal_counter_key =
         namada_sdk::governance::storage::keys::get_counter_key();
-    let block_height = to_block_height(block_height);
-
-    let query_result = RPC
-        .shell()
-        .storage_value(
-            client,
-            None,
-            Some(block_height),
-            false,
-            &proposal_counter_key,
-        )
-        .await
-        .context("Failed to get the next proposal id")?;
-    borsh::BorshDeserialize::try_from_slice(&query_result.data)
-        .context("Failed to deserialize proposal id")
+    query_storage_value::<u64>(
+        client,
+        &proposal_counter_key,
+        Some(block_height),
+    )
+    .await
+    .context("Failed to get the next proposal id")
+    .map(|id| id.expect("Next governance id should be written to storage"))
 }
 
 pub async fn query_bonds(
@@ -485,13 +506,14 @@ pub async fn query_unbonds(
                 .expect("Failed to parse validator address");
 
             async move {
-                let unbonds = RPC
-                    .vp()
-                    .pos()
-                    .unbond_with_slashing(client, &source, &validator)
-                    .await
-                    .context("Failed to query unbond amount")
-                    .ok()?;
+                let operation = || async {
+                    RPC.vp()
+                        .pos()
+                        .unbond_with_slashing(client, &source, &validator)
+                        .await
+                        .context("Failed to query unbond amount")
+                };
+                let unbonds = default_retry(operation).await.ok()?;
 
                 let mut unbonds_map: HashMap<(Id, Id, Epoch), Amount> =
                     HashMap::new();
@@ -547,11 +569,14 @@ pub async fn query_unbonds(
 }
 
 pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
-    let epoch = rpc::query_epoch(client)
-        .await
-        .context("Failed to query Namada's current epoch")?;
+    let operation = || async {
+        rpc::query_epoch(client)
+            .await
+            .context("Failed to query Namada's current epoch")
+            .map(|epoch| epoch.0 as Epoch)
+    };
 
-    Ok(epoch.0 as Epoch)
+    default_retry(operation).await
 }
 
 pub async fn get_all_consensus_validators_addresses_at(
@@ -559,31 +584,33 @@ pub async fn get_all_consensus_validators_addresses_at(
     epoch: u32,
     native_token: Id,
 ) -> anyhow::Result<HashSet<BalanceChange>> {
-    let validators =
-        rpc::get_all_consensus_validators(client, (epoch as u64).into())
-            .await
-            .context("Failed to query Namada's current epoch")?
-            .into_iter()
-            .map(|validator| {
-                BalanceChange::new(
-                    Id::from(validator.address),
-                    Token::Native(native_token.clone()),
-                )
-            })
-            .collect::<HashSet<_>>();
+    let operation = || async {
+        let validators =
+            rpc::get_all_consensus_validators(client, (epoch as u64).into())
+                .await
+                .context("Failed to query Namada's current epoch")?
+                .into_iter()
+                .map(|validator| {
+                    BalanceChange::new(
+                        Id::from(validator.address),
+                        Token::Native(native_token.clone()),
+                    )
+                })
+                .collect::<HashSet<_>>();
 
-    Ok(validators)
+        Ok(validators)
+    };
+
+    default_retry(operation).await
 }
 
 pub async fn query_tx_code_hash(
     client: &HttpClient,
     tx_code_path: &str,
 ) -> Option<String> {
-    let hash_key = Key::wasm_hash(tx_code_path);
-    let (tx_code_res, _) =
-        rpc::query_storage_value_bytes(client, &hash_key, None, false)
-            .await
-            .ok()?;
+    let storage_key = Key::wasm_hash(tx_code_path);
+    let tx_code_res =
+        query_storage_bytes(client, &storage_key, None).await.ok()?;
     if let Some(tx_code_bytes) = tx_code_res {
         let tx_code =
             Hash::try_from(&tx_code_bytes[..]).expect("Invalid code hash");
@@ -597,12 +624,10 @@ pub async fn is_steward(
     client: &HttpClient,
     address: &Id,
 ) -> anyhow::Result<bool> {
-    let address = NamadaSdkAddress::from_str(&address.to_string())
-        .context("Failed to parse address")?;
+    let address = NamadaSdkAddress::from(address.clone());
+    let operation = || async { Ok(rpc::is_steward(client, &address).await) };
 
-    let is_steward = rpc::is_steward(client, &address).await;
-
-    Ok(is_steward)
+    default_retry(operation).await
 }
 
 pub async fn query_tallies(
@@ -612,7 +637,6 @@ pub async fn query_tallies(
     let proposals = futures::stream::iter(proposals)
         .filter_map(|proposal| async move {
             let is_steward = is_steward(client, &proposal.author).await.ok()?;
-
             let tally_type = TallyType::from(&proposal.r#type, is_steward);
 
             Some((proposal, tally_type))
@@ -631,8 +655,12 @@ pub async fn query_all_votes(
 ) -> anyhow::Result<HashSet<GovernanceVote>> {
     let votes = futures::stream::iter(proposals_ids)
         .filter_map(|proposal_id| async move {
-            let votes =
-                rpc::query_proposal_votes(client, proposal_id).await.ok()?;
+            let operation = || async {
+                rpc::query_proposal_votes(client, proposal_id)
+                    .await
+                    .context("Failed to query proposal votes")
+            };
+            let votes = default_retry(operation).await.ok()?;
 
             let votes = votes
                 .into_iter()
@@ -687,14 +715,17 @@ pub async fn get_validator_set_at_epoch(
     epoch: Epoch,
 ) -> anyhow::Result<ValidatorSet> {
     let namada_epoch = NamadaSdkEpoch::from(epoch as u64);
-    let validator_set = rpc::get_all_validators(client, namada_epoch)
-        .await
-        .with_context(|| {
-            format!(
-                "Failed to query Namada's consensus validators at epoch \
-                 {epoch}"
-            )
-        })?;
+    let operation = || async {
+        rpc::get_all_validators(client, namada_epoch)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to query Namada's consensus validators at epoch \
+                     {epoch}"
+                )
+            })
+    };
+    let validator_set = default_retry(operation).await?;
 
     let validators = futures::stream::iter(validator_set)
         .map(|address| async move {
@@ -769,13 +800,18 @@ pub async fn get_validator_namada_address(
     client: &HttpClient,
     tm_addr: &Id,
 ) -> anyhow::Result<Option<Id>> {
-    let validator = RPC
-        .vp()
-        .pos()
-        .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
-        .await?;
+    let operation = || async {
+        let validator_addr = RPC
+            .vp()
+            .pos()
+            .validator_by_tm_addr(client, &tm_addr.to_string().to_uppercase())
+            .await?
+            .map(Id::from);
 
-    Ok(validator.map(Id::from))
+        Ok(validator_addr)
+    };
+
+    default_retry(operation).await
 }
 
 pub fn query_native_addresses_balance_change(
@@ -794,11 +830,14 @@ pub fn query_native_addresses_balance_change(
 }
 
 pub async fn query_pipeline_length(client: &HttpClient) -> anyhow::Result<u64> {
-    let pos_parameters = rpc::get_pos_params(client)
-        .await
-        .with_context(|| "Failed to query pos parameters".to_string())?;
+    let operation = || async {
+        rpc::get_pos_params(client)
+            .await
+            .with_context(|| "Failed to query pos parameters".to_string())
+            .map(|parameters| parameters.pipeline_len)
+    };
 
-    Ok(pos_parameters.pipeline_len)
+    default_retry(operation).await
 }
 
 pub(super) fn to_block_height(
@@ -811,9 +850,15 @@ pub async fn get_pgf_receipients(
     client: &HttpClient,
     native_token: Id,
 ) -> HashSet<BalanceChange> {
-    let payments = rpc::query_pgf_fundings(client).await.unwrap_or_default();
+    let payments = || async {
+        rpc::query_pgf_fundings(client)
+            .await
+            .context("Failed to query PGF fundings")
+    };
 
-    payments
+    default_retry(payments)
+        .await
+        .unwrap_or_default()
         .into_iter()
         .map(|payment| BalanceChange {
             address: Id::Account(payment.detail.target()),
@@ -827,7 +872,8 @@ pub async fn get_native_token_supply(
     native_token: &Id,
     epoch: u32,
 ) -> anyhow::Result<TokenSupply> {
-    let total_supply_fut = query_native_token_total_supply(client);
+    let total_supply_fut =
+        query_native_token_total_supply(client, native_token);
     let effective_supply_fut = query_native_token_effective_supply(client);
 
     let (total_supply, effective_supply) =
@@ -850,12 +896,16 @@ pub async fn get_token_supply(
     let address: NamadaSdkAddress =
         token.parse().context("Failed to parse token address")?;
 
-    let supply = rpc::get_token_total_supply(client, &address)
-        .await
-        .map(Amount::from)
-        .with_context(|| {
-            format!("Failed to query total supply of token {token}")
-        })?;
+    let operation = || async {
+        rpc::get_token_total_supply(client, &address)
+            .await
+            .map(Amount::from)
+            .with_context(|| {
+                format!("Failed to query total supply of token {token}")
+            })
+    };
+
+    let supply = default_retry(operation).await?;
 
     anyhow::Ok(TokenSupply {
         address: token,
@@ -873,11 +923,17 @@ pub async fn get_throughput_rate_limit(
     let address: NamadaSdkAddress =
         token.parse().context("Failed to parse token address")?;
 
-    let rate_limit = rpc::query_ibc_rate_limits(client, &address)
-        .await
-        .with_context(|| {
-            format!("Failed to query throughput rate limit of token {token}")
-        })?;
+    let rate_limit = || async {
+        rpc::query_ibc_rate_limits(client, &address)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to query throughput rate limit of token {token}"
+                )
+            })
+    };
+
+    let rate_limit = default_retry(rate_limit).await?;
 
     Ok(IbcRateLimit {
         epoch,
