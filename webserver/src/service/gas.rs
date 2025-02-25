@@ -1,4 +1,3 @@
-
 use bigdecimal::ToPrimitive;
 
 use crate::appstate::AppState;
