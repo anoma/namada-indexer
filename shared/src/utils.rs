@@ -381,3 +381,118 @@ fn get_token_and_amount(
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cmp_print(x: &str, y: &str) -> bool {
+        if x == y {
+            true
+        } else {
+            println!("{x} != {y}");
+            false
+        }
+    }
+
+    #[test]
+    fn received_ibc_trace_parsing() {
+        // native on cosmos, foreign on namada
+        let maybe_ibc_trace = get_namada_ibc_trace_when_receiving(
+            // sender side
+            &"uatom".parse().unwrap(),
+            &PortId::transfer(),
+            &"channel-1234".parse().unwrap(),
+            // receiver side
+            &PortId::transfer(),
+            &"channel-0".parse().unwrap(),
+        );
+        assert!(matches!(
+            maybe_ibc_trace,
+            Some(trace) if cmp_print(&trace, "transfer/channel-0/uatom"),
+        ));
+
+        // foreign on cosmos, native on namada
+        let maybe_ibc_trace = get_namada_ibc_trace_when_receiving(
+            // sender side
+            &"transfer/channel-1234/\
+              tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
+                .parse()
+                .unwrap(),
+            &PortId::transfer(),
+            &"channel-1234".parse().unwrap(),
+            // receiver side
+            &PortId::transfer(),
+            &"channel-0".parse().unwrap(),
+        );
+        assert!(matches!(maybe_ibc_trace, None,));
+
+        // foreign on cosmos, foreign on namada
+        let maybe_ibc_trace = get_namada_ibc_trace_when_receiving(
+            // sender side
+            &"transfer/channel-4321/transfer/channel-5/\
+              tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
+                .parse()
+                .unwrap(),
+            &PortId::transfer(),
+            &"channel-1234".parse().unwrap(),
+            // receiver side
+            &PortId::transfer(),
+            &"channel-0".parse().unwrap(),
+        );
+        assert!(matches!(
+            maybe_ibc_trace,
+            Some(trace) if cmp_print(
+                &trace,
+                "transfer/channel-0/\
+                    transfer/channel-4321/\
+                    transfer/channel-5/\
+                    tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
+            ),
+        ));
+    }
+
+    #[test]
+    fn sent_ibc_trace_parsing() {
+        // native on namada, foreign on cosmos
+        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+            &"tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
+                .parse()
+                .unwrap(),
+            &PortId::transfer(),
+            &"channel-0".parse().unwrap(),
+        );
+        assert!(matches!(maybe_ibc_trace, None));
+
+        // foreign on namada, native on cosmos
+        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+            &"transfer/channel-0/uatom".parse().unwrap(),
+            &PortId::transfer(),
+            &"channel-0".parse().unwrap(),
+        );
+        assert!(matches!(
+            maybe_ibc_trace,
+            Some(trace) if cmp_print(&trace, "transfer/channel-0/uatom"),
+        ));
+
+        // foreign on namada, foreign on cosmos
+        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+            &"transfer/channel-0/transfer/channel-4321/transfer/channel-5/\
+              tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
+                .parse()
+                .unwrap(),
+            &PortId::transfer(),
+            &"channel-0".parse().unwrap(),
+        );
+        assert!(matches!(
+            maybe_ibc_trace,
+            Some(trace) if cmp_print(
+                &trace,
+                "transfer/channel-0/\
+                    transfer/channel-4321/\
+                    transfer/channel-5/\
+                    tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
+            ),
+        ));
+    }
+}
