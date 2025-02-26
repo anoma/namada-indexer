@@ -106,6 +106,9 @@ impl GasRepositoryTrait for GasRepository {
         tx_size: u64,
     ) -> Result<(Option<i32>, Option<i32>, Option<BigDecimal>, i64), String>
     {
+        const TX_SIZE_WINDOW_UPPERBOUND_PCT: f64 = 0.10;
+        const TX_SIGNATURES_WINDOW_UPPERBOUND: u64 = 5;
+
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -141,8 +144,9 @@ impl GasRepositoryTrait for GasRepository {
                 .filter(gas_estimations::dsl::ibc_msg_transfer.eq(ibc_transparent_transfer as i32))
                 .filter(gas_estimations::dsl::withdraw.eq(withdraw as i32))
                 .filter(gas_estimations::dsl::reveal_pk.eq(reveal_pk as i32))
-                .filter(gas_estimations::dsl::signatures.ge(signatures as i32))
-                .filter(gas_estimations::dsl::tx_size.ge(tx_size as i32))
+                // For the signatures and the tx size we look for similar indexed txs in a certain range
+                .filter(gas_estimations::dsl::signatures.between(signatures as i32, (signatures + TX_SIGNATURES_WINDOW_UPPERBOUND) as i32))
+                .filter(gas_estimations::dsl::tx_size.between(tx_size as i32, (tx_size as f64 * (1f64 + TX_SIZE_WINDOW_UPPERBOUND_PCT)).ceil() as i32))
                 .inner_join(
                     wrapper_transactions::table
                         .on(gas_estimations::dsl::wrapper_id
