@@ -115,13 +115,14 @@ pub fn transfer_to_ibc_tx_kind(
                                      packet",
                                 );
 
-                            let maybe_ibc_trace = get_namada_ibc_trace(
-                                &packet_data.token.denom,
-                                &msg.packet.port_id_on_a,
-                                &msg.packet.chan_id_on_a,
-                                &msg.packet.port_id_on_b,
-                                &msg.packet.chan_id_on_b,
-                            );
+                            let maybe_ibc_trace =
+                                get_namada_ibc_trace_when_receiving(
+                                    &packet_data.token.denom,
+                                    &msg.packet.port_id_on_a,
+                                    &msg.packet.chan_id_on_a,
+                                    &msg.packet.port_id_on_b,
+                                    &msg.packet.chan_id_on_b,
+                                );
 
                             let (token, token_id, denominated_amount) =
                                 get_token_and_amount(
@@ -200,61 +201,18 @@ pub fn transfer_to_ibc_tx_kind(
             }
         }
         namada_ibc::IbcMessage::Transfer(transfer) => {
-            let (token, token_id, denominated_amount) = if transfer
-                .message
-                .packet_data
-                .token
-                .denom
-                .to_string()
-                .contains(&native_token.to_string())
-            {
-                (
-                    native_token.clone(),
-                    crate::token::Token::Native(native_token.into()),
-                    namada_sdk::token::DenominatedAmount::native(
-                        namada_sdk::token::Amount::from_str(
-                            transfer
-                                .message
-                                .packet_data
-                                .token
-                                .amount
-                                .to_string(),
-                            0,
-                        )
-                        .expect(
-                            "Failed conversion of IBC amount to Namada one",
-                        ),
-                    ),
-                )
-            } else {
-                let ibc_trace =
-                    transfer.message.packet_data.token.denom.to_string();
-                let token_address =
-                    namada_ibc::trace::convert_to_address(ibc_trace.clone())
-                        .expect("Failed to convert IBC trace to address");
-                (
-                    token_address.clone(),
-                    crate::token::Token::Ibc(crate::token::IbcToken {
-                        address: token_address.into(),
-                        trace: Id::IbcTrace(ibc_trace),
-                    }),
-                    namada_sdk::token::DenominatedAmount::new(
-                        namada_sdk::token::Amount::from_str(
-                            transfer
-                                .message
-                                .packet_data
-                                .token
-                                .amount
-                                .to_string(),
-                            0,
-                        )
-                        .expect(
-                            "Failed conversion of IBC amount to Namada one",
-                        ),
-                        0.into(),
-                    ),
-                )
-            };
+            let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+                &transfer.message.packet_data.token.denom,
+                &transfer.message.port_id_on_a,
+                &transfer.message.chan_id_on_a,
+            );
+
+            let (token, token_id, denominated_amount) = get_token_and_amount(
+                maybe_ibc_trace,
+                transfer.message.packet_data.token.amount,
+                native_token,
+                &transfer.message.packet_data.token.denom,
+            );
 
             let transfer_data = TransferData {
                 sources: crate::ser::AccountsMap(
@@ -311,7 +269,7 @@ pub fn transfer_to_ibc_tx_kind(
     }
 }
 
-fn get_namada_ibc_trace(
+fn get_namada_ibc_trace_when_receiving(
     // NB: we dub the sender `chain A`
     sender_denom: &PrefixedDenom,
     sender_port: &PortId,
@@ -350,6 +308,28 @@ fn get_namada_ibc_trace(
             // with a new trace prefix.
             Some(format!("{receiver_port}/{receiver_channel}/{sender_denom}"))
         }
+    }
+}
+
+fn get_namada_ibc_trace_when_sending(
+    // NB: we dub the sender `chain A` (i.e. Namada)
+    sender_denom: &PrefixedDenom,
+    sender_port: &PortId,
+    sender_channel: &ChannelId,
+) -> Option<String> {
+    let prefix = TracePrefix::new(sender_port.clone(), sender_channel.clone());
+
+    if !sender_denom.trace_path.starts_with(&prefix) {
+        // NOTE: this is a token native to chain A
+        assert!(
+            sender_denom.trace_path.is_empty(),
+            "No trace path should be present when transferring a native token"
+        );
+        None
+    } else {
+        // NOTE: this token is not native to chain A,
+        // therefore we return its ibc trace
+        Some(sender_denom.to_string())
     }
 }
 
