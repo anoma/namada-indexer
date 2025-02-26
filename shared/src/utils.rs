@@ -1,9 +1,10 @@
 use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
 use namada_ibc::apps::transfer::types::packet::PacketData as FtPacketData;
 use namada_ibc::apps::transfer::types::{
-    PORT_ID_STR as FT_PORT_ID_STR, TracePrefix,
+    PORT_ID_STR as FT_PORT_ID_STR, PrefixedDenom, TracePrefix,
 };
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
+use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
 use namada_sdk::address::Address;
 use namada_sdk::token::Transfer;
 
@@ -116,55 +117,13 @@ pub fn transfer_to_ibc_tx_kind(
                                  packet",
                             );
 
-                        let prefix = TracePrefix::new(
-                            msg.packet.port_id_on_a.clone(),
-                            msg.packet.chan_id_on_a.clone(),
+                        let maybe_ibc_trace = get_namada_ibc_trace(
+                            &packet_data.token.denom,
+                            &msg.packet.port_id_on_a,
+                            &msg.packet.chan_id_on_a,
+                            &msg.packet.port_id_on_b,
+                            &msg.packet.chan_id_on_b,
                         );
-
-                        let maybe_ibc_trace = if !packet_data
-                            .token
-                            .denom
-                            .trace_path
-                            .starts_with(&prefix)
-                        {
-                            // NOTE: this is a token native to chain A
-                            Some(format!(
-                                "{}/{}/{}",
-                                msg.packet.port_id_on_b,
-                                msg.packet.chan_id_on_b,
-                                packet_data.token.denom
-                            ))
-                        } else {
-                            // NOTE: this token is not native to chain A. it
-                            // could be NAM,
-                            // but also some other token from any other chain
-                            // that is neither
-                            // Namada (i.e. chain B) nor chain A.
-
-                            let mut denom = packet_data.token.denom.clone();
-
-                            denom.trace_path.remove_prefix(&prefix);
-
-                            if denom.trace_path.is_empty() {
-                                // NOTE: this token is native to Namada.
-                                // WE ARE ASSUMING WE HAVE NAM. this could be a
-                                // mistake,
-                                // if in the future we enable the ethereum
-                                // bridge, or mint
-                                // other kinds of tokens other than NAM.
-                                None
-                            } else {
-                                // NOTE: this token is not native to Namada. we
-                                // need to wrap it
-                                // with a new trace prefix.
-                                Some(format!(
-                                    "{}/{}/{}",
-                                    msg.packet.port_id_on_b,
-                                    msg.packet.chan_id_on_b,
-                                    packet_data.token.denom
-                                ))
-                            }
-                        };
 
                         let (token, token_id, denominated_amount) =
                             if let Some(ibc_trace) = maybe_ibc_trace {
@@ -401,6 +360,48 @@ pub fn transfer_to_ibc_tx_kind(
         namada_ibc::IbcMessage::NftTransfer(_nft_transfer) => {
             // TODO: add support for indexing nfts
             todo!("IBC NFTs are not yet supported for indexing purposes")
+        }
+    }
+}
+
+fn get_namada_ibc_trace(
+    // NB: we dub the sender `chain A`
+    sender_denom: &PrefixedDenom,
+    sender_port: &PortId,
+    sender_channel: &ChannelId,
+    // NB: we dub the receiver `chain B` (i.e. Namada)
+    receiver_port: &PortId,
+    receiver_channel: &ChannelId,
+) -> Option<String> {
+    let prefix = TracePrefix::new(sender_port.clone(), sender_channel.clone());
+
+    if !sender_denom.trace_path.starts_with(&prefix) {
+        // NOTE: this is a token native to chain A
+        Some(format!("{receiver_port}/{receiver_channel}/{sender_denom}"))
+    } else {
+        // NOTE: this token is not native to chain A. it
+        // could be NAM,
+        // but also some other token from any other chain
+        // that is neither
+        // Namada (i.e. chain B) nor chain A.
+
+        let mut denom = sender_denom.clone();
+
+        denom.trace_path.remove_prefix(&prefix);
+
+        if denom.trace_path.is_empty() {
+            // NOTE: this token is native to Namada.
+            // WE ARE ASSUMING WE HAVE NAM. this could be a
+            // mistake,
+            // if in the future we enable the ethereum
+            // bridge, or mint
+            // other kinds of tokens other than NAM.
+            None
+        } else {
+            // NOTE: this token is not native to Namada. we
+            // need to wrap it
+            // with a new trace prefix.
+            Some(format!("{receiver_port}/{receiver_channel}/{sender_denom}"))
         }
     }
 }
