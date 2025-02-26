@@ -443,38 +443,37 @@ impl Block {
                         .sources
                         .0
                         .iter()
-                        .filter_map(|(source, denominated_amount)| {
-                            if source.owner == MASP_ADDRESS {
+                        .map(|(source, denominated_amount)| {
+                            (
+                                source,
+                                denominated_amount,
+                                MaspEntryDirection::Out,
+                            )
+                        })
+                        .chain(transfer_data.targets.0.iter().map(
+                            |(target, denominated_amount)| {
+                                (
+                                    target,
+                                    denominated_amount,
+                                    MaspEntryDirection::In,
+                                )
+                            },
+                        ))
+                        .filter_map(|(transfer, denominated_amount, dir)| {
+                            if transfer.owner == MASP_ADDRESS {
                                 Some(MaspEntry {
-                                    token_address: source.token.to_string(),
+                                    token_address: transfer.token.to_string(),
                                     timestamp: self.header.timestamp,
                                     raw_amount: denominated_amount
                                         .amount()
                                         .into(),
-                                    direction: MaspEntryDirection::Out,
+                                    direction: dir,
                                     inner_tx_id: tx.tx_id.clone(),
                                 })
                             } else {
                                 None
                             }
                         })
-                        .chain(transfer_data.targets.0.iter().filter_map(
-                            |(target, denominated_amount)| {
-                                if target.owner == MASP_ADDRESS {
-                                    Some(MaspEntry {
-                                        token_address: target.token.to_string(),
-                                        timestamp: self.header.timestamp,
-                                        raw_amount: denominated_amount
-                                            .amount()
-                                            .into(),
-                                        direction: MaspEntryDirection::In,
-                                        inner_tx_id: tx.tx_id.clone(),
-                                    })
-                                } else {
-                                    None
-                                }
-                            },
-                        ))
                         .collect()
                 }
                 TransactionKind::IbcShieldingTransfer((_, transfer_data)) => {
