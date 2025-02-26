@@ -1,7 +1,8 @@
 use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
 use namada_ibc::apps::transfer::types::packet::PacketData as FtPacketData;
 use namada_ibc::apps::transfer::types::{
-    PORT_ID_STR as FT_PORT_ID_STR, PrefixedDenom, TracePrefix,
+    Amount as IbcAmount, PORT_ID_STR as FT_PORT_ID_STR, PrefixedDenom,
+    TracePrefix,
 };
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
@@ -102,135 +103,81 @@ pub fn transfer_to_ibc_tx_kind(
             ) = msg_envelope.as_ref()
             {
                 // Extract transfer info from the packet
-                let (transfer_data, token_id) = match msg
-                    .packet
-                    .port_id_on_b
-                    .as_str()
-                {
-                    FT_PORT_ID_STR => {
-                        let packet_data =
-                            serde_json::from_slice::<FtPacketData>(
-                                &msg.packet.data,
-                            )
-                            .expect(
-                                "Could not deserialize IBC fungible token \
-                                 packet",
+                let (transfer_data, token_id) =
+                    match msg.packet.port_id_on_b.as_str() {
+                        FT_PORT_ID_STR => {
+                            let packet_data =
+                                serde_json::from_slice::<FtPacketData>(
+                                    &msg.packet.data,
+                                )
+                                .expect(
+                                    "Could not deserialize IBC fungible token \
+                                     packet",
+                                );
+
+                            let maybe_ibc_trace = get_namada_ibc_trace(
+                                &packet_data.token.denom,
+                                &msg.packet.port_id_on_a,
+                                &msg.packet.chan_id_on_a,
+                                &msg.packet.port_id_on_b,
+                                &msg.packet.chan_id_on_b,
                             );
 
-                        let maybe_ibc_trace = get_namada_ibc_trace(
-                            &packet_data.token.denom,
-                            &msg.packet.port_id_on_a,
-                            &msg.packet.chan_id_on_a,
-                            &msg.packet.port_id_on_b,
-                            &msg.packet.chan_id_on_b,
-                        );
+                            let (token, token_id, denominated_amount) =
+                                get_token_and_amount(
+                                    maybe_ibc_trace,
+                                    packet_data.token.amount,
+                                    native_token,
+                                    &packet_data.token.denom,
+                                );
 
-                        let (token, token_id, denominated_amount) =
-                            if let Some(ibc_trace) = maybe_ibc_trace {
-                                let token_address =
-                                    namada_ibc::trace::convert_to_address(
-                                        ibc_trace.clone(),
-                                    )
-                                    .expect(
-                                        "Failed to convert IBC trace to \
-                                         address",
-                                    );
-                                (
-                                    token_address.clone(),
-                                    crate::token::Token::Ibc(
-                                        crate::token::IbcToken {
-                                            address: token_address.into(),
-                                            trace: Id::IbcTrace(ibc_trace),
-                                        },
+                            (
+                                TransferData {
+                                    sources: crate::ser::AccountsMap(
+                                        [(
+                                            namada_sdk::token::Account {
+                                                owner: namada_sdk::address::IBC,
+                                                token: token.clone(),
+                                            },
+                                            denominated_amount,
+                                        )]
+                                        .into(),
                                     ),
-                                    namada_sdk::token::DenominatedAmount::new(
-                                        namada_sdk::token::Amount::from_str(
-                                            packet_data
-                                                .token
-                                                .amount
-                                                .to_string(),
-                                            0,
-                                        )
-                                        .expect(
-                                            "Failed conversion of IBC amount \
-                                             to Namada one",
-                                        ),
-                                        0.into(),
+                                    targets: crate::ser::AccountsMap(
+                                        [(
+                                            namada_sdk::token::Account {
+                                                owner: packet_data
+                                                    .receiver
+                                                    .try_into()
+                                                    .expect(
+                                                        "Failed to convert \
+                                                         IBC signer to address",
+                                                    ),
+                                                token,
+                                            },
+                                            denominated_amount,
+                                        )]
+                                        .into(),
                                     ),
-                                )
-                            } else {
-                                if !packet_data
-                                    .token
-                                    .denom
-                                    .to_string()
-                                    .contains(&native_token.to_string())
-                                {
-                                    panic!(
-                                        "Attempting to add native token other \
-                                         than NAM to the database"
-                                    );
-                                }
-
-                                (
-                                    native_token.clone(),
-                                    crate::token::Token::Native(native_token.into()),
-                                    namada_sdk::token::DenominatedAmount::native(
-                                        namada_sdk::token::Amount::from_str(
-                                            packet_data.token.amount.to_string(),
-                                            0,
-                                        )
-                                        .expect("Failed conversion of IBC amount to Namada one"),
-                                    ),
-                                )
-                            };
-
-                        (
-                            TransferData {
-                                sources: crate::ser::AccountsMap(
-                                    [(
-                                        namada_sdk::token::Account {
-                                            owner: namada_sdk::address::IBC,
-                                            token: token.clone(),
-                                        },
-                                        denominated_amount,
-                                    )]
-                                    .into(),
-                                ),
-                                targets: crate::ser::AccountsMap(
-                                    [(
-                                        namada_sdk::token::Account {
-                                            owner: packet_data
-                                                .receiver
-                                                .try_into()
-                                                .expect(
-                                                    "Failed to convert IBC \
-                                                     signer to address",
-                                                ),
-                                            token,
-                                        },
-                                        denominated_amount,
-                                    )]
-                                    .into(),
-                                ),
-                                shielded_section_hash: None,
-                            },
-                            token_id,
-                        )
-                    }
-                    NFT_PORT_ID_STR => {
-                        // TODO: add support for indexing nfts
-                        todo!(
-                            "IBC NFTs are not yet supported for indexing \
-                             purposes"
-                        )
-                    }
-                    _ => {
-                        tracing::warn!("Found unsupported IBC packet data");
-                        return TransactionKind::IbcMsg(Some(ser::IbcMessage(
-                            ibc_data,
-                        )));
-                    }
-                };
+                                    shielded_section_hash: None,
+                                },
+                                token_id,
+                            )
+                        }
+                        NFT_PORT_ID_STR => {
+                            // TODO: add support for indexing nfts
+                            todo!(
+                                "IBC NFTs are not yet supported for indexing \
+                                 purposes"
+                            )
+                        }
+                        _ => {
+                            tracing::warn!("Found unsupported IBC packet data");
+                            return TransactionKind::IbcMsg(Some(
+                                ser::IbcMessage(ibc_data),
+                            ));
+                        }
+                    };
 
                 let is_shielding =
                     namada_sdk::ibc::extract_masp_tx_from_envelope(
@@ -403,5 +350,54 @@ fn get_namada_ibc_trace(
             // with a new trace prefix.
             Some(format!("{receiver_port}/{receiver_channel}/{sender_denom}"))
         }
+    }
+}
+
+fn get_token_and_amount(
+    maybe_ibc_trace: Option<String>,
+    amount: IbcAmount,
+    native_token: Address,
+    original_denom: &PrefixedDenom,
+) -> (
+    Address,
+    crate::token::Token,
+    namada_sdk::token::DenominatedAmount,
+) {
+    if let Some(ibc_trace) = maybe_ibc_trace {
+        let token_address =
+            namada_ibc::trace::convert_to_address(ibc_trace.clone())
+                .expect("Failed to convert IBC trace to address");
+        (
+            token_address.clone(),
+            crate::token::Token::Ibc(crate::token::IbcToken {
+                address: token_address.into(),
+                trace: Id::IbcTrace(ibc_trace),
+            }),
+            namada_sdk::token::DenominatedAmount::new(
+                amount
+                    .try_into()
+                    .expect("Failed conversion of IBC amount to Namada one"),
+                0.into(),
+            ),
+        )
+    } else {
+        if !original_denom
+            .to_string()
+            .contains(&native_token.to_string())
+        {
+            panic!(
+                "Attempting to add native token other than NAM to the database"
+            );
+        }
+
+        (
+            native_token.clone(),
+            crate::token::Token::Native(native_token.into()),
+            namada_sdk::token::DenominatedAmount::native(
+                amount
+                    .try_into()
+                    .expect("Failed conversion of IBC amount to Namada one"),
+            ),
+        )
     }
 }
