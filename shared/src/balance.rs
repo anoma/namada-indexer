@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use fake::Fake;
@@ -53,6 +54,13 @@ impl From<Amount> for BigDecimal {
             unsafe { std::mem::transmute(uint.0) }
         };
         BigDecimal::from_biguint(BigUint::from_bytes_le(&digits), 0)
+    }
+}
+
+impl From<Amount> for BigDecimal {
+    fn from(amount: Amount) -> BigDecimal {
+        BigDecimal::from_str(&amount.0.to_string_native())
+            .expect("Invalid amount")
     }
 }
 
