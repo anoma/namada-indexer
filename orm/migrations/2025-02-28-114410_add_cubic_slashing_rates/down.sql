@@ -1,0 +1,2 @@
+ALTER TABLE chain_parameters DROP COLUMN duplicate_vote_min_slash_rate;
+ALTER TABLE chain_parameters DROP COLUMN light_client_attack_min_slash_rate;

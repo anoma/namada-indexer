@@ -19,8 +19,8 @@ use parameters::services::{
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
-use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
+use tendermint_rpc::HttpClient;
 use tokio::sync::{Mutex, MutexGuard};
 use tokio::time::Instant;
 

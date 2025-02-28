@@ -21,6 +21,11 @@ pub fn upsert_chain_parameters(
                 .eq(excluded(chain_parameters::cubic_slashing_window_length)),
             chain_parameters::checksums
                 .eq(excluded(chain_parameters::checksums)),
+            chain_parameters::duplicate_vote_min_slash_rate
+                .eq(excluded(chain_parameters::duplicate_vote_min_slash_rate)),
+            chain_parameters::light_client_attack_min_slash_rate.eq(excluded(
+                chain_parameters::light_client_attack_min_slash_rate,
+            )),
         ))
         .execute(transaction_conn)
         .context("Failed to update chain_parameters state in db")?;
