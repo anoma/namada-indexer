@@ -209,8 +209,6 @@ async fn crawling_fn(
             .collect::<Vec<_>>()
     };
 
-    println!("{:?}", ibc_token_flows);
-
     tracing::info!(
         "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
          ibc acks events...",
