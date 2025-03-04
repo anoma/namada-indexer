@@ -16,6 +16,7 @@ use shared::id::Id;
 use shared::transaction::IbcTokenFlow;
 use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
+use tokio::time::Instant;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
@@ -109,6 +110,8 @@ async fn crawling_fn(
 
         return Err(MainError::NoAction);
     }
+
+    let start = Instant::now();
 
     tracing::debug!(block = block_height, "Query block...");
     let tm_block_response =
@@ -205,10 +208,13 @@ async fn crawling_fn(
         last_processed_block: block_height,
     };
 
+    let first_checkpoint = Instant::now();
+
     tracing::info!(
         wrapper_txs = wrapper_txs.len(),
         inner_txs = inner_txs.len(),
         block = block_height,
+        time_taken = first_checkpoint.duration_since(start).as_secs_f64(),
         "Queried block successfully",
     );
 
@@ -270,7 +276,15 @@ async fn crawling_fn(
     .and_then(identity)
     .into_db_error()?;
 
-    tracing::info!(block = block_height, "Inserted block into database",);
+    let second_checkpoint = Instant::now();
+
+    tracing::info!(
+        block = block_height,
+        time_taken = second_checkpoint
+            .duration_since(first_checkpoint)
+            .as_secs_f64(),
+        "Inserted block into database"
+    );
 
     Ok(())
 }
