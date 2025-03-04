@@ -113,6 +113,12 @@ pub async fn get_parameters(client: &HttpClient) -> anyhow::Result<Parameters> {
         native_token_address: native_token_address.to_string(),
         cubic_slashing_window_length: pos_parameters
             .cubic_slashing_window_length,
+        duplicate_vote_min_slash_rate: pos_parameters
+            .duplicate_vote_min_slash_rate
+            .to_string(),
+        light_client_attack_min_slash_rate: pos_parameters
+            .light_client_attack_min_slash_rate
+            .to_string(),
     })
 }
 

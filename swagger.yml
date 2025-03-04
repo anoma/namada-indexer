@@ -562,16 +562,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RevealedPk"
-  /api/v1/gas:
-    get:
-      summary: Get the gas limit per tx kind.
-      responses:
-        "200":
-          description: Gas limit table
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GasLimitTable"
   /api/v1/gas-price:
     get:
       summary: Get all the gas prices
@@ -1171,35 +1161,6 @@ components:
       properties:
         publicKey:
           type: string
-    GasLimitTable:
-      type: array
-      items:
-        type: object
-        required: [gasLimit, txKind]
-        properties:
-          gasLimit:
-            type: number
-          txKind:
-            type: string
-            enum:
-              [
-                transparentTransfer,
-                shieldedTransfer,
-                shieldingTransfer,
-                unshieldingTransfer,
-                bond,
-                redelegation,
-                unbond,
-                withdraw,
-                claimRewards,
-                voteProposal,
-                initProposal,
-                changeMetadata,
-                changeCommission,
-                revealPk,
-                ibcMsgTransfer,
-                unknown,
-              ]
     GasPriceTable:
       type: array
       items:
@@ -1267,6 +1228,8 @@ components:
           checksums,
           epochSwitchBlocksDelay,
           cubicSlashingWindowLength,
+          duplicateVoteMinSlashRate,
+          lightClientAttackMinSlashRate,
         ]
       properties:
         unbondingLength:
@@ -1297,6 +1260,11 @@ components:
           type: string
         cubicSlashingWindowLength:
           type: string
+        duplicateVoteMinSlashRate:
+          type: string
+        lightClientAttackMinSlashRate:
+          type: string
+
     RpcUrl:
       type: object
       required: [url]

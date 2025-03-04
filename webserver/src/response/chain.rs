@@ -19,6 +19,8 @@ pub struct Parameters {
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: String,
     pub cubic_slashing_window_length: String,
+    pub duplicate_vote_min_slash_rate: String,
+    pub light_client_attack_min_slash_rate: String,
 }
 
 impl From<ParametersDb> for Parameters {
@@ -40,6 +42,12 @@ impl From<ParametersDb> for Parameters {
                 .to_string(),
             cubic_slashing_window_length: parameters
                 .cubic_slashing_window_length
+                .to_string(),
+            duplicate_vote_min_slash_rate: parameters
+                .duplicate_vote_min_slash_rate
+                .to_string(),
+            light_client_attack_min_slash_rate: parameters
+                .light_client_attack_min_slash_rate
                 .to_string(),
         }
     }

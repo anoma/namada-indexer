@@ -156,6 +156,8 @@ diesel::table! {
         epoch_switch_blocks_delay -> Int4,
         checksums -> Jsonb,
         cubic_slashing_window_length -> Int4,
+        duplicate_vote_min_slash_rate -> Numeric,
+        light_client_attack_min_slash_rate -> Numeric,
     }
 }
 

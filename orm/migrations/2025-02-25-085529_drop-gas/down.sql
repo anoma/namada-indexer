@@ -1,2 +1,7 @@
--- This file should undo anything in `up.sql`
-SELECT 1;
+CREATE TABLE gas (
+    id SERIAL PRIMARY KEY,
+    tx_kind TRANSACTION_KIND NOT NULL,
+    gas_limit INT NOT NULL
+);
+
+ALTER TABLE gas ADD UNIQUE (tx_kind);
