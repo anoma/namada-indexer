@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::convert::identity;
 use std::sync::Arc;
 
 use anyhow::Context;
+use bigdecimal::{BigDecimal, Zero};
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use deadpool_diesel::postgres::Object;
@@ -13,7 +15,7 @@ use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
-use shared::transaction::IbcTokenFlow;
+use shared::transaction::{IbcTokenAction, IbcTokenFlow};
 use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
 use transactions::app_state::AppState;
@@ -181,12 +183,33 @@ async fn crawling_fn(
                 .await
                 .into_rpc_error()?;
 
-        tx_service::get_ibc_token_flows(&block_results)
-            .map(move |(action, ibc_token, amount)| {
-                IbcTokenFlow::new(action, ibc_token, amount, epoch)
+        let mut flows_map = HashMap::new();
+
+        tx_service::get_ibc_token_flows(&block_results).for_each(
+            |(action, token, amount)| {
+                let key = (token.clone(), epoch);
+                let entry = flows_map
+                    .entry(key)
+                    .or_insert((BigDecimal::zero(), BigDecimal::zero()));
+                match action {
+                    IbcTokenAction::Deposit => entry.0 += amount,
+                    IbcTokenAction::Withdraw => entry.1 += amount,
+                }
+            },
+        );
+
+        flows_map
+            .into_iter()
+            .map(|((ibc_token, epoch), (deposit, withdraw))| IbcTokenFlow {
+                epoch,
+                address: ibc_token,
+                deposit,
+                withdraw,
             })
             .collect::<Vec<_>>()
     };
+
+    println!("{:?}", ibc_token_flows);
 
     tracing::info!(
         "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
