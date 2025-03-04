@@ -119,7 +119,7 @@ impl From<TxResult<String>> for BatchResults {
 
 impl BatchResults {
     fn is_successful(&self, tx_id: &Id) -> bool {
-        self.batch_results.get(tx_id).map_or(false, |res| *res)
+        self.batch_results.get(tx_id).is_some_and(|res| *res)
     }
 }
 
