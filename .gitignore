@@ -82,8 +82,10 @@ rust-project.json
 # End of https://www.toptal.com/developers/gitignore/api/osx,git,macos,rust-analyzer,rust
 
 .vscode
+.idea
 
 swagger-codegen.json
 
 # Ignore docker compose override files
 docker-compose.override*
+overrides
