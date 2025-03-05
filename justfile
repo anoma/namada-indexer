@@ -36,6 +36,12 @@ docker-up:
 docker-up-d:
     docker compose up -d
 
+docker-dev-up:
+    docker compose -f docker-compose-dev.yml --profile '*' up
+
+docker-dev-up-db:
+    docker compose -f docker-compose-dev.yml --profile db up
+
 clean:
     cargo +{{ RUST_STABLE }} clean
 
