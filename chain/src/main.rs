@@ -39,6 +39,7 @@ use shared::validator::ValidatorSet;
 use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
+use tokio::time::Instant;
 use tokio_retry::Retry;
 use tokio_retry::strategy::{ExponentialBackoff, jitter};
 
@@ -213,6 +214,8 @@ async fn crawling_fn(
 
         return Err(MainError::NoAction);
     }
+
+    let start = Instant::now();
 
     tracing::debug!(block = block_height, "Query first block in epoch...");
     let first_block_in_epoch =
@@ -431,6 +434,8 @@ async fn crawling_fn(
                     .into_rpc_error()
             })?;
 
+    let first_checkpoint = Instant::now();
+
     tracing::info!(
         txs = block.transactions.len(),
         ibc_tokens = ibc_tokens.len(),
@@ -447,6 +452,7 @@ async fn crawling_fn(
         epoch = epoch,
         first_block_in_epoch = first_block_in_epoch,
         block = block_height,
+        time_taken = first_checkpoint.duration_since(start).as_secs_f64(),
         "Queried block successfully",
     );
 
@@ -544,7 +550,15 @@ async fn crawling_fn(
     .context("Commit block db transaction error")
     .into_db_error()?;
 
-    tracing::info!(block = block_height, "Inserted block into database",);
+    let second_checkpoint = Instant::now();
+
+    tracing::info!(
+        block = block_height,
+        time_taken = second_checkpoint
+            .duration_since(first_checkpoint)
+            .as_secs_f64(),
+        "Inserted block into database"
+    );
 
     Ok(())
 }
