@@ -2,8 +2,8 @@
 # see https://diesel.rs/guides/configuring-diesel-cli
 
 [print_schema]
-file = "src/schema.rs"
+file = "orm/src/schema.rs"
 custom_type_derives = ["diesel::query_builder::QueryId", "std::fmt::Debug"]
 
 [migrations_directory]
-dir = "migrations"
+dir = "orm/migrations"
