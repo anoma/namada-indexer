@@ -1,0 +1,25 @@
+[general]
+
+host = "0.0.0.0"
+port = 6543
+admin_username = "postgres"
+admin_password = "password"
+
+enable_prometheus_exporter = true
+prometheus_exporter_port = 9930
+
+dns_cache_enabled = true
+dns_max_ttl = 60
+
+[pools.namada-indexer.users.0]
+username = "postgres"
+password = "password"
+pool_size = 25
+min_pool_size = 5
+pool_mode = "session"
+
+[pools.namada-indexer.shards.0]
+servers = [
+  ["postgres", 5433, "primary"]
+]
+database = "namada-indexer"

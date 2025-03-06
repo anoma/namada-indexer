@@ -5,6 +5,8 @@ x-defaults: &defaults
         condition: service_healthy
       dragonfly:
         condition: service_healthy
+      pgcat:
+        condition: service_healthy
   build: &build
     context: .
     dockerfile: Dockerfile
