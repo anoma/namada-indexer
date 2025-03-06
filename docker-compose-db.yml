@@ -1,11 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
-    command: ["postgres", "-c", "listen_addresses=0.0.0.0", "-c", "max_connections=200", "-p", "5433"]
+    command: ["postgres", "-c", "listen_addresses=0.0.0.0", "-c", "max_connections=60", "-p", "5433"]
     expose:
       - "5433"
-    ports:
-      - "5433:5433"
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: postgres

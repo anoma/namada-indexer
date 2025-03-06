@@ -32,9 +32,9 @@ impl TestDb {
 
         // TODO: this pool stuff is copied from AppState
         let max_pool_size = env::var("DATABASE_POOL_SIZE")
-            .unwrap_or_else(|_| 8.to_string())
+            .unwrap_or_else(|_| 1.to_string())
             .parse::<usize>()
-            .unwrap_or(8_usize);
+            .unwrap_or(1_usize);
 
         let db_path = format!("{}/{}", default_db_url, name);
 
