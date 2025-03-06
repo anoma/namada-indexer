@@ -7,6 +7,7 @@ use diesel::{
     ExpressionMethods, OptionalEmptyChangesetExtension, PgConnection,
     RunQueryDsl,
 };
+use namada_sdk::masp::MaspTokenRewardData;
 use orm::crawler_state::{BlockStateInsertDb, CrawlerNameDb};
 use orm::gas::GasEstimationInsertDb;
 use orm::ibc::{
@@ -219,6 +220,27 @@ where
         ))
         .execute(transaction_conn)
         .context("Failed to upsert ibc token flows in db")?;
+
+    anyhow::Ok(())
+}
+
+pub fn insert_masp_reward_rates(
+    transaction_conn: &mut PgConnection,
+    //FIXME: create custom type instead of this
+    gas_estimates: Vec<MaspTokenRewardData>,
+    //FIXME: the table should be: key = token address, value = reward rate (only two columns). The token address must be a primary key and should point to another table where we list the tokens if available
+) -> anyhow::Result<()> {
+    //FIXME: also need to create migrawtion files
+    diesel::insert_into(masp_reward_rates::table)
+        .values::<Vec<GasEstimationInsertDb>>(
+            gas_estimates
+                .into_iter()
+                .map(GasEstimationInsertDb::from)
+                .collect(),
+        )
+        .on_conflict_do_nothing()
+        .execute(transaction_conn)
+        .context("Failed to update gas estimates in db")?;
 
     anyhow::Ok(())
 }

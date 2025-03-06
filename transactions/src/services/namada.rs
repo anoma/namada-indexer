@@ -1,6 +1,7 @@
-use anyhow::{Context, anyhow};
+use anyhow::{anyhow, Context};
 use namada_sdk::chain::BlockHeight as NamadaSdkBlockHeight;
 use namada_sdk::hash::Hash;
+use namada_sdk::masp::MaspTokenRewardData;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc;
 use namada_sdk::state::Key;
@@ -84,4 +85,13 @@ pub async fn get_validator_namada_address(
         .await?;
 
     Ok(validator.map(Id::from))
+}
+
+pub async fn get_masp_tokens_reward_data(
+    client: &HttpClient,
+) -> anyhow::Result<Vec<MaspTokenRewardData>> {
+    RPC.shell()
+        .masp_reward_tokens(client)
+        .await
+        .map_err(|e| e.into())
 }

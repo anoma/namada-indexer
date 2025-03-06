@@ -14,8 +14,8 @@ use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::transaction::IbcTokenFlow;
-use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
+use tendermint_rpc::HttpClient;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
@@ -188,6 +188,11 @@ async fn crawling_fn(
             .collect::<Vec<_>>()
     };
 
+    // FIXME: how often should we run this query? I think we could run it only on new epochs since the token map can only change with a governance proposal
+    let masp_reward_data = namada_service::get_masp_tokens_reward_data(&client)
+        .await
+        .into_rpc_error()?;
+
     tracing::info!(
         "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
          ibc acks events...",
@@ -261,6 +266,7 @@ async fn crawling_fn(
                     transaction_conn,
                     gas_estimates,
                 )?;
+                //FIXME: inssert masp reward rates
 
                 anyhow::Ok(())
             })

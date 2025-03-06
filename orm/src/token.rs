@@ -14,6 +14,7 @@ pub enum TokenTypeDb {
 #[derive(Debug, Clone, Queryable, Selectable, Insertable)]
 #[diesel(table_name = token)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+// FIXME: masp rewards should point to this one
 pub struct TokenDb {
     pub address: String,
     pub token_type: TokenTypeDb,
