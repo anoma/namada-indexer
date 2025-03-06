@@ -320,12 +320,11 @@ fn get_namada_ibc_trace_when_sending(
     let prefix = TracePrefix::new(sender_port.clone(), sender_channel.clone());
 
     if !sender_denom.trace_path.starts_with(&prefix) {
-        // NOTE: this is a token native to chain A
-        assert!(
-            sender_denom.trace_path.is_empty(),
-            "No trace path should be present when transferring a native token"
-        );
-        None
+        if sender_denom.trace_path.is_empty() {
+            None
+        } else {
+            Some(sender_denom.to_string())
+        }
     } else {
         // NOTE: this token is not native to chain A,
         // therefore we return its ibc trace
@@ -493,6 +492,15 @@ mod tests {
                     transfer/channel-5/\
                     tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
             ),
+        ));
+        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+            &"transfer/channel-1/uosmo".parse().unwrap(),
+            &PortId::transfer(),
+            &"channel-2".parse().unwrap(),
+        );
+        assert!(matches!(
+            maybe_ibc_trace,
+            Some(trace) if cmp_print(&trace, "transfer/channel-1/uosmo"),
         ));
     }
 }
