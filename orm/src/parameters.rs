@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
+use bigdecimal::BigDecimal;
 use diesel::prelude::Insertable;
 use diesel::query_builder::AsChangeset;
 use diesel::{Queryable, Selectable};
-use serde::Serialize;
 use serde_json::Value as SerdeJSONValue;
 use shared::checksums::Checksums;
 use shared::genesis::Genesis;
@@ -9,7 +11,7 @@ use shared::parameters::{EpochSwitchBlocksDelay, Parameters};
 
 use crate::schema::chain_parameters;
 
-#[derive(Serialize, Insertable, AsChangeset, Clone)]
+#[derive(Insertable, AsChangeset, Clone)]
 #[diesel(table_name = chain_parameters)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ParametersInsertDb {
@@ -26,9 +28,11 @@ pub struct ParametersInsertDb {
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: i32,
     pub cubic_slashing_window_length: i32,
+    pub duplicate_vote_min_slash_rate: BigDecimal,
+    pub light_client_attack_min_slash_rate: BigDecimal,
 }
 
-#[derive(Serialize, Queryable, Selectable, Clone)]
+#[derive(Queryable, Selectable, Clone)]
 #[diesel(table_name = chain_parameters)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ParametersDb {
@@ -46,6 +50,8 @@ pub struct ParametersDb {
     pub checksums: SerdeJSONValue,
     pub epoch_switch_blocks_delay: i32,
     pub cubic_slashing_window_length: i32,
+    pub duplicate_vote_min_slash_rate: BigDecimal,
+    pub light_client_attack_min_slash_rate: BigDecimal,
 }
 
 impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
@@ -76,6 +82,14 @@ impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
             cubic_slashing_window_length: parameters
                 .cubic_slashing_window_length
                 as i32,
+            duplicate_vote_min_slash_rate: BigDecimal::from_str(
+                &parameters.duplicate_vote_min_slash_rate,
+            )
+            .expect("Invalid duplicate_vote_min_slash_rate"),
+            light_client_attack_min_slash_rate: BigDecimal::from_str(
+                &parameters.light_client_attack_min_slash_rate,
+            )
+            .expect("Invalid light_client_attack_min_slash_rate"),
         }
     }
 }
