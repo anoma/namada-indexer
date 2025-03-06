@@ -276,9 +276,10 @@ async fn crawling_fn(
         .transpose()?;
 
     let validators_addresses = if first_block_in_epoch.eq(&block_height) {
+        let previous_epoch = epoch.saturating_sub(1);
         namada_service::get_all_consensus_validators_addresses_at(
             &client,
-            epoch - 1,
+            previous_epoch,
             native_token.clone(),
         )
         .await
