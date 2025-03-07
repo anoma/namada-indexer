@@ -37,6 +37,7 @@ pub enum TransactionKind {
     DeactivateValidator,
     ReactivateValidator,
     UnjailValidator,
+    InitAccount,
     Unknown,
 }
 
@@ -130,6 +131,7 @@ impl From<TransactionKindDb> for TransactionKind {
             TransactionKindDb::ReactivateValidator => Self::ReactivateValidator,
             TransactionKindDb::DeactivateValidator => Self::DeactivateValidator,
             TransactionKindDb::UnjailValidator => Self::UnjailValidator,
+            TransactionKindDb::InitAccount => Self::InitAccount,
         }
     }
 }

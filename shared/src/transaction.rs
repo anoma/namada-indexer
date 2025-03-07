@@ -4,6 +4,7 @@ use std::fmt::Display;
 use anyhow::Context;
 use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
+use namada_sdk::account::InitAccount;
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::events::extend::MaspTxRef;
@@ -86,6 +87,7 @@ pub enum TransactionKind {
     ClaimRewards(Option<ClaimRewards>),
     ProposalVote(Option<VoteProposalData>),
     InitProposal(Option<InitProposalData>),
+    InitAccount(Option<InitAccount>),
     MetadataChange(Option<MetaDataChange>),
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
@@ -247,6 +249,14 @@ impl TransactionKind {
                         None
                     };
                 TransactionKind::BecomeValidator(data.map(Box::new))
+            }
+            "tx_init_account" => {
+                let data = if let Ok(data) = InitAccount::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::InitAccount(data)
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);

@@ -219,6 +219,7 @@ pub fn get_gas_estimates(
                 | TransactionKind::ReactivateValidator(_)
                 | TransactionKind::DeactivateValidator(_)
                 | TransactionKind::UnjailValidator(_)
+                | TransactionKind::InitAccount(_)
                 | TransactionKind::Unknown(_) => (),
             });
             gas_estimate

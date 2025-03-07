@@ -389,7 +389,8 @@ impl Block {
                         vec![]
                     }
                 }
-                TransactionKind::Unknown(_) => vec![],
+                TransactionKind::Unknown(_)
+                | TransactionKind::InitAccount(_) => vec![],
             })
             .collect::<HashSet<_>>()
     }
@@ -697,6 +698,7 @@ impl Block {
             | TransactionKind::ReactivateValidator(_)
             | TransactionKind::Unbond(_)
             | TransactionKind::BecomeValidator(_)
+            | TransactionKind::InitAccount(_)
             | TransactionKind::ProposalVote(_) => Default::default(),
         };
 
