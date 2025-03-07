@@ -562,6 +562,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RevealedPk"
+  /api/v1/masp/aggregates:
+    get:
+      summary: Get inflows and outflows from/to the MASP pool
+      responses:
+        "200":
+          description: Get the inflows and outflows from/to the MASP pool
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaspPoolAggregateResponse"
   /api/v1/gas-price:
     get:
       summary: Get all the gas prices
@@ -1140,6 +1150,20 @@ components:
         tokenAddress:
           type: string
         minDenomAmount:
+          type: string
+    MaspPoolAggregateResponse:
+      type: object
+      required: [tokenAddress, timeWindow, kind, totalAmount]
+      properties:
+        tokenAddress:
+          type: string
+        timeWindow:
+          type: string
+          enum: [oneDay, sevenDays, thirtyDays, allTime]
+        kind:
+          type: string
+          enum: [inflows, outflows]
+        totalAmount:
           type: string
     Pagination:
       type: object
