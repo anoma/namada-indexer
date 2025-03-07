@@ -1,6 +1,7 @@
 pub mod balances;
 pub mod blocks;
 pub mod bond;
+pub mod cometbft;
 pub mod crawler_state;
 pub mod gas;
 pub mod governance_proposal;
