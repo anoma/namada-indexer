@@ -22,7 +22,7 @@ use tokio::time::Instant;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
-    block as block_repo, transactions as transaction_repo,
+    block as block_repo, masp as masp_repo, transactions as transaction_repo,
 };
 use transactions::services::{
     db as db_service, namada as namada_service,
@@ -174,6 +174,7 @@ async fn crawling_fn(
     let inner_txs = block.inner_txs();
     let wrapper_txs = block.wrapper_txs();
     let transaction_sources = block.sources();
+    let masp_entries = block.masp_entries();
     let gas_estimates = tx_service::get_gas_estimates(&block.transactions);
 
     let ibc_sequence_packet =
@@ -213,10 +214,11 @@ async fn crawling_fn(
     };
 
     tracing::info!(
-        "Deserialized {} wrappers, {} inners, {} ibc sequence numbers and {} \
-         ibc acks events...",
+        "Deserialized {} wrappers, {} inners, {} masp entries, {} ibc \
+         sequence numbers and {} ibc acks events...",
         wrapper_txs.len(),
         inner_txs.len(),
+        masp_entries.len(),
         ibc_sequence_packet.len(),
         ibc_ack_packet.len()
     );
@@ -288,6 +290,8 @@ async fn crawling_fn(
                     transaction_conn,
                     gas_estimates,
                 )?;
+
+                masp_repo::insert_masp_entries(transaction_conn, masp_entries)?;
 
                 anyhow::Ok(())
             })

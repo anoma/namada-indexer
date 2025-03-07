@@ -70,6 +70,30 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
+    #[diesel(postgres_type(name = "masp_pool_aggregate_kind"))]
+    pub struct MaspPoolAggregateKind;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "masp_pool_aggregate_window"))]
+    pub struct MaspPoolAggregateWindow;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "masp_pool_direction"))]
+    pub struct MaspPoolDirection;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
     #[diesel(postgres_type(name = "token_type"))]
     pub struct TokenType;
 
@@ -299,6 +323,37 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::MaspPoolDirection;
+
+    masp_pool (id) {
+        id -> Int4,
+        #[max_length = 45]
+        token_address -> Varchar,
+        timestamp -> Timestamp,
+        raw_amount -> Numeric,
+        direction -> MaspPoolDirection,
+        #[max_length = 64]
+        inner_tx_id -> Varchar,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::MaspPoolAggregateWindow;
+    use super::sql_types::MaspPoolAggregateKind;
+
+    masp_pool_aggregate (id) {
+        id -> Int4,
+        #[max_length = 45]
+        token_address -> Varchar,
+        time_window -> MaspPoolAggregateWindow,
+        kind -> MaspPoolAggregateKind,
+        total_amount -> Numeric,
+    }
+}
+
+diesel::table! {
     pos_rewards (id) {
         id -> Int4,
         owner -> Varchar,
@@ -422,6 +477,7 @@ diesel::joinable!(ibc_rate_limits -> token (address));
 diesel::joinable!(ibc_token -> token (address));
 diesel::joinable!(ibc_token_flows -> token (address));
 diesel::joinable!(inner_transactions -> wrapper_transactions (wrapper_id));
+diesel::joinable!(masp_pool -> inner_transactions (inner_tx_id));
 diesel::joinable!(pos_rewards -> validators (validator_id));
 diesel::joinable!(public_good_funding -> governance_proposals (proposal_id));
 diesel::joinable!(token_supplies_per_epoch -> token (address));
@@ -444,6 +500,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     ibc_token,
     ibc_token_flows,
     inner_transactions,
+    masp_pool,
+    masp_pool_aggregate,
     pos_rewards,
     public_good_funding,
     revealed_pk,
