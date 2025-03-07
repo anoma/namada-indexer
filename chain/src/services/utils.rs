@@ -71,8 +71,9 @@ where
     if value.data.is_empty() {
         Ok(None)
     } else {
-        BorshDeserialize::try_from_slice(&value.data)
-            .context("Failed to deserialize value")
+        let value = BorshDeserialize::try_from_slice(&value.data)
+            .context("Failed to deserialize value")?;
+        Ok(Some(value))
     }
 }
 

@@ -440,7 +440,7 @@ pub async fn query_next_governance_id(
     block_height: BlockHeight,
 ) -> anyhow::Result<u64> {
     // For block_height 0 the next id is always 0
-    if block_height == 0 {
+    if block_height <= 1 {
         return Ok(0);
     }
     // For all other block heights we need to subtract 1
