@@ -109,6 +109,26 @@ impl GasRepositoryTrait for GasRepository {
         const TX_SIZE_WINDOW_UPPERBOUND_PCT: f64 = 0.10;
         const TX_SIGNATURES_WINDOW_UPPERBOUND: u64 = 5;
 
+        let (signature_lower_bound, signature_upper_bound) = if signatures == 0
+        {
+            (2_i32, 5_i32)
+        } else {
+            (
+                signatures as i32,
+                (signatures + TX_SIGNATURES_WINDOW_UPPERBOUND) as i32,
+            )
+        };
+
+        let (tx_size_lower_bound, tx_size_upper_bound) = if tx_size == 0 {
+            (0_i32, 100000_i32)
+        } else {
+            (
+                tx_size as i32,
+                (tx_size as f64 * (1f64 + TX_SIZE_WINDOW_UPPERBOUND_PCT)).ceil()
+                    as i32,
+            )
+        };
+
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
@@ -145,8 +165,8 @@ impl GasRepositoryTrait for GasRepository {
                 .filter(gas_estimations::dsl::withdraw.eq(withdraw as i32))
                 .filter(gas_estimations::dsl::reveal_pk.eq(reveal_pk as i32))
                 // For the signatures and the tx size we look for similar indexed txs in a certain range
-                .filter(gas_estimations::dsl::signatures.between(signatures as i32, (signatures + TX_SIGNATURES_WINDOW_UPPERBOUND) as i32))
-                .filter(gas_estimations::dsl::tx_size.between(tx_size as i32, (tx_size as f64 * (1f64 + TX_SIZE_WINDOW_UPPERBOUND_PCT)).ceil() as i32))
+                .filter(gas_estimations::dsl::signatures.between(signature_lower_bound, signature_upper_bound))
+                .filter(gas_estimations::dsl::tx_size.between(tx_size_lower_bound, tx_size_upper_bound))
                 .inner_join(
                     wrapper_transactions::table
                         .on(gas_estimations::dsl::wrapper_id
