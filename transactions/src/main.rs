@@ -177,6 +177,9 @@ async fn crawling_fn(
     let masp_entries = block.masp_entries();
     let gas_estimates = tx_service::get_gas_estimates(&block.transactions);
 
+    println!("{:?}", block.transactions);
+    println!("{:?}", gas_estimates);
+
     let ibc_sequence_packet =
         tx_service::get_ibc_packets(&block_results, &block.transactions);
     let ibc_ack_packet = tx_service::get_ibc_ack_packet(&inner_txs);
