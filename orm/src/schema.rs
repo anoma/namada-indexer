@@ -186,6 +186,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    cometbft_block (id) {
+        id -> Int4,
+        encoded_block -> Varchar,
+        encoded_block_result -> Varchar,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::CrawlerName;
 
@@ -500,6 +508,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     blocks,
     bonds,
     chain_parameters,
+    cometbft_block,
     crawler_state,
     gas_estimations,
     gas_price,

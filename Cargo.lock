@@ -1114,6 +1114,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "cometbft"
+version = "2.4.4"
+dependencies = [
+ "anyhow",
+ "bigdecimal",
+ "chrono",
+ "clap",
+ "clap-verbosity-flag",
+ "deadpool-diesel",
+ "diesel",
+ "diesel_migrations",
+ "futures",
+ "namada_core",
+ "namada_sdk",
+ "orm",
+ "serde_json",
+ "shared",
+ "tendermint-rpc",
+ "tokio",
+ "tracing",
+ "vergen",
+]
+
+[[package]]
 name = "const-crc32-nostd"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

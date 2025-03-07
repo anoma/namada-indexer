@@ -20,6 +20,7 @@ pub enum CrawlerNameDb {
     Pos,
     Rewards,
     Transactions,
+    Cometbft,
 }
 
 impl Display for CrawlerNameDb {
@@ -31,6 +32,7 @@ impl Display for CrawlerNameDb {
             Self::Pos => f.write_str("pos"),
             Self::Rewards => f.write_str("rewards"),
             Self::Transactions => f.write_str("transactions"),
+            Self::Cometbft => f.write_str("cometbft"),
         }
     }
 }
@@ -44,6 +46,7 @@ impl From<CrawlerName> for CrawlerNameDb {
             CrawlerName::Pos => Self::Pos,
             CrawlerName::Rewards => Self::Rewards,
             CrawlerName::Transactions => Self::Transactions,
+            CrawlerName::Cometbft => Self::Cometbft,
         }
     }
 }
@@ -151,6 +154,35 @@ impl
                 timestamp,
             }),
             _ => Err("last_processed_epoch missing in the chain crawler \
+                      status"
+                .into()),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct CometbftCrawlerStateDb {
+    pub last_processed_block: i32,
+    pub timestamp: chrono::NaiveDateTime,
+}
+impl
+    Queryable<
+        (
+            Nullable<diesel::sql_types::Integer>,
+            diesel::sql_types::Timestamp,
+        ),
+        Pg,
+    > for CometbftCrawlerStateDb
+{
+    type Row = (Option<i32>, chrono::NaiveDateTime);
+
+    fn build(row: Self::Row) -> diesel::deserialize::Result<Self> {
+        match row {
+            (Some(last_processed_block), timestamp) => Ok(Self {
+                last_processed_block,
+                timestamp,
+            }),
+            _ => Err("last_processed_block missing in the block crawler \
                       status"
                 .into()),
         }
