@@ -19,6 +19,7 @@ use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
 use shared::id::Id;
 use shared::pgf::{PaymentKind, PaymentRecurrence, PgfAction, PgfPayment};
+use shared::proposal::GovernanceProposalResult;
 use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
 use tokio::sync::{Mutex, MutexGuard};
@@ -126,6 +127,31 @@ async fn crawling_fn(
         "Got {} proposals statuses updates...",
         proposals_statuses.len()
     );
+
+    let executed_proposals = conn
+        .interact(move |conn| {
+            repository::governance::get_all_executed_proposals(conn, epoch)
+        })
+        .await
+        .context_db_interact_error()
+        .and_then(identity)
+        .into_db_error()?
+        .iter()
+        .map(|(proposal_id, result)| {
+            (
+                *proposal_id,
+                match result {
+                    shared::proposal::GovernanceProposalResult::Rejected => {
+                        GovernanceProposalResult::ExecutedRejected
+                    }
+                    shared::proposal::GovernanceProposalResult::Passed => {
+                        GovernanceProposalResult::ExecutedPassed
+                    }
+                    _ => panic!("Fetched a non-ended proposal"),
+                },
+            )
+        })
+        .collect::<Vec<_>>();
 
     let pgf_payments = conn
         .interact(move |conn| {
@@ -237,6 +263,14 @@ async fn crawling_fn(
                 }
 
                 repository::pgf::update_pgf(transaction_conn, pgf_payments)?;
+
+                for (proposal_id, proposal_result) in executed_proposals {
+                    repository::governance::update_proposal_result(
+                        transaction_conn,
+                        proposal_id,
+                        proposal_result.into(),
+                    )?;
+                }
 
                 repository::crawler_state::upsert_crawler_state(
                     transaction_conn,

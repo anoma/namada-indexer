@@ -40,6 +40,9 @@ pub enum GovernanceProposalResult {
     Rejected,
     VotingPeriod,
     Pending,
+    ExecutedPassed,
+    ExecutedRejected,
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
