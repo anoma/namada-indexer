@@ -5,7 +5,7 @@ members = ["chain", "shared", "rewards", "orm", "pos", "governance", "webserver"
 
 [workspace.package]
 authors = ["Heliax <hello@heliax.dev>"]
-edition = "2021"
+edition = "2024"
 license = "GPL-3.0"
 readme = "README.md"
 version = "2.3.0"
