@@ -7,6 +7,7 @@ pub enum CrawlerName {
     Pos,
     Rewards,
     Transactions,
+    Cometbft,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,5 +32,11 @@ pub struct EpochCrawlerState {
 
 #[derive(Debug)]
 pub struct IntervalCrawlerState {
+    pub timestamp: i64,
+}
+
+#[derive(Debug)]
+pub struct CometbftCrawlerState {
+    pub last_processed_block: BlockHeight,
     pub timestamp: i64,
 }
