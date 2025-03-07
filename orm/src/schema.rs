@@ -54,22 +54,6 @@ pub mod sql_types {
         std::fmt::Debug,
         diesel::sql_types::SqlType,
     )]
-    #[diesel(postgres_type(name = "payment_kind"))]
-    pub struct PaymentKind;
-
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
-    #[diesel(postgres_type(name = "payment_recurrence"))]
-    pub struct PaymentRecurrence;
-
-    #[derive(
-        diesel::query_builder::QueryId,
-        std::fmt::Debug,
-        diesel::sql_types::SqlType,
-    )]
     #[diesel(postgres_type(name = "masp_pool_aggregate_kind"))]
     pub struct MaspPoolAggregateKind;
 
@@ -88,6 +72,22 @@ pub mod sql_types {
     )]
     #[diesel(postgres_type(name = "masp_pool_direction"))]
     pub struct MaspPoolDirection;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_kind"))]
+    pub struct PaymentKind;
+
+    #[derive(
+        diesel::query_builder::QueryId,
+        std::fmt::Debug,
+        diesel::sql_types::SqlType,
+    )]
+    #[diesel(postgres_type(name = "payment_recurrence"))]
+    pub struct PaymentRecurrence;
 
     #[derive(
         diesel::query_builder::QueryId,

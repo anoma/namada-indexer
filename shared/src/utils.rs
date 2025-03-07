@@ -424,7 +424,7 @@ mod tests {
             &PortId::transfer(),
             &"channel-0".parse().unwrap(),
         );
-        assert!(matches!(maybe_ibc_trace, None,));
+        assert!(maybe_ibc_trace.is_none());
 
         // foreign on cosmos, foreign on namada
         let maybe_ibc_trace = get_namada_ibc_trace_when_receiving(
@@ -461,7 +461,7 @@ mod tests {
             &PortId::transfer(),
             &"channel-0".parse().unwrap(),
         );
-        assert!(matches!(maybe_ibc_trace, None));
+        assert!(maybe_ibc_trace.is_none());
 
         // foreign on namada, native on cosmos
         let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
