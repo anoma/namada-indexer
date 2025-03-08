@@ -41,14 +41,14 @@ chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
 num-bigint = "0.4.6"
-namada_core = "0.47.2"
-namada_sdk = { version = "0.47.2", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_tx = "0.47.2"
-namada_governance = "0.47.2"
-namada_ibc = "0.47.2"
-namada_token = "0.47.2"
-namada_parameters = "0.47.2"
-namada_proof_of_stake = "0.47.2"
+namada_core = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_sdk = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_tx = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_governance = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_ibc = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_token = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_parameters = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_proof_of_stake = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
 tendermint = "0.40.1"
 tendermint-config = "0.40.1"
 tendermint-rpc = { version = "0.40.1", features = ["http-client"] }
