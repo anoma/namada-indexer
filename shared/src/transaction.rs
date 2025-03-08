@@ -505,6 +505,8 @@ impl Transaction {
 
                     // FIXME: here and in other places take into account masp
                     // fee payment for failed atomic batches
+                    // FIXME: probably better to rework the was_successful
+                    // function and call that one here
                     // MASP events are emitted only for successful inner txs
                     let masp_bundle = matches!(
                         (&wrapper_tx_status, &inner_tx_status),
@@ -514,7 +516,7 @@ impl Transaction {
                         )
                     )
                     .then(|| {
-                        masp_ref_opt.and_then(|masp_ref| {
+                        masp_ref_opt.map(|masp_ref| {
                             // Cast the ref to the appropriate type
                             let masp_tx_ref = match masp_ref {
                                 crate::block_result::MaspRef::MaspSection(
@@ -569,31 +571,41 @@ impl Transaction {
     }
 }
 
-// Extract the masp transaction data given the provided reference
+// Extract the masp transaction data given the provided reference coming from a
+// masp event. Panics if the section is not found
 fn extract_masp_transaction(
     tx: &Tx,
     masp_ref: &MaspTxRef,
-) -> Option<namada_core::masp::MaspTransaction> {
+) -> namada_core::masp::MaspTransaction {
     match masp_ref {
-        MaspTxRef::MaspSection(masp_id) => {
-            // FIXME: same here, this should be guaranteed to be Some
-            tx.get_masp_section(masp_id).cloned()
-        }
-        MaspTxRef::IbcData(event_hash) => {
-            tx.get_data_section(event_hash).and_then(|section| {
+        MaspTxRef::MaspSection(masp_id) => tx
+            .get_masp_section(masp_id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Missing expected masp section for reference: {}",
+                    masp_ref
+                )
+            })
+            .to_owned(),
+        MaspTxRef::IbcData(event_hash) => tx
+            .get_data_section(event_hash)
+            .and_then(|section| {
                 match namada_sdk::ibc::decode_message::<Transfer>(&section) {
                     Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
                         namada_sdk::ibc::extract_masp_tx_from_envelope(
                             &msg_envelope,
                         )
                     }
-                    // FIXME: what about this? If we emitted the event it should
-                    // be guaranteed that we have some masp data, so this should
-                    // not happen
                     _ => None,
                 }
             })
-        }
+            .unwrap_or_else(|| {
+                panic!(
+                    "Could not extract expected MASP data from IBC packet. \
+                     Reference: {}",
+                    masp_ref
+                )
+            }),
     }
 }
 
