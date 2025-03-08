@@ -321,8 +321,6 @@ pub struct InnerTransaction {
     pub data: Option<String>,
     pub extra_sections: HashMap<Id, Vec<u8>>,
     pub notes: u64,
-    // FIXME: should this be on the wrapper?
-    pub is_masp_fee_payment: bool,
     pub exit_code: TransactionExitStatus,
 }
 
@@ -337,7 +335,7 @@ impl InnerTransaction {
     pub fn was_successful(&self, wrapper_tx: &WrapperTransaction) -> bool {
         self.exit_code == TransactionExitStatus::Applied
             && (wrapper_tx.exit_code == TransactionExitStatus::Applied
-                || self.is_masp_fee_payment)
+                || wrapper_tx.fee.masp_fee_payment)
     }
 
     pub fn is_ibc(&self) -> bool {
@@ -358,6 +356,7 @@ pub struct Fee {
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
+    pub masp_fee_payment: bool,
 }
 
 impl Transaction {
@@ -382,36 +381,7 @@ impl Transaction {
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
-                let wrapper_tx_status =
-                    block_results.is_wrapper_tx_applied(&wrapper_tx_id);
-                let gas_used = block_results
-                    .gas_used(&wrapper_tx_id)
-                    .map(|gas| gas.parse::<u64>().unwrap());
-
-                let fee = Fee {
-                    gas: Uint::from(wrapper.gas_limit).to_string(),
-                    gas_used,
-                    amount_per_gas_unit: wrapper
-                        .fee
-                        .amount_per_gas_unit
-                        .to_string_precise(),
-                    gas_payer: Id::from(wrapper.fee_payer()),
-                    gas_token: Id::from(wrapper.fee.token),
-                };
-
-                let atomic = transaction.header().atomic;
-
-                let wrapper_tx = WrapperTransaction {
-                    tx_id: wrapper_tx_id.clone(),
-                    index,
-                    fee,
-                    atomic,
-                    block_height,
-                    exit_code: wrapper_tx_status.clone(),
-                    total_signatures,
-                    size: tx_size,
-                };
-
+                let mut masp_fee_payment = false;
                 let mut inner_txs = vec![];
 
                 for (batch_index, tx_commitment) in
@@ -543,6 +513,10 @@ impl Transaction {
                         },
                     );
 
+                    if is_masp_fee_payment {
+                        masp_fee_payment = true;
+                    }
+
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
                         index: batch_index,
@@ -553,11 +527,40 @@ impl Transaction {
                         notes,
                         exit_code: inner_tx_status,
                         kind: tx_kind,
-                        is_masp_fee_payment,
                     };
 
                     inner_txs.push(inner_tx);
                 }
+
+                let wrapper_tx_status =
+                    block_results.is_wrapper_tx_applied(&wrapper_tx_id);
+                let gas_used = block_results
+                    .gas_used(&wrapper_tx_id)
+                    .map(|gas| gas.parse::<u64>().unwrap());
+                let atomic = transaction.header().atomic;
+
+                let fee = Fee {
+                    gas: Uint::from(wrapper.gas_limit).to_string(),
+                    gas_used,
+                    amount_per_gas_unit: wrapper
+                        .fee
+                        .amount_per_gas_unit
+                        .to_string_precise(),
+                    gas_payer: Id::from(wrapper.fee_payer()),
+                    gas_token: Id::from(wrapper.fee.token),
+                    masp_fee_payment,
+                };
+
+                let wrapper_tx = WrapperTransaction {
+                    tx_id: wrapper_tx_id.clone(),
+                    index,
+                    fee,
+                    atomic,
+                    block_height,
+                    exit_code: wrapper_tx_status.clone(),
+                    total_signatures,
+                    size: tx_size,
+                };
 
                 Ok((wrapper_tx, inner_txs))
             }
