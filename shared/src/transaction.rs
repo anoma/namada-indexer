@@ -514,67 +514,19 @@ impl Transaction {
                         )
                     )
                     .then(|| {
-                        if let Some(masp_ref) = masp_ref_opt {
-                            {
-                                // Cast the ref to the appropriate type
-                                let masp_tx_ref = match masp_ref {
-                                    crate::block_result::MaspRef::MaspSection(masp_tx_id) => MaspTxRef::MaspSection(masp_tx_id),
-                                    crate::block_result::MaspRef::IbcData(hash) => MaspTxRef::IbcData(hash),
-                                };
-
-                                // Check if the masp ref is pointing to this
-                                // inner tx
-                                match &tx_kind {
-                                    TransactionKind::ShieldedTransfer(
-                                        Some(data),
-                                    )
-                                    | TransactionKind::ShieldingTransfer(
-                                        Some(data),
-                                    )
-                                    | TransactionKind::UnshieldingTransfer(
-                                        Some(data),
-                                    )
-                                    | TransactionKind::MixedTransfer(Some(
-                                        data,
-                                    )) => data.shielded_section_hash.and_then(
-                                        |shielded_section_hash| {
-                                            extract_masp_transaction(
-                                                &transaction,
-                                                &masp_tx_ref,
-                                                &MaspTxRef::MaspSection(
-                                                    shielded_section_hash,
-                                                ),
-                                            )
-                                        },
-                                    ),
-                                    TransactionKind::IbcShieldingTransfer(
-                                        (_, _),
-                                    ) => extract_masp_transaction(
-                                        &transaction,
-                                        &masp_tx_ref,
-                                        &MaspTxRef::IbcData(
-                                            tx_commitment.data_hash,
-                                        ),
-                                    ),
-                                    TransactionKind::IbcUnshieldingTransfer(
-                                        (_, data),
-                                    ) => data.shielded_section_hash.and_then(
-                                        |shielded_section_hash| {
-                                            extract_masp_transaction(
-                                                &transaction,
-                                                &masp_tx_ref,
-                                                &MaspTxRef::MaspSection(
-                                                    shielded_section_hash,
-                                                ),
-                                            )
-                                        },
-                                    ),
-                                    _ => None,
+                        masp_ref_opt.and_then(|masp_ref| {
+                            // Cast the ref to the appropriate type
+                            let masp_tx_ref = match masp_ref {
+                                crate::block_result::MaspRef::MaspSection(
+                                    masp_tx_id,
+                                ) => MaspTxRef::MaspSection(masp_tx_id),
+                                crate::block_result::MaspRef::IbcData(hash) => {
+                                    MaspTxRef::IbcData(hash)
                                 }
-                            }
-                        } else {
-                            None
-                        }
+                            };
+
+                            extract_masp_transaction(&transaction, &masp_tx_ref)
+                        })
                     })
                     .flatten();
 
@@ -617,22 +569,17 @@ impl Transaction {
     }
 }
 
-// Check if the masp reference in the event matches this inner transaction and,
-// if so, extract the relative masp data
+// Extract the masp transaction data given the provided reference
 fn extract_masp_transaction(
     tx: &Tx,
-    event_masp_ref: &MaspTxRef,
-    tx_masp_ref: &MaspTxRef,
+    masp_ref: &MaspTxRef,
 ) -> Option<namada_core::masp::MaspTransaction> {
-    match (event_masp_ref, tx_masp_ref) {
-        (MaspTxRef::MaspSection(masp_id), MaspTxRef::MaspSection(tx_id))
-            if masp_id == tx_id =>
-        {
+    match masp_ref {
+        MaspTxRef::MaspSection(masp_id) => {
+            // FIXME: same here, this should be guaranteed to be Some
             tx.get_masp_section(masp_id).cloned()
         }
-        (MaspTxRef::IbcData(event_hash), MaspTxRef::IbcData(tx_hash))
-            if event_hash == tx_hash =>
-        {
+        MaspTxRef::IbcData(event_hash) => {
             tx.get_data_section(event_hash).and_then(|section| {
                 match namada_sdk::ibc::decode_message::<Transfer>(&section) {
                     Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
@@ -640,11 +587,13 @@ fn extract_masp_transaction(
                             &msg_envelope,
                         )
                     }
+                    // FIXME: what about this? If we emitted the event it should
+                    // be guaranteed that we have some masp data, so this should
+                    // not happen
                     _ => None,
                 }
             })
         }
-        _ => None,
     }
 }
 
