@@ -550,47 +550,31 @@ impl BlockResult {
     pub fn masp_ref(&self, indexed_tx: &IndexedTx) -> Option<MaspRef> {
         self.end_events
             .iter()
-            .find_map(|event| {
-                match event.kind {
-                    // FIXME: improve
-                    EventKind::MaspFeePayment => {
-                        // event.attributes.map(|attr| match attr {
-                        //     TxAttributesType::MaspFeePayment(data)
-                        //         if &data.indexed_tx == indexed_tx =>
-                        //     {
-                        //         Some(data)
-                        //     }
-                        //     _ => None,
-                        // })
-                        if let Some(TxAttributesType::MaspFeePayment(data)) =
-                            event.attributes.clone()
+            .find_map(|event| match event.kind {
+                EventKind::MaspFeePayment => {
+                    event.attributes.as_ref().map(|attr| match attr {
+                        TxAttributesType::MaspFeePayment(data)
+                            if &data.indexed_tx == indexed_tx =>
                         {
-                            if &data.indexed_tx == indexed_tx {
-                                Some(data)
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
+                            Some(data)
                         }
-                    }
-                    EventKind::MaspTransfer => {
-                        if let Some(TxAttributesType::MaspTransfer(data)) =
-                            event.attributes.clone()
-                        {
-                            if &data.indexed_tx == indexed_tx {
-                                Some(data)
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
+                        _ => None,
+                    })
                 }
+                EventKind::MaspTransfer => {
+                    event.attributes.as_ref().map(|attr| match attr {
+                        TxAttributesType::MaspTransfer(data)
+                            if &data.indexed_tx == indexed_tx =>
+                        {
+                            Some(data)
+                        }
+                        _ => None,
+                    })
+                }
+                _ => None,
             })
-            .map(|data| data.data)
+            .flatten()
+            .map(|data| data.data.to_owned())
     }
 }
 
