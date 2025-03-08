@@ -6,7 +6,6 @@ use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
-use namada_sdk::events::extend::MaspTxRef;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
@@ -16,7 +15,8 @@ use namada_tx::data::pos::{
 };
 use namada_tx::data::{TxType, compute_inner_tx_hash};
 use namada_tx::either::Either;
-use namada_tx::{Section, Tx};
+use namada_tx::event::MaspTxRef;
+use namada_tx::{IndexedTx, Section, Tx};
 use serde::Serialize;
 
 use crate::block::BlockHeight;
@@ -383,8 +383,6 @@ impl Transaction {
                 let gas_used = block_results
                     .gas_used(&wrapper_tx_id)
                     .map(|gas| gas.parse::<u64>().unwrap());
-                let mut masp_refs =
-                    block_results.masp_refs(&wrapper_tx_id, index as u64);
 
                 let fee = Fee {
                     gas: Uint::from(wrapper.gas_limit).to_string(),
@@ -412,7 +410,7 @@ impl Transaction {
 
                 let mut inner_txs = vec![];
 
-                for (index, tx_commitment) in
+                for (batch_index, tx_commitment) in
                     transaction.header().batch.into_iter().enumerate()
                 {
                     let inner_tx_id = Id::from(compute_inner_tx_hash(
@@ -494,6 +492,19 @@ impl Transaction {
                             acc
                         });
 
+                    let indexed_tx = IndexedTx {
+                        height: namada_sdk::chain::BlockHeight(
+                            block_height as u64,
+                        ),
+                        index: namada_sdk::state::TxIndex::must_from_usize(
+                            index,
+                        ),
+                        batch_index: Some(batch_index as u32),
+                    };
+                    let masp_ref_opt = block_results.masp_ref(&indexed_tx);
+
+                    // FIXME: here and in other places take into account masp
+                    // fee payment for failed atomic batches
                     // MASP events are emitted only for successful inner txs
                     let masp_bundle = matches!(
                         (&wrapper_tx_status, &inner_tx_status),
@@ -503,8 +514,14 @@ impl Transaction {
                         )
                     )
                     .then(|| {
-                        if let Some(note) = masp_refs.0.first() {
+                        if let Some(masp_ref) = masp_ref_opt {
                             {
+                                // Cast the ref to the appropriate type
+                                let masp_tx_ref = match masp_ref {
+                                    crate::block_result::MaspRef::MaspSection(masp_tx_id) => MaspTxRef::MaspSection(masp_tx_id),
+                                    crate::block_result::MaspRef::IbcData(hash) => MaspTxRef::IbcData(hash),
+                                };
+
                                 // Check if the masp ref is pointing to this
                                 // inner tx
                                 match &tx_kind {
@@ -523,7 +540,7 @@ impl Transaction {
                                         |shielded_section_hash| {
                                             extract_masp_transaction(
                                                 &transaction,
-                                                note,
+                                                &masp_tx_ref,
                                                 &MaspTxRef::MaspSection(
                                                     shielded_section_hash,
                                                 ),
@@ -534,7 +551,7 @@ impl Transaction {
                                         (_, _),
                                     ) => extract_masp_transaction(
                                         &transaction,
-                                        note,
+                                        &masp_tx_ref,
                                         &MaspTxRef::IbcData(
                                             tx_commitment.data_hash,
                                         ),
@@ -545,7 +562,7 @@ impl Transaction {
                                         |shielded_section_hash| {
                                             extract_masp_transaction(
                                                 &transaction,
-                                                note,
+                                                &masp_tx_ref,
                                                 &MaspTxRef::MaspSection(
                                                     shielded_section_hash,
                                                 ),
@@ -562,9 +579,6 @@ impl Transaction {
                     .flatten();
 
                     let notes = masp_bundle.map_or(0, |bundle| {
-                        // Remove the masp ref from the collection if we
-                        // found one
-                        masp_refs.0.remove(0);
                         bundle.sapling_bundle().map_or(0, |bundle| {
                             bundle.shielded_spends.len()
                                 + bundle.shielded_outputs.len()
@@ -574,7 +588,7 @@ impl Transaction {
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
-                        index,
+                        index: batch_index,
                         wrapper_id: wrapper_tx_id.clone(),
                         memo,
                         data: encoded_tx_data,
@@ -585,12 +599,6 @@ impl Transaction {
                     };
 
                     inner_txs.push(inner_tx);
-                }
-
-                if !masp_refs.0.is_empty() {
-                    return Err("Not all the MASP references have been \
-                                indexed"
-                        .to_string());
                 }
 
                 Ok((wrapper_tx, inner_txs))
