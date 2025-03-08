@@ -336,7 +336,6 @@ impl TxAttributesType {
                     .unwrap_or_default(),
                 info: attributes.get("info").unwrap().to_owned(),
             })),
-            // FIXME: need a migration?
             EventKind::MaspFeePayment => {
                 let data = attributes
                     .get("section")
@@ -547,7 +546,7 @@ impl BlockResult {
         exit_status.unwrap_or(TransactionExitStatus::Rejected)
     }
 
-    pub fn masp_ref(&self, indexed_tx: &IndexedTx) -> Option<MaspRef> {
+    pub fn masp_ref(&self, indexed_tx: &IndexedTx) -> Option<(MaspRef, bool)> {
         self.end_events
             .iter()
             .find_map(|event| match event.kind {
@@ -556,7 +555,7 @@ impl BlockResult {
                         TxAttributesType::MaspFeePayment(data)
                             if &data.indexed_tx == indexed_tx =>
                         {
-                            Some(data)
+                            Some((data.data.to_owned(), true))
                         }
                         _ => None,
                     })
@@ -566,7 +565,7 @@ impl BlockResult {
                         TxAttributesType::MaspTransfer(data)
                             if &data.indexed_tx == indexed_tx =>
                         {
-                            Some(data)
+                            Some((data.data.to_owned(), false))
                         }
                         _ => None,
                     })
@@ -574,7 +573,6 @@ impl BlockResult {
                 _ => None,
             })
             .flatten()
-            .map(|data| data.data.to_owned())
     }
 }
 

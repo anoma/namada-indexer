@@ -321,6 +321,8 @@ pub struct InnerTransaction {
     pub data: Option<String>,
     pub extra_sections: HashMap<Id, Vec<u8>>,
     pub notes: u64,
+    // FIXME: should this be on the wrapper?
+    pub is_masp_fee_payment: bool,
     pub exit_code: TransactionExitStatus,
 }
 
@@ -330,10 +332,12 @@ impl InnerTransaction {
     }
 
     /// An inner transaction is successful only if both the inner tx itself and
-    /// the containing wrapper are marked as applied
+    /// the containing wrapper are marked as applied or, in case of a failing
+    /// atomic batch, if the inner tx was applied and did masp fee payment
     pub fn was_successful(&self, wrapper_tx: &WrapperTransaction) -> bool {
-        wrapper_tx.exit_code == TransactionExitStatus::Applied
-            && self.exit_code == TransactionExitStatus::Applied
+        self.exit_code == TransactionExitStatus::Applied
+            && (wrapper_tx.exit_code == TransactionExitStatus::Applied
+                || self.is_masp_fee_payment)
     }
 
     pub fn is_ibc(&self) -> bool {
@@ -503,20 +507,8 @@ impl Transaction {
                     };
                     let masp_ref_opt = block_results.masp_ref(&indexed_tx);
 
-                    // FIXME: here and in other places take into account masp
-                    // fee payment for failed atomic batches
-                    // FIXME: probably better to rework the was_successful
-                    // function and call that one here
-                    // MASP events are emitted only for successful inner txs
-                    let masp_bundle = matches!(
-                        (&wrapper_tx_status, &inner_tx_status),
-                        (
-                            &TransactionExitStatus::Applied,
-                            &TransactionExitStatus::Applied
-                        )
-                    )
-                    .then(|| {
-                        masp_ref_opt.map(|masp_ref| {
+                    let masp_bundle =
+                        masp_ref_opt.map(|(masp_ref, is_masp_fee_payment)| {
                             // Cast the ref to the appropriate type
                             let masp_tx_ref = match masp_ref {
                                 crate::block_result::MaspRef::MaspSection(
@@ -527,18 +519,29 @@ impl Transaction {
                                 }
                             };
 
-                            extract_masp_transaction(&transaction, &masp_tx_ref)
-                        })
-                    })
-                    .flatten();
+                            (
+                                extract_masp_transaction(
+                                    &transaction,
+                                    &masp_tx_ref,
+                                ),
+                                is_masp_fee_payment,
+                            )
+                        });
 
-                    let notes = masp_bundle.map_or(0, |bundle| {
-                        bundle.sapling_bundle().map_or(0, |bundle| {
-                            bundle.shielded_spends.len()
-                                + bundle.shielded_outputs.len()
-                                + bundle.shielded_converts.len()
-                        })
-                    }) as u64;
+                    let (notes, is_masp_fee_payment) = masp_bundle.map_or(
+                        (0, false),
+                        |(bundle, is_masp_fee_payment)| {
+                            (
+                                bundle.sapling_bundle().map_or(0, |bundle| {
+                                    (bundle.shielded_spends.len()
+                                        + bundle.shielded_outputs.len()
+                                        + bundle.shielded_converts.len())
+                                        as u64
+                                }),
+                                is_masp_fee_payment,
+                            )
+                        },
+                    );
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
@@ -550,6 +553,7 @@ impl Transaction {
                         notes,
                         exit_code: inner_tx_status,
                         kind: tx_kind,
+                        is_masp_fee_payment,
                     };
 
                     inner_txs.push(inner_tx);
