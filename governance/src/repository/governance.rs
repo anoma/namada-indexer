@@ -9,6 +9,7 @@ use orm::governance_proposal::{
     GovernanceProposalUpdateStatusDb,
 };
 use orm::schema::governance_proposals;
+use shared::proposal::GovernanceProposalResult;
 use shared::utils::GovernanceProposalShort;
 
 pub fn get_all_running_proposals(
@@ -73,6 +74,37 @@ pub fn get_all_pgf_executed_proposals_data(
         .collect::<Result<Vec<(u64, Option<String>)>, _>>()
 }
 
+pub fn get_all_executed_proposals(
+    conn: &mut PgConnection,
+    current_epoch: u32,
+) -> anyhow::Result<Vec<(u64, GovernanceProposalResult)>> {
+    governance_proposals::table
+        .filter(
+            governance_proposals::dsl::result
+                .eq(GovernanceProposalResultDb::Passed)
+                .or(governance_proposals::dsl::result
+                    .eq(GovernanceProposalResultDb::Rejected))
+                .and(
+                    governance_proposals::dsl::activation_epoch
+                        .eq(current_epoch as i32),
+                ),
+        )
+        .select((
+            governance_proposals::dsl::id,
+            governance_proposals::dsl::result,
+        ))
+        .load_iter::<(i32, GovernanceProposalResultDb), DefaultLoadingMode>(
+            conn,
+        )
+        .context("Failed to get governance proposal ids from db")?
+        .map(|result| {
+            let (id, data) =
+                result.context("Failed to deserialize proposal from db")?;
+            anyhow::Ok((id as u64, GovernanceProposalResult::from(data)))
+        })
+        .collect::<Result<Vec<(u64, GovernanceProposalResult)>, _>>()
+}
+
 pub fn update_proposal_status(
     transaction_conn: &mut PgConnection,
     proposal_id: u64,
@@ -80,6 +112,18 @@ pub fn update_proposal_status(
 ) -> anyhow::Result<()> {
     diesel::update(governance_proposals::table.find(proposal_id as i32))
         .set::<GovernanceProposalUpdateStatusDb>(proposal_status)
+        .execute(transaction_conn)?;
+
+    Ok(())
+}
+
+pub fn update_proposal_result(
+    transaction_conn: &mut PgConnection,
+    proposal_id: u64,
+    proposal_result: GovernanceProposalResultDb,
+) -> anyhow::Result<()> {
+    diesel::update(governance_proposals::table.find(proposal_id as i32))
+        .set(governance_proposals::columns::result.eq(proposal_result))
         .execute(transaction_conn)?;
 
     Ok(())

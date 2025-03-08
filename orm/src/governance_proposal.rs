@@ -56,6 +56,8 @@ pub enum GovernanceProposalResultDb {
     Pending,
     Unknown,
     VotingPeriod,
+    ExecutedPassed,
+    ExecutedRejected,
 }
 
 impl From<GovernanceProposalResult> for GovernanceProposalResultDb {
@@ -65,6 +67,25 @@ impl From<GovernanceProposalResult> for GovernanceProposalResultDb {
             GovernanceProposalResult::Rejected => Self::Rejected,
             GovernanceProposalResult::VotingPeriod => Self::VotingPeriod,
             GovernanceProposalResult::Pending => Self::Pending,
+            GovernanceProposalResult::ExecutedPassed => Self::ExecutedPassed,
+            GovernanceProposalResult::ExecutedRejected => Self::Pending,
+            GovernanceProposalResult::Unknown => Self::Unknown,
+        }
+    }
+}
+
+impl From<GovernanceProposalResultDb> for GovernanceProposalResult {
+    fn from(value: GovernanceProposalResultDb) -> Self {
+        match value {
+            GovernanceProposalResultDb::Passed => Self::Passed,
+            GovernanceProposalResultDb::Rejected => Self::Rejected,
+            GovernanceProposalResultDb::VotingPeriod => Self::VotingPeriod,
+            GovernanceProposalResultDb::Pending => Self::Pending,
+            GovernanceProposalResultDb::Unknown => Self::Unknown,
+            GovernanceProposalResultDb::ExecutedPassed => Self::ExecutedPassed,
+            GovernanceProposalResultDb::ExecutedRejected => {
+                Self::ExecutedRejected
+            }
         }
     }
 }

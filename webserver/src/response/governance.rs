@@ -70,6 +70,8 @@ pub enum ProposalStatus {
     Rejected,
     Passed,
     Voting,
+    ExecutedPassed,
+    ExecutedRejected,
     Unknown,
 }
 
@@ -80,6 +82,8 @@ impl Display for ProposalStatus {
             ProposalStatus::Rejected => write!(f, "Rejected"),
             ProposalStatus::Passed => write!(f, "Passed"),
             ProposalStatus::Voting => write!(f, "Voting"),
+            ProposalStatus::ExecutedPassed => write!(f, "ExecutedPassed"),
+            ProposalStatus::ExecutedRejected => write!(f, "ExecutedRejected"),
             ProposalStatus::Unknown => write!(f, "Unknown"),
         }
     }
@@ -211,6 +215,12 @@ impl Proposal {
                 }
                 GovernanceProposalResultDb::Pending => ProposalStatus::Pending,
                 GovernanceProposalResultDb::Unknown => ProposalStatus::Unknown,
+                GovernanceProposalResultDb::ExecutedPassed => {
+                    ProposalStatus::ExecutedPassed
+                }
+                GovernanceProposalResultDb::ExecutedRejected => {
+                    ProposalStatus::ExecutedRejected
+                }
                 GovernanceProposalResultDb::VotingPeriod => {
                     ProposalStatus::Voting
                 }
