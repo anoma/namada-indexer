@@ -3,11 +3,11 @@ SET result = 'executed_rejected'
 WHERE id = 0;
 
 UPDATE governance_proposals
-SET result = 'executed_rejected'
+SET result = 'executed_passed'
 WHERE id = 1;
 
 UPDATE governance_proposals
-SET result = 'executed_rejected'
+SET result = 'executed_passed'
 WHERE id = 2;
 
 UPDATE governance_proposals
