@@ -285,10 +285,9 @@ fn get_namada_ibc_trace_when_receiving(
         Some(format!("{receiver_port}/{receiver_channel}/{sender_denom}"))
     } else {
         // NOTE: this token is not native to chain A. it
-        // could be NAM,
-        // but also some other token from any other chain
-        // that is neither
-        // Namada (i.e. chain B) nor chain A.
+        // could be NAM, but also some other token from
+        // any other chain that is neither Namada
+        // (i.e. chain B) nor chain A.
 
         let mut denom = sender_denom.clone();
 
@@ -296,18 +295,18 @@ fn get_namada_ibc_trace_when_receiving(
 
         if denom.trace_path.is_empty() {
             // NOTE: this token is native to Namada.
-            // WE ARE ASSUMING WE HAVE NAM. this could be a
-            // mistake,
-            // if in the future we enable the ethereum
-            // bridge, or mint
-            // other kinds of tokens other than NAM.
-            None
-        } else {
-            // NOTE: this token is not native to Namada. we
-            // need to wrap it
-            // with a new trace prefix.
-            Some(format!("{receiver_port}/{receiver_channel}/{sender_denom}"))
+            // WE ARE ASSUMING WE HAVE NAM. this could
+            // be a mistake, if in the future we enable
+            // the ethereum bridge, or mint other kinds
+            // of tokens other than NAM.
+            return None;
         }
+
+        Some(if sender_denom.trace_path.starts_with(&prefix) {
+            denom.to_string()
+        } else {
+            format!("{receiver_port}/{receiver_channel}/{sender_denom}")
+        })
     }
 }
 
