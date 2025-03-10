@@ -68,7 +68,7 @@ pub type Unbonds = Vec<Unbond>;
 pub struct Redelegation {
     pub delegator: Id,
     pub validator: Id,
-    pub epoch: Epoch,
+    pub end_epoch: Epoch,
 }
 
 impl Redelegation {
@@ -79,7 +79,7 @@ impl Redelegation {
         Self {
             delegator: Id::from(delegator),
             validator: validator_address,
-            epoch: (1..1000).fake::<u32>(),
+            end_epoch: (1..1000).fake::<u32>(),
         }
     }
 }

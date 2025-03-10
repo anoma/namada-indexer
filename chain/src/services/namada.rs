@@ -580,7 +580,7 @@ pub async fn query_redelegations(
 ) -> anyhow::Result<Vec<Redelegation>> {
     let redelegations = futures::stream::iter(addresses)
         .filter_map(|BondAddresses { source, target }| async move {
-            let epoch = rpc::query_incoming_redelegations(
+            let end_epoch = rpc::query_incoming_redelegations(
                 client,
                 &NamadaSdkAddress::from(target.clone()),
                 &NamadaSdkAddress::from(source.clone()),
@@ -592,7 +592,7 @@ pub async fn query_redelegations(
             Some(Redelegation {
                 delegator: source.clone(),
                 validator: target.clone(),
-                epoch: epoch.0 as Epoch,
+                end_epoch: end_epoch.0 as Epoch,
             })
         })
         .map(futures::future::ready)
@@ -1031,7 +1031,7 @@ pub async fn query_all_redelegations(
                         delegator.map(|delegator| Redelegation {
                             delegator: Id::from(delegator.clone()),
                             validator: validator_address.clone(),
-                            epoch: epoch.0 as Epoch,
+                            end_epoch: epoch.0 as Epoch,
                         })
                     })
                     .collect::<Vec<_>>()

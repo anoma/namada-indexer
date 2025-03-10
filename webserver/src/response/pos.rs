@@ -73,8 +73,8 @@ pub struct Bond {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedelegationInfo {
-    pub epoch: String,
-    pub time: String,
+    pub earliest_redelegation_epoch: String,
+    pub earliest_redelegation_time: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -182,13 +182,17 @@ impl MergedBond {
     pub fn from(
         amount: BigDecimal,
         db_validator: ValidatorDb,
-        redelegation_epoch: Option<i32>,
+        redelegation_end_epoch: Option<i32>,
         chain_state: &ChainCrawlerStateDb,
         min_num_of_blocks: i32,
         min_duration: i32,
+        slash_processing_epoch_offset: i32,
     ) -> Self {
-        match redelegation_epoch {
-            Some(redelegation_epoch) => {
+        match redelegation_end_epoch {
+            Some(redelegation_end_epoch) => {
+                let earliest_redelegation_epoch =
+                    redelegation_end_epoch - 1 + slash_processing_epoch_offset;
+
                 let epoch_progress = epoch_progress(
                     chain_state.last_processed_block,
                     chain_state.first_block_in_epoch,
@@ -199,7 +203,7 @@ impl MergedBond {
                     min_num_of_blocks,
                     epoch_progress,
                     chain_state.last_processed_epoch,
-                    redelegation_epoch,
+                    earliest_redelegation_epoch,
                     min_duration,
                 );
 
@@ -208,8 +212,9 @@ impl MergedBond {
                     time_now + i64::from(to_allowed_redelegation);
 
                 let redelegation_info = RedelegationInfo {
-                    epoch: redelegation_epoch.to_string(),
-                    time: redelegation_time.to_string(),
+                    earliest_redelegation_epoch: earliest_redelegation_epoch
+                        .to_string(),
+                    earliest_redelegation_time: redelegation_time.to_string(),
                 };
 
                 Self {

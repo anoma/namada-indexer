@@ -383,7 +383,7 @@ diesel::table! {
         id -> Int4,
         delegator -> Varchar,
         validator_id -> Int4,
-        epoch -> Int4,
+        end_epoch -> Int4,
     }
 }
 

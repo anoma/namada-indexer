@@ -194,8 +194,8 @@ pub fn insert_redelegations(
             redelegation::columns::validator_id,
         ))
         .do_update()
-        .set((redelegation::columns::epoch
-            .eq(excluded(redelegation::columns::epoch)),))
+        .set((redelegation::columns::end_epoch
+            .eq(excluded(redelegation::columns::end_epoch)),))
         .execute(transaction_conn)
         .context("Failed to update redelegation in db")?;
 
@@ -208,7 +208,7 @@ pub fn clear_redelegations(
 ) -> anyhow::Result<()> {
     diesel::delete(
         redelegation::table
-            .filter(redelegation::columns::epoch.le(current_epoch as i32)),
+            .filter(redelegation::columns::end_epoch.le(current_epoch as i32)),
     )
     .execute(transaction_conn)
     .context("Failed to remove withdraws from db")?;
@@ -805,7 +805,7 @@ mod tests {
             let mut updated_redelegations = fake_redelegations.clone();
             updated_redelegations
                 .iter_mut()
-                .for_each(|unbond| unbond.epoch = new_epoch);
+                .for_each(|r| r.end_epoch = new_epoch);
 
             insert_redelegations(conn, updated_redelegations)?;
 
@@ -816,7 +816,7 @@ mod tests {
             assert_eq!(
                 queried_redelegations
                     .into_iter()
-                    .map(|b| b.epoch as Epoch)
+                    .map(|r| r.end_epoch as Epoch)
                     .collect::<Vec<_>>(),
                 vec![new_epoch; queried_redelegations_len]
             );
@@ -909,7 +909,7 @@ mod tests {
                 .map(|i| {
                     let red = Redelegation::fake(validator.clone().address);
                     Redelegation {
-                        epoch: i as Epoch,
+                        end_epoch: i as Epoch,
                         ..red
                     }
                 })

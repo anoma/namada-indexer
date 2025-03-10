@@ -152,14 +152,15 @@ impl PosService {
 
         let bonds: Vec<MergedBond> = db_bonds
             .into_iter()
-            .map(|(_, validator, redelegate_epoch, amount)| {
+            .map(|(_, validator, redelegation_end_epoch, amount)| {
                 MergedBond::from(
                     amount.unwrap_or(BigDecimal::zero()),
                     validator,
-                    redelegate_epoch,
+                    redelegation_end_epoch,
                     &chain_state,
                     parameters.min_num_of_blocks,
                     parameters.min_duration,
+                    parameters.slash_processing_epoch_offset,
                 )
             })
             .collect();

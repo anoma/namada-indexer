@@ -11,7 +11,7 @@ use crate::validators::ValidatorDb;
 pub struct RedelegationInsertDb {
     pub delegator: String,
     pub validator_id: i32,
-    pub epoch: i32,
+    pub end_epoch: i32,
 }
 
 #[derive(Identifiable, Clone, Queryable, Selectable, Associations)]
@@ -22,7 +22,7 @@ pub struct RedelegationDb {
     pub id: i32,
     pub delegator: String,
     pub validator_id: i32,
-    pub epoch: i32,
+    pub end_epoch: i32,
 }
 
 impl RedelegationInsertDb {
@@ -33,7 +33,7 @@ impl RedelegationInsertDb {
         Self {
             delegator: redelegation.delegator.to_string(),
             validator_id,
-            epoch: redelegation.epoch as i32,
+            end_epoch: redelegation.end_epoch as i32,
         }
     }
 }

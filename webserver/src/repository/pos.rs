@@ -236,11 +236,11 @@ impl PosRepositoryTrait for PosRepository {
                 .left_outer_join(redelegation::table)
                 .inner_join(bonds::table)
                 .filter(bonds::address.eq(address.clone()))
-                .group_by((bonds::address, validators::id, redelegation::epoch))
+                .group_by((bonds::address, validators::id, redelegation::end_epoch))
                 .select((
                     bonds::address,
                     validators::all_columns,
-                    redelegation::epoch.nullable(),
+                    redelegation::end_epoch.nullable(),
                     sum(bonds::raw_amount),
                 ))
                 .paginate(page)

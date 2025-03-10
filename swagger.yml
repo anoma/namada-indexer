@@ -1104,11 +1104,11 @@ components:
           type: string
     RedelegationInfo:
       type: object
-      required: [epoch, time]
+      required: [earliest_redelegation_epoch, earliest_redelegation_time]
       properties:
-        epoch:
+        earliest_redelegation_epoch:
           type: string
-        time:
+        earliest_redelegation_time:
           type: string
     MergedBond:
       type: object
