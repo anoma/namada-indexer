@@ -465,6 +465,7 @@ diesel::table! {
         atomic -> Bool,
         gas_used -> Nullable<Int4>,
         amount_per_gas_unit -> Nullable<Varchar>,
+        masp_fee_payment -> Nullable<Varchar>,
     }
 }
 

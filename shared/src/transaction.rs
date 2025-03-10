@@ -335,7 +335,7 @@ impl InnerTransaction {
     pub fn was_successful(&self, wrapper_tx: &WrapperTransaction) -> bool {
         self.exit_code == TransactionExitStatus::Applied
             && (wrapper_tx.exit_code == TransactionExitStatus::Applied
-                || wrapper_tx.fee.masp_fee_payment)
+                || wrapper_tx.fee.masp_fee_payment.is_some())
     }
 
     pub fn is_ibc(&self) -> bool {
@@ -356,7 +356,7 @@ pub struct Fee {
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
-    pub masp_fee_payment: bool,
+    pub masp_fee_payment: Option<Id>,
 }
 
 impl Transaction {
@@ -381,7 +381,7 @@ impl Transaction {
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
-                let mut masp_fee_payment = false;
+                let mut masp_fee_payment = None;
                 let mut inner_txs = vec![];
 
                 for (batch_index, tx_commitment) in
@@ -498,7 +498,7 @@ impl Transaction {
                             )
                         });
 
-                    let (notes, is_masp_fee_payment) = masp_bundle.map_or(
+                    let (notes, masp_fee_payment_ref) = masp_bundle.map_or(
                         (0, false),
                         |(bundle, is_masp_fee_payment)| {
                             (
@@ -513,8 +513,8 @@ impl Transaction {
                         },
                     );
 
-                    if is_masp_fee_payment {
-                        masp_fee_payment = true;
+                    if masp_fee_payment_ref {
+                        masp_fee_payment = Some(inner_tx_id.clone());
                     }
 
                     let inner_tx = InnerTransaction {
