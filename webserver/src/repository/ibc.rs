@@ -179,6 +179,7 @@ impl IbcRepositoryTrait for IbcRepository {
             use diesel::JoinOnDsl;
 
             diesel::alias!(ibc_token_flows as ibc_token_flows_alias: IbcTokenFlowsAlias);
+            diesel::alias!(ibc_rate_limits as ibc_rate_limits_alias: IbcRateLimit);
 
             // NB: We're using a raw select because `CAST` is not available in the diesel dsl. :(
             let select_statement =
@@ -194,9 +195,14 @@ impl IbcRepositoryTrait for IbcRepository {
                     ),
                 );
 
-            let max_epoch_where_clause =
+            let max_epoch_where_clause_one =
                 ibc_token_flows::dsl::epoch.nullable().eq(ibc_token_flows_alias
                     .select(diesel::dsl::max(ibc_token_flows_alias.field(ibc_token_flows::dsl::epoch)))
+                    .single_value());
+
+            let max_epoch_where_clause_two =
+                ibc_rate_limits::dsl::epoch.nullable().eq(ibc_rate_limits_alias
+                    .select(diesel::dsl::max(ibc_rate_limits_alias.field(ibc_rate_limits::dsl::epoch)))
                     .single_value());
 
             ibc_token_flows::table
@@ -206,7 +212,8 @@ impl IbcRepositoryTrait for IbcRepository {
                     ),
                 )
                 .filter(ibc_token_flows::dsl::address.eq(&token))
-                .filter(max_epoch_where_clause)
+                .filter(max_epoch_where_clause_one)
+                .filter(max_epoch_where_clause_two)
                 .select(select_statement)
                 .first(conn)
                 .map_err(|e| e.to_string())
