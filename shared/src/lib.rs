@@ -22,7 +22,6 @@ pub mod ser;
 pub mod token;
 pub mod transaction;
 pub mod tuple_len;
-pub mod unbond;
 pub mod utils;
 pub mod validator;
 pub mod vote;

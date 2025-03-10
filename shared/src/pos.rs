@@ -64,7 +64,7 @@ impl Unbond {
 
 pub type Unbonds = Vec<Unbond>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Redelegation {
     pub delegator: Id,
     pub validator: Id,

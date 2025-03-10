@@ -29,7 +29,6 @@ use shared::pos::{
 };
 use shared::proposal::{GovernanceProposal, TallyType};
 use shared::token::{IbcRateLimit, IbcToken, Token};
-use shared::unbond::{Unbond, UnbondAddresses, Unbonds};
 use shared::utils::BalanceChange;
 use shared::validator::{Validator, ValidatorSet, ValidatorState};
 use shared::vote::{GovernanceVote, ProposalVoteKind};
@@ -466,7 +465,7 @@ pub async fn query_next_governance_id(
 
 pub async fn query_bonds(
     client: &HttpClient,
-    addresses: HashSet<BondAddresses>,
+    addresses: &HashSet<BondAddresses>,
 ) -> anyhow::Result<Vec<(Id, Id, Option<Bond>)>> {
     let nested_bonds = futures::stream::iter(addresses)
         .filter_map(|BondAddresses { source, target }| async move {
@@ -486,7 +485,7 @@ pub async fn query_bonds(
                     .map(|bond| (source.clone(), target.clone(), Some(bond)))
                     .collect::<Vec<_>>()
             } else {
-                vec![(source, target, None)]
+                vec![(source.clone(), target.clone(), None)]
             };
 
             Some(bonds)
@@ -577,7 +576,7 @@ pub async fn query_unbonds(
 
 pub async fn query_redelegations(
     client: &HttpClient,
-    addresses: HashSet<BondAddresses>,
+    addresses: &HashSet<BondAddresses>,
 ) -> anyhow::Result<Vec<Redelegation>> {
     let redelegations = futures::stream::iter(addresses)
         .filter_map(|BondAddresses { source, target }| async move {
@@ -591,8 +590,8 @@ pub async fn query_redelegations(
             .and_then(identity)?;
 
             Some(Redelegation {
-                delegator: source,
-                validator: target,
+                delegator: source.clone(),
+                validator: target.clone(),
                 epoch: epoch.0 as Epoch,
             })
         })
@@ -1011,37 +1010,32 @@ pub async fn query_all_redelegations(
             );
 
             let delegations_iter =
-                query_storage_prefix::<NamadaSdkEpoch>(client, &key)
+                query_storage_prefix::<NamadaSdkEpoch>(client, &key, None)
                     .await
                     .expect("Failed to query all delegations");
 
-            match delegations_iter {
-                Some(delegations_iter) => {
-                    let delegations = delegations_iter
-                        .filter_map(|a| {
-                            let (key, epoch) = a;
-                            let delegator =
-                                key.segments.last().expect("Delegator address");
+            delegations_iter.map(|delegations_iter| {
+                delegations_iter
+                    .filter_map(|r| {
+                        let (key, epoch) = r;
+                        let delegator = key
+                            .segments
+                            .last()
+                            .expect("Can't get delegator address");
 
-                            let delegator = match delegator {
-                                DbKeySeg::AddressSeg(delegator) => {
-                                    Some(delegator)
-                                }
-                                _ => None,
-                            };
+                        let delegator = match delegator {
+                            DbKeySeg::AddressSeg(delegator) => Some(delegator),
+                            _ => None,
+                        };
 
-                            delegator.map(|delegator| Redelegation {
-                                delegator: Id::from(delegator.clone()),
-                                validator: validator_address.clone(),
-                                epoch: epoch.0 as Epoch,
-                            })
+                        delegator.map(|delegator| Redelegation {
+                            delegator: Id::from(delegator.clone()),
+                            validator: validator_address.clone(),
+                            epoch: epoch.0 as Epoch,
                         })
-                        .collect::<Vec<_>>();
-
-                    Some(delegations)
-                }
-                None => None,
-            }
+                    })
+                    .collect::<Vec<_>>()
+            })
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
@@ -1070,10 +1064,6 @@ pub async fn get_validator_addresses_at_epoch(
     let validators = validator_set.into_iter().map(Id::from).collect();
 
     Ok(validators)
-}
-
-fn to_block_height(block_height: u32) -> NamadaSdkBlockHeight {
-    NamadaSdkBlockHeight::from(block_height as u64)
 }
 
 fn to_epoch(epoch: u32) -> NamadaSdkEpoch {

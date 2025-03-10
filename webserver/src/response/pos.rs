@@ -214,13 +214,13 @@ impl MergedBond {
 
                 Self {
                     min_denom_amount: amount.to_string(),
-                    validator: ValidatorWithId::from(db_validator),
+                    validator: ValidatorWithId::from(db_validator, None),
                     redelegation_info: Some(redelegation_info),
                 }
             }
             None => Self {
                 min_denom_amount: amount.to_string(),
-                validator: ValidatorWithId::from(db_validator),
+                validator: ValidatorWithId::from(db_validator, None),
                 redelegation_info: None,
             },
         }

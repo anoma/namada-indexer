@@ -8,7 +8,7 @@ use chain::config::AppConfig;
 use chain::repository;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_bonds, query_last_block_height, query_tokens, query_redelegations,
+    query_bonds, query_last_block_height, query_redelegations, query_tokens,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -42,8 +42,6 @@ use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 use tokio::time::Instant;
 use tokio_retry::Retry;
 use tokio_retry::strategy::{ExponentialBackoff, jitter};
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), MainError> {
@@ -375,13 +373,13 @@ async fn crawling_fn(
     );
 
     let addresses = block.bond_addresses();
-    let bonds = query_bonds(&client, addresses).await.into_rpc_error()?;
+    let bonds = query_bonds(&client, &addresses).await.into_rpc_error()?;
     tracing::debug!(
         block = block_height,
         "Updating bonds for {} addresses",
         bonds.len()
     );
-    let redelegations = query_redelegations(&client, addresses)
+    let redelegations = query_redelegations(&client, &addresses)
         .await
         .into_rpc_error()?;
     tracing::info!("Updating redelegations for {} addresses", bonds.len());
@@ -578,12 +576,9 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
-<<<<<<< HEAD
     checksums: Checksums,
     retry_time: u64,
     retry_attempts: usize,
-=======
->>>>>>> 2de97947 (feat: add redelegation info)
 ) -> Result<(), MainError> {
     let retry_strategy = ExponentialBackoff::from_millis(retry_time)
         .map(jitter)
@@ -602,18 +597,10 @@ async fn try_initial_query(
     tracing::debug!("Querying initial data...");
     let block_height =
         query_last_block_height(client).await.into_rpc_error()?;
-<<<<<<< HEAD
-
-=======
-    let epoch = namada_service::get_epoch_at_block_height(client, block_height)
-        .await
-        .into_rpc_error()?;
->>>>>>> 2de97947 (feat: add redelegation info)
     let first_block_in_epoch = namada_service::get_first_block_in_epoch(client)
         .await
         .into_rpc_error()?;
 
-<<<<<<< HEAD
     let native_token: namada_sdk::address::Address =
         namada_service::get_native_token(client)
             .await
@@ -666,9 +653,6 @@ async fn try_initial_query(
     .into_rpc_error()?;
 
     tracing::debug!(block = block_height, "Querying bonds and unbonds...",);
-=======
-    let balances = query_all_balances(client).await.into_rpc_error()?;
-
     let validators_set =
         namada_service::get_validator_addresses_at_epoch(client, epoch)
             .await
@@ -681,7 +665,6 @@ async fn try_initial_query(
             .into_rpc_error()?;
 
     tracing::info!("Querying bonds and unbonds...");
->>>>>>> 2de97947 (feat: add redelegation info)
     let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
         .await
         .into_rpc_error()?;

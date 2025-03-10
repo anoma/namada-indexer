@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use super::utils::MAX_PARAM_SIZE;
 use anyhow::Context;
 use diesel::upsert::excluded;
 use diesel::{
@@ -19,11 +18,11 @@ use shared::block::Epoch;
 use shared::id::Id;
 use shared::pos::{Bonds, Redelegations, UnbondAddresses, Unbonds};
 use shared::tuple_len::TupleLen;
-use shared::unbond::{UnbondAddresses, Unbonds};
-use shared::validator::ValidatorMetadataChange;
 use shared::validator::{
     ValidatorMetadataChange, ValidatorSet, ValidatorStateChange,
 };
+
+use super::utils::MAX_PARAM_SIZE;
 
 pub fn clear_bonds(
     transaction_conn: &mut PgConnection,
@@ -733,7 +732,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_redelegations function panics if validator is not in db.
+    /// Test that the insert_redelegations function panics if validator is not
+    /// in db.
     #[tokio::test]
     #[should_panic]
     async fn test_insert_redelegations_with_missing_validator() {
@@ -753,7 +753,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_redelegations function correctly inserts redelegations into the empty db.
+    /// Test that the insert_redelegations function correctly inserts
+    /// redelegations into the empty db.
     #[tokio::test]
     async fn test_insert_redelegations_with_empty_db() {
         let db = TestDb::new();
@@ -780,7 +781,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_redelegations function updates the raw_amount on conflict
+    /// Test that the insert_redelegations function updates the raw_amount on
+    /// conflict
     #[tokio::test]
     async fn test_insert_redelegations_with_conflict() {
         let db = TestDb::new();
@@ -825,7 +827,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the insert_redelegations function correctly handles empty redelegations input.
+    /// Test that the insert_redelegations function correctly handles empty
+    /// redelegations input.
     #[tokio::test]
     async fn test_insert_redelegations_with_empty_redelegations() {
         let db = TestDb::new();
@@ -875,8 +878,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the clear_redelegations function does nothing when there are not redelegations
-    /// in the db.
+    /// Test that the clear_redelegations function does nothing when there are
+    /// not redelegations in the db.
     #[tokio::test]
     async fn test_clear_redelegations_with_no_redelegations() {
         let db = TestDb::new();
@@ -894,8 +897,8 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the clear_redelegations function removes the correct redelegations from the
-    /// db.
+    /// Test that the clear_redelegations function removes the correct
+    /// redelegations from the db.
     #[tokio::test]
     async fn test_clear_redelegations() {
         let db = TestDb::new();
@@ -918,7 +921,8 @@ mod tests {
 
             let queried_redelegations = query_redelegations(conn);
 
-            // We removed all redelegations with epoch <= 5, so we have 6,7,8,9 left
+            // We removed all redelegations with epoch <= 5, so we have 6,7,8,9
+            // left
             assert_eq!(queried_redelegations.len(), 4);
 
             anyhow::Ok(())
