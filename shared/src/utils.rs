@@ -448,6 +448,24 @@ mod tests {
                     tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7"
             ),
         ));
+        let maybe_ibc_trace = get_namada_ibc_trace_when_receiving(
+            // sender side
+            &"transfer/channel-1317/transfer/channel-1/uosmo"
+                .parse()
+                .unwrap(),
+            &PortId::transfer(),
+            &"channel-1317".parse().unwrap(),
+            // receiver side
+            &PortId::transfer(),
+            &"channel-2".parse().unwrap(),
+        );
+        assert!(matches!(
+            maybe_ibc_trace,
+            Some(trace) if cmp_print(
+                &trace,
+                "transfer/channel-1/uosmo"
+            ),
+        ));
     }
 
     #[test]
