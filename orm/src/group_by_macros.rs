@@ -1,10 +1,12 @@
 use diesel::allow_columns_to_appear_in_same_group_by_clause;
 use diesel::expression::{SqlLiteral, ValidGrouping};
 
-use crate::schema::{bonds, unbonds, validators};
+use crate::schema::{bonds, redelegation, unbonds, validators};
 
+// For find_merged_bonds_by_address
 allow_columns_to_appear_in_same_group_by_clause!(
     bonds::address,
+    redelegation::end_epoch,
     validators::id,
     validators::namada_address,
     validators::voting_power,

@@ -11,11 +11,11 @@ use subtle_encoding::hex;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
 
 use crate::block_result::BlockResult;
-use crate::bond::BondAddresses;
 use crate::checksums::Checksums;
 use crate::header::BlockHeader;
 use crate::id::Id;
 use crate::masp::{MaspEntry, MaspEntryDirection};
+use crate::pos::{BondAddresses, UnbondAddresses};
 use crate::proposal::{GovernanceProposal, GovernanceProposalKind};
 use crate::public_key::PublicKey;
 use crate::token::{IbcToken, Token};
@@ -23,7 +23,6 @@ use crate::transaction::{
     InnerTransaction, Transaction, TransactionKind, TransactionTarget,
     WrapperTransaction,
 };
-use crate::unbond::UnbondAddresses;
 use crate::utils::{BalanceChange, MASP_ADDRESS};
 use crate::validator::{
     Validator, ValidatorMetadataChange, ValidatorState, ValidatorStateChange,

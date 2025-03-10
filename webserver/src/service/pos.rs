@@ -138,12 +138,29 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
+        let chain_state = self
+            .chain_repo
+            .get_state()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters()
+            .await
+            .map_err(PoSError::Database)?;
+
         let bonds: Vec<MergedBond> = db_bonds
             .into_iter()
-            .map(|(_, validator, amount)| {
+            .map(|(_, validator, redelegation_end_epoch, amount)| {
                 MergedBond::from(
                     amount.unwrap_or(BigDecimal::zero()),
                     validator,
+                    redelegation_end_epoch,
+                    &chain_state,
+                    parameters.min_num_of_blocks,
+                    parameters.min_duration,
+                    parameters.slash_processing_epoch_offset,
                 )
             })
             .collect();
