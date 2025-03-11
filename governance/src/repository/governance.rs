@@ -22,6 +22,14 @@ pub fn get_all_running_proposals(
                 .and(
                     governance_proposals::dsl::result
                         .ne(GovernanceProposalResultDb::Rejected),
+                )
+                .and(
+                    governance_proposals::dsl::result
+                        .ne(GovernanceProposalResultDb::ExecutedPassed),
+                )
+                .and(
+                    governance_proposals::dsl::result
+                        .ne(GovernanceProposalResultDb::ExecutedRejected),
                 ),
         )
         .select((
@@ -86,7 +94,7 @@ pub fn get_all_executed_proposals(
                     .eq(GovernanceProposalResultDb::Rejected))
                 .and(
                     governance_proposals::dsl::activation_epoch
-                        .eq(current_epoch as i32),
+                        .le(current_epoch as i32),
                 ),
         )
         .select((
