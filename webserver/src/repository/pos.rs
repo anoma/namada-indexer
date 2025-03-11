@@ -13,7 +13,7 @@ use orm::pos_rewards::PoSRewardDb;
 use orm::schema::{bonds, crawler_state, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
 use orm::validators::{
-    validator_sort_by, ValidatorDb, ValidatorSortByDb, ValidatorStateDb,
+    ValidatorDb, ValidatorSortByDb, ValidatorStateDb, validator_sort_by,
 };
 
 use super::utils::{Paginate, PaginatedResponseDb};
