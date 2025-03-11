@@ -112,6 +112,10 @@ async fn crawling_fn(
         "Queried rewards successfully",
     );
 
+    let current_epoch = namada_service::get_current_epoch(&client)
+        .await
+        .into_rpc_error()?;
+
     conn.interact(move |conn| {
         conn.build_transaction().read_write().run(
             |transaction_conn: &mut diesel::pg::PgConnection| {

@@ -11,7 +11,7 @@ use super::utils::MAX_PARAM_SIZE;
 pub fn upsert_rewards(
     transaction_conn: &mut PgConnection,
     rewards: Vec<Reward>,
-    epoch: i32, // Add an epoch parameter
+    epoch: i32,
 ) -> anyhow::Result<()> {
     let rewards_col_count = pos_rewards::all_columns.len() as i64;
 
@@ -20,7 +20,7 @@ pub fn upsert_rewards(
         .collect::<Vec<_>>()
         .chunks((MAX_PARAM_SIZE as i64 / rewards_col_count) as usize)
     {
-        upsert_rewards_chunk(transaction_conn, chunk.to_vec())?;
+        upsert_rewards_chunk(transaction_conn, chunk.to_vec(), epoch)?;
     }
 
     anyhow::Ok(())
@@ -29,6 +29,7 @@ pub fn upsert_rewards(
 fn upsert_rewards_chunk(
     transaction_conn: &mut PgConnection,
     rewards: Vec<Reward>,
+    epoch: i32,
 ) -> anyhow::Result<()> {
     diesel::insert_into(pos_rewards::table)
         .values::<Vec<PosRewardInsertDb>>(
@@ -36,9 +37,12 @@ fn upsert_rewards_chunk(
                 .into_iter()
                 .map(|reward| {
                     let validator_id: i32 = validators::table
-                        .filter(validators::namada_address.eq(
-                            &reward.delegation_pair.validator_address.to_string(),
-                        ))
+                        .filter(
+                            validators::namada_address.eq(&reward
+                                .delegation_pair
+                                .validator_address
+                                .to_string()),
+                        )
                         .select(validators::id)
                         .first(transaction_conn)
                         .expect("Failed to get validator");
