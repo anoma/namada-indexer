@@ -313,7 +313,7 @@ impl PosService {
         // 1) Lookup validator by its address
         let db_validator = self
             .pos_repo
-            .find_validator_by_address(validator_address)
+            .find_validator_by_address(&validator_address)
             .await
             .map_err(PoSError::Database)?;
 
