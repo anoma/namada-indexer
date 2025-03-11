@@ -1,8 +1,10 @@
-use crate::schema::pos_rewards;
+use std::str::FromStr;
+
 use bigdecimal::BigDecimal;
 use diesel::{Insertable, Queryable, Selectable};
 use shared::rewards::Reward;
-use std::str::FromStr;
+
+use crate::schema::pos_rewards;
 
 #[derive(Insertable, Queryable, Selectable, Clone)]
 #[diesel(table_name = pos_rewards)]

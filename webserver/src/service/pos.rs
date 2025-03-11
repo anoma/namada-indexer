@@ -317,7 +317,8 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
-        // If no validator is found for the given address, handle it as an error or return empty results
+        // If no validator is found for the given address, handle it as an error
+        // or return empty results
         let db_validator = match db_validator {
             Some(val) => val,
             None => {
