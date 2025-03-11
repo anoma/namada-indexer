@@ -322,7 +322,7 @@ impl PosService {
         let db_validator = match db_validator {
             Some(val) => val,
             None => {
-                tracing::error!("No validator found for the given address");
+                tracing::debug!(%validator_address, "No validator found for the given address");
                 return Ok(vec![]); // or return Err(...) if you'd rather hard-fail
             }
         };
