@@ -57,13 +57,6 @@ impl From<Amount> for BigDecimal {
     }
 }
 
-impl From<Amount> for BigDecimal {
-    fn from(amount: Amount) -> BigDecimal {
-        BigDecimal::from_str(&amount.0.to_string_native())
-            .expect("Invalid amount")
-    }
-}
-
 impl Display for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
