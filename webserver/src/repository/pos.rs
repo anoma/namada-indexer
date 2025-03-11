@@ -13,7 +13,7 @@ use orm::pos_rewards::PoSRewardDb;
 use orm::schema::{bonds, crawler_state, pos_rewards, unbonds, validators};
 use orm::unbond::UnbondDb;
 use orm::validators::{
-    ValidatorDb, ValidatorSortByDb, ValidatorStateDb, validator_sort_by,
+    validator_sort_by, ValidatorDb, ValidatorSortByDb, ValidatorStateDb,
 };
 
 use super::utils::{Paginate, PaginatedResponseDb};
@@ -359,21 +359,28 @@ impl PosRepositoryTrait for PosRepository {
     ) -> Result<Vec<PoSRewardDb>, String> {
         let conn = self.app_state.get_db_connection().await;
 
-        conn.interact(move |conn| {
-            let epoch = epoch.map(|e| e as i32).unwrap_or_else(|| {
-                pos_rewards::table
-                    .select(diesel::dsl::max(pos_rewards::epoch))
-                    .first::<Option<_>>(conn)
-                    .unwrap_or(Some(0))
-                    .unwrap_or(0)
-            });
+        conn.interact(
+            move |conn| -> Result<Vec<PoSRewardDb>, diesel::result::Error> {
+                let epoch = match epoch {
+                    Some(e) => e as i32,
+                    None => {
+                        // Properly propagate database errors with ?
+                        let max_epoch = pos_rewards::table
+                            .select(diesel::dsl::max(pos_rewards::epoch))
+                            .first::<Option<i32>>(conn)?;
 
-            pos_rewards::table
-                .filter(pos_rewards::epoch.eq(&epoch))
-                .filter(pos_rewards::dsl::owner.eq(address))
-                .select(PoSRewardDb::as_select())
-                .get_results(conn)
-        })
+                        max_epoch.unwrap_or(0) // This is fine - just unwrapping the Option, not a Result
+                    }
+                };
+
+                // Propagate errors from this query too
+                pos_rewards::table
+                    .filter(pos_rewards::epoch.eq(&epoch))
+                    .filter(pos_rewards::dsl::owner.eq(&address))
+                    .select(PoSRewardDb::as_select())
+                    .get_results(conn)
+            },
+        )
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
