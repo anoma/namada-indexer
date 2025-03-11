@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use fake::Fake;
