@@ -840,76 +840,40 @@ mod tests {
         .expect("Failed to run test");
     }
 
-    /// Test that the function correctly handles epoch 0 input.
+    /// Test if upserting redelegations adds new redelegations if there are no
+    /// conflicts
     #[tokio::test]
-    async fn test_clear_redelegations_with_empty_addresses() {
+    async fn test_upsert_redelegations_without_conflict() {
         let db = TestDb::new();
 
         db.run_test(|conn| {
-            let validator = Validator::fake();
-            let redelegations = (0..10)
-                .map(|_| Redelegation::fake(validator.clone().address))
+            let fake_validator = Validator::fake();
+            let fake_redelegations_len = 10;
+            let fake_redelegations: Vec<Redelegation> = (0
+                ..fake_redelegations_len)
+                .map(|_| Redelegation::fake(fake_validator.clone().address))
                 .collect();
 
-            seed_redelegations(conn, validator, redelegations)?;
-            clear_redelegations(conn, 0)?;
+            seed_redelegations(
+                conn,
+                fake_validator.clone(),
+                fake_redelegations,
+            )?;
+
+            let new_redelegation =
+                Redelegation::fake(fake_validator.clone().address);
+            let new_redelegations = vec![new_redelegation.clone()];
+
+            insert_redelegations(conn, new_redelegations)?;
 
             let queried_redelegations = query_redelegations(conn);
+            let queried_redelegations_len = queried_redelegations.len();
 
-            assert_eq!(queried_redelegations.len(), 10);
-
-            anyhow::Ok(())
-        })
-        .await
-        .expect("Failed to run test");
-    }
-
-    /// Test that the clear_redelegations function does nothing when there are
-    /// not redelegations in the db.
-    #[tokio::test]
-    async fn test_clear_redelegations_with_no_redelegations() {
-        let db = TestDb::new();
-
-        db.run_test(|conn| {
-            clear_redelegations(conn, 99999)?;
-
-            let queried_redelegations = query_redelegations(conn);
-
-            assert_eq!(queried_redelegations.len(), 0);
-
-            anyhow::Ok(())
-        })
-        .await
-        .expect("Failed to run test");
-    }
-
-    /// Test that the clear_redelegations function removes the correct
-    /// redelegations from the db.
-    #[tokio::test]
-    async fn test_clear_redelegations() {
-        let db = TestDb::new();
-
-        db.run_test(|conn| {
-            let validator = Validator::fake();
-            let redelegations: Vec<Redelegation> = (0..10)
-                .map(|i| {
-                    let red = Redelegation::fake(validator.clone().address);
-                    Redelegation {
-                        end_epoch: i as Epoch,
-                        ..red
-                    }
-                })
-                .collect();
-
-            seed_redelegations(conn, validator.clone(), redelegations.clone())?;
-
-            clear_redelegations(conn, 5)?;
-
-            let queried_redelegations = query_redelegations(conn);
-
-            // We removed all redelegations with epoch <= 5, so we have 6,7,8,9
-            // left
-            assert_eq!(queried_redelegations.len(), 4);
+            assert_eq!(queried_redelegations_len, fake_redelegations_len + 1);
+            assert_eq!(
+                queried_redelegations.last().unwrap().end_epoch,
+                new_redelegation.end_epoch as i32
+            );
 
             anyhow::Ok(())
         })
