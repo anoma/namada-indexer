@@ -3,8 +3,8 @@ use bigdecimal::BigDecimal;
 use diesel::dsl::{sql, sum};
 use diesel::sql_types::Integer;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, NullableExpressionMethods,
-    QueryDsl, RunQueryDsl, SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl,
+    NullableExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondDb;
 use orm::crawler_state::{CrawlerNameDb, EpochCrawlerStateDb};
@@ -233,7 +233,12 @@ impl PosRepositoryTrait for PosRepository {
         conn.interact(move |conn| {
 
             validators::table
-                .left_outer_join(redelegation::table)
+                .left_outer_join(
+                    redelegation::table.on(
+                        validators::id.eq(redelegation::validator_id)
+                        .and(redelegation::delegator.eq(address.clone()))
+                    )
+                )
                 .inner_join(bonds::table)
                 .filter(bonds::address.eq(address.clone()))
                 .group_by((bonds::address, validators::id, redelegation::end_epoch))

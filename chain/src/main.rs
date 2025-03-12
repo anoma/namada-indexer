@@ -522,7 +522,6 @@ async fn crawling_fn(
                     transaction_conn,
                     redelegations,
                 )?;
-                repository::pos::clear_redelegations(transaction_conn, epoch)?;
                 repository::pos::remove_withdraws(
                     transaction_conn,
                     epoch,

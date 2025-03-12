@@ -202,20 +202,6 @@ pub fn insert_redelegations(
     anyhow::Ok(())
 }
 
-pub fn clear_redelegations(
-    transaction_conn: &mut PgConnection,
-    current_epoch: Epoch,
-) -> anyhow::Result<()> {
-    diesel::delete(
-        redelegation::table
-            .filter(redelegation::columns::end_epoch.le(current_epoch as i32)),
-    )
-    .execute(transaction_conn)
-    .context("Failed to remove withdraws from db")?;
-
-    anyhow::Ok(())
-}
-
 pub fn remove_withdraws(
     transaction_conn: &mut PgConnection,
     current_epoch: Epoch,
