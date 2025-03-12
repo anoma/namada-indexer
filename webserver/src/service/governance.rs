@@ -241,6 +241,12 @@ impl GovernanceService {
             }
             ProposalStatus::Passed => GovernanceProposalResultDb::Passed,
             ProposalStatus::Rejected => GovernanceProposalResultDb::Rejected,
+            ProposalStatus::ExecutedPassed => {
+                GovernanceProposalResultDb::ExecutedPassed
+            }
+            ProposalStatus::ExecutedRejected => {
+                GovernanceProposalResultDb::ExecutedRejected
+            }
         })
     }
 

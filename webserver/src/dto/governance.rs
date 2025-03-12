@@ -8,6 +8,8 @@ pub enum ProposalStatus {
     VotingPeriod,
     Passed,
     Rejected,
+    ExecutedPassed,
+    ExecutedRejected,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
