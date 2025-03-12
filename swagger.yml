@@ -1062,7 +1062,7 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, voting, passed, rejected]
+          enum: [pending, voting, passed, rejected, executedPassed, ExecutedRejected]
         yayVotes:
           type: string
         nayVotes:
