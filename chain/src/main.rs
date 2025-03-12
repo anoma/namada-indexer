@@ -96,7 +96,7 @@ async fn main() -> Result<(), MainError> {
             })
         }
         (None, Some(crawler_state)) => {
-            tracing::info!(
+            tracing::debug!(
                 "Found chain crawler state, attempting initial crawl at block \
                  {}...",
                 crawler_state.last_processed_block
@@ -128,7 +128,7 @@ async fn main() -> Result<(), MainError> {
                     // If any other type of error occurred, we should not
                     // increment last_processed_block but
                     // crawl from there without initial_query
-                    tracing::info!(
+                    tracing::debug!(
                         "Initial crawl had an error (not RpcError), \
                          continuing from block {}...",
                         crawler_state.last_processed_block
@@ -139,7 +139,7 @@ async fn main() -> Result<(), MainError> {
                     // If the crawl was successful, increment last_processed
                     // block and continue from there.
                     let next_block = crawler_state.last_processed_block + 1;
-                    tracing::info!(
+                    tracing::debug!(
                         "Initial crawl was successful, continuing from block \
                          {}...",
                         next_block
@@ -152,7 +152,7 @@ async fn main() -> Result<(), MainError> {
             }
         }
         (None, None) => {
-            tracing::info!(
+            tracing::debug!(
                 "No chain crawler state found, starting from initial_query..."
             );
             None
@@ -382,7 +382,7 @@ async fn crawling_fn(
     let redelegations = query_redelegations(&client, &addresses)
         .await
         .into_rpc_error()?;
-    tracing::info!("Updating redelegations for {} addresses", bonds.len());
+    tracing::debug!("Updating redelegations for {} addresses", bonds.len());
 
     let bonds_updates = bonds
         .iter()
@@ -441,7 +441,7 @@ async fn crawling_fn(
 
     let first_checkpoint = Instant::now();
 
-    tracing::info!(
+    tracing::debug!(
         txs = block.transactions.len(),
         ibc_tokens = ibc_tokens.len(),
         balance_changes = balances.len(),
@@ -561,7 +561,7 @@ async fn crawling_fn(
 
     let second_checkpoint = Instant::now();
 
-    tracing::info!(
+    tracing::debug!(
         block = block_height,
         time_taken = second_checkpoint
             .duration_since(first_checkpoint)
@@ -651,19 +651,18 @@ async fn try_initial_query(
     .await
     .into_rpc_error()?;
 
-    tracing::debug!(block = block_height, "Querying bonds and unbonds...",);
     let validators_set =
         namada_service::get_validator_addresses_at_epoch(client, epoch)
             .await
             .into_rpc_error()?;
 
-    tracing::info!("Querying redelegations...");
+    tracing::debug!("Querying redelegations...");
     let redelegations =
         namada_service::query_all_redelegations(client, validators_set)
             .await
             .into_rpc_error()?;
 
-    tracing::info!("Querying bonds and unbonds...");
+    tracing::debug!("Querying bonds and unbonds...");
     let (bonds, unbonds) = query_all_bonds_and_unbonds(client, None, None)
         .await
         .into_rpc_error()?;
@@ -691,7 +690,7 @@ async fn try_initial_query(
         timestamp,
     };
 
-    tracing::info!(block = block_height, "Inserting initial data...");
+    tracing::debug!(block = block_height, "Inserting initial data...");
 
     conn.interact(move |conn| {
         conn.build_transaction()
@@ -835,7 +834,7 @@ async fn get_block(
     .await
     .into_rpc_error()?;
 
-    tracing::info!(
+    tracing::debug!(
         block = block_height,
         tm_address = tm_block_response.block.header.proposer_address.to_string(),
         namada_address = ?proposer_address_namada,
