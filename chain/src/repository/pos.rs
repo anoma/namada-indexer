@@ -173,21 +173,24 @@ pub fn insert_redelegations(
             &redelegations
                 .into_iter()
                 .map(|redelegation| {
-                    let validator: ValidatorDb = validators::table
-                        .filter(
-                            validators::namada_address
-                                .eq(&redelegation.validator.to_string()),
-                        )
-                        .select(ValidatorDb::as_select())
-                        .first(transaction_conn)
-                        .expect("Failed to get validator");
+                    let validator: anyhow::Result<ValidatorDb> =
+                        validators::table
+                            .filter(
+                                validators::namada_address
+                                    .eq(&redelegation.validator.to_string()),
+                            )
+                            .select(ValidatorDb::as_select())
+                            .first(transaction_conn)
+                            .context("Failed to get validator");
 
-                    RedelegationInsertDb::from_redelegation(
-                        redelegation,
-                        validator.id,
-                    )
+                    validator.map(|validator| {
+                        RedelegationInsertDb::from_redelegation(
+                            redelegation,
+                            validator.id,
+                        )
+                    })
                 })
-                .collect::<Vec<_>>(),
+                .collect::<anyhow::Result<Vec<_>>>()?,
         )
         .on_conflict((
             redelegation::columns::delegator,

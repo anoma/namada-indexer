@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::convert::identity;
 use std::str::FromStr;
 
 use anyhow::{Context, anyhow};
@@ -578,7 +577,8 @@ pub async fn query_redelegations(
     client: &HttpClient,
     addresses: &HashSet<BondAddresses>,
 ) -> anyhow::Result<Vec<Redelegation>> {
-    let redelegations = futures::stream::iter(addresses)
+    futures::stream::iter(addresses)
+        // We filter out address pairs that have no redelegations
         .filter_map(|BondAddresses { source, target }| async move {
             let end_epoch = rpc::query_incoming_redelegations(
                 client,
@@ -586,21 +586,22 @@ pub async fn query_redelegations(
                 &NamadaSdkAddress::from(source.clone()),
             )
             .await
-            .ok()
-            .and_then(identity)?;
+            .context("Failed to query incoming redelegations");
 
-            Some(Redelegation {
-                delegator: source.clone(),
-                validator: target.clone(),
-                end_epoch: end_epoch.0 as Epoch,
+            end_epoch.transpose().map(|epoch| {
+                epoch.map(|e| Redelegation {
+                    delegator: source.clone(),
+                    validator: target.clone(),
+                    end_epoch: e.0 as Epoch,
+                })
             })
         })
         .map(futures::future::ready)
         .buffer_unordered(20)
         .collect::<Vec<_>>()
-        .await;
-
-    Ok(redelegations)
+        .await
+        .into_iter()
+        .collect::<anyhow::Result<Vec<_>>>()
 }
 
 pub async fn get_current_epoch(client: &HttpClient) -> anyhow::Result<Epoch> {
@@ -1004,47 +1005,58 @@ pub async fn query_all_redelegations(
     validator_addresses: Vec<Id>,
 ) -> anyhow::Result<Vec<Redelegation>> {
     let nested_delegations = futures::stream::iter(validator_addresses.clone())
+        // Some validators might not have any redelegations
         .filter_map(|validator_address| async move {
             let key = storage_key::validator_incoming_redelegations_key(
                 &validator_address.clone().into(),
             );
 
-            let delegations_iter =
-                query_storage_prefix::<NamadaSdkEpoch>(client, &key, None)
-                    .await
-                    .expect("Failed to query all delegations");
-
-            delegations_iter.map(|delegations_iter| {
-                delegations_iter
-                    .filter_map(|r| {
-                        let (key, epoch) = r;
-                        let delegator = key
-                            .segments
-                            .last()
-                            .expect("Can't get delegator address");
-
-                        let delegator = match delegator {
-                            DbKeySeg::AddressSeg(delegator) => Some(delegator),
-                            _ => None,
-                        };
-
-                        delegator.map(|delegator| Redelegation {
-                            delegator: Id::from(delegator.clone()),
-                            validator: validator_address.clone(),
-                            end_epoch: epoch.0 as Epoch,
-                        })
+            query_storage_prefix::<NamadaSdkEpoch>(client, &key, None)
+                .await
+                .context("Failed to query incoming redelegations")
+                .transpose()
+                .map(|opt_iter| {
+                    opt_iter.map(|iter| {
+                        (validator_address, iter.collect::<Vec<_>>())
                     })
-                    .collect::<Vec<_>>()
-            })
+                })
         })
-        .map(futures::future::ready)
+        .map(|res| async move {
+            let (validator_address, redelegations) = res?;
+
+            redelegations
+                .into_iter()
+                .map(|r| {
+                    let (key, epoch) = r;
+                    let delegator = key
+                        .segments
+                        .last()
+                        .context("Can't get delegator address")?;
+
+                    let delegator = match delegator {
+                        DbKeySeg::AddressSeg(delegator) => {
+                            anyhow::Ok(delegator)
+                        }
+                        _ => Err(anyhow!("Invalid db key segment")),
+                    }?;
+
+                    let redelegation = Redelegation {
+                        delegator: Id::from(delegator.clone()),
+                        validator: validator_address.clone(),
+                        end_epoch: epoch.0 as Epoch,
+                    };
+
+                    Ok(redelegation)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()
+        })
         .buffer_unordered(20)
         .collect::<Vec<_>>()
-        .await;
+        .await
+        .into_iter()
+        .collect::<anyhow::Result<Vec<Vec<Redelegation>>>>()?;
 
-    let delegations = nested_delegations.iter().flatten().cloned().collect();
-
-    Ok(delegations)
+    Ok(nested_delegations.into_iter().flatten().collect())
 }
 
 pub async fn get_validator_addresses_at_epoch(
