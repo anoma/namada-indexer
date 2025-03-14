@@ -13,4 +13,10 @@ pub struct Parameters {
     pub light_client_attack_min_slash_rate: String,
 }
 
+impl Parameters {
+    pub fn slash_processing_epoch_offset(&self) -> u64 {
+        self.unbonding_length + self.cubic_slashing_window_length + 1
+    }
+}
+
 pub type EpochSwitchBlocksDelay = u32;

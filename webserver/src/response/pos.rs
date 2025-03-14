@@ -72,9 +72,17 @@ pub struct Bond {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RedelegationInfo {
+    pub earliest_redelegation_epoch: String,
+    pub earliest_redelegation_time: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MergedBond {
     pub min_denom_amount: String,
     pub validator: ValidatorWithId,
+    pub redelegation_info: Option<RedelegationInfo>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -170,11 +178,66 @@ impl Bond {
     }
 }
 
+pub struct MergedBondRedelegation {
+    pub redelegation_end_epoch: i32,
+    pub chain_state: ChainCrawlerStateDb,
+    pub min_num_of_blocks: i32,
+    pub min_duration: i32,
+    pub slash_processing_epoch_offset: i32,
+}
+
 impl MergedBond {
-    pub fn from(amount: BigDecimal, db_validator: ValidatorDb) -> Self {
-        Self {
-            min_denom_amount: amount.to_string(),
-            validator: ValidatorWithId::from(db_validator, None),
+    pub fn from(
+        amount: BigDecimal,
+        db_validator: ValidatorDb,
+        redelegation: Option<MergedBondRedelegation>,
+    ) -> Self {
+        match redelegation {
+            Some(MergedBondRedelegation {
+                redelegation_end_epoch,
+                chain_state,
+                min_num_of_blocks,
+                min_duration,
+                slash_processing_epoch_offset,
+            }) => {
+                let earliest_redelegation_epoch =
+                    redelegation_end_epoch - 1 + slash_processing_epoch_offset;
+
+                let epoch_progress = epoch_progress(
+                    chain_state.last_processed_block,
+                    chain_state.first_block_in_epoch,
+                    min_num_of_blocks,
+                );
+
+                let to_allowed_redelegation = time_between_epochs(
+                    min_num_of_blocks,
+                    epoch_progress,
+                    chain_state.last_processed_epoch,
+                    earliest_redelegation_epoch,
+                    min_duration,
+                );
+
+                let time_now = chain_state.timestamp.and_utc().timestamp();
+                let redelegation_time =
+                    time_now + i64::from(to_allowed_redelegation);
+
+                let redelegation_info = RedelegationInfo {
+                    earliest_redelegation_epoch: earliest_redelegation_epoch
+                        .to_string(),
+                    earliest_redelegation_time: redelegation_time.to_string(),
+                };
+
+                Self {
+                    min_denom_amount: amount.to_string(),
+                    validator: ValidatorWithId::from(db_validator, None),
+                    redelegation_info: Some(redelegation_info),
+                }
+            }
+            None => Self {
+                min_denom_amount: amount.to_string(),
+                validator: ValidatorWithId::from(db_validator, None),
+                redelegation_info: None,
+            },
         }
     }
 }

@@ -3,14 +3,16 @@ use bigdecimal::BigDecimal;
 use diesel::dsl::{sql, sum};
 use diesel::sql_types::Integer;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
-    SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl,
+    NullableExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use orm::bond::BondDb;
 use orm::crawler_state::{CrawlerNameDb, EpochCrawlerStateDb};
 use orm::helpers::OrderByDb;
 use orm::pos_rewards::PoSRewardDb;
-use orm::schema::{bonds, crawler_state, pos_rewards, unbonds, validators};
+use orm::schema::{
+    bonds, crawler_state, pos_rewards, redelegation, unbonds, validators,
+};
 use orm::unbond::UnbondDb;
 use orm::validators::{
     ValidatorDb, ValidatorSortByDb, ValidatorStateDb, validator_sort_by,
@@ -52,7 +54,12 @@ pub trait PosRepositoryTrait {
         address: String,
         page: i64,
     ) -> Result<
-        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>)>,
+        PaginatedResponseDb<(
+            String,
+            ValidatorDb,
+            Option<i32>,
+            Option<BigDecimal>,
+        )>,
         String,
     >;
 
@@ -213,27 +220,39 @@ impl PosRepositoryTrait for PosRepository {
         address: String,
         page: i64,
     ) -> Result<
-        PaginatedResponseDb<(String, ValidatorDb, Option<BigDecimal>)>,
+        PaginatedResponseDb<(
+            String,
+            ValidatorDb,
+            Option<i32>,
+            Option<BigDecimal>,
+        )>,
         String,
     > {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
+
             validators::table
+                .left_outer_join(
+                    redelegation::table.on(
+                        validators::id.eq(redelegation::validator_id)
+                        .and(redelegation::delegator.eq(address.clone()))
+                    )
+                )
                 .inner_join(bonds::table)
                 .filter(bonds::address.eq(address.clone()))
-                .group_by((bonds::address, validators::id))
+                .group_by((bonds::address, validators::id, redelegation::end_epoch))
                 .select((
                     bonds::address,
                     validators::all_columns,
+                    redelegation::end_epoch.nullable(),
                     sum(bonds::raw_amount),
                 ))
                 .paginate(page)
                 // TODO: this is ok for now, create mixed aggragate later
-                .load_and_count_pages::<(String, ValidatorDb, Option<BigDecimal>)>(
+                .load_and_count_pages::<(String, ValidatorDb, Option<i32>, Option<BigDecimal>)>(
                     conn,
                 )
-
         })
         .await
         .map_err(|e| e.to_string())?

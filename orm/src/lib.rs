@@ -13,6 +13,7 @@ pub mod migrations;
 pub mod parameters;
 pub mod pgf;
 pub mod pos_rewards;
+pub mod redelegation;
 pub mod revealed_pk;
 pub mod schema;
 pub mod token;

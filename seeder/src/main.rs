@@ -18,13 +18,12 @@ use rand::Rng;
 use seeder::config::AppConfig;
 use seeder::state::AppState;
 use shared::balance::Balance;
-use shared::bond::Bond;
 use shared::error::{AsDbError, ContextDbInteractError, MainError};
+use shared::pos::{Bond, Unbond};
 use shared::proposal::{
     GovernanceProposal, GovernanceProposalStatus, TallyType,
 };
 use shared::rewards::Reward;
-use shared::unbond::Unbond;
 use shared::validator::Validator;
 use shared::vote::GovernanceVote;
 
