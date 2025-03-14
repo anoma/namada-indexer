@@ -68,7 +68,9 @@ impl From<GovernanceProposalResult> for GovernanceProposalResultDb {
             GovernanceProposalResult::VotingPeriod => Self::VotingPeriod,
             GovernanceProposalResult::Pending => Self::Pending,
             GovernanceProposalResult::ExecutedPassed => Self::ExecutedPassed,
-            GovernanceProposalResult::ExecutedRejected => Self::Pending,
+            GovernanceProposalResult::ExecutedRejected => {
+                Self::ExecutedRejected
+            }
             GovernanceProposalResult::Unknown => Self::Unknown,
         }
     }
