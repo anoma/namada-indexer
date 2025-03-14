@@ -178,18 +178,28 @@ impl Bond {
     }
 }
 
+pub struct MergedBondRedelegation {
+    pub redelegation_end_epoch: i32,
+    pub chain_state: ChainCrawlerStateDb,
+    pub min_num_of_blocks: i32,
+    pub min_duration: i32,
+    pub slash_processing_epoch_offset: i32,
+}
+
 impl MergedBond {
     pub fn from(
         amount: BigDecimal,
         db_validator: ValidatorDb,
-        redelegation_end_epoch: Option<i32>,
-        chain_state: &ChainCrawlerStateDb,
-        min_num_of_blocks: i32,
-        min_duration: i32,
-        slash_processing_epoch_offset: i32,
+        redelegation: Option<MergedBondRedelegation>,
     ) -> Self {
-        match redelegation_end_epoch {
-            Some(redelegation_end_epoch) => {
+        match redelegation {
+            Some(MergedBondRedelegation {
+                redelegation_end_epoch,
+                chain_state,
+                min_num_of_blocks,
+                min_duration,
+                slash_processing_epoch_offset,
+            }) => {
                 let earliest_redelegation_epoch =
                     redelegation_end_epoch - 1 + slash_processing_epoch_offset;
 

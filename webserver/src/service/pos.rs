@@ -8,7 +8,8 @@ use crate::error::pos::PoSError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{
-    Bond, BondStatus, MergedBond, Reward, Unbond, ValidatorWithId, Withdraw,
+    Bond, BondStatus, MergedBond, MergedBondRedelegation, Reward, Unbond,
+    ValidatorWithId, Withdraw,
 };
 
 #[derive(Clone)]
@@ -153,14 +154,22 @@ impl PosService {
         let bonds: Vec<MergedBond> = db_bonds
             .into_iter()
             .map(|(_, validator, redelegation_end_epoch, amount)| {
+                let redelegation =
+                    redelegation_end_epoch.map(|redelegation_end_epoch| {
+                        MergedBondRedelegation {
+                            redelegation_end_epoch,
+                            chain_state: chain_state.clone(),
+                            min_num_of_blocks: parameters.min_num_of_blocks,
+                            min_duration: parameters.min_duration,
+                            slash_processing_epoch_offset: parameters
+                                .slash_processing_epoch_offset,
+                        }
+                    });
+
                 MergedBond::from(
                     amount.unwrap_or(BigDecimal::zero()),
                     validator,
-                    redelegation_end_epoch,
-                    &chain_state,
-                    parameters.min_num_of_blocks,
-                    parameters.min_duration,
-                    parameters.slash_processing_epoch_offset,
+                    redelegation,
                 )
             })
             .collect();
