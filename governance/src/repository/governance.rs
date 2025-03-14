@@ -89,9 +89,10 @@ pub fn get_all_executed_proposals(
     governance_proposals::table
         .filter(
             governance_proposals::dsl::result
-                .eq(GovernanceProposalResultDb::Passed)
-                .or(governance_proposals::dsl::result
-                    .eq(GovernanceProposalResultDb::Rejected))
+                .eq_any([
+                    GovernanceProposalResultDb::Passed,
+                    GovernanceProposalResultDb::Rejected,
+                ])
                 .and(
                     governance_proposals::dsl::activation_epoch
                         .le(current_epoch as i32),
