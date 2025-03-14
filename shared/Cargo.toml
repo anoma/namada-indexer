@@ -23,6 +23,7 @@ futures-core.workspace = true
 futures-util.workspace = true
 futures.workspace = true
 namada_core.workspace = true
+namada_events.workspace = true
 namada_governance.workspace = true
 namada_proof_of_stake.workspace = true
 namada_ibc.workspace = true

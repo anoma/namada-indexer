@@ -6,6 +6,7 @@ use std::str::FromStr;
 use bigdecimal::BigDecimal;
 use namada_core::masp::MaspTxId;
 use namada_core::token::Amount as NamadaAmount;
+use namada_events::extend::ReadFromEventAttributes;
 use namada_ibc::IbcTxDataHash;
 use namada_ibc::apps::transfer::types::packet::PacketData as Ics20PacketData;
 use namada_tx::IndexedTx;
@@ -337,36 +338,20 @@ impl TxAttributesType {
                 info: attributes.get("info").unwrap().to_owned(),
             })),
             EventKind::MaspFeePayment => {
-                let data = attributes
-                    .get("section")
-                    .map(|data| {
-                        serde_json::from_str::<MaspTxRef>(data).unwrap()
-                    })
+                let data = MaspTxRef::read_from_event_attributes(attributes)
                     .unwrap()
                     .into();
-                let indexed_tx = attributes
-                    .get("indexed-tx")
-                    .map(|data| {
-                        serde_json::from_str::<IndexedTx>(data).unwrap()
-                    })
-                    .unwrap();
+                let indexed_tx =
+                    IndexedTx::read_from_event_attributes(attributes).unwrap();
 
                 Some(Self::MaspFeePayment(MaspTxData { indexed_tx, data }))
             }
             EventKind::MaspTransfer => {
-                let data = attributes
-                    .get("section")
-                    .map(|data| {
-                        serde_json::from_str::<MaspTxRef>(data).unwrap()
-                    })
+                let data = MaspTxRef::read_from_event_attributes(attributes)
                     .unwrap()
                     .into();
-                let indexed_tx = attributes
-                    .get("indexed-tx")
-                    .map(|data| {
-                        serde_json::from_str::<IndexedTx>(data).unwrap()
-                    })
-                    .unwrap();
+                let indexed_tx =
+                    IndexedTx::read_from_event_attributes(attributes).unwrap();
 
                 Some(Self::MaspTransfer(MaspTxData { indexed_tx, data }))
             }

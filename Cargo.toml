@@ -37,6 +37,7 @@ chrono = { version = "0.4.30", features = ["serde"] }
 anyhow = "1.0.75"
 num-bigint = "0.4.6"
 namada_core = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_events = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
 namada_sdk = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events", default-features = false, features = ["std", "async-send", "download-params"] }
 namada_tx = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
 namada_governance = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }

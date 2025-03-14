@@ -6958,6 +6958,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "namada_core",
+ "namada_events",
  "namada_governance",
  "namada_ibc",
  "namada_proof_of_stake",
