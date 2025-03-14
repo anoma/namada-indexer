@@ -2572,7 +2572,6 @@ dependencies = [
  "shared",
  "tendermint-rpc",
  "tokio",
- "tokio-retry",
  "tracing",
  "vergen",
 ]
@@ -5361,10 +5360,8 @@ dependencies = [
 name = "orm"
 version = "2.4.2"
 dependencies = [
- "anyhow",
  "bigdecimal",
  "chrono",
- "clap",
  "deadpool-diesel",
  "diesel",
  "diesel-derive-enum",
@@ -5405,18 +5402,14 @@ dependencies = [
  "clap",
  "deadpool-diesel",
  "diesel",
- "diesel_migrations",
- "futures",
  "namada_core",
  "namada_parameters",
  "namada_sdk",
  "orm",
- "serde_json",
  "shared",
  "smooth-operator",
  "tendermint-rpc",
  "tokio",
- "tokio-retry",
  "tracing",
  "vergen",
 ]
@@ -5738,7 +5731,6 @@ dependencies = [
  "clap",
  "deadpool-diesel",
  "diesel",
- "diesel_migrations",
  "futures",
  "namada_core",
  "namada_sdk",
@@ -6202,7 +6194,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "clap-verbosity-flag",
  "deadpool-diesel",
  "diesel",
  "futures",
@@ -6211,9 +6202,7 @@ dependencies = [
  "shared",
  "tendermint-rpc",
  "tokio",
- "tokio-retry",
  "tracing",
- "tracing-subscriber",
  "vergen",
 ]
 
@@ -7337,11 +7326,9 @@ name = "test_helpers"
 version = "2.4.2"
 dependencies = [
  "anyhow",
- "clap",
  "deadpool-diesel",
  "diesel",
  "orm",
- "serde",
  "shared",
 ]
 
@@ -7814,12 +7801,8 @@ dependencies = [
  "bigdecimal",
  "chrono",
  "clap",
- "clap-verbosity-flag",
  "deadpool-diesel",
  "diesel",
- "diesel_migrations",
- "futures",
- "namada_core",
  "namada_sdk",
  "orm",
  "serde_json",
@@ -8289,7 +8272,6 @@ dependencies = [
  "futures",
  "lazy_static",
  "namada_core",
- "namada_parameters",
  "namada_sdk",
  "orm",
  "serde",
@@ -8297,7 +8279,6 @@ dependencies = [
  "sha256",
  "shared",
  "strum",
- "strum_macros",
  "subtle-encoding",
  "thiserror 1.0.69",
  "tokio",
@@ -8305,7 +8286,6 @@ dependencies = [
  "tower 0.4.13",
  "tower-http",
  "tracing",
- "tracing-subscriber",
  "validator",
  "vergen",
 ]
