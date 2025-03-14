@@ -9,5 +9,3 @@ CREATE TABLE redelegation (
 );
 
 ALTER TABLE redelegation ADD UNIQUE (delegator, validator_id);
-
-ALTER TABLE chain_parameters ADD COLUMN slash_processing_epoch_offset INT NOT NULL DEFAULT 2;

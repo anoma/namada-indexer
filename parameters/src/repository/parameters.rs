@@ -26,8 +26,6 @@ pub fn upsert_chain_parameters(
             chain_parameters::light_client_attack_min_slash_rate.eq(excluded(
                 chain_parameters::light_client_attack_min_slash_rate,
             )),
-            chain_parameters::slash_processing_epoch_offset
-                .eq(excluded(chain_parameters::slash_processing_epoch_offset)),
         ))
         .execute(transaction_conn)
         .context("Failed to update chain_parameters state in db")?;

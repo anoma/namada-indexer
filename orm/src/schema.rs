@@ -182,7 +182,6 @@ diesel::table! {
         cubic_slashing_window_length -> Int4,
         duplicate_vote_min_slash_rate -> Numeric,
         light_client_attack_min_slash_rate -> Numeric,
-        slash_processing_epoch_offset -> Int4,
     }
 }
 

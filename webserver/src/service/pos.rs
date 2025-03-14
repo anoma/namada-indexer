@@ -1,6 +1,7 @@
 use bigdecimal::{BigDecimal, Zero};
 use orm::helpers::OrderByDb;
 use orm::validators::{ValidatorSortByDb, ValidatorStateDb};
+use shared::parameters::Parameters;
 
 use crate::appstate::AppState;
 use crate::dto::pos::{OrderByDto, ValidatorSortFieldDto, ValidatorStateDto};
@@ -145,11 +146,12 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
-        let parameters = self
+        let parameters_db = self
             .chain_repo
             .find_chain_parameters()
             .await
             .map_err(PoSError::Database)?;
+        let parameters = Parameters::from(parameters_db.clone());
 
         let bonds: Vec<MergedBond> = db_bonds
             .into_iter()
@@ -159,10 +161,11 @@ impl PosService {
                         MergedBondRedelegation {
                             redelegation_end_epoch,
                             chain_state: chain_state.clone(),
-                            min_num_of_blocks: parameters.min_num_of_blocks,
-                            min_duration: parameters.min_duration,
+                            min_num_of_blocks: parameters_db.min_num_of_blocks,
+                            min_duration: parameters_db.min_duration,
                             slash_processing_epoch_offset: parameters
-                                .slash_processing_epoch_offset,
+                                .slash_processing_epoch_offset()
+                                as i32,
                         }
                     });
 

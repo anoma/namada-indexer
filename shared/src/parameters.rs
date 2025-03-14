@@ -11,7 +11,12 @@ pub struct Parameters {
     pub cubic_slashing_window_length: u64,
     pub duplicate_vote_min_slash_rate: String,
     pub light_client_attack_min_slash_rate: String,
-    pub slash_processing_epoch_offset: u64,
+}
+
+impl Parameters {
+    pub fn slash_processing_epoch_offset(&self) -> u64 {
+        self.unbonding_length + self.cubic_slashing_window_length + 1
+    }
 }
 
 pub type EpochSwitchBlocksDelay = u32;

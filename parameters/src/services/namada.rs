@@ -119,8 +119,6 @@ pub async fn get_parameters(client: &HttpClient) -> anyhow::Result<Parameters> {
         light_client_attack_min_slash_rate: pos_parameters
             .light_client_attack_min_slash_rate
             .to_string(),
-        slash_processing_epoch_offset: pos_parameters
-            .slash_processing_epoch_offset(),
     })
 }
 
