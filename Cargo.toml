@@ -11,7 +11,6 @@ readme = "README.md"
 version = "2.4.2"
 
 [workspace.dependencies]
-clokwerk = "0.4.0"
 axum = { version = "0.7.2", features = ["tower-log", "http2"] }
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4.13", features = [
@@ -27,18 +26,14 @@ tower-http = { version = "0.5.0", features = [
     "trace",
     "cors",
 ] }
-tower-layer = "0.3.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 serde = { version = "1.0.138", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.4.2", features = ["derive", "env"] }
-uuid = { version = "1.4.1", features = ["v4", "serde"] }
-reqwest = { version = "0.12.0", features = ["json", "cookies"] }
 axum-macros = "0.4.1"
 axum-extra = { version = "0.9.3", features = ["query"] }
 chrono = { version = "0.4.30", features = ["serde"] }
-async-trait = "0.1.73"
 anyhow = "1.0.75"
 num-bigint = "0.4.6"
 namada_core = "0.47.2"
@@ -50,9 +45,7 @@ namada_token = "0.47.2"
 namada_parameters = "0.47.2"
 namada_proof_of_stake = "0.47.2"
 tendermint = "0.40.1"
-tendermint-config = "0.40.1"
 tendermint-rpc = { version = "0.40.1", features = ["http-client"] }
-tendermint-proto = "0.40.1"
 subtle-encoding = "0.5.1"
 bimap = { version = "0.6.3", features = ["serde"] }
 async-stream = "0.3.5"
@@ -79,14 +72,11 @@ test_helpers = { path = "test_helpers" }
 shared = { path = "shared" }
 lazy_static = "1.4.0"
 validator = { version = "0.16.0", features = ["derive"] }
-derive_builder = "0.12.0"
 clap-verbosity-flag = "2.1.1"
-duration-str = "0.7.1"
 fake = { version = "2.10.0", features = ["derive"] }
 rand = "0.8.5"
 bigdecimal = "0.4.5"
 strum = "0.26.3"
-strum_macros = "0.26.3"
 sha256 = "1.5.0"
 rlimit = "0.10.2"
 axum-prometheus = "0.7.0"

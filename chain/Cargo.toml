@@ -13,7 +13,6 @@ name = "chain"
 path = "src/main.rs"
 
 [dependencies]
-test_helpers.workspace = true
 tokio.workspace = true
 tokio-retry.workspace = true
 tracing.workspace = true
@@ -36,3 +35,6 @@ rlimit.workspace = true
 
 [build-dependencies]
 vergen = { workspace = true, features = ["build", "git", "gitcl"] }
+
+[dev-dependencies]
+test_helpers.workspace = true

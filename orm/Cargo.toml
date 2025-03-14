@@ -13,8 +13,6 @@ name = "orm"
 path = "src/lib.rs"
 
 [dependencies]
-anyhow.workspace = true
-clap.workspace = true
 deadpool-diesel.workspace = true
 diesel-derive-enum.workspace = true
 diesel.workspace = true

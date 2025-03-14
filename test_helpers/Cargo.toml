@@ -15,8 +15,6 @@ path = "src/lib.rs"
 [dependencies]
 orm.workspace = true
 anyhow.workspace = true
-clap.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
-serde.workspace = true
 shared.workspace = true
