@@ -1,15 +1,14 @@
 openapi: "3.0.2"
 info:
   title: Namada Interface Indexer REST Api
-  version: "0.1"
+  version: "2.4.4"
   description: "Set of API to interact with a namada indexer."
   contact:
     email: hello@heliax.dev
     url: https://github.com/anoma/namada-indexer
 servers:
   - url: http://localhost:5001
-  - url: https://namada-rpc.mandragora.io
-  - url: https://indexer.namada.tududes.com:443
+  - url: https://indexer.namada.tududes.com
 paths:
   /health:
     get:
