@@ -1,11 +1,77 @@
 use orm::{
     token::{IbcTokenDb, TokenDb},
-    transactions::{TransactionResultDb, WrapperTransactionDb},
+    transactions::{InnerTransactionDb, TransactionHistoryDb, TransactionHistoryKindDb, TransactionKindDb, TransactionResultDb, WrapperTransactionDb},
 };
 use shared::{
     id::Id,
     token::{IbcToken, Token},
 };
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum TransactionKind {
+    TransparentTransfer,
+    ShieldedTransfer,
+    ShieldingTransfer,
+    UnshieldingTransfer,
+    MixedTransfer,
+    Bond,
+    Redelegation,
+    Unbond,
+    Withdraw,
+    ClaimRewards,
+    VoteProposal,
+    InitProposal,
+    ChangeMetadata,
+    ChangeCommission,
+    RevealPk,
+    IbcMsgTransfer,
+    IbcTransparentTransfer,
+    IbcShieldingTransfer,
+    IbcUnshieldingTransfer,
+    BecomeValidator,
+    DeactivateValidator,
+    ReactivateValidator,
+    UnjailValidator,
+    Unknown,
+}
+
+impl From<TransactionKindDb> for TransactionKind {
+    fn from(value: TransactionKindDb) -> Self {
+        match value {
+            TransactionKindDb::TransparentTransfer => Self::TransparentTransfer,
+            TransactionKindDb::ShieldedTransfer => Self::ShieldedTransfer,
+            TransactionKindDb::ShieldingTransfer => Self::ShieldingTransfer,
+            TransactionKindDb::UnshieldingTransfer => Self::UnshieldingTransfer,
+            TransactionKindDb::MixedTransfer => Self::MixedTransfer,
+            TransactionKindDb::Bond => Self::Bond,
+            TransactionKindDb::Redelegation => Self::Redelegation,
+            TransactionKindDb::Unbond => Self::Unbond,
+            TransactionKindDb::Withdraw => Self::Withdraw,
+            TransactionKindDb::ClaimRewards => Self::ClaimRewards,
+            TransactionKindDb::VoteProposal => Self::VoteProposal,
+            TransactionKindDb::InitProposal => Self::InitProposal,
+            TransactionKindDb::ChangeMetadata => Self::ChangeMetadata,
+            TransactionKindDb::ChangeCommission => Self::ChangeCommission,
+            TransactionKindDb::RevealPk => Self::RevealPk,
+            TransactionKindDb::Unknown => Self::Unknown,
+            TransactionKindDb::IbcMsgTransfer => Self::IbcMsgTransfer,
+            TransactionKindDb::IbcTransparentTransfer => {
+                Self::IbcTransparentTransfer
+            }
+            TransactionKindDb::IbcShieldingTransfer => {
+                Self::IbcShieldingTransfer
+            }
+            TransactionKindDb::IbcUnshieldingTransfer => {
+                Self::IbcUnshieldingTransfer
+            }
+            TransactionKindDb::BecomeValidator => Self::BecomeValidator,
+            TransactionKindDb::ReactivateValidator => Self::ReactivateValidator,
+            TransactionKindDb::DeactivateValidator => Self::DeactivateValidator,
+            TransactionKindDb::UnjailValidator => Self::UnjailValidator,
+        }
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub struct WrapperTransaction {
@@ -63,6 +129,71 @@ impl WrapperTransaction {
                 }
             },
             atomic: transaction.atomic,
+        }
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub struct InnerTransaction {
+    pub id: Id,
+    pub wrapper_id: Id,
+    pub kind: TransactionKind,
+    pub data: Option<String>,
+    pub memo: Option<String>,
+    pub exit_code: TransactionExitStatus,
+}
+
+impl From<InnerTransactionDb> for InnerTransaction {
+    fn from(value: InnerTransactionDb) -> Self {
+        Self {
+            id: Id::Hash(value.id),
+            wrapper_id: Id::Hash(value.wrapper_id),
+            kind: TransactionKind::from(value.kind),
+            data: value.data,
+            memo: value.memo,
+            exit_code: match value.exit_code {
+                TransactionResultDb::Applied => TransactionExitStatus::Applied,
+                TransactionResultDb::Rejected => {
+                    TransactionExitStatus::Rejected
+                }
+            },
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum TransactionHistoryKind {
+    Received,
+    Sent,
+}
+
+#[derive(Clone, Debug)]
+pub struct TransactionHistory {
+    pub tx: InnerTransaction,
+    pub target: Id,
+    pub kind: TransactionHistoryKind,
+    pub block_height: u64,
+}
+
+impl TransactionHistory {
+    pub fn from_db(
+        transaction_history_db: TransactionHistoryDb,
+        inner_tx_db: InnerTransactionDb,
+        block_height: i32,
+    ) -> Self {
+        Self {
+            tx: InnerTransaction::from(inner_tx_db),
+            target: Id::Account(transaction_history_db.target),
+            kind: match transaction_history_db.kind {
+                TransactionHistoryKindDb::Received => {
+                    TransactionHistoryKind::Received
+                }
+                TransactionHistoryKindDb::Sent => {
+                    TransactionHistoryKind::Sent
+                }
+            },
+            block_height: block_height as u64,
         }
     }
 }

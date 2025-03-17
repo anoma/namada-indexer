@@ -5,7 +5,7 @@ use crate::entity::gas::{GasEstimate, GasPrice};
 use crate::error::gas::GasError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::gas::{GasRepository, GasRepositoryTrait};
-use crate::response::transaction::TransactionKind;
+use crate::entity::transaction::TransactionKind;
 
 #[derive(Clone)]
 pub struct GasService {

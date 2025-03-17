@@ -4,7 +4,7 @@ use crate::entity::transaction::WrapperTransaction;
 use crate::error::block::BlockError;
 use crate::repository::block::{BlockRepository, BlockRepositoryTrait};
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::repository::tranasaction::{
+use crate::repository::transaction::{
     TransactionRepository, TransactionRepositoryTrait,
 };
 
