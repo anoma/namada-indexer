@@ -5,6 +5,7 @@ use axum_macros::debug_handler;
 
 use crate::error::api::ApiError;
 use crate::response::balance::AddressBalance;
+use crate::response::chain::Token;
 use crate::state::common::CommonState;
 
 #[debug_handler]
@@ -15,5 +16,13 @@ pub async fn get_address_balance(
 ) -> Result<Json<Vec<AddressBalance>>, ApiError> {
     let balances = state.balance_service.get_address_balances(address).await?;
 
-    Ok(Json(balances))
+    let response = balances
+        .into_iter()
+        .map(|balance| AddressBalance {
+            token: Token::from(balance.token),
+            min_denom_amount: balance.amount.to_string(),
+        })
+        .collect();
+
+    Ok(Json(response))
 }
