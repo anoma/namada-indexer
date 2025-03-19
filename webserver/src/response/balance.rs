@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use super::chain::Token;
+use super::chain::TokenResponse;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AddressBalance {
-    pub token: Token,
+pub struct AddressBalanceResponse {
+    pub token: TokenResponse,
     pub min_denom_amount: String,
 }

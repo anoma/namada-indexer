@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::entity::gas::GasPrice;
 
-use super::chain::Token;
+use super::chain::TokenResponse;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GasPriceResponse {
-    pub token: Token,
+    pub token: TokenResponse,
     pub min_denom_amount: String,
 }
 

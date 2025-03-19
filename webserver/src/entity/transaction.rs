@@ -92,6 +92,15 @@ pub enum TransactionExitStatus {
     Rejected,
 }
 
+impl From<TransactionResultDb> for TransactionExitStatus {
+    fn from(value: TransactionResultDb) -> Self {
+        match value {
+            TransactionResultDb::Applied => Self::Applied,
+            TransactionResultDb::Rejected => Self::Rejected,
+        }
+    }
+}
+
 impl WrapperTransaction {
     pub fn from_db(
         transaction: WrapperTransactionDb,
@@ -122,12 +131,7 @@ impl WrapperTransaction {
             gas_used: transaction.gas_used.map(|gas| gas as u64),
             amount_per_gas_unit: transaction.amount_per_gas_unit,
             block_height: transaction.block_height as u64,
-            exit_code: match transaction.exit_code {
-                TransactionResultDb::Applied => TransactionExitStatus::Applied,
-                TransactionResultDb::Rejected => {
-                    TransactionExitStatus::Rejected
-                }
-            },
+            exit_code: TransactionExitStatus::from(transaction.exit_code),
             atomic: transaction.atomic,
         }
     }
@@ -152,12 +156,7 @@ impl From<InnerTransactionDb> for InnerTransaction {
             kind: TransactionKind::from(value.kind),
             data: value.data,
             memo: value.memo,
-            exit_code: match value.exit_code {
-                TransactionResultDb::Applied => TransactionExitStatus::Applied,
-                TransactionResultDb::Rejected => {
-                    TransactionExitStatus::Rejected
-                }
-            },
+            exit_code: TransactionExitStatus::from(value.exit_code)
         }
     }
 }

@@ -3,6 +3,7 @@ use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum_extra::extract::Query;
 use axum_macros::debug_handler;
+use subtle_encoding::hex;
 
 use crate::dto::transaction::TransactionHistoryQueryParams;
 use crate::error::api::ApiError;
@@ -94,9 +95,9 @@ pub async fn get_transaction_history(
 }
 
 fn is_valid_hash(hash: &str) -> Result<(), TransactionError> {
-    if hash.len().eq(&64)
-        && subtle_encoding::hex::decode(hash.as_bytes()).is_ok()
-    {
+    let is_valid_lenght = hash.len().eq(&64);
+    let is_valid_hex = hex::decode(hash.as_bytes()).is_ok();
+    if is_valid_lenght && is_valid_hex {
         Ok(())
     } else {
         Err(TransactionError::InvalidTxId)

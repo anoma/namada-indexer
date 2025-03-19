@@ -4,7 +4,7 @@ use crate::entity::transaction::{
     InnerTransaction, TransactionExitStatus, TransactionHistory, TransactionHistoryKind, TransactionKind, WrapperTransaction
 };
 
-use super::chain::Token;
+use super::chain::TokenResponse;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,7 +87,7 @@ impl From<TransactionKind> for TransactionKindResponse {
 pub struct WrapperTransactionResponse {
     pub id: String,
     pub fee_payer: String,
-    pub fee_token: Token,
+    pub fee_token: TokenResponse,
     pub gas_limit: String,
     pub gas_used: Option<u64>,
     pub amount_per_gas_unit: Option<String>,
