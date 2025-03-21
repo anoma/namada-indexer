@@ -9,3 +9,4 @@ pub mod repository;
 pub mod response;
 pub mod service;
 pub mod state;
+pub mod entity;
