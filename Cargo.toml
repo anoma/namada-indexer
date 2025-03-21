@@ -41,15 +41,15 @@ chrono = { version = "0.4.30", features = ["serde"] }
 async-trait = "0.1.73"
 anyhow = "1.0.75"
 num-bigint = "0.4.6"
-namada_core = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_events = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_sdk = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_tx = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_governance = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_ibc = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_token = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_parameters = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
-namada_proof_of_stake = { git = "https://github.com/anoma/namada", branch = "grarco/fix-masp-events" }
+namada_core = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_events = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_sdk = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_tx = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_governance = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_ibc = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_token = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_parameters = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
+namada_proof_of_stake = { git = "https://github.com/anoma/namada", rev = "74b5f9b347f34d1c02b2fc2f1b84154393b92b2c" }
 tendermint = "0.40.1"
 tendermint-config = "0.40.1"
 tendermint-rpc = { version = "0.40.1", features = ["http-client"] }

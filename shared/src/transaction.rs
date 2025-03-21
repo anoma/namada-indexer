@@ -467,12 +467,11 @@ impl Transaction {
                         });
 
                     let indexed_tx = IndexedTx {
-                        height: namada_sdk::chain::BlockHeight(
+                        block_height: namada_sdk::chain::BlockHeight(
                             block_height as u64,
                         ),
-                        index: namada_sdk::state::TxIndex::must_from_usize(
-                            index,
-                        ),
+                        block_index:
+                            namada_sdk::state::TxIndex::must_from_usize(index),
                         batch_index: Some(batch_index as u32),
                     };
                     let masp_ref_opt = block_results.masp_ref(&indexed_tx);
