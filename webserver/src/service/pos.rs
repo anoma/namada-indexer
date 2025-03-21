@@ -1,6 +1,7 @@
 use bigdecimal::{BigDecimal, Zero};
 use orm::helpers::OrderByDb;
 use orm::validators::{ValidatorSortByDb, ValidatorStateDb};
+use shared::parameters::Parameters;
 
 use crate::appstate::AppState;
 use crate::dto::pos::{OrderByDto, ValidatorSortFieldDto, ValidatorStateDto};
@@ -8,7 +9,8 @@ use crate::error::pos::PoSError;
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
 use crate::repository::pos::{PosRepository, PosRepositoryTrait};
 use crate::response::pos::{
-    Bond, BondStatus, MergedBond, Reward, Unbond, ValidatorWithId, Withdraw,
+    Bond, BondStatus, MergedBond, MergedBondRedelegation, Reward, Unbond,
+    ValidatorWithId, Withdraw,
 };
 
 #[derive(Clone)]
@@ -138,12 +140,39 @@ impl PosService {
             .await
             .map_err(PoSError::Database)?;
 
+        let chain_state = self
+            .chain_repo
+            .get_state()
+            .await
+            .map_err(PoSError::Database)?;
+
+        let parameters_db = self
+            .chain_repo
+            .find_chain_parameters()
+            .await
+            .map_err(PoSError::Database)?;
+        let parameters = Parameters::from(parameters_db.clone());
+
         let bonds: Vec<MergedBond> = db_bonds
             .into_iter()
-            .map(|(_, validator, amount)| {
+            .map(|(_, validator, redelegation_end_epoch, amount)| {
+                let redelegation =
+                    redelegation_end_epoch.map(|redelegation_end_epoch| {
+                        MergedBondRedelegation {
+                            redelegation_end_epoch,
+                            chain_state: chain_state.clone(),
+                            min_num_of_blocks: parameters_db.min_num_of_blocks,
+                            min_duration: parameters_db.min_duration,
+                            slash_processing_epoch_offset: parameters
+                                .slash_processing_epoch_offset()
+                                as i32,
+                        }
+                    });
+
                 MergedBond::from(
                     amount.unwrap_or(BigDecimal::zero()),
                     validator,
+                    redelegation,
                 )
             })
             .collect();
