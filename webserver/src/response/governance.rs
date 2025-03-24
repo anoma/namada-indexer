@@ -117,9 +117,9 @@ pub struct ProposalResponse {
     pub current_time: String,
     pub activation_time: String,
     pub status: ProposalStatusResponse,
-    pub yay_votes: u64,
-    pub nay_votes: u64,
-    pub abstain_votes: u64,
+    pub yay_votes: f64,
+    pub nay_votes: f64,
+    pub abstain_votes: f64,
 }
 
 impl From<Proposal> for ProposalResponse {

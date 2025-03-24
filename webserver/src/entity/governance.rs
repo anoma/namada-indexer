@@ -91,9 +91,9 @@ pub struct Proposal {
     pub current_time: String,
     pub activation_time: String,
     pub status: ProposalStatus,
-    pub yay_votes: u64,
-    pub nay_votes: u64,
-    pub abstain_votes: u64,
+    pub yay_votes: f64,
+    pub nay_votes: f64,
+    pub abstain_votes: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -183,15 +183,15 @@ impl Proposal {
             status: ProposalStatus::from(value.result),
             yay_votes: value
                 .yay_votes
-                .parse::<u64>()
+                .parse::<f64>()
                 .expect("Should be a number"),
             nay_votes: value
                 .nay_votes
-                .parse::<u64>()
+                .parse::<f64>()
                 .expect("Should be a number"),
             abstain_votes: value
                 .abstain_votes
-                .parse::<u64>()
+                .parse::<f64>()
                 .expect("Should be a number"),
         }
     }

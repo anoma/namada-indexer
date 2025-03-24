@@ -55,7 +55,7 @@ pub struct BondResponse {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedelegationInfoResponse {
-    pub earliest_redelegation_epoch: String,
+    pub earliest_redelegation_epoch: u64,
     pub earliest_redelegation_time: String,
 }
 
@@ -213,7 +213,7 @@ impl MergedBondResponse {
 
                 let redelegation_info = RedelegationInfoResponse {
                     earliest_redelegation_epoch: earliest_redelegation_epoch
-                        .to_string(),
+                        as u64,
                     earliest_redelegation_time: redelegation_time.to_string(),
                 };
 
