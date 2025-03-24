@@ -93,3 +93,27 @@ impl From<(Parameters, Genesis, Checksums, EpochSwitchBlocksDelay)>
         }
     }
 }
+
+impl From<ParametersDb> for Parameters {
+    fn from(parameters: ParametersDb) -> Parameters {
+        Parameters {
+            unbonding_length: parameters.unbonding_length as u64,
+            pipeline_length: parameters.pipeline_length as u64,
+            epochs_per_year: parameters.epochs_per_year as u64,
+            min_num_of_blocks: parameters.min_num_of_blocks as u64,
+            min_duration: parameters.min_duration as u64,
+            max_block_time: parameters.max_block_time as u64,
+            apr: parameters.apr,
+            native_token_address: parameters.native_token_address,
+            cubic_slashing_window_length: parameters
+                .cubic_slashing_window_length
+                as u64,
+            duplicate_vote_min_slash_rate: parameters
+                .duplicate_vote_min_slash_rate
+                .to_string(),
+            light_client_attack_min_slash_rate: parameters
+                .light_client_attack_min_slash_rate
+                .to_string(),
+        }
+    }
+}

@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+use super::utils::{epoch_progress, time_between_epochs};
 use crate::entity::pos::{
-    Bond, BondStatus, MergedBond, Reward, Unbond, Validator, ValidatorState,
-    ValidatorWithRank, Withdraw,
+    Bond, BondStatus, MergedBond, MergedBondRedelegation, Reward, Unbond,
+    Validator, ValidatorState, ValidatorWithRank, Withdraw,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -53,9 +54,17 @@ pub struct BondResponse {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RedelegationInfoResponse {
+    pub earliest_redelegation_epoch: String,
+    pub earliest_redelegation_time: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MergedBondResponse {
     pub min_denom_amount: String,
     pub validator: ValidatorWithRankResponse,
+    pub redelegation_info: Option<RedelegationInfoResponse>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -160,15 +169,6 @@ impl From<Bond> for BondResponse {
     }
 }
 
-impl From<MergedBond> for MergedBondResponse {
-    fn from(value: MergedBond) -> Self {
-        MergedBondResponse {
-            min_denom_amount: value.min_denom_amount.to_string(),
-            validator: ValidatorWithRankResponse::from(value.validator),
-        }
-    }
-}
-
 impl From<Unbond> for UnbondResponse {
     fn from(value: Unbond) -> Self {
         UnbondResponse {
@@ -177,6 +177,61 @@ impl From<Unbond> for UnbondResponse {
             withdraw_epoch: value.withdraw_epoch.to_string(),
             withdraw_time: value.withdraw_time.to_string(),
             can_withdraw: value.can_withdraw,
+        }
+    }
+}
+
+impl MergedBondResponse {
+    pub fn from(merged_bond: MergedBond) -> Self {
+        match merged_bond.redelegation {
+            Some(MergedBondRedelegation {
+                redelegation_end_epoch,
+                chain_state,
+                min_num_of_blocks,
+                min_duration,
+                slash_processing_epoch_offset,
+            }) => {
+                let earliest_redelegation_epoch =
+                    redelegation_end_epoch - 1 + slash_processing_epoch_offset;
+
+                let epoch_progress = epoch_progress(
+                    chain_state.last_processed_block as i32,
+                    chain_state.first_block_in_epoch as i32,
+                    min_num_of_blocks,
+                );
+
+                let to_allowed_redelegation = time_between_epochs(
+                    min_num_of_blocks,
+                    epoch_progress,
+                    chain_state.last_processed_epoch as i32,
+                    earliest_redelegation_epoch,
+                    min_duration,
+                );
+
+                let redelegation_time =
+                    chain_state.timestamp + i64::from(to_allowed_redelegation);
+
+                let redelegation_info = RedelegationInfoResponse {
+                    earliest_redelegation_epoch: earliest_redelegation_epoch
+                        .to_string(),
+                    earliest_redelegation_time: redelegation_time.to_string(),
+                };
+
+                Self {
+                    min_denom_amount: merged_bond.min_denom_amount.to_string(),
+                    validator: ValidatorWithRankResponse::from(
+                        merged_bond.validator,
+                    ),
+                    redelegation_info: Some(redelegation_info),
+                }
+            }
+            None => Self {
+                min_denom_amount: merged_bond.min_denom_amount.to_string(),
+                validator: ValidatorWithRankResponse::from(
+                    merged_bond.validator,
+                ),
+                redelegation_info: None,
+            },
         }
     }
 }

@@ -6,6 +6,7 @@ use orm::unbond::UnbondDb;
 use orm::validators::{ValidatorDb, ValidatorStateDb};
 use serde::{Deserialize, Serialize};
 use shared::balance::Amount;
+use shared::crawler_state::ChainCrawlerState;
 use shared::id::Id;
 
 use crate::response::utils::{epoch_progress, time_between_epochs};
@@ -73,6 +74,7 @@ pub struct Bond {
 pub struct MergedBond {
     pub min_denom_amount: Amount,
     pub validator: ValidatorWithRank,
+    pub redelegation: Option<MergedBondRedelegation>,
 }
 
 #[derive(Clone, Debug)]
@@ -156,11 +158,25 @@ impl Bond {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct MergedBondRedelegation {
+    pub redelegation_end_epoch: i32,
+    pub chain_state: ChainCrawlerState,
+    pub min_num_of_blocks: i32,
+    pub min_duration: i32,
+    pub slash_processing_epoch_offset: i32,
+}
+
 impl MergedBond {
-    pub fn from(amount: BigDecimal, db_validator: ValidatorDb) -> Self {
+    pub fn from(
+        amount: BigDecimal,
+        db_validator: ValidatorDb,
+        redelegation: Option<MergedBondRedelegation>,
+    ) -> Self {
         Self {
             min_denom_amount: amount.into(),
             validator: ValidatorWithRank::from(db_validator, None),
+            redelegation,
         }
     }
 }
