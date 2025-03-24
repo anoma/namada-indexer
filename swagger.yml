@@ -545,7 +545,7 @@ paths:
                     $ref: "#/components/schemas/Pagination"
   /api/v1/pgf/payments/{proposal_id}:
     get:
-      summary: Get all the votes from a voter
+      summary: Get all pgf payments for a proposal id
       parameters:
         - in: path
           name: proposal_id
