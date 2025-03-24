@@ -76,9 +76,9 @@ pub struct WrapperTransaction {
     pub id: Id,
     pub fee_payer: Id,
     pub fee_token: Token,
-    pub gas_limit: String,
+    pub gas_limit: u64,
     pub gas_used: Option<u64>,
-    pub amount_per_gas_unit: Option<String>,
+    pub amount_per_gas_unit: Option<f64>,
     pub block_height: u64,
     pub exit_code: TransactionExitStatus,
     pub atomic: bool,
@@ -125,9 +125,14 @@ impl WrapperTransaction {
             id: Id::Hash(transaction.id),
             fee_payer: Id::Account(transaction.fee_payer),
             fee_token,
-            gas_limit: transaction.gas_limit,
+            gas_limit: transaction
+                .gas_limit
+                .parse::<u64>()
+                .expect("Should be a number"),
             gas_used: transaction.gas_used.map(|gas| gas as u64),
-            amount_per_gas_unit: transaction.amount_per_gas_unit,
+            amount_per_gas_unit: transaction
+                .amount_per_gas_unit
+                .map(|g| g.parse::<f64>().expect("Should be a number")),
             block_height: transaction.block_height as u64,
             exit_code: TransactionExitStatus::from(transaction.exit_code),
             atomic: transaction.atomic,
