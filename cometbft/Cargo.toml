@@ -1,0 +1,35 @@
+[package]
+name = "cometbft"
+description = "Cometbft transactions fetcher."
+resolver = "2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "transactions"
+path = "src/main.rs"
+
+[dependencies]
+bigdecimal.workspace = true
+tokio.workspace = true 
+tracing.workspace = true
+chrono.workspace = true
+clap.workspace = true 
+anyhow.workspace = true
+namada_sdk.workspace = true
+namada_core.workspace = true
+tendermint-rpc.workspace = true
+shared.workspace = true
+futures.workspace = true
+deadpool-diesel.workspace = true
+diesel.workspace = true
+diesel_migrations.workspace = true
+orm.workspace = true
+clap-verbosity-flag.workspace = true
+serde_json.workspace = true
+
+[build-dependencies]
+vergen = { workspace = true, features = ["build", "git", "gitcl"] }
