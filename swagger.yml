@@ -525,6 +525,43 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vote"
+  /api/v1/pgf/payments:
+    get:
+      summary: Get all the pgf payments with pagination
+      responses:
+        "200":
+          description: A list of pgf payment with pagination.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, pagination]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PgfPayment"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+  /api/v1/pgf/payments/{proposal_id}:
+    get:
+      summary: Get all pgf payments for a proposal id
+      parameters:
+        - in: path
+          name: proposal_id
+          schema:
+            type: string
+          required: true
+          description: The proposal id
+      responses:
+        "200":
+          description: The pgf payments related to the proposal id.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PgfPayment"
   /api/v1/account/{address}:
     get:
       summary: Get the all the tokens balances of an address
@@ -1032,7 +1069,7 @@ components:
         ]
       properties:
         id:
-          type: string
+          type: number
         content:
           type: string
         type:
@@ -1046,11 +1083,11 @@ components:
         author:
           type: string
         startEpoch:
-          type: string
+          type: number
         endEpoch:
-          type: string
+          type: number
         activationEpoch:
-          type: string
+          type: number
         startTime:
           type: string
         endTime:
@@ -1063,17 +1100,20 @@ components:
           type: string
           enum: [pending, voting, passed, rejected, executedPassed, executedRejected]
         yayVotes:
-          type: string
+          type: number
+          format: float
         nayVotes:
-          type: string
+          type: number
+          format: float
         abstainVotes:
-          type: string
+          type: number
+          format: float
     Vote:
       type: object
       required: [proposalId, vote, voterAddress]
       properties:
         proposalId:
-          type: string
+          type: number
         vote:
           type: string
           enum: [yay, nay, abstain, unknown]
@@ -1106,7 +1146,7 @@ components:
       required: [earliest_redelegation_epoch, earliest_redelegation_time]
       properties:
         earliest_redelegation_epoch:
-          type: string
+          type: number
         earliest_redelegation_time:
           type: string
     MergedBond:
@@ -1145,7 +1185,7 @@ components:
           format: float
           minimum: 0
         withdrawEpoch:
-          type: string
+          type: number
     VotingPower:
       type: object
       required: [totalVotingPower]
@@ -1154,10 +1194,12 @@ components:
           type: string
     Balance:
       type: object
-      required: [tokenAddress, minDenomAmount]
+      required: [token, minDenomAmount]
       properties:
-        tokenAddress:
-          type: string
+        token:
+          oneOf:
+            - $ref: "#/components/schemas/NativeToken"
+            - $ref: "#/components/schemas/IbcToken"
         minDenomAmount:
           type: string
     MaspPoolAggregateResponse:
@@ -1189,6 +1231,22 @@ components:
         totalItems:
           type: string
           minimum: 0
+    PgfPayment:
+      type: object
+      required: [proposal_id, receipient, amount, kind, recurrence]
+      properties:
+        proposal_id:
+          type: number
+        receipient:
+          type: string
+        amount:
+          type: string
+        kind:
+          type: string
+          enum: [ibc, native]
+        recurrence:
+          type: string
+          enum: [retro, continous]
     RevealedPk:
       type: object
       properties:
@@ -1201,7 +1259,9 @@ components:
         required: [token, minDenomAmount]
         properties:
           token:
-            type: string
+            oneOf:
+              - $ref: "#/components/schemas/NativeToken"
+              - $ref: "#/components/schemas/IbcToken"
           minDenomAmount:
             type: string
     GasEstimate:
@@ -1241,9 +1301,9 @@ components:
         address:
           type: string
         totalSupply:
-          type: string
+          type: number
         effectiveSupply:
-          type: string
+          type: number
     Parameters:
       type: object
       required:
@@ -1266,13 +1326,13 @@ components:
         ]
       properties:
         unbondingLength:
-          type: string
+          type: number
         pipelineLength:
-          type: string
+          type: number
         epochsPerYear:
-          type: string
+          type: number
         apr:
-          type: string
+          type: number
         nativeTokenAddress:
           type: string
         chainId:
@@ -1290,13 +1350,13 @@ components:
           additionalProperties:
             type: string
         epochSwitchBlocksDelay:
-          type: string
+          type: number
         cubicSlashingWindowLength:
-          type: string
+          type: number
         duplicateVoteMinSlashRate:
-          type: string
+          type: number
         lightClientAttackMinSlashRate:
-          type: string
+          type: number
 
     RpcUrl:
       type: object
@@ -1318,12 +1378,14 @@ components:
           atomic,
         ]
       properties:
-        txId:
+        id:
           type: string
         feePayer:
           type: string
         feeToken:
-          type: string
+          oneOf:
+              - $ref: "#/components/schemas/NativeToken"
+              - $ref: "#/components/schemas/IbcToken"
         gasLimit:
           type: number
         amountPerGasUnit:
@@ -1339,7 +1401,7 @@ components:
             type: object
             required: [txId, kind, exitCode]
             properties:
-              txId:
+              Id:
                 type: string
               kind:
                 type: string
@@ -1380,7 +1442,7 @@ components:
       type: object
       required: [txId, kind, wrapperId, exitCode]
       properties:
-        txId:
+        id:
           type: string
         wrapperId:
           type: string
@@ -1416,7 +1478,7 @@ components:
       required: [height]
       properties:
         height:
-          type: string
+          type: number
         hash:
           type: string
         appHash:
@@ -1441,7 +1503,7 @@ components:
           type: object
           required: [txId, kind, wrapperId, exitCode]
           properties:
-            txId:
+            tx:
               type: string
             wrapperId:
               type: string
@@ -1478,7 +1540,7 @@ components:
           type: string
           enum: [received, sent]
         block_height:
-          type: string
+          type: number
     IbcRateLimit:
       type: object
       required: [tokenAddress, throughputLimit]
@@ -1486,7 +1548,7 @@ components:
         tokenAddress:
           type: string
         throughputLimit:
-          type: string
+          type: number
     IbcTokenFlow:
       type: object
       required: [tokenAddress, withdraw, deposit]
@@ -1494,14 +1556,14 @@ components:
         tokenAddress:
           type: string
         withdraw:
-          type: string
+          type: number
         deposit:
-          type: string
+          type: number
     IbcTokenThroughput:
       type: object
       required: [throughput, limit]
       properties:
         throughput:
-          type: string
+          type: number
         limit:
-          type: string
+          type: number
