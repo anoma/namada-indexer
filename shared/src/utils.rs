@@ -5,6 +5,7 @@ use namada_ibc::apps::transfer::types::{
     Amount as IbcAmount, PORT_ID_STR as FT_PORT_ID_STR, PrefixedDenom,
     TracePrefix,
 };
+use namada_ibc::core::channel::types::acknowledgement::AcknowledgementStatus;
 use namada_ibc::core::channel::types::msgs::PacketMsg;
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
@@ -107,20 +108,31 @@ pub fn ibc_ack_to_balance_info(
                             "Could not deserialize IBC fungible token packet",
                         )?;
 
-                let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
-                    &packet_data.token.denom,
-                    &msg.packet.port_id_on_a,
-                    &msg.packet.chan_id_on_a,
-                );
-                let (_, token) = get_ibc_token(
-                    maybe_ibc_trace,
-                    Address::from(native_token),
-                    &packet_data.token.denom,
-                );
+                let ack = serde_json::from_slice::<AcknowledgementStatus>(
+                    msg.acknowledgement.as_bytes(),
+                )
+                .context("Could not deserialize IBC acknowledgement")?;
 
-                let source = Id::Account(packet_data.sender.to_string());
+                match ack {
+                    AcknowledgementStatus::Success(_) => None,
+                    AcknowledgementStatus::Error(_) => {
+                        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+                            &packet_data.token.denom,
+                            &msg.packet.port_id_on_a,
+                            &msg.packet.chan_id_on_a,
+                        );
+                        let (_, token) = get_ibc_token(
+                            maybe_ibc_trace,
+                            Address::from(native_token),
+                            &packet_data.token.denom,
+                        );
 
-                Some(BalanceChange::new(source, token))
+                        let source =
+                            Id::Account(packet_data.sender.to_string());
+
+                        Some(BalanceChange::new(source, token))
+                    }
+                }
             }
             _ => None,
         },
