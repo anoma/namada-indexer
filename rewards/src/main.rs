@@ -117,12 +117,17 @@ async fn crawling_fn(
         "Queried rewards successfully",
     );
 
+    let current_epoch = namada_service::get_current_epoch(&client)
+        .await
+        .into_rpc_error()?;
+
     conn.interact(move |conn| {
         conn.build_transaction().read_write().run(
-            |transaction_conn: &mut diesel::prelude::PgConnection| {
+            |transaction_conn: &mut diesel::pg::PgConnection| {
                 repository::pos_rewards::upsert_rewards(
                     transaction_conn,
                     non_zero_rewards,
+                    current_epoch as i32,
                 )?;
 
                 repository::crawler_state::upsert_crawler_state(
@@ -130,7 +135,7 @@ async fn crawling_fn(
                     (CrawlerName::Rewards, crawler_state).into(),
                 )?;
 
-                anyhow::Ok(())
+                Ok(())
             },
         )
     })

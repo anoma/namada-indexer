@@ -125,6 +125,8 @@ async fn process_batch(
     client: &HttpClient,
     batch: Vec<DelegationPair>,
 ) -> anyhow::Result<Vec<Reward>> {
+    let epoch = get_current_epoch(client).await?;
+
     Ok(futures::stream::iter(batch)
         .filter_map(|delegation| async move {
             tracing::debug!(
@@ -154,6 +156,7 @@ async fn process_batch(
             Some(Reward {
                 delegation_pair: delegation.clone(),
                 amount: Amount::from(reward),
+                epoch: epoch as i32,
             })
         })
         .map(futures::future::ready)

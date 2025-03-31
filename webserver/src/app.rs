@@ -76,6 +76,10 @@ impl ApplicationServer {
                 )
                 .route("/pos/reward/:address", get(pos_handlers::get_rewards))
                 .route(
+                    "/pos/reward/:delegator/:validator/:epoch",
+                    get(pos_handlers::get_rewards_by_delegator_and_validator_and_epoch),
+                )
+                .route(
                     "/pos/voting-power",
                     get(pos_handlers::get_total_voting_power),
                 )
