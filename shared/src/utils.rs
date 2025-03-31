@@ -1,9 +1,11 @@
+use anyhow::Context;
 use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
 use namada_ibc::apps::transfer::types::packet::PacketData as FtPacketData;
 use namada_ibc::apps::transfer::types::{
     Amount as IbcAmount, PORT_ID_STR as FT_PORT_ID_STR, PrefixedDenom,
     TracePrefix,
 };
+use namada_ibc::core::channel::types::msgs::PacketMsg;
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
 use namada_sdk::address::Address;
@@ -90,6 +92,42 @@ pub fn transfer_to_tx_kind(data: Transfer) -> TransactionKind {
         }
         _ => TransactionKind::MixedTransfer(Some(data.into())),
     }
+}
+
+pub fn ibc_ack_to_balance_info(
+    ibc_data: namada_ibc::IbcMessage<Transfer>,
+    native_token: Id,
+) -> anyhow::Result<Option<BalanceChange>> {
+    let balance_change = match ibc_data {
+        namada_ibc::IbcMessage::Envelope(msg_envelope) => match *msg_envelope {
+            MsgEnvelope::Packet(PacketMsg::Ack(msg)) => {
+                let packet_data =
+                    serde_json::from_slice::<FtPacketData>(&msg.packet.data)
+                        .context(
+                            "Could not deserialize IBC fungible token packet",
+                        )?;
+
+                let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+                    &packet_data.token.denom,
+                    &msg.packet.port_id_on_a,
+                    &msg.packet.chan_id_on_a,
+                );
+                let (_, token) = get_ibc_token(
+                    maybe_ibc_trace,
+                    Address::from(native_token),
+                    &packet_data.token.denom,
+                );
+
+                let source = Id::Account(packet_data.sender.to_string());
+
+                Some(BalanceChange::new(source, token))
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+
+    anyhow::Ok(balance_change)
 }
 
 pub fn transfer_to_ibc_tx_kind(
@@ -331,32 +369,22 @@ fn get_namada_ibc_trace_when_sending(
     }
 }
 
-fn get_token_and_amount(
+fn get_ibc_token(
     maybe_ibc_trace: Option<String>,
-    amount: IbcAmount,
     native_token: Address,
     original_denom: &PrefixedDenom,
-) -> (
-    Address,
-    crate::token::Token,
-    namada_sdk::token::DenominatedAmount,
-) {
+) -> (Address, crate::token::Token) {
     if let Some(ibc_trace) = maybe_ibc_trace {
         let token_address =
             namada_ibc::trace::convert_to_address(ibc_trace.clone())
                 .expect("Failed to convert IBC trace to address");
+
         (
             token_address.clone(),
             crate::token::Token::Ibc(crate::token::IbcToken {
                 address: token_address.into(),
                 trace: Id::IbcTrace(ibc_trace),
             }),
-            namada_sdk::token::DenominatedAmount::new(
-                amount
-                    .try_into()
-                    .expect("Failed conversion of IBC amount to Namada one"),
-                0.into(),
-            ),
         )
     } else {
         if !original_denom
@@ -371,13 +399,41 @@ fn get_token_and_amount(
         (
             native_token.clone(),
             crate::token::Token::Native(native_token.into()),
-            namada_sdk::token::DenominatedAmount::native(
-                amount
-                    .try_into()
-                    .expect("Failed conversion of IBC amount to Namada one"),
-            ),
         )
     }
+}
+
+fn get_ibc_amount(
+    amount: IbcAmount,
+    is_ibc_token: bool,
+) -> namada_sdk::token::DenominatedAmount {
+    let converted_amount = amount
+        .try_into()
+        .expect("Failed conversion of IBC amount to Namada one");
+
+    if is_ibc_token {
+        namada_sdk::token::DenominatedAmount::new(converted_amount, 0.into())
+    } else {
+        namada_sdk::token::DenominatedAmount::native(converted_amount)
+    }
+}
+
+fn get_token_and_amount(
+    maybe_ibc_trace: Option<String>,
+    amount: IbcAmount,
+    native_token: Address,
+    original_denom: &PrefixedDenom,
+) -> (
+    Address,
+    crate::token::Token,
+    namada_sdk::token::DenominatedAmount,
+) {
+    let (address, token) =
+        get_ibc_token(maybe_ibc_trace.clone(), native_token, original_denom);
+    let is_ibc_token = maybe_ibc_trace.is_some();
+    let denominated_amount = get_ibc_amount(amount, is_ibc_token);
+
+    (address, token, denominated_amount)
 }
 
 #[cfg(test)]

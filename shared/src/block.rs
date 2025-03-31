@@ -23,7 +23,7 @@ use crate::transaction::{
     InnerTransaction, Transaction, TransactionKind, TransactionTarget,
     WrapperTransaction,
 };
-use crate::utils::{BalanceChange, MASP_ADDRESS};
+use crate::utils::{BalanceChange, MASP_ADDRESS, ibc_ack_to_balance_info};
 use crate::validator::{
     Validator, ValidatorMetadataChange, ValidatorState, ValidatorStateChange,
 };
@@ -715,7 +715,19 @@ impl Block {
         native_token: &Id,
     ) -> Option<Vec<BalanceChange>> {
         let change = match &tx.kind {
-            TransactionKind::IbcMsg(_) => Default::default(),
+            TransactionKind::IbcMsg(Some(msg)) => {
+                let balance = ibc_ack_to_balance_info(
+                    msg.0.clone(),
+                    native_token.clone(),
+                )
+                // TODO: as this function does not return Result, we just ok()
+                // it for now
+                .ok()??;
+
+                vec![balance]
+            }
+            TransactionKind::IbcMsg(None) => Default::default(),
+
             // Shielded transfers don't move any transparent balance
             TransactionKind::ShieldedTransfer(_) => Default::default(),
             TransactionKind::ShieldingTransfer(data)
