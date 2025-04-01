@@ -36,14 +36,14 @@ axum-extra = { version = "0.9.3", features = ["query"] }
 chrono = { version = "0.4.30", features = ["serde"] }
 anyhow = "1.0.75"
 num-bigint = "0.4.6"
-namada_core = "0.47.2"
-namada_sdk = { version = "0.47.2", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_tx = "0.47.2"
-namada_governance = "0.47.2"
-namada_ibc = "0.47.2"
-namada_token = "0.47.2"
-namada_parameters = "0.47.2"
-namada_proof_of_stake = "0.47.2"
+namada_core = "0.48.0"
+namada_sdk = { version = "0.48.0", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_tx = "0.48.0"
+namada_governance = "0.48.0"
+namada_ibc = "0.48.0"
+namada_token = "0.48.0"
+namada_parameters = "0.48.0"
+namada_proof_of_stake = "0.48.0"
 tendermint = "0.40.1"
 tendermint-rpc = { version = "0.40.1", features = ["http-client"] }
 subtle-encoding = "0.5.1"
