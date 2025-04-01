@@ -7,6 +7,7 @@ use namada_ibc::apps::transfer::types::{
 };
 use namada_ibc::core::channel::types::acknowledgement::AcknowledgementStatus;
 use namada_ibc::core::channel::types::msgs::PacketMsg;
+use namada_ibc::core::channel::types::packet::Packet;
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
 use namada_sdk::address::Address;
@@ -95,51 +96,62 @@ pub fn transfer_to_tx_kind(data: Transfer) -> TransactionKind {
     }
 }
 
+fn packet_msg_to_balance_info(
+    native_token: Id,
+    packet_msg: PacketMsg,
+) -> anyhow::Result<Option<BalanceChange>> {
+    let extract = |packet: Packet| -> anyhow::Result<BalanceChange> {
+        let packet_data = serde_json::from_slice::<FtPacketData>(&packet.data)
+            .context("Could not deserialize IBC fungible token packet")?;
+
+        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
+            &packet_data.token.denom,
+            &packet.port_id_on_a,
+            &packet.chan_id_on_a,
+        );
+        let (_, token) = get_ibc_token(
+            maybe_ibc_trace,
+            Address::from(native_token),
+            &packet_data.token.denom,
+        );
+
+        let source = Id::Account(packet_data.sender.to_string());
+
+        Ok(BalanceChange::new(source, token))
+    };
+
+    match packet_msg {
+        PacketMsg::Ack(msg) => {
+            let ack = serde_json::from_slice::<AcknowledgementStatus>(
+                msg.acknowledgement.as_bytes(),
+            )
+            .context("Could not deserialize IBC acknowledgement")?;
+
+            match ack {
+                AcknowledgementStatus::Success(_) => Ok(None),
+                AcknowledgementStatus::Error(_) => {
+                    extract(msg.packet).map(Some)
+                }
+            }
+        }
+        PacketMsg::Timeout(msg) => extract(msg.packet).map(Some),
+        PacketMsg::TimeoutOnClose(msg) => extract(msg.packet).map(Some),
+        _ => Ok(None),
+    }
+}
+
 pub fn ibc_ack_to_balance_info(
     ibc_data: namada_ibc::IbcMessage<Transfer>,
     native_token: Id,
 ) -> anyhow::Result<Option<BalanceChange>> {
-    let balance_change = match ibc_data {
-        namada_ibc::IbcMessage::Envelope(msg_envelope) => match *msg_envelope {
-            MsgEnvelope::Packet(PacketMsg::Ack(msg)) => {
-                let packet_data =
-                    serde_json::from_slice::<FtPacketData>(&msg.packet.data)
-                        .context(
-                            "Could not deserialize IBC fungible token packet",
-                        )?;
-
-                let ack = serde_json::from_slice::<AcknowledgementStatus>(
-                    msg.acknowledgement.as_bytes(),
-                )
-                .context("Could not deserialize IBC acknowledgement")?;
-
-                match ack {
-                    AcknowledgementStatus::Success(_) => None,
-                    AcknowledgementStatus::Error(_) => {
-                        let maybe_ibc_trace = get_namada_ibc_trace_when_sending(
-                            &packet_data.token.denom,
-                            &msg.packet.port_id_on_a,
-                            &msg.packet.chan_id_on_a,
-                        );
-                        let (_, token) = get_ibc_token(
-                            maybe_ibc_trace,
-                            Address::from(native_token),
-                            &packet_data.token.denom,
-                        );
-
-                        let source =
-                            Id::Account(packet_data.sender.to_string());
-
-                        Some(BalanceChange::new(source, token))
-                    }
-                }
-            }
-            _ => None,
-        },
-        _ => None,
+    let namada_ibc::IbcMessage::Envelope(msg_envelope) = ibc_data else {
+        return Ok(None);
+    };
+    let MsgEnvelope::Packet(packet_msg) = *msg_envelope else {
+        return Ok(None);
     };
 
-    anyhow::Ok(balance_change)
+    packet_msg_to_balance_info(native_token, packet_msg)
 }
 
 pub fn transfer_to_ibc_tx_kind(
