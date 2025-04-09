@@ -39,6 +39,20 @@ use super::utils::{
     query_storage_value,
 };
 
+pub async fn get_last_block(
+    client: &HttpClient,
+) -> anyhow::Result<BlockHeight> {
+    let last_block = RPC
+        .shell()
+        .last_block(client)
+        .await
+        .context("Failed to query Namada's last committed block")?;
+
+    last_block
+        .ok_or(anyhow::anyhow!("No last block found"))
+        .map(|b| BlockHeight::from(b.height.0 as u32))
+}
+
 pub async fn get_native_token(client: &HttpClient) -> anyhow::Result<Id> {
     let operation = || async {
         RPC.shell()
