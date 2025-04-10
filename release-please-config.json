@@ -1,0 +1,10 @@
+{
+  "release-type": "rust",
+  "plugins": ["cargo-workspace"],
+  "separate-pull-requests": true,
+  "packages": {
+    ".": {
+      "include-component-in-tag": false
+    }
+  }
+}
