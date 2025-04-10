@@ -79,14 +79,22 @@ async fn main() -> Result<(), MainError> {
     rlimit::increase_nofile_limit(10240).unwrap();
     rlimit::increase_nofile_limit(u64::MAX).unwrap();
 
+    let last_block_height = namada_service::get_last_block(&client)
+        .await
+        .into_rpc_error()?;
+    let crawler_state = db_service::try_get_chain_crawler_state(&conn)
+        .await
+        .into_db_error()?;
+
+    let limit = last_block_height - config.storage_read_past_height_limit;
+
+    let can_continue =
+        crawler_state.map(|s| (s.last_processed_block >= limit, s));
+    let can_backfill = config.backfill_from.map(|bf| (bf >= limit, bf));
+
     // See if we can start from existing crawler_state
-    let crawler_state = match (
-        config.backfill_from,
-        db_service::try_get_chain_crawler_state(&conn)
-            .await
-            .into_db_error()?,
-    ) {
-        (Some(height), _) => {
+    let crawler_state = match (can_backfill, can_continue) {
+        (Some((true, height)), _) => {
             tracing::warn!("Backfilling from block height {}", height);
             Some(ChainCrawlerState {
                 last_processed_block: height,
@@ -95,7 +103,7 @@ async fn main() -> Result<(), MainError> {
                 timestamp: 0,
             })
         }
-        (None, Some(crawler_state)) => {
+        (None, Some((true, crawler_state))) => {
             tracing::debug!(
                 "Found chain crawler state, attempting initial crawl at block \
                  {}...",
@@ -151,9 +159,12 @@ async fn main() -> Result<(), MainError> {
                 }
             }
         }
-        (None, None) => {
+        _ => {
             tracing::debug!(
-                "No chain crawler state found, starting from initial_query..."
+                "Couldn't continue from the last state. Either state does not \
+                 exist or it's more than {} blocks behind. Starting from \
+                 initial_query...",
+                config.storage_read_past_height_limit
             );
             None
         }
