@@ -1,6 +1,8 @@
 # 🟡 Namada Indexer
 
-##  About 
+awwwda dwasdasda
+
+## About
 
 This repository, **Namada Indexer**, is distinct from and incomparable to the similarly named [Namada MASP Indexer](https://github.com/anoma/namada-masp-indexer).
 
@@ -26,6 +28,7 @@ We welcome contributions to this project! If you'd like to help, feel free to pi
 The Namada Indexer is composed of a set of microservices, with each component residing in its own crate. Each microservice is responsible for indexing specific data from the blockchain and storing it in the PostgreSQL database.
 
 ### Microservices & Containers
+
 - `namada/chain-indexer`: Processes blocks sequentially and extracts information from transactions (e.g., balances).
 
 - `namada/governance-indexer`: Tracks new proposals and their corresponding votes.
@@ -47,7 +50,6 @@ The Namada Indexer is composed of a set of microservices, with each component re
 <p align="center">
   <img src="docs/architecture.png" alt="Architecture" title="Architecture" width="500">
 </p>
-
 
 # 🚀 Getting Started
 
@@ -72,6 +74,7 @@ apt-get install -y curl apt-transport-https ca-certificates software-properties-
 - **Just**: Refer to the official documentation to install `just`: [Just Installation Guide](https://github.com/casey/just).
 
 ### Usage
+
 Ensure you have the latest repository cloned to maintain compatibility with other Namada interfaces. Use the following commands to clone the repository and navigate into its directory.
 
 ```sh
@@ -80,20 +83,23 @@ git clone <copied-url>
 cd <repository-name>
 ```
 
-Create the `.env` file in the root of the project. You can use the `.env.sample` file as a reference. 
+Create the `.env` file in the root of the project. You can use the `.env.sample` file as a reference.
 
 ```sh
 cp .env.sample .env
 ```
+
 - The `TENDERMINT_URL` variable must point to a Namada RPC URL, which can be either public or local. For a public RPC URL, refer to the [Namada Ecosystem Repository](https://github.com/Luminara-Hub/namada-ecosystem/tree/main/user-and-dev-tools/mainnet). If running the Namada Node locally, use the preconfigured `http://host.docker.internal:26657`.
 - When running locally, ensure that CometBFT allows RPC calls by setting the the configuration in your `config.toml` file.
 
 Build the required Docker containers for the project.
+
 ```sh
 docker compose build
 ```
 
 Launch the Namada Indexer using the `just` command, which orchestrates the Docker containers.
+
 ```sh
 # Run the Docker containers in the foreground, displaying all logs and keeping the terminal active until stopped.
 just docker-up
@@ -110,11 +116,12 @@ If you prefer not to use Docker, you can follow the instructions below to set up
 
 - Update the `.env` file with values that match your setup.
 
-- Use the `run.sh` script located inside each package to start the services.  
-   - The **PoS** package must always be running.  
-   - Other services can be run as needed based on your requirements.
+- Use the `run.sh` script located inside each package to start the services.
+  - The **PoS** package must always be running.
+  - Other services can be run as needed based on your requirements.
 
 ## REST API
+
 The API endpoints are described in the `swagger.yml` file located in the project root. A hosted HTML version of the API documentation is available at [Namada Interface Indexer REST API](https://anoma.github.io/namada-indexer).
 
 ## Populating the Database for Testing
