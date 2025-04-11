@@ -1,0 +1,7 @@
+{
+  "release-type": "rust",
+  "include-component-in-tag": false,
+  "packages": {
+    ".": {}
+  }
+}

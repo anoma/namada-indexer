@@ -1,12 +1,12 @@
 [package]
 name = "pos"
+version = "2.4.4"
 description = "Namada proof of stake crawler."
 resolver = "2"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 readme.workspace = true
-version.workspace = true
 
 [[bin]]
 name = "pos"

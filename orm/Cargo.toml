@@ -1,12 +1,12 @@
 [package]
 name = "orm"
+version = "2.4.4"
 description = "Namada indexer orm."
 resolver = "2"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 readme.workspace = true
-version.workspace = true
 
 [lib]
 name = "orm"

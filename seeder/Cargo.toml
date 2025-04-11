@@ -1,12 +1,12 @@
 [package]
 name = "seeder"
+version = "2.4.4"
 description = "Database seeder."
 resolver = "2"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 readme.workspace = true
-version.workspace = true
 
 [[bin]]
 name = "seeder"
