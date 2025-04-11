@@ -168,7 +168,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Reward"
-    /api/v1/pos/reward/{address}:
+    /api/v1/pos/reward/{delegator_address}/{validator_address}/{epoch}:
       get:
         summary: Get rewards for a single delegator for a specific epoch
         parameters:
@@ -395,7 +395,15 @@ paths:
           name: status
           schema:
             type: string
-            enum: [pending, votingPeriod, passed, rejected, executedPassed, executedRejected]
+            enum:
+              [
+                pending,
+                votingPeriod,
+                passed,
+                rejected,
+                executedPassed,
+                executedRejected,
+              ]
           description: The status of the proposal
         - in: query
           name: kind
@@ -431,7 +439,15 @@ paths:
           name: status
           schema:
             type: string
-            enum: [pending, votingPeriod, passed, rejected, executedPassed, executedRejected]
+            enum:
+              [
+                pending,
+                votingPeriod,
+                passed,
+                rejected,
+                executedPassed,
+                executedRejected,
+              ]
           description: The status of the proposal
         - in: query
           name: kind
@@ -1092,7 +1108,15 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, voting, passed, rejected, executedPassed, executedRejected]
+          enum:
+            [
+              pending,
+              voting,
+              passed,
+              rejected,
+              executedPassed,
+              executedRejected,
+            ]
         yayVotes:
           type: string
         nayVotes:
@@ -1149,7 +1173,7 @@ components:
         minDenomAmount:
           type: string
         redelegationInfo:
-          $ref: '#/components/schemas/RedelegationInfo'
+          $ref: "#/components/schemas/RedelegationInfo"
     Unbond:
       type: object
       required:
