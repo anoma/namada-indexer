@@ -168,6 +168,37 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Reward"
+    /api/v1/pos/reward/{address}:
+      get:
+        summary: Get rewards for a single delegator for a specific epoch
+        parameters:
+          - in: path
+            name: validator_address
+            schema:
+              type: string
+            required: true
+            description: The validator address
+          - in: path
+            name: delegator_address
+            schema:
+              type: string
+            required: true
+            description: The delegator address
+          - in: query
+            name: epoch
+            schema:
+              type: number
+            required: true
+            description: The epoch
+        responses:
+          "200":
+            description: A list of rewards.
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Reward"
   /api/v1/pos/bond/{address}:
     get:
       summary: Get all the bonds for an address
@@ -452,7 +483,7 @@ paths:
           required: true
           description: Proposal id
       responses:
-        '200':
+        "200":
           description: A Governance proposal data.
   /api/v1/gov/proposal/{id}/votes:
     get:
@@ -1232,11 +1263,7 @@ components:
           type: string
     TokenSupply:
       type: object
-      required:
-        [
-          address,
-          totalSupply,
-        ]
+      required: [address, totalSupply]
       properties:
         address:
           type: string
