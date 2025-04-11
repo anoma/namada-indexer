@@ -173,17 +173,17 @@ paths:
         summary: Get rewards for a single delegator for a specific epoch
         parameters:
           - in: path
-            name: validator_address
-            schema:
-              type: string
-            required: true
-            description: The validator address
-          - in: path
             name: delegator_address
             schema:
               type: string
             required: true
             description: The delegator address
+          - in: path
+            name: validator_address
+            schema:
+              type: string
+            required: true
+            description: The validator address
           - in: query
             name: epoch
             schema:
