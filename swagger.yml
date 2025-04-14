@@ -168,6 +168,37 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Reward"
+  /api/v1/pos/reward/{delegator_address}/{validator_address}/{epoch}:
+    get:
+      summary: Get rewards for a single delegator for a specific epoch
+      parameters:
+        - in: path
+          name: delegator_address
+          schema:
+            type: string
+          required: true
+          description: The delegator address
+        - in: path
+          name: validator_address
+          schema:
+            type: string
+          required: true
+          description: The validator address
+        - in: path
+          name: epoch
+          schema:
+            type: number
+          required: true
+          description: The epoch
+      responses:
+        "200":
+          description: A list of rewards.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reward"
   /api/v1/pos/bond/{address}:
     get:
       summary: Get all the bonds for an address
@@ -364,7 +395,15 @@ paths:
           name: status
           schema:
             type: string
-            enum: [pending, votingPeriod, passed, rejected, executedPassed, executedRejected]
+            enum:
+              [
+                pending,
+                votingPeriod,
+                passed,
+                rejected,
+                executedPassed,
+                executedRejected,
+              ]
           description: The status of the proposal
         - in: query
           name: kind
@@ -400,7 +439,15 @@ paths:
           name: status
           schema:
             type: string
-            enum: [pending, votingPeriod, passed, rejected, executedPassed, executedRejected]
+            enum:
+              [
+                pending,
+                votingPeriod,
+                passed,
+                rejected,
+                executedPassed,
+                executedRejected,
+              ]
           description: The status of the proposal
         - in: query
           name: kind
@@ -452,7 +499,7 @@ paths:
           required: true
           description: Proposal id
       responses:
-        '200':
+        "200":
           description: A Governance proposal data.
   /api/v1/gov/proposal/{id}/votes:
     get:
@@ -1061,7 +1108,15 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, voting, passed, rejected, executedPassed, executedRejected]
+          enum:
+            [
+              pending,
+              voting,
+              passed,
+              rejected,
+              executedPassed,
+              executedRejected,
+            ]
         yayVotes:
           type: string
         nayVotes:
@@ -1118,7 +1173,7 @@ components:
         minDenomAmount:
           type: string
         redelegationInfo:
-          $ref: '#/components/schemas/RedelegationInfo'
+          $ref: "#/components/schemas/RedelegationInfo"
     Unbond:
       type: object
       required:
@@ -1232,11 +1287,7 @@ components:
           type: string
     TokenSupply:
       type: object
-      required:
-        [
-          address,
-          totalSupply,
-        ]
+      required: [address, totalSupply]
       properties:
         address:
           type: string
