@@ -104,7 +104,7 @@ async fn main() -> Result<(), MainError> {
             })
         }
         (None, Some((true, crawler_state))) => {
-            tracing::debug!(
+            tracing::info!(
                 "Found chain crawler state, attempting initial crawl at block \
                  {}...",
                 crawler_state.last_processed_block
@@ -136,7 +136,7 @@ async fn main() -> Result<(), MainError> {
                     // If any other type of error occurred, we should not
                     // increment last_processed_block but
                     // crawl from there without initial_query
-                    tracing::debug!(
+                    tracing::info!(
                         "Initial crawl had an error (not RpcError), \
                          continuing from block {}...",
                         crawler_state.last_processed_block
@@ -147,7 +147,7 @@ async fn main() -> Result<(), MainError> {
                     // If the crawl was successful, increment last_processed
                     // block and continue from there.
                     let next_block = crawler_state.last_processed_block + 1;
-                    tracing::debug!(
+                    tracing::info!(
                         "Initial crawl was successful, continuing from block \
                          {}...",
                         next_block
@@ -160,7 +160,7 @@ async fn main() -> Result<(), MainError> {
             }
         }
         _ => {
-            tracing::debug!(
+            tracing::info!(
                 "Couldn't continue from the last state. Either state does not \
                  exist or it's more than {} blocks behind. Starting from \
                  initial_query...",
@@ -260,7 +260,7 @@ async fn crawling_fn(
         })
     });
 
-    tracing::debug!(
+    tracing::info!(
         block = block_height,
         txs = block.transactions.len(),
         "Deserialized {} txs...",
@@ -452,7 +452,7 @@ async fn crawling_fn(
 
     let first_checkpoint = Instant::now();
 
-    tracing::debug!(
+    tracing::info!(
         txs = block.transactions.len(),
         ibc_tokens = ibc_tokens.len(),
         balance_changes = balances.len(),
@@ -572,7 +572,7 @@ async fn crawling_fn(
 
     let second_checkpoint = Instant::now();
 
-    tracing::debug!(
+    tracing::info!(
         block = block_height,
         time_taken = second_checkpoint
             .duration_since(first_checkpoint)
