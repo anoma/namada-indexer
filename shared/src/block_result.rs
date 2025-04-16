@@ -88,7 +88,7 @@ pub struct BatchResults {
 impl From<TxResult<String>> for BatchResults {
     fn from(value: TxResult<String>) -> Self {
         Self {
-            batch_results: value.0.iter().fold(
+            batch_results: value.iter().fold(
                 BTreeMap::default(),
                 |mut acc, (tx_hash, result)| {
                     let tx_id = Id::from(*tx_hash);
@@ -101,7 +101,7 @@ impl From<TxResult<String>> for BatchResults {
                     acc
                 },
             ),
-            batch_errors: value.0.iter().fold(
+            batch_errors: value.iter().fold(
                 BTreeMap::default(),
                 |mut acc, (tx_hash, result)| {
                     let tx_id = Id::from(*tx_hash);
