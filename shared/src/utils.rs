@@ -341,29 +341,27 @@ fn convert_account(
         serde_json::from_str::<PfmMemo>(packet_data.memo.as_ref()).is_ok()
     };
 
-    let receiver = if is_pfm {
-        if is_sender {
-            ChainAddress::IbcPfmAccount(packet_data.sender.to_string(), token)
-        } else {
-            ChainAddress::IbcPfmAccount(packet_data.receiver.to_string(), token)
-        }
-    } else if is_sender {
-        ChainAddress::ChainAccount(namada_sdk::token::Account {
-            owner: packet_data.sender.clone().try_into().map_err(|_| {
-                "Ibc receiver address is notv valid".to_string()
-            })?,
-            token,
-        })
+    let address = if is_sender {
+        &packet_data.sender
     } else {
-        ChainAddress::ChainAccount(namada_sdk::token::Account {
-            owner: packet_data.receiver.clone().try_into().map_err(|_| {
-                "Ibc receiver address is notv valid".to_string()
-            })?,
-            token,
-        })
+        &packet_data.receiver
     };
 
-    Ok(receiver)
+    Ok(if is_pfm {
+        ChainAddress::IbcPfmAccount(address.to_string(), token)
+    } else if !address.as_ref().starts_with("tnam1") {
+        ChainAddress::ExternalAccount(address.to_string(), token)
+    } else {
+        ChainAddress::ChainAccount(namada_sdk::token::Account {
+            owner: Address::decode(address).map_err(|err| {
+                format!(
+                    "Ibc {} address is not valid: {err}",
+                    if is_sender { "sender" } else { "receiver" }
+                )
+            })?,
+            token,
+        })
+    })
 }
 
 fn get_namada_ibc_trace_when_receiving(
