@@ -191,7 +191,7 @@ impl Block {
                             .map(|account| {
                                 TransactionTarget::sent(
                                     tx.tx_id.clone(),
-                                    account.owner.to_string(),
+                                    account.owner(),
                                 )
                             })
                             .collect::<Vec<_>>();
@@ -202,7 +202,7 @@ impl Block {
                             .map(|account| {
                                 TransactionTarget::received(
                                     tx.tx_id.clone(),
-                                    account.owner.to_string(),
+                                    account.owner(),
                                 )
                             })
                             .collect::<Vec<_>>();
@@ -223,7 +223,7 @@ impl Block {
                         .map(|account| {
                             TransactionTarget::sent(
                                 tx.tx_id.clone(),
-                                account.owner.to_string(),
+                                account.owner(),
                             )
                         })
                         .collect::<Vec<_>>();
@@ -234,7 +234,7 @@ impl Block {
                         .map(|account| {
                             TransactionTarget::received(
                                 tx.tx_id.clone(),
-                                account.owner.to_string(),
+                                account.owner(),
                             )
                         })
                         .collect::<Vec<_>>();
@@ -415,7 +415,7 @@ impl Block {
                         .0
                         .iter()
                         .map(|(account, amount)| MaspEntry {
-                            token_address: account.token.to_string(),
+                            token_address: account.token(),
                             timestamp: self.header.timestamp,
                             raw_amount: amount.amount().into(),
                             direction: MaspEntryDirection::In,
@@ -429,7 +429,7 @@ impl Block {
                         .0
                         .iter()
                         .map(|(account, amount)| MaspEntry {
-                            token_address: account.token.to_string(),
+                            token_address: account.token(),
                             timestamp: self.header.timestamp,
                             raw_amount: amount.amount().into(),
                             direction: MaspEntryDirection::Out,
@@ -459,9 +459,9 @@ impl Block {
                             },
                         ))
                         .filter_map(|(transfer, denominated_amount, dir)| {
-                            if transfer.owner == MASP_ADDRESS {
+                            if transfer.owner() == MASP_ADDRESS.to_string() {
                                 Some(MaspEntry {
-                                    token_address: transfer.token.to_string(),
+                                    token_address: transfer.token(),
                                     timestamp: self.header.timestamp,
                                     raw_amount: denominated_amount
                                         .amount()
@@ -481,7 +481,7 @@ impl Block {
                         .0
                         .iter()
                         .map(|(account, amount)| MaspEntry {
-                            token_address: account.token.to_string(),
+                            token_address: account.token(),
                             timestamp: self.header.timestamp,
                             raw_amount: amount.amount().into(),
                             direction: MaspEntryDirection::In,
@@ -495,7 +495,7 @@ impl Block {
                         .0
                         .iter()
                         .map(|(account, amount)| MaspEntry {
-                            token_address: account.token.to_string(),
+                            token_address: account.token(),
                             timestamp: self.header.timestamp,
                             raw_amount: amount.amount().into(),
                             direction: MaspEntryDirection::Out,
@@ -741,8 +741,8 @@ impl Block {
                     .flat_map(|transfer_changes| {
                         transfer_changes.0.keys().map(|account| {
                             BalanceChange::new(
-                                Id::from(account.owner.clone()),
-                                Token::Native(Id::from(account.token.clone())),
+                                Id::Account(account.owner()),
+                                Token::Native(Id::Account(account.token())),
                             )
                         })
                     })
@@ -756,7 +756,7 @@ impl Block {
                     .flat_map(|transfer_changes| {
                         transfer_changes.0.keys().map(|account| {
                             BalanceChange::new(
-                                Id::from(account.owner.clone()),
+                                Id::Account(account.owner()),
                                 token.to_owned(),
                             )
                         })
