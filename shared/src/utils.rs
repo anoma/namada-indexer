@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Context;
 use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
 use namada_ibc::apps::transfer::types::packet::PacketData as FtPacketData;
@@ -331,12 +329,17 @@ fn convert_account(
     token: Address,
     is_sender: bool,
 ) -> Result<ChainAddress, String> {
-    let memo = serde_json::from_str::<HashMap<String, serde_json::Value>>(
-        packet_data.memo.as_ref(),
-    )
-    .map_err(|e| e.to_string())?;
+    let is_pfm = {
+        use serde::Deserialize;
 
-    let is_pfm = memo.contains_key("forward");
+        #[derive(Deserialize)]
+        struct PfmMemo {
+            #[allow(dead_code)]
+            forward: serde_json::Value,
+        }
+
+        serde_json::from_str::<PfmMemo>(packet_data.memo.as_ref()).is_ok()
+    };
 
     let receiver = if is_pfm {
         if is_sender {
