@@ -8,7 +8,7 @@ use deadpool_diesel::postgres::Object;
 use namada_sdk::state::EPOCH_SWITCH_BLOCKS_DELAY;
 use namada_sdk::time::{DateTimeUtc, Utc};
 use orm::gas::GasPriceDb;
-use orm::migrations::run_migrations;
+use orm::migrations::CustomMigrationSource;
 use orm::parameters::ParametersInsertDb;
 use parameters::app_state::AppState;
 use parameters::config::AppConfig;
@@ -37,6 +37,15 @@ async fn main() -> Result<(), MainError> {
             .unwrap(),
     );
 
+    let chain_id = tendermint_service::query_status(&client)
+        .await
+        .into_rpc_error()?
+        .node_info
+        .network
+        .to_string();
+
+    tracing::info!("Network chain id: {}", chain_id);
+
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
@@ -49,10 +58,10 @@ async fn main() -> Result<(), MainError> {
     ));
 
     // Run migrations
-    run_migrations(&conn)
+    CustomMigrationSource::new(chain_id)
+        .run_migrations(&conn)
         .await
-        .context_db_interact_error()
-        .into_db_error()?;
+        .expect("Should be able to run migrations");
 
     crawler::crawl(
         move |_| {
