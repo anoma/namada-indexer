@@ -6,7 +6,6 @@ use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
-use namada_sdk::events::extend::MaspTxRef;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
@@ -16,7 +15,8 @@ use namada_tx::data::pos::{
 };
 use namada_tx::data::{TxType, compute_inner_tx_hash};
 use namada_tx::either::Either;
-use namada_tx::{Section, Tx};
+use namada_tx::event::MaspTxRef;
+use namada_tx::{IndexedTx, Section, Tx};
 use serde::Serialize;
 
 use crate::block::BlockHeight;
@@ -330,10 +330,12 @@ impl InnerTransaction {
     }
 
     /// An inner transaction is successful only if both the inner tx itself and
-    /// the containing wrapper are marked as applied
+    /// the containing wrapper are marked as applied or, in case of a failing
+    /// atomic batch, if the inner tx was applied and did masp fee payment
     pub fn was_successful(&self, wrapper_tx: &WrapperTransaction) -> bool {
-        wrapper_tx.exit_code == TransactionExitStatus::Applied
-            && self.exit_code == TransactionExitStatus::Applied
+        self.exit_code == TransactionExitStatus::Applied
+            && (wrapper_tx.exit_code == TransactionExitStatus::Applied
+                || wrapper_tx.fee.masp_fee_payment.is_some())
     }
 
     pub fn is_ibc(&self) -> bool {
@@ -354,6 +356,7 @@ pub struct Fee {
     pub amount_per_gas_unit: String,
     pub gas_payer: Id,
     pub gas_token: Id,
+    pub masp_fee_payment: Option<Id>,
 }
 
 impl Transaction {
@@ -378,41 +381,10 @@ impl Transaction {
         match transaction.header().tx_type {
             TxType::Wrapper(wrapper) => {
                 let wrapper_tx_id = Id::from(transaction.header_hash());
-                let wrapper_tx_status =
-                    block_results.is_wrapper_tx_applied(&wrapper_tx_id);
-                let gas_used = block_results
-                    .gas_used(&wrapper_tx_id)
-                    .map(|gas| gas.parse::<u64>().unwrap());
-                let mut masp_refs =
-                    block_results.masp_refs(&wrapper_tx_id, index as u64);
-
-                let fee = Fee {
-                    gas: Uint::from(wrapper.gas_limit).to_string(),
-                    gas_used,
-                    amount_per_gas_unit: wrapper
-                        .fee
-                        .amount_per_gas_unit
-                        .to_string_precise(),
-                    gas_payer: Id::from(wrapper.fee_payer()),
-                    gas_token: Id::from(wrapper.fee.token),
-                };
-
-                let atomic = transaction.header().atomic;
-
-                let wrapper_tx = WrapperTransaction {
-                    tx_id: wrapper_tx_id.clone(),
-                    index,
-                    fee,
-                    atomic,
-                    block_height,
-                    exit_code: wrapper_tx_status.clone(),
-                    total_signatures,
-                    size: tx_size,
-                };
-
+                let mut masp_fee_payment = None;
                 let mut inner_txs = vec![];
 
-                for (index, tx_commitment) in
+                for (batch_index, tx_commitment) in
                     transaction.header().batch.into_iter().enumerate()
                 {
                     let inner_tx_id = Id::from(compute_inner_tx_hash(
@@ -494,87 +466,59 @@ impl Transaction {
                             acc
                         });
 
-                    // MASP events are emitted only for successful inner txs
-                    let masp_bundle = matches!(
-                        (&wrapper_tx_status, &inner_tx_status),
-                        (
-                            &TransactionExitStatus::Applied,
-                            &TransactionExitStatus::Applied
-                        )
-                    )
-                    .then(|| {
-                        if let Some(note) = masp_refs.0.first() {
-                            {
-                                // Check if the masp ref is pointing to this
-                                // inner tx
-                                match &tx_kind {
-                                    TransactionKind::ShieldedTransfer(
-                                        Some(data),
-                                    )
-                                    | TransactionKind::ShieldingTransfer(
-                                        Some(data),
-                                    )
-                                    | TransactionKind::UnshieldingTransfer(
-                                        Some(data),
-                                    )
-                                    | TransactionKind::MixedTransfer(Some(
-                                        data,
-                                    )) => data.shielded_section_hash.and_then(
-                                        |shielded_section_hash| {
-                                            extract_masp_transaction(
-                                                &transaction,
-                                                note,
-                                                &MaspTxRef::MaspSection(
-                                                    shielded_section_hash,
-                                                ),
-                                            )
-                                        },
-                                    ),
-                                    TransactionKind::IbcShieldingTransfer(
-                                        (_, _),
-                                    ) => extract_masp_transaction(
-                                        &transaction,
-                                        note,
-                                        &MaspTxRef::IbcData(
-                                            tx_commitment.data_hash,
-                                        ),
-                                    ),
-                                    TransactionKind::IbcUnshieldingTransfer(
-                                        (_, data),
-                                    ) => data.shielded_section_hash.and_then(
-                                        |shielded_section_hash| {
-                                            extract_masp_transaction(
-                                                &transaction,
-                                                note,
-                                                &MaspTxRef::MaspSection(
-                                                    shielded_section_hash,
-                                                ),
-                                            )
-                                        },
-                                    ),
-                                    _ => None,
-                                }
-                            }
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten();
+                    let indexed_tx = IndexedTx {
+                        block_height: namada_sdk::chain::BlockHeight(
+                            block_height as u64,
+                        ),
+                        block_index:
+                            namada_sdk::state::TxIndex::must_from_usize(index),
+                        batch_index: Some(batch_index as u32),
+                    };
+                    let masp_ref_opt = block_results.masp_ref(&indexed_tx);
 
-                    let notes = masp_bundle.map_or(0, |bundle| {
-                        // Remove the masp ref from the collection if we
-                        // found one
-                        masp_refs.0.remove(0);
-                        bundle.sapling_bundle().map_or(0, |bundle| {
-                            bundle.shielded_spends.len()
-                                + bundle.shielded_outputs.len()
-                                + bundle.shielded_converts.len()
-                        })
-                    }) as u64;
+                    let masp_bundle =
+                        masp_ref_opt.map(|(masp_ref, is_masp_fee_payment)| {
+                            // Cast the ref to the appropriate type
+                            let masp_tx_ref = match masp_ref {
+                                crate::block_result::MaspRef::MaspSection(
+                                    masp_tx_id,
+                                ) => MaspTxRef::MaspSection(masp_tx_id),
+                                crate::block_result::MaspRef::IbcData(hash) => {
+                                    MaspTxRef::IbcData(hash)
+                                }
+                            };
+
+                            (
+                                extract_masp_transaction(
+                                    &transaction,
+                                    &masp_tx_ref,
+                                ),
+                                is_masp_fee_payment,
+                            )
+                        });
+
+                    let (notes, masp_fee_payment_ref) = masp_bundle.map_or(
+                        (0, false),
+                        |(bundle, is_masp_fee_payment)| {
+                            (
+                                bundle.sapling_bundle().map_or(0, |bundle| {
+                                    (bundle.shielded_spends.len()
+                                        + bundle.shielded_outputs.len()
+                                        + bundle.shielded_converts.len())
+                                        as u64
+                                }),
+                                is_masp_fee_payment,
+                            )
+                        },
+                    );
+
+                    if masp_fee_payment_ref {
+                        masp_fee_payment = Some(inner_tx_id.clone());
+                    }
 
                     let inner_tx = InnerTransaction {
                         tx_id: inner_tx_id,
-                        index,
+                        index: batch_index,
                         wrapper_id: wrapper_tx_id.clone(),
                         memo,
                         data: encoded_tx_data,
@@ -587,11 +531,35 @@ impl Transaction {
                     inner_txs.push(inner_tx);
                 }
 
-                if !masp_refs.0.is_empty() {
-                    return Err("Not all the MASP references have been \
-                                indexed"
-                        .to_string());
-                }
+                let wrapper_tx_status =
+                    block_results.is_wrapper_tx_applied(&wrapper_tx_id);
+                let gas_used = block_results
+                    .gas_used(&wrapper_tx_id)
+                    .map(|gas| gas.parse::<u64>().unwrap());
+                let atomic = transaction.header().atomic;
+
+                let fee = Fee {
+                    gas: Uint::from(wrapper.gas_limit).to_string(),
+                    gas_used,
+                    amount_per_gas_unit: wrapper
+                        .fee
+                        .amount_per_gas_unit
+                        .to_string_precise(),
+                    gas_payer: Id::from(wrapper.fee_payer()),
+                    gas_token: Id::from(wrapper.fee.token),
+                    masp_fee_payment,
+                };
+
+                let wrapper_tx = WrapperTransaction {
+                    tx_id: wrapper_tx_id.clone(),
+                    index,
+                    fee,
+                    atomic,
+                    block_height,
+                    exit_code: wrapper_tx_status.clone(),
+                    total_signatures,
+                    size: tx_size,
+                };
 
                 Ok((wrapper_tx, inner_txs))
             }
@@ -609,23 +577,25 @@ impl Transaction {
     }
 }
 
-// Check if the masp reference in the event matches this inner transaction and,
-// if so, extract the relative masp data
+// Extract the masp transaction data given the provided reference coming from a
+// masp event. Panics if the section is not found
 fn extract_masp_transaction(
     tx: &Tx,
-    event_masp_ref: &MaspTxRef,
-    tx_masp_ref: &MaspTxRef,
-) -> Option<namada_core::masp::MaspTransaction> {
-    match (event_masp_ref, tx_masp_ref) {
-        (MaspTxRef::MaspSection(masp_id), MaspTxRef::MaspSection(tx_id))
-            if masp_id == tx_id =>
-        {
-            tx.get_masp_section(masp_id).cloned()
-        }
-        (MaspTxRef::IbcData(event_hash), MaspTxRef::IbcData(tx_hash))
-            if event_hash == tx_hash =>
-        {
-            tx.get_data_section(event_hash).and_then(|section| {
+    masp_ref: &MaspTxRef,
+) -> namada_core::masp::MaspTransaction {
+    match masp_ref {
+        MaspTxRef::MaspSection(masp_id) => tx
+            .get_masp_section(masp_id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Missing expected masp section for reference: {}",
+                    masp_ref
+                )
+            })
+            .to_owned(),
+        MaspTxRef::IbcData(event_hash) => tx
+            .get_data_section(event_hash)
+            .and_then(|section| {
                 match namada_sdk::ibc::decode_message::<Transfer>(&section) {
                     Ok(namada_ibc::IbcMessage::Envelope(msg_envelope)) => {
                         namada_sdk::ibc::extract_masp_tx_from_envelope(
@@ -635,8 +605,13 @@ fn extract_masp_transaction(
                     _ => None,
                 }
             })
-        }
-        _ => None,
+            .unwrap_or_else(|| {
+                panic!(
+                    "Could not extract expected MASP data from IBC packet. \
+                     Reference: {}",
+                    masp_ref
+                )
+            }),
     }
 }
 

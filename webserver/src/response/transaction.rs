@@ -49,6 +49,7 @@ pub struct WrapperTransaction {
     pub gas_limit: u64,
     pub gas_used: Option<u64>,
     pub amount_per_gas_unit: Option<f64>,
+    pub masp_fee_payment: Option<ShortInnerTransaction>,
     pub block_height: u64,
     pub inner_transactions: Vec<ShortInnerTransaction>,
     pub exit_code: TransactionResult,
@@ -146,6 +147,7 @@ impl From<WrapperTransactionDb> for WrapperTransaction {
                 .amount_per_gas_unit
                 .map(|gas| gas.parse::<f64>().ok())
                 .unwrap_or(None),
+            masp_fee_payment: None,
             block_height: value.block_height as u64,
             inner_transactions: vec![],
             exit_code: TransactionResult::from(value.exit_code),
