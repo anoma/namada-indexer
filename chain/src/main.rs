@@ -20,7 +20,7 @@ use deadpool_diesel::postgres::Object;
 use futures::future::FutureExt;
 use futures::stream::StreamExt;
 use namada_sdk::time::DateTimeUtc;
-use orm::migrations::run_migrations;
+use orm::migrations::CustomMigrationSource;
 use repository::pgf as namada_pgf_repository;
 use shared::balance::TokenSupply;
 use shared::block::Block;
@@ -53,6 +53,15 @@ async fn main() -> Result<(), MainError> {
             .build()
             .unwrap();
 
+    let chain_id = tendermint_service::query_status(&client)
+        .await
+        .into_rpc_error()?
+        .node_info
+        .network
+        .to_string();
+
+    tracing::info!("Network chain id: {}", chain_id);
+
     let mut checksums = Checksums::default();
     for code_path in Checksums::code_paths() {
         let code = namada_service::query_tx_code_hash(&client, &code_path)
@@ -71,10 +80,10 @@ async fn main() -> Result<(), MainError> {
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
     // Run migrations
-    run_migrations(&conn)
+    CustomMigrationSource::new(chain_id)
+        .run_migrations(&conn)
         .await
-        .context_db_interact_error()
-        .into_db_error()?;
+        .expect("Should be able to run migrations");
 
     rlimit::increase_nofile_limit(10240).unwrap();
     rlimit::increase_nofile_limit(u64::MAX).unwrap();

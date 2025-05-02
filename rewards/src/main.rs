@@ -6,10 +6,12 @@ use chrono::NaiveDateTime;
 use clap::Parser;
 use deadpool_diesel::postgres::Object;
 use namada_sdk::time::{DateTimeUtc, Utc};
-use orm::migrations::run_migrations;
+use orm::migrations::CustomMigrationSource;
 use rewards::config::AppConfig;
 use rewards::repository;
-use rewards::services::namada as namada_service;
+use rewards::services::{
+    namada as namada_service, tendermint as tendermint_service,
+};
 use rewards::state::AppState;
 use shared::crawler;
 use shared::crawler_state::{CrawlerName, IntervalCrawlerState};
@@ -33,15 +35,24 @@ async fn main() -> Result<(), MainError> {
             .unwrap(),
     );
 
+    let chain_id = tendermint_service::query_status(&client)
+        .await
+        .into_rpc_error()?
+        .node_info
+        .network
+        .to_string();
+
+    tracing::info!("Network chain id: {}", chain_id);
+
     let app_state = AppState::new(config.database_url).into_db_error()?;
 
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
     // Run migrations
-    run_migrations(&conn)
+    CustomMigrationSource::new(chain_id)
+        .run_migrations(&conn)
         .await
-        .context_db_interact_error()
-        .into_db_error()?;
+        .expect("Should be able to run migrations");
 
     tracing::debug!("Querying epoch...");
 

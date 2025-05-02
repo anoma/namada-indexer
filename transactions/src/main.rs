@@ -7,7 +7,7 @@ use bigdecimal::{BigDecimal, Zero};
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use deadpool_diesel::postgres::Object;
-use orm::migrations::run_migrations;
+use orm::migrations::CustomMigrationSource;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
@@ -42,6 +42,15 @@ async fn main() -> Result<(), MainError> {
             .unwrap(),
     );
 
+    let chain_id = tendermint_service::query_status(&client)
+        .await
+        .into_rpc_error()?
+        .node_info
+        .network
+        .to_string();
+
+    tracing::info!("Network chain id: {}", chain_id);
+
     let mut checksums = Checksums::default();
     for code_path in Checksums::code_paths() {
         let code = namada_service::query_tx_code_hash(&client, &code_path)
@@ -56,10 +65,10 @@ async fn main() -> Result<(), MainError> {
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
 
     // Run migrations
-    run_migrations(&conn)
+    CustomMigrationSource::new(chain_id)
+        .run_migrations(&conn)
         .await
-        .context_db_interact_error()
-        .into_db_error()?;
+        .expect("Should be able to run migrations");
 
     let crawler_state = db_service::get_crawler_state(&conn).await;
 
