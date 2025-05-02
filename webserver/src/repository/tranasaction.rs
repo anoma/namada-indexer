@@ -122,7 +122,6 @@ impl TransactionRepositoryTrait for TransactionRepository {
                 .inner_join(inner_transactions::table.on(transaction_history::dsl::inner_tx_id.eq(inner_transactions::dsl::id)))
                 .inner_join(wrapper_transactions::table.on(inner_transactions::dsl::wrapper_id.eq(wrapper_transactions::dsl::id)))
                 .into_boxed();
-            
             // Apply transaction type filter if provided
             if let Some(types) = transaction_types {
                 if !types.is_empty() {
