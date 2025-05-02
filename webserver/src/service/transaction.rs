@@ -6,8 +6,9 @@ use crate::repository::tranasaction::{
     TransactionRepository, TransactionRepositoryTrait,
 };
 use crate::response::transaction::{
-    InnerTransaction, TransactionHistory, WrapperTransaction,
+    InnerTransaction, TransactionHistory, TransactionKind, WrapperTransaction,
 };
+use orm::transactions::TransactionKindDb;
 
 #[derive(Clone)]
 pub struct TransactionService {
@@ -75,14 +76,87 @@ impl TransactionService {
         Ok(inner_txs.into_iter().map(InnerTransaction::from).collect())
     }
 
+    // Helper function to parse transaction types from comma-separated string
+    fn parse_transaction_types(
+        transaction_types: Option<String>,
+    ) -> Option<Vec<TransactionKindDb>> {
+        transaction_types.map(|types_str| {
+            types_str
+                .split(',')
+                .filter_map(|type_str| {
+                    let type_str = type_str.trim();
+                    match type_str {
+                        "transparentTransfer" => {
+                            Some(TransactionKindDb::TransparentTransfer)
+                        }
+                        "shieldedTransfer" => {
+                            Some(TransactionKindDb::ShieldedTransfer)
+                        }
+                        "shieldingTransfer" => {
+                            Some(TransactionKindDb::ShieldingTransfer)
+                        }
+                        "unshieldingTransfer" => {
+                            Some(TransactionKindDb::UnshieldingTransfer)
+                        }
+                        "mixedTransfer" => {
+                            Some(TransactionKindDb::MixedTransfer)
+                        }
+                        "ibcMsgTransfer" => {
+                            Some(TransactionKindDb::IbcMsgTransfer)
+                        }
+                        "ibcTransparentTransfer" => {
+                            Some(TransactionKindDb::IbcTransparentTransfer)
+                        }
+                        "ibcShieldingTransfer" => {
+                            Some(TransactionKindDb::IbcShieldingTransfer)
+                        }
+                        "ibcUnshieldingTransfer" => {
+                            Some(TransactionKindDb::IbcUnshieldingTransfer)
+                        }
+                        "bond" => Some(TransactionKindDb::Bond),
+                        "redelegation" => Some(TransactionKindDb::Redelegation),
+                        "unbond" => Some(TransactionKindDb::Unbond),
+                        "withdraw" => Some(TransactionKindDb::Withdraw),
+                        "claimRewards" => Some(TransactionKindDb::ClaimRewards),
+                        "voteProposal" => Some(TransactionKindDb::VoteProposal),
+                        "initProposal" => Some(TransactionKindDb::InitProposal),
+                        "changeMetadata" => {
+                            Some(TransactionKindDb::ChangeMetadata)
+                        }
+                        "changeCommission" => {
+                            Some(TransactionKindDb::ChangeCommission)
+                        }
+                        "revealPk" => Some(TransactionKindDb::RevealPk),
+                        "becomeValidator" => {
+                            Some(TransactionKindDb::BecomeValidator)
+                        }
+                        "reactivateValidator" => {
+                            Some(TransactionKindDb::ReactivateValidator)
+                        }
+                        "deactivateValidator" => {
+                            Some(TransactionKindDb::DeactivateValidator)
+                        }
+                        "unjailValidator" => {
+                            Some(TransactionKindDb::UnjailValidator)
+                        }
+                        _ => None, // Skip invalid types
+                    }
+                })
+                .collect()
+        })
+    }
+
     pub async fn get_addresses_history(
         &self,
         addresses: Vec<String>,
         page: u64,
+        transaction_types: Option<String>,
     ) -> Result<(Vec<TransactionHistory>, u64, u64), TransactionError> {
+        let parsed_types = Self::parse_transaction_types(transaction_types);
+
         let (txs, total_pages, total_items) = self
             .transaction_repo
-            .find_addresses_history(addresses, page as i64)
+            .find_addresses_history(addresses, page as i64, parsed_types)
             .await
             .map_err(TransactionError::Database)?;
 
