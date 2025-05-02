@@ -6,7 +6,7 @@ use crate::repository::tranasaction::{
     TransactionRepository, TransactionRepositoryTrait,
 };
 use crate::response::transaction::{
-    InnerTransaction, TransactionHistory, TransactionKind, WrapperTransaction,
+    InnerTransaction, TransactionHistory, WrapperTransaction,
 };
 use orm::transactions::TransactionKindDb;
 
