@@ -14,7 +14,7 @@ use namada_sdk::address::Address;
 use namada_sdk::token::Transfer;
 
 use crate::id::Id;
-use crate::ser::{self, TransferData};
+use crate::ser::{self, ChainAddress, TransferData};
 use crate::token::Token;
 use crate::transaction::TransactionKind;
 
@@ -198,26 +198,25 @@ pub fn transfer_to_ibc_tx_kind(
                                 TransferData {
                                     sources: crate::ser::AccountsMap(
                                         [(
-                                            namada_sdk::token::Account {
-                                                owner: namada_sdk::address::IBC,
-                                                token: token.clone(),
-                                            },
+                                            ChainAddress::ExternalAccount(
+                                                packet_data.sender.to_string(),
+                                                token.clone(),
+                                            ),
                                             denominated_amount,
                                         )]
                                         .into(),
                                     ),
                                     targets: crate::ser::AccountsMap(
                                         [(
-                                            namada_sdk::token::Account {
-                                                owner: packet_data
-                                                    .receiver
-                                                    .try_into()
-                                                    .expect(
-                                                        "Failed to convert \
-                                                         IBC signer to address",
-                                                    ),
-                                                token,
-                                            },
+                                            convert_account(
+                                                &packet_data,
+                                                token.clone(),
+                                                false,
+                                            )
+                                            .expect(
+                                                "Should be able to convert \
+                                                 receiver",
+                                            ),
                                             denominated_amount,
                                         )]
                                         .into(),
@@ -279,28 +278,22 @@ pub fn transfer_to_ibc_tx_kind(
             let transfer_data = TransferData {
                 sources: crate::ser::AccountsMap(
                     [(
-                        namada_sdk::token::Account {
-                            owner: transfer
-                                .message
-                                .packet_data
-                                .sender
-                                .to_owned()
-                                .try_into()
-                                .expect(
-                                    "Failed to convert IBC signer to address",
-                                ),
-                            token: token.clone(),
-                        },
+                        convert_account(
+                            &transfer.message.packet_data,
+                            token.clone(),
+                            true,
+                        )
+                        .expect("Should be able to convert sender"),
                         denominated_amount,
                     )]
                     .into(),
                 ),
                 targets: crate::ser::AccountsMap(
                     [(
-                        namada_sdk::token::Account {
-                            owner: namada_sdk::address::IBC,
+                        ChainAddress::ExternalAccount(
+                            transfer.message.packet_data.receiver.to_string(),
                             token,
-                        },
+                        ),
                         denominated_amount,
                     )]
                     .into(),
@@ -329,6 +322,46 @@ pub fn transfer_to_ibc_tx_kind(
             todo!("IBC NFTs are not yet supported for indexing purposes")
         }
     }
+}
+
+fn convert_account(
+    packet_data: &FtPacketData,
+    token: Address,
+    is_sender: bool,
+) -> Result<ChainAddress, String> {
+    let is_pfm = {
+        use serde::Deserialize;
+
+        #[derive(Deserialize)]
+        struct PfmMemo {
+            #[allow(dead_code)]
+            forward: serde_json::Value,
+        }
+
+        serde_json::from_str::<PfmMemo>(packet_data.memo.as_ref()).is_ok()
+    };
+
+    let address = if is_sender {
+        &packet_data.sender
+    } else {
+        &packet_data.receiver
+    };
+
+    Ok(if is_pfm {
+        ChainAddress::IbcPfmAccount(address.to_string(), token)
+    } else if !address.as_ref().starts_with("tnam1") {
+        ChainAddress::ExternalAccount(address.to_string(), token)
+    } else {
+        ChainAddress::ChainAccount(namada_sdk::token::Account {
+            owner: Address::decode(address).map_err(|err| {
+                format!(
+                    "Ibc {} address is not valid: {err}",
+                    if is_sender { "sender" } else { "receiver" }
+                )
+            })?,
+            token,
+        })
+    })
 }
 
 fn get_namada_ibc_trace_when_receiving(
@@ -462,6 +495,7 @@ fn get_token_and_amount(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     fn cmp_print(x: &str, y: &str) -> bool {
