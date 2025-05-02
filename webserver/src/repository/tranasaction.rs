@@ -8,7 +8,6 @@ use orm::schema::{
 use orm::transactions::{
     InnerTransactionDb, TransactionHistoryDb, TransactionKindDb, WrapperTransactionDb,
 };
-
 use super::utils::{Paginate, PaginatedResponseDb};
 use crate::appstate::AppState;
 
