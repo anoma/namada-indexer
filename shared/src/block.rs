@@ -694,6 +694,19 @@ impl Block {
                 let mut balance_changes: Vec<BalanceChange> = inners_txs
                     .iter()
                     .filter_map(|tx| {
+                        if !tx.was_successful(wrapper_tx)
+                            // NB: temp fix to allow masp fee payments to
+                            // be indexed
+                            && !matches!(
+                                &tx.kind,
+                                TransactionKind::UnshieldingTransfer(_)
+                                    | TransactionKind::IbcUnshieldingTransfer(
+                                        _
+                                    )
+                            )
+                        {
+                            return None;
+                        }
                         self.process_inner_tx_for_balance(tx, native_token)
                     })
                     .flatten()
@@ -709,7 +722,7 @@ impl Block {
             .collect()
     }
 
-    pub fn process_inner_tx_for_balance(
+    fn process_inner_tx_for_balance(
         &self,
         tx: &InnerTransaction,
         native_token: &Id,
