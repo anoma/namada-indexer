@@ -694,7 +694,11 @@ impl Block {
                 let mut balance_changes: Vec<BalanceChange> = inners_txs
                     .iter()
                     .filter_map(|tx| {
-                        self.process_inner_tx_for_balance(tx, native_token)
+                        if tx.was_successful(wrapper_tx) {
+                            self.process_inner_tx_for_balance(tx, native_token)
+                        } else {
+                            None
+                        }
                     })
                     .flatten()
                     .collect();
@@ -709,7 +713,7 @@ impl Block {
             .collect()
     }
 
-    pub fn process_inner_tx_for_balance(
+    fn process_inner_tx_for_balance(
         &self,
         tx: &InnerTransaction,
         native_token: &Id,

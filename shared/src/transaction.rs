@@ -329,13 +329,30 @@ impl InnerTransaction {
         self.extra_sections.get(&section_id).cloned()
     }
 
+    /// Check if the inner transaction was a MASP fee payment.
+    pub fn was_masp_fee_payment(
+        &self,
+        wrapper_tx: &WrapperTransaction,
+    ) -> bool {
+        wrapper_tx
+            .fee
+            .masp_fee_payment
+            .as_ref()
+            .map(|wrapper_fee_payment| *wrapper_fee_payment == self.tx_id)
+            .unwrap_or_default()
+    }
+
     /// An inner transaction is successful only if both the inner tx itself and
     /// the containing wrapper are marked as applied or, in case of a failing
     /// atomic batch, if the inner tx was applied and did masp fee payment
     pub fn was_successful(&self, wrapper_tx: &WrapperTransaction) -> bool {
-        self.exit_code == TransactionExitStatus::Applied
-            && (wrapper_tx.exit_code == TransactionExitStatus::Applied
-                || wrapper_tx.fee.masp_fee_payment.is_some())
+        let inner_tx_succeeded =
+            self.exit_code == TransactionExitStatus::Applied;
+        let wrapper_tx_succeeded =
+            wrapper_tx.exit_code == TransactionExitStatus::Applied;
+        let masp_fee_payment = self.was_masp_fee_payment(wrapper_tx);
+
+        inner_tx_succeeded && (wrapper_tx_succeeded || masp_fee_payment)
     }
 
     pub fn is_ibc(&self) -> bool {
