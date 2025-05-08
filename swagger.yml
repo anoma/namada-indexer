@@ -1,7 +1,7 @@
 openapi: "3.0.2"
 info:
   title: Namada Interface Indexer REST Api
-  version: "3.0.0"
+  version: "3.0.1"
   description: "Set of API to interact with a namada indexer."
   contact:
     email: hello@heliax.dev
