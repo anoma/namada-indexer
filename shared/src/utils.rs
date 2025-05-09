@@ -1,4 +1,5 @@
 use anyhow::Context;
+use namada_ibc::OsmosisSwapMemoDataInner;
 use namada_ibc::apps::nft_transfer::types::PORT_ID_STR as NFT_PORT_ID_STR;
 use namada_ibc::apps::transfer::types::packet::PacketData as FtPacketData;
 use namada_ibc::apps::transfer::types::{
@@ -10,6 +11,7 @@ use namada_ibc::core::channel::types::msgs::PacketMsg;
 use namada_ibc::core::channel::types::packet::Packet;
 use namada_ibc::core::handler::types::msgs::MsgEnvelope;
 use namada_ibc::core::host::types::identifiers::{ChannelId, PortId};
+use namada_ibc::trace::convert_to_address;
 use namada_sdk::address::Address;
 use namada_sdk::token::Transfer;
 
@@ -100,7 +102,49 @@ fn packet_msg_to_balance_info(
     native_token: Id,
     packet_msg: PacketMsg,
 ) -> anyhow::Result<Option<BalanceChange>> {
+    let try_extract_swap_overflow = |packet: Packet| -> anyhow::Result<
+        Option<BalanceChange>,
+    > {
+        let native_token = native_token.clone();
+        let packet_data = serde_json::from_slice::<FtPacketData>(&packet.data)
+            .context("Could not deserialize IBC fungible token packet")?;
+
+        let memo_data = 
+            serde_json::from_str::<serde_json::Value>(packet_data.memo.as_ref())
+                .context("Invalid JSON")?
+            .pointer("/forward/next/wasm/msg/osmosis_swap/final_memo/namada/osmosis_swap")
+            .map(|swap| {
+                serde_json::from_value::<OsmosisSwapMemoDataInner>(swap.clone())
+                    .context("Failed to deserialize Osmosis swap memo")
+            })
+            .transpose()?;
+
+        if let Some(memo_data) = memo_data {
+            let trace = memo_data.overflow_trace;
+
+            let token =
+                // For nam overflow_trace should be nam's tnam address
+                if Id::Account(trace.clone()) == native_token {
+                    Token::Native(native_token)
+                // For ibc overflow_trace should be /transfer/channel-x/denom
+                } else {
+                    Token::Ibc(crate::token::IbcToken {
+                        address: convert_to_address(&trace)
+                            .context("Failed to convert IBC trace to address")?
+                            .into(),
+                        trace: Id::IbcTrace(trace),
+                    })
+                };
+            let source = Id::from(memo_data.overflow_receiver);
+
+            return Ok(Some(BalanceChange::new(source, token)));
+        };
+
+        Ok(None)
+    };
+
     let extract = |packet: Packet| -> anyhow::Result<BalanceChange> {
+        let native_token = native_token.clone();
         let packet_data = serde_json::from_slice::<FtPacketData>(&packet.data)
             .context("Could not deserialize IBC fungible token packet")?;
 
@@ -128,7 +172,10 @@ fn packet_msg_to_balance_info(
             .context("Could not deserialize IBC acknowledgement")?;
 
             match ack {
-                AcknowledgementStatus::Success(_) => Ok(None),
+                AcknowledgementStatus::Success(_) => {
+                    // Needed to update the balance of overflow receiver when doing shielded swaps
+                    try_extract_swap_overflow(msg.packet)
+                }
                 AcknowledgementStatus::Error(_) => {
                     extract(msg.packet).map(Some)
                 }
