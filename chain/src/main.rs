@@ -26,6 +26,7 @@ use shared::balance::TokenSupply;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
+use shared::cometbft::CometbftBlock;
 use shared::crawler::crawl;
 use shared::crawler_state::ChainCrawlerState;
 use shared::error::{
@@ -237,6 +238,11 @@ async fn crawling_fn(
 
     let start = Instant::now();
 
+    let cometbft_block =
+        get_cometbft_block_with_fallback(&conn, &client, block_height)
+            .await
+            .into_db_error()?;
+
     tracing::debug!(block = block_height, "Query first block in epoch...");
     let first_block_in_epoch =
         namada_service::get_first_block_in_epoch(&client)
@@ -250,7 +256,7 @@ async fn crawling_fn(
         native_token.clone().into();
 
     let (block, tm_block_response, epoch) =
-        get_block(block_height, &client, checksums, &native_token_address)
+        get_block(cometbft_block, &client, checksums, &native_token_address)
             .await?;
 
     let rate_limits = first_block_in_epoch.eq(&block_height).then(|| {
@@ -439,13 +445,11 @@ async fn crawling_fn(
 
     let reward_claimers = block.pos_rewards();
 
-    let timestamp_in_sec = DateTimeUtc::now().0.timestamp();
-
     let crawler_state = ChainCrawlerState {
         last_processed_block: block_height,
         last_processed_epoch: epoch,
         first_block_in_epoch,
-        timestamp: timestamp_in_sec,
+        timestamp: chrono::Utc::now().timestamp(),
     };
 
     let rate_limits =
@@ -625,8 +629,14 @@ async fn try_initial_query(
             .await
             .into_rpc_error()?
             .into();
+
+    let cometbft_block =
+        get_cometbft_block_with_fallback(conn, client, block_height)
+            .await
+            .into_db_error()?;
+
     let (block, tm_block_response, epoch) =
-        get_block(block_height, client, checksums.clone(), &native_token)
+        get_block(cometbft_block, client, checksums.clone(), &native_token)
             .await?;
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
@@ -816,16 +826,15 @@ async fn update_crawler_timestamp(
 }
 
 async fn get_block(
-    block_height: u32,
+    block: CometbftBlock,
     client: &HttpClient,
     checksums: Checksums,
     native_token: &namada_sdk::address::Address,
 ) -> Result<(Block, TendermintBlockResponse, u32), MainError> {
+    let block_height = block.block_height;
+
     tracing::debug!(block = block_height, "Query block...");
-    let tm_block_response =
-        tendermint_service::query_raw_block_at_height(client, block_height)
-            .await
-            .into_rpc_error()?;
+    let tm_block_response = block.block;
     tracing::debug!(
         block = block_height,
         "Raw block contains {} txs...",
@@ -833,13 +842,7 @@ async fn get_block(
     );
 
     tracing::debug!(block = block_height, "Query block results...");
-    let tm_block_results_response =
-        tendermint_service::query_raw_block_results_at_height(
-            client,
-            block_height,
-        )
-        .await
-        .into_rpc_error()?;
+    let tm_block_results_response = block.events;
     let block_results = BlockResult::from(tm_block_results_response);
 
     tracing::debug!(block = block_height, "Query epoch...");
@@ -919,4 +922,41 @@ async fn query_token_supplies(
     supplies.push(native);
 
     Ok(supplies)
+}
+
+pub async fn get_cometbft_block_with_fallback(
+    conn: &Object,
+    client: &HttpClient,
+    block_height: u32,
+) -> anyhow::Result<CometbftBlock> {
+    let block = repository::cometbft::get_block(conn, block_height)
+        .await
+        .context("Failed to get block")?;
+
+    let block = match block {
+        Some(block) => block,
+        None => {
+            let block = tendermint_service::query_raw_block_at_height(
+                client,
+                block_height,
+            )
+            .await
+            .context("Failed to query block")?;
+
+            let events = tendermint_service::query_raw_block_results_at_height(
+                client,
+                block_height,
+            )
+            .await
+            .context("Failed to query block results")?;
+
+            CometbftBlock {
+                block_height,
+                block,
+                events,
+            }
+        }
+    };
+
+    Ok(block)
 }

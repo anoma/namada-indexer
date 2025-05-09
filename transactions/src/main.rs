@@ -11,6 +11,7 @@ use orm::migrations::CustomMigrationSource;
 use shared::block::Block;
 use shared::block_result::BlockResult;
 use shared::checksums::Checksums;
+use shared::cometbft::CometbftBlock;
 use shared::crawler::crawl;
 use shared::crawler_state::BlockCrawlerState;
 use shared::error::{AsDbError, AsRpcError, ContextDbInteractError, MainError};
@@ -22,7 +23,8 @@ use tokio::time::Instant;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
-    block as block_repo, masp as masp_repo, transactions as transaction_repo,
+    block as block_repo, cometbft as cometbft_repo, masp as masp_repo,
+    transactions as transaction_repo,
 };
 use transactions::services::{
     db as db_service, namada as namada_service,
@@ -124,11 +126,13 @@ async fn crawling_fn(
 
     let start = Instant::now();
 
-    tracing::debug!(block = block_height, "Query block...");
-    let tm_block_response =
-        tendermint_service::query_raw_block_at_height(&client, block_height)
+    let cometbft_block =
+        get_cometbft_block_with_fallback(&conn, &client, block_height)
             .await
-            .into_rpc_error()?;
+            .into_db_error()?;
+
+    tracing::debug!(block = block_height, "Query block...");
+    let tm_block_response = cometbft_block.block;
     tracing::debug!(
         block = block_height,
         "Raw block contains {} txs...",
@@ -136,13 +140,7 @@ async fn crawling_fn(
     );
 
     tracing::debug!(block = block_height, "Query block results...");
-    let tm_block_results_response =
-        tendermint_service::query_raw_block_results_at_height(
-            &client,
-            block_height,
-        )
-        .await
-        .into_rpc_error()?;
+    let tm_block_results_response = cometbft_block.events;
     let block_results = BlockResult::from(tm_block_results_response);
 
     let proposer_address_namada = namada_service::get_validator_namada_address(
@@ -356,4 +354,41 @@ async fn update_crawler_timestamp(
     .into_db_error()?
     .context("Insert crawler state error")
     .into_db_error()
+}
+
+pub async fn get_cometbft_block_with_fallback(
+    conn: &Object,
+    client: &HttpClient,
+    block_height: u32,
+) -> anyhow::Result<CometbftBlock> {
+    let block = cometbft_repo::get_block(conn, block_height)
+        .await
+        .context("Failed to get block")?;
+
+    let block = match block {
+        Some(block) => block,
+        None => {
+            let block = tendermint_service::query_raw_block_at_height(
+                client,
+                block_height,
+            )
+            .await
+            .context("Failed to query block")?;
+
+            let events = tendermint_service::query_raw_block_results_at_height(
+                client,
+                block_height,
+            )
+            .await
+            .context("Failed to query block results")?;
+
+            CometbftBlock {
+                block_height,
+                block,
+                events,
+            }
+        }
+    };
+
+    Ok(block)
 }
