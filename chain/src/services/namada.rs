@@ -10,13 +10,13 @@ use namada_sdk::address::{Address as NamadaSdkAddress, InternalAddress};
 use namada_sdk::collections::HashMap;
 use namada_sdk::hash::Hash;
 use namada_sdk::ibc::IbcTokenHash;
-use namada_sdk::ibc::storage::{ibc_trace_key_prefix, is_ibc_trace_key};
+use namada_sdk::ibc::storage::ibc_trace_key;
 use namada_sdk::proof_of_stake::storage_key;
 use namada_sdk::queries::RPC;
 use namada_sdk::rpc::{
     bonds_and_unbonds, query_native_token, query_proposal_by_id,
 };
-use namada_sdk::state::Key;
+use namada_sdk::state::{Key, KeySeg};
 use namada_sdk::storage::DbKeySeg;
 use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{rpc, token};
@@ -198,30 +198,53 @@ pub async fn query_tokens(client: &HttpClient) -> anyhow::Result<Vec<Token>> {
     Ok(tokens)
 }
 
+// Discovery of the known non-native assets. The returned tokens are not
+// necessarily transferable, additional checks should be done by the caller
 async fn query_ibc_tokens(
     client: &HttpClient,
 ) -> anyhow::Result<HashSet<IbcToken>> {
-    let prefix = ibc_trace_key_prefix(None);
+    const MINT_LIMIT: &str = "mint_limit";
+    let prefix =
+        Key::from(NamadaSdkAddress::Internal(InternalAddress::Ibc).to_db_key())
+            .push(&MINT_LIMIT.to_string().to_db_key())
+            .expect("Cannot obtain a storage key");
 
     let mut tokens: HashSet<IbcToken> = HashSet::new();
-    let ibc_traces =
+    let ibc_limits =
         query_storage_prefix::<String>(client, &prefix, None).await?;
 
-    if let Some(ibc_traces) = ibc_traces {
-        for (key, ibc_trace) in ibc_traces {
-            if let Some((_, hash)) = is_ibc_trace_key(&key) {
-                let hash: IbcTokenHash = hash.parse().expect(
-                    "Parsing an IBC token hash from storage shouldn't fail",
-                );
-                let ibc_token_addr =
-                    NamadaSdkAddress::Internal(InternalAddress::IbcToken(hash));
+    if let Some(ibc_limit) = ibc_limits {
+        for (key, _mint_amount) in ibc_limit {
+            if let [
+                DbKeySeg::AddressSeg(addr),
+                DbKeySeg::StringSeg(prefix),
+                DbKeySeg::StringSeg(hash),
+            ] = &key.segments[..]
+            {
+                if addr == &NamadaSdkAddress::Internal(InternalAddress::Ibc)
+                    && prefix == MINT_LIMIT
+                {
+                    // Query the trace, skip to the next token if missing
+                    let trace_key = ibc_trace_key(addr.to_string(), hash);
+                    if let Some(ibc_trace) =
+                        query_storage_value(client, &trace_key, None).await?
+                    {
+                        let hash: IbcTokenHash = hash.parse().expect(
+                            "Parsing an IBC token hash from storage shouldn't \
+                             fail",
+                        );
+                        let ibc_token_addr = NamadaSdkAddress::Internal(
+                            InternalAddress::IbcToken(hash),
+                        );
 
-                let token = IbcToken {
-                    address: Id::from(ibc_token_addr),
-                    trace: Id::IbcTrace(ibc_trace.clone()),
-                };
+                        let token = IbcToken {
+                            address: Id::from(ibc_token_addr),
+                            trace: Id::IbcTrace(ibc_trace),
+                        };
 
-                tokens.insert(token);
+                        tokens.insert(token);
+                    }
+                }
             }
         }
     }
