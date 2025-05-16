@@ -284,16 +284,7 @@ impl From<TxEventStatusCode> for TransactionExitStatus {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Transaction {
-    pub hash: Id,
-    pub inner_hash: Option<Id>,
-    pub kind: TransactionKind,
-    pub extra_sections: HashMap<Id, Vec<u8>>,
-    pub index: usize,
-    pub memo: Option<Vec<u8>>,
-    pub fee: Fee,
-}
+pub enum Transaction {}
 
 pub struct MaspSectionData {
     pub total_notes: u64,
@@ -589,10 +580,6 @@ impl Transaction {
                 Err("Protocol transaction are not supported.".to_string())
             }
         }
-    }
-
-    pub fn get_section_data_by_id(&self, section_id: Id) -> Option<Vec<u8>> {
-        self.extra_sections.get(&section_id).cloned()
     }
 }
 
