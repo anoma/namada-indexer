@@ -351,8 +351,10 @@ impl InnerTransaction {
         let wrapper_tx_succeeded =
             wrapper_tx.exit_code == TransactionExitStatus::Applied;
         let masp_fee_payment = self.was_masp_fee_payment(wrapper_tx);
+        let atomic_batch = wrapper_tx.atomic;
 
-        inner_tx_succeeded && (wrapper_tx_succeeded || masp_fee_payment)
+        inner_tx_succeeded
+            && (wrapper_tx_succeeded || masp_fee_payment || !atomic_batch)
     }
 
     pub fn is_ibc(&self) -> bool {
