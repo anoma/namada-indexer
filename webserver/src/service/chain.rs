@@ -132,9 +132,15 @@ impl ChainService {
             total_locked_amount += locked_amount;
         }
 
-        // Calculate circulating supply = total supply - total locked amount
-        let total_supply_amount = total_supply.total.clone();
-        let circulating_amount = &total_supply_amount - &total_locked_amount;
+        // Calculate circulating supply = effective supply - total locked amount
+        let effective_supply_amount =
+            total_supply.effective.ok_or_else(|| {
+                ChainError::Unknown(
+                    "Effective supply not found for native token".to_string(),
+                )
+            })?;
+        let circulating_amount =
+            &effective_supply_amount - &total_locked_amount;
 
         Ok(CirculatingSupply {
             circulating_supply: circulating_amount.to_string(),

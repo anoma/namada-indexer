@@ -801,7 +801,7 @@ paths:
   /api/v1/chain/circulating-supply:
     get:
       summary: Get the circulating supply of the native token at the given epoch
-      description: Calculates circulating supply by subtracting locked amounts from multiple excluded addresses from the total supply
+      description: Calculates circulating supply by subtracting locked amounts from multiple excluded addresses from the effective supply
       parameters:
         - in: query
           name: epoch
@@ -1319,7 +1319,7 @@ components:
       properties:
         circulatingSupply:
           type: string
-          description: Circulating supply of the native token (total supply minus locked supply)
+          description: Circulating supply of the native token (effective supply minus locked supply)
     Parameters:
       type: object
       required:
