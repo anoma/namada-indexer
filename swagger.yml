@@ -798,6 +798,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenSupply"
+  /api/v1/chain/circulating-supply:
+    get:
+      summary: Get the circulating supply of the native token at the given epoch
+      parameters:
+        - in: query
+          name: epoch
+          schema:
+            type: integer
+            minimum: 0
+          description: Epoch to query
+      responses:
+        "200":
+          description: Circulating supply of the native token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CirculatingSupply"
   /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
@@ -1294,6 +1311,16 @@ components:
         totalSupply:
           type: string
         effectiveSupply:
+          type: string
+    CirculatingSupply:
+      type: object
+      required: [totalSupply, lockedSupply, circulatingSupply]
+      properties:
+        totalSupply:
+          type: string
+        lockedSupply:
+          type: string
+        circulatingSupply:
           type: string
     Parameters:
       type: object

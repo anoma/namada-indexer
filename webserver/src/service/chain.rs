@@ -1,10 +1,12 @@
+use bigdecimal::BigDecimal;
 use shared::id::Id;
 use shared::token::{IbcToken, Token};
 
 use crate::appstate::AppState;
 use crate::error::chain::ChainError;
+use crate::repository::balance::{BalanceRepo, BalanceRepoTrait};
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::response::chain::{Parameters, TokenSupply};
+use crate::response::chain::{CirculatingSupply, Parameters, TokenSupply};
 
 #[derive(Clone)]
 pub struct ChainService {
@@ -82,5 +84,50 @@ impl ChainService {
             total_supply: supply.total.to_string(),
             effective_supply: supply.effective.map(|s| s.to_string()),
         }))
+    }
+
+    pub async fn get_circulating_supply(
+        &self,
+        epoch: Option<i32>,
+    ) -> Result<CirculatingSupply, ChainError> {
+        // Native token address and address to exclude from circulating supply
+        let native_token_address =
+            "tnam1q9gr66cvu4hrzm0sd5kmlnjje82gs3xlfg3v6nu7";
+        let excluded_address = "tnam1pgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkhgajr";
+
+        // Get total supply of native token
+        let total_supply_result = self
+            .chain_repo
+            .get_token_supply(native_token_address.to_string(), epoch)
+            .await
+            .map_err(ChainError::Database)?;
+
+        let total_supply = total_supply_result.ok_or_else(|| {
+            ChainError::Unknown("Native token supply not found".to_string())
+        })?;
+
+        // Get balance of excluded address
+        let balance_repo = BalanceRepo::new(self.chain_repo.app_state.clone());
+        let balances = balance_repo
+            .get_address_balances(excluded_address.to_string())
+            .await
+            .map_err(ChainError::Database)?;
+
+        // Find the balance of the native token for the excluded address
+        let locked_amount = balances
+            .iter()
+            .find(|balance| balance.token == native_token_address)
+            .map(|balance| balance.raw_amount.clone())
+            .unwrap_or_else(|| BigDecimal::from(0));
+
+        // Calculate circulating supply = total supply - locked amount
+        let total_supply_amount = total_supply.total.clone();
+        let circulating_amount = &total_supply_amount - &locked_amount;
+
+        Ok(CirculatingSupply {
+            total_supply: total_supply_amount.to_string(),
+            locked_supply: locked_amount.to_string(),
+            circulating_supply: circulating_amount.to_string(),
+        })
     }
 }

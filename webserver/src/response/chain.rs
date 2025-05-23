@@ -113,3 +113,11 @@ pub struct TokenSupply {
     pub total_supply: String,
     pub effective_supply: Option<String>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CirculatingSupply {
+    pub total_supply: String,
+    pub locked_supply: String,
+    pub circulating_supply: String,
+}

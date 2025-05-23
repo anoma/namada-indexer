@@ -1,19 +1,22 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
-use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
-use axum::response::Sse;
 use axum::response::sse::{Event, KeepAlive};
+use axum::response::Sse;
+use axum::Json;
 use axum_extra::extract::Query;
 use futures::Stream;
 use tokio_stream::StreamExt;
 
-use crate::dto::chain::TokenSupply as TokenSupplyDto;
+use crate::dto::chain::{
+    CirculatingSupply as CirculatingSupplyDto, TokenSupply as TokenSupplyDto,
+};
 use crate::error::api::ApiError;
 use crate::response::chain::{
-    LastProcessedBlock, LastProcessedEpoch, Parameters, RpcUrl, Token,
+    CirculatingSupply as CirculatingSupplyRsp, LastProcessedBlock,
+    LastProcessedEpoch, Parameters, RpcUrl, Token,
     TokenSupply as TokenSupplyRsp,
 };
 use crate::state::common::CommonState;
@@ -110,6 +113,17 @@ pub async fn get_token_supply(
     let supply = state
         .chain_service
         .get_token_supply(query.address, query.epoch)
+        .await?;
+    Ok(Json(supply))
+}
+
+pub async fn get_circulating_supply(
+    Query(query): Query<CirculatingSupplyDto>,
+    State(state): State<CommonState>,
+) -> Result<Json<CirculatingSupplyRsp>, ApiError> {
+    let supply = state
+        .chain_service
+        .get_circulating_supply(query.epoch)
         .await?;
     Ok(Json(supply))
 }
