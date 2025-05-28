@@ -145,6 +145,10 @@ impl ApplicationServer {
                     get(chain_handlers::get_token_supply),
                 )
                 .route(
+                    "/chain/circulating-supply",
+                    get(chain_handlers::get_circulating_supply),
+                )
+                .route(
                     "/chain/block/latest",
                     get(chain_handlers::get_last_processed_block),
                 )
