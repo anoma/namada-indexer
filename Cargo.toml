@@ -78,6 +78,7 @@ fake = { version = "2.10.0", features = ["derive"] }
 rand = "0.8.5"
 bigdecimal = "0.4.5"
 strum = "0.26.3"
+strum_macros = "0.26.3"
 sha256 = "1.5.0"
 rlimit = "0.10.2"
 axum-prometheus = "0.7.0"
