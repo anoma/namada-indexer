@@ -6,6 +6,8 @@ use crate::response::api::ApiErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum ChainError {
+    #[error("NotFound: {0}")]
+    NotFound(String),
     #[error("Database error: {0}")]
     Database(String),
     #[error("Unknown error: {0}")]
@@ -15,6 +17,7 @@ pub enum ChainError {
 impl IntoResponse for ChainError {
     fn into_response(self) -> Response {
         let status_code = match self {
+            ChainError::NotFound(_) => StatusCode::NOT_FOUND,
             ChainError::Unknown(_) | ChainError::Database(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }

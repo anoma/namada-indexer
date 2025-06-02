@@ -6,7 +6,9 @@ use crate::appstate::AppState;
 use crate::error::chain::ChainError;
 use crate::repository::balance::{BalanceRepo, BalanceRepoTrait};
 use crate::repository::chain::{ChainRepository, ChainRepositoryTrait};
-use crate::response::chain::{CirculatingSupply, Parameters, TokenSupply};
+use crate::response::chain::{
+    CirculatingSupply, NativeTokenEffectiveSupply, Parameters, TokenSupply,
+};
 
 #[derive(Clone)]
 pub struct ChainService {
@@ -145,5 +147,32 @@ impl ChainService {
         Ok(CirculatingSupply {
             circulating_supply: circulating_amount.to_string(),
         })
+    }
+
+    pub async fn get_native_token_effective_supply(
+        &self,
+        epoch: Option<i32>,
+    ) -> Result<NativeTokenEffectiveSupply, ChainError> {
+        let parameters = self
+            .chain_repo
+            .find_chain_parameters()
+            .await
+            .map_err(ChainError::Database)?;
+        let supply = self
+            .get_token_supply(parameters.native_token_address, epoch)
+            .await?
+            .ok_or(ChainError::NotFound(
+                "Native token supply not found".to_string(),
+            ))?;
+        let effective_supply =
+            supply.effective_supply.ok_or(ChainError::NotFound(
+                "Effective supply not found for native token".to_string(),
+            ))?;
+
+        let total_supply = NativeTokenEffectiveSupply {
+            native_token_effective_supply: effective_supply,
+        };
+
+        Ok(total_supply)
     }
 }

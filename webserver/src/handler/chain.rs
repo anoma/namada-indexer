@@ -11,13 +11,15 @@ use futures::Stream;
 use tokio_stream::StreamExt;
 
 use crate::dto::chain::{
-    CirculatingSupply as CirculatingSupplyDto, TokenSupply as TokenSupplyDto,
+    CirculatingSupply as CirculatingSupplyDto, NativeTokenEffectiveSupply,
+    TokenSupply as TokenSupplyDto,
 };
 use crate::error::api::ApiError;
 use crate::response::chain::{
     CirculatingSupply as CirculatingSupplyRsp, LastProcessedBlock,
-    LastProcessedEpoch, Parameters, RpcUrl, Token,
-    TokenSupply as TokenSupplyRsp,
+    LastProcessedEpoch,
+    NativeTokenEffectiveSupply as NativeTokenEffectiveSupplyRsp, Parameters,
+    RpcUrl, Token, TokenSupply as TokenSupplyRsp,
 };
 use crate::state::common::CommonState;
 
@@ -125,5 +127,17 @@ pub async fn get_circulating_supply(
         .chain_service
         .get_circulating_supply(query.epoch)
         .await?;
+    Ok(Json(supply))
+}
+
+pub async fn get_native_token_effective_supply(
+    Query(query): Query<NativeTokenEffectiveSupply>,
+    State(state): State<CommonState>,
+) -> Result<Json<NativeTokenEffectiveSupplyRsp>, ApiError> {
+    let supply = state
+        .chain_service
+        .get_native_token_effective_supply(query.epoch)
+        .await?;
+
     Ok(Json(supply))
 }

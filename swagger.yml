@@ -816,6 +816,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CirculatingSupply"
+  /api/v1/chain/native-token-effective-supply:
+    get:
+      summary: Get the effective supply of the native token at the given epoch
+      parameters:
+        - in: query
+          name: epoch
+          schema:
+            type: integer
+            minimum: 0
+          description: Epoch to query
+      responses:
+        "200":
+          description: Effective supply of the native token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NativeTokenEffectiveSupply"
   /api/v1/chain/parameters:
     get:
       summary: Get chain parameters
@@ -1320,6 +1337,13 @@ components:
         circulatingSupply:
           type: string
           description: Circulating supply of the native token (effective supply minus locked supply)
+    NativeTokenEffectiveSupply:
+      type: object
+      required: [nativeTokenEffectiveSupply]
+      properties:
+        nativeTokenEffectiveSupply:
+          type: string
+          description: Effective supply of the native token at the given epoch
     Parameters:
       type: object
       required:

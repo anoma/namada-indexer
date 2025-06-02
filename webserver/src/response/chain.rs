@@ -119,3 +119,9 @@ pub struct TokenSupply {
 pub struct CirculatingSupply {
     pub circulating_supply: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeTokenEffectiveSupply {
+    pub native_token_effective_supply: String,
+}
