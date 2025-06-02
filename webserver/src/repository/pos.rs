@@ -416,7 +416,6 @@ impl PosRepositoryTrait for PosRepository {
 
         conn.interact(move |conn| {
             pos_rewards::table
-                .filter(pos_rewards::claimed.eq(&false))
                 .filter(pos_rewards::dsl::owner.eq(delegator))
                 .filter(pos_rewards::dsl::validator_id.eq(validator_id))
                 .filter(pos_rewards::dsl::epoch.eq(epoch as i32))
