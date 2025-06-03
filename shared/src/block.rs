@@ -212,7 +212,69 @@ impl Block {
                     }
                 }
                 // IbcMsg is only used for non-transfer ibc packets
-                TransactionKind::IbcMsg(_) => vec![],
+                TransactionKind::IbcMsg(Some(data)) => {
+                    match data.0 {
+                        IbcMessage::Envelope(msg_envelope) => {
+                            match *msg_envelope {
+                                MsgEnvelope::Client(client_msg) => match client_msg {
+                                    namada_ibc::core::client::types::msgs::ClientMsg::CreateClient(msg_create_client) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_create_client.signer.to_string(),
+                                        )]
+                                    },
+                                    namada_ibc::core::client::types::msgs::ClientMsg::UpdateClient(msg_update_client) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_update_client.signer.to_string(),
+                                        )]
+                                    },
+                                    namada_ibc::core::client::types::msgs::ClientMsg::UpgradeClient(msg_upgrade_client) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_upgrade_client.signer.to_string(),
+                                        )]
+                                    },
+                                    namada_ibc::core::client::types::msgs::ClientMsg::RecoverClient(msg_recover_client) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_recover_client.signer.to_string(),
+                                        )]
+                                    },
+                                    _ => vec![]
+                                },
+                                MsgEnvelope::Packet(packet_msg) => match packet_msg {
+                                    PacketMsg::Recv(msg_recv_packet) => {
+                                                    vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_recv_packet.signer.to_string(),
+                                        )]
+                                    },
+                                    PacketMsg::Ack(msg_acknowledgement) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_acknowledgement.signer.to_string(),
+                                        )]
+                                    },
+                                    PacketMsg::Timeout(msg_timeout) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_timeout.signer.to_string(),
+                                        )]
+                                    },
+                                    PacketMsg::TimeoutOnClose(msg_timeout_on_close) => {
+                                        vec![TransactionTarget::sent(
+                                            tx.tx_id.clone(),
+                                            msg_timeout_on_close.signer.to_string(),
+                                        )]
+                                    },
+                                }
+                                _ => vec![]
+                            }
+                        },
+                        _ => vec![]
+                    }
+                },
                 TransactionKind::IbcTrasparentTransfer((_, transfer))
                 | TransactionKind::IbcShieldingTransfer((_, transfer))
                 | TransactionKind::IbcUnshieldingTransfer((_, transfer)) => {
@@ -389,7 +451,7 @@ impl Block {
                         vec![]
                     }
                 }
-                TransactionKind::Unknown(_) => vec![],
+                TransactionKind::IbcMsg(None) | TransactionKind::Unknown(_) => vec![],
             })
             .collect::<HashSet<_>>()
     }
