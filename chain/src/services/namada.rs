@@ -218,7 +218,7 @@ async fn query_ibc_tokens(
 
                 let token = IbcToken {
                     address: Id::from(ibc_token_addr),
-                    trace: Id::IbcTrace(ibc_trace.clone()),
+                    trace: Some(Id::IbcTrace(ibc_trace.clone())),
                 };
 
                 tokens.insert(token);
