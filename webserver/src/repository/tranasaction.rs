@@ -1,5 +1,5 @@
-use super::utils::{Paginate, PaginatedResponseDb};
-use crate::appstate::AppState;
+use std::collections::HashSet;
+
 use axum::async_trait;
 use diesel::{
     ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper,
@@ -11,6 +11,9 @@ use orm::transactions::{
     InnerTransactionDb, TransactionHistoryDb, TransactionKindDb,
     WrapperTransactionDb,
 };
+
+use super::utils::{Paginate, PaginatedResponseDb};
+use crate::appstate::AppState;
 
 #[derive(Clone)]
 pub struct TransactionRepository {
@@ -37,7 +40,7 @@ pub trait TransactionRepositoryTrait {
         &self,
         addresses: Vec<String>,
         page: i64,
-        transaction_types: Option<Vec<TransactionKindDb>>,
+        transaction_types: Option<HashSet<TransactionKindDb>>,
     ) -> Result<
         PaginatedResponseDb<(TransactionHistoryDb, InnerTransactionDb, i32)>,
         String,
@@ -109,7 +112,7 @@ impl TransactionRepositoryTrait for TransactionRepository {
         &self,
         addresses: Vec<String>,
         page: i64,
-        transaction_types: Option<Vec<TransactionKindDb>>,
+        transaction_types: Option<HashSet<TransactionKindDb>>,
     ) -> Result<
         PaginatedResponseDb<(TransactionHistoryDb, InnerTransactionDb, i32)>,
         String,

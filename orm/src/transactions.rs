@@ -9,7 +9,16 @@ use crate::schema::{
     inner_transactions, transaction_history, wrapper_transactions,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, diesel_derive_enum::DbEnum)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    diesel_derive_enum::DbEnum,
+    Eq,
+    PartialEq,
+    Hash,
+)]
 #[ExistingTypePath = "crate::schema::sql_types::TransactionKind"]
 pub enum TransactionKindDb {
     TransparentTransfer,
