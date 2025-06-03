@@ -440,7 +440,7 @@ fn get_ibc_token(
             token_address.clone(),
             crate::token::Token::Ibc(crate::token::IbcToken {
                 address: token_address.into(),
-                trace: Id::IbcTrace(ibc_trace),
+                trace: Some(Id::IbcTrace(ibc_trace)),
             }),
         )
     } else {

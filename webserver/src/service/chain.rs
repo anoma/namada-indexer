@@ -59,7 +59,7 @@ impl ChainService {
             .map(|(token, ibc_token)| match ibc_token {
                 Some(ibc_token) => Token::Ibc(IbcToken {
                     address: Id::Account(ibc_token.address),
-                    trace: Id::IbcTrace(ibc_token.ibc_trace),
+                    trace: Some(Id::IbcTrace(ibc_token.ibc_trace)),
                 }),
                 None => Token::Native(Id::Account(token.address)),
             })
