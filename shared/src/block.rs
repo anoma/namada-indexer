@@ -687,6 +687,7 @@ impl Block {
     pub fn addresses_with_balance_change(
         &self,
         native_token: &Id,
+        block_proposer: Option<Id>,
     ) -> HashSet<BalanceChange> {
         self.transactions
             .iter()
@@ -703,10 +704,22 @@ impl Block {
                     .flatten()
                     .collect();
 
+                // Push the balance change of the gas payer
                 balance_changes.push(BalanceChange::new(
                     wrapper_tx.fee.gas_payer.clone(),
                     Token::Native(wrapper_tx.fee.gas_token.clone()),
                 ));
+                // If the token is not the native one also push the balanche
+                // change of the block proposer (the balance change for the
+                // native token is pushed by default)
+                if let Some(block_proposer) = &block_proposer {
+                    if &wrapper_tx.fee.gas_token != native_token {
+                        balance_changes.push(BalanceChange::new(
+                            block_proposer.to_owned(),
+                            Token::Native(wrapper_tx.fee.gas_token.clone()),
+                        ));
+                    }
+                }
 
                 balance_changes
             })

@@ -286,7 +286,14 @@ async fn crawling_fn(
         namada_service::query_native_addresses_balance_change(Token::Native(
             native_token.clone(),
         ));
-    let addresses = block.addresses_with_balance_change(&native_token);
+    let addresses = block.addresses_with_balance_change(
+        &native_token,
+        block
+            .header
+            .proposer_address_namada
+            .as_ref()
+            .map(|address| Id::Account(address.clone())),
+    );
 
     let token_supplies = first_block_in_epoch
         .eq(&block_height)
