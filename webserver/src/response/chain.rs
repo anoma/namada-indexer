@@ -100,7 +100,7 @@ impl From<SharedToken> for Token {
             }),
             SharedToken::Ibc(token) => Token::Ibc(IbcToken {
                 address: token.address.to_string(),
-                trace: token.trace.to_string(),
+                trace: token.trace.unwrap_or_default().to_string(),
             }),
         }
     }

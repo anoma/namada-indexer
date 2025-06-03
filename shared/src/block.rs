@@ -746,7 +746,11 @@ impl Block {
                         transfer_changes.0.keys().map(|account| {
                             BalanceChange::new(
                                 Id::Account(account.owner()),
-                                Token::Native(Id::Account(account.token())),
+                                Token::new(
+                                    &account.token(),
+                                    None,
+                                    &native_token.to_string(),
+                                ),
                             )
                         })
                     })
