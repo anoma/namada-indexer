@@ -8,6 +8,7 @@ use crate::schema::pos_rewards;
 
 #[derive(Insertable, Queryable, Selectable, Clone)]
 #[diesel(table_name = pos_rewards)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct PosRewardInsertDb {
     pub owner: String,
     pub validator_id: i32,
