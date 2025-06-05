@@ -17,10 +17,12 @@ use chain::services::{
 use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use deadpool_diesel::postgres::Object;
+use diesel::RunQueryDsl;
 use futures::future::FutureExt;
 use futures::stream::StreamExt;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::CustomMigrationSource;
+use orm::schema::{bonds, unbonds};
 use repository::pgf as namada_pgf_repository;
 use shared::balance::TokenSupply;
 use shared::block::Block;
@@ -181,7 +183,35 @@ async fn main() -> Result<(), MainError> {
 
     // Handle cases where we need to perform initial query
     let crawler_state = match crawler_state {
-        Some(state) => state,
+        Some(state) => {
+            if config.reindex_bonds {
+                let (bonds, unbonds) =
+                    query_all_bonds_and_unbonds(&client, None, None)
+                        .await
+                        .into_rpc_error()?;
+                conn.interact(move |conn| {
+                    diesel::delete(bonds::table).execute(conn)?;
+                    diesel::delete(unbonds::table).execute(conn)?;
+                    conn.build_transaction().read_write().run(
+                        |transaction_conn| {
+                            repository::pos::insert_bonds(
+                                transaction_conn,
+                                bonds,
+                            )?;
+                            repository::pos::insert_unbonds(
+                                transaction_conn,
+                                unbonds,
+                            )
+                        },
+                    )
+                })
+                .await
+                .context_db_interact_error()
+                .and_then(identity)
+                .into_db_error()?;
+            }
+            state
+        }
         None => {
             initial_query(
                 &client,

@@ -50,4 +50,13 @@ pub struct AppConfig {
 
     #[clap(flatten)]
     pub log: LogConfig,
+
+    #[clap(
+        short,
+        long,
+        env,
+        help = "Clear (un)bonds from DB and re-query them.",
+        default_value = "false"
+    )]
+    pub reindex_bonds: bool,
 }
