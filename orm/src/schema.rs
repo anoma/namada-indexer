@@ -359,8 +359,8 @@ diesel::table! {
         owner -> Varchar,
         validator_id -> Int4,
         raw_amount -> Numeric,
-        epoch -> Int4,
         claimed -> Bool,
+        epoch -> Int4,
     }
 }
 
