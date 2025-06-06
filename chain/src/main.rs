@@ -18,7 +18,6 @@ use chrono::{NaiveDateTime, Utc};
 use clap::Parser;
 use deadpool_diesel::postgres::Object;
 use diesel::RunQueryDsl;
-use futures::future::FutureExt;
 use futures::stream::StreamExt;
 use namada_sdk::time::DateTimeUtc;
 use orm::migrations::CustomMigrationSource;
@@ -317,13 +316,14 @@ async fn crawling_fn(
             native_token.clone(),
         ));
     let addresses = block.addresses_with_balance_change(&native_token);
+    let all_changed_tokens_supply = addresses
+        .iter()
+        .map(|bc| bc.token.clone())
+        .collect::<HashSet<_>>();
 
-    let token_supplies = first_block_in_epoch
-        .eq(&block_height)
-        .then(|| query_token_supplies(&client, &conn, &native_token, epoch))
-        .future()
-        .await
-        .transpose()?;
+    let token_supplies =
+        query_token_supplies(&client, &all_changed_tokens_supply, epoch)
+            .await?;
 
     let validators_addresses = if first_block_in_epoch.eq(&block_height) {
         let previous_epoch = epoch.saturating_sub(1);
@@ -522,7 +522,7 @@ async fn crawling_fn(
 
                 repository::balance::insert_token_supplies(
                     transaction_conn,
-                    token_supplies.into_iter().flatten(),
+                    token_supplies,
                 )?;
 
                 repository::balance::insert_ibc_rate_limits(
@@ -671,10 +671,12 @@ async fn try_initial_query(
         .into_rpc_error()
     };
     let token_supplies_fut = async {
-        let native_token = namada_service::get_native_token(client)
-            .await
-            .into_rpc_error()?;
-        query_token_supplies(client, conn, &native_token, epoch).await
+        query_token_supplies(
+            client,
+            &tokens.iter().cloned().collect::<HashSet<_>>(),
+            epoch,
+        )
+        .await
     };
 
     let (rate_limits, token_supplies) =
@@ -904,22 +906,31 @@ async fn get_block(
     Ok((block, tm_block_response, epoch))
 }
 
-async fn query_non_native_supplies(
+async fn query_token_supplies(
     client: &HttpClient,
-    conn: &Object,
+    tokens: &HashSet<Token>,
     epoch: u32,
 ) -> Result<Vec<TokenSupply>, MainError> {
-    let token_addresses = db_service::get_non_native_tokens(conn)
-        .await
-        .into_db_error()?;
+    let mut buffer = Vec::with_capacity(tokens.len());
 
-    let mut buffer = Vec::with_capacity(1);
-
-    let mut stream = futures::stream::iter(token_addresses)
-        .map(|address| async move {
-            namada_service::get_token_supply(client, address, epoch)
+    let mut stream = futures::stream::iter(tokens)
+        .map(|token| async move {
+            match token {
+                Token::Ibc(ibc_token) => namada_service::get_token_supply(
+                    client,
+                    ibc_token.address.to_string(),
+                    epoch,
+                )
                 .await
-                .into_rpc_error()
+                .into_rpc_error(),
+                Token::Native(address) => {
+                    namada_service::get_native_token_supply(
+                        client, address, epoch,
+                    )
+                    .await
+                    .into_rpc_error()
+                }
+            }
         })
         .buffer_unordered(32);
 
@@ -929,24 +940,4 @@ async fn query_non_native_supplies(
     }
 
     Ok(buffer)
-}
-
-async fn query_token_supplies(
-    client: &HttpClient,
-    conn: &Object,
-    native_token: &Id,
-    epoch: u32,
-) -> Result<Vec<TokenSupply>, MainError> {
-    let native_fut =
-        namada_service::get_native_token_supply(client, native_token, epoch)
-            .map(|result| result.into_rpc_error());
-
-    let non_native_fut = query_non_native_supplies(client, conn, epoch);
-
-    let (native, non_native) = futures::try_join!(native_fut, non_native_fut)?;
-
-    let mut supplies = non_native;
-    supplies.push(native);
-
-    Ok(supplies)
 }
