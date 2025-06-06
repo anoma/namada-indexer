@@ -703,10 +703,24 @@ impl Block {
                     .flatten()
                     .collect();
 
+                // Push the balance change of the gas payer
                 balance_changes.push(BalanceChange::new(
                     wrapper_tx.fee.gas_payer.clone(),
                     Token::Native(wrapper_tx.fee.gas_token.clone()),
                 ));
+                // If the token is not the native one also push the balanche
+                // change of the block proposer (the balance change for the
+                // native token is pushed by default)
+                if &wrapper_tx.fee.gas_token != native_token {
+                    if let Some(block_proposer) =
+                        &self.header.proposer_address_namada
+                    {
+                        balance_changes.push(BalanceChange::new(
+                            Id::Account(block_proposer.to_owned()),
+                            Token::Native(wrapper_tx.fee.gas_token.clone()),
+                        ));
+                    }
+                }
 
                 balance_changes
             })
