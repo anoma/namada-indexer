@@ -112,7 +112,7 @@ impl Block {
         block_response: &TendermintBlockResponse,
         block_results: &BlockResult,
         proposer_address_namada: &Option<Id>,
-        checksums: Checksums,
+        checksums: &Checksums,
         epoch: Epoch,
         block_height: BlockHeight,
         native_token: &Address,

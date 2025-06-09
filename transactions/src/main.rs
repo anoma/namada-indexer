@@ -18,12 +18,14 @@ use shared::id::Id;
 use shared::transaction::{IbcTokenAction, IbcTokenFlow};
 use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
+use tokio::sync::Mutex;
 use tokio::time::Instant;
 use transactions::app_state::AppState;
 use transactions::config::AppConfig;
 use transactions::repository::{
     block as block_repo, masp as masp_repo, transactions as transaction_repo,
 };
+use transactions::services::namada::query_checksums;
 use transactions::services::{
     db as db_service, namada as namada_service,
     tendermint as tendermint_service, tx as tx_service,
@@ -51,15 +53,7 @@ async fn main() -> Result<(), MainError> {
 
     tracing::info!("Network chain id: {}", chain_id);
 
-    let mut checksums = Checksums::default();
-    for code_path in Checksums::code_paths() {
-        let code = namada_service::query_tx_code_hash(&client, &code_path)
-            .await
-            .unwrap_or_else(|| {
-                panic!("{} must be defined in namada storage.", code_path)
-            });
-        checksums.add(code_path, code.to_lowercase());
-    }
+    let checksums = Arc::new(Mutex::new(query_checksums(&client).await));
 
     let app_state = AppState::new(config.database_url).into_db_error()?;
     let conn = Arc::new(app_state.get_db_connection().await.into_db_error()?);
@@ -105,7 +99,7 @@ async fn crawling_fn(
     block_height: u32,
     client: Arc<HttpClient>,
     conn: Arc<Object>,
-    checksums: Checksums,
+    checksums: Arc<Mutex<Checksums>>,
     should_update_crawler_state: bool,
 ) -> Result<(), MainError> {
     let should_process = can_process(block_height, client.clone()).await?;
@@ -170,11 +164,25 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
+    let first_block_in_epoch =
+        namada_service::get_first_block_in_epoch(&client)
+            .await
+            .into_rpc_error()?;
+
+    let mut checksums = checksums.lock().await;
+    // If we check like this we do not have to store last epoch in memory
+    let new_epoch = first_block_in_epoch.eq(&block_height);
+    // For new epochs, we need to query checksums in case they were changed due
+    // to proposal
+    if new_epoch {
+        *checksums = namada_service::query_checksums(&client).await;
+    }
+
     let block = Block::from(
         &tm_block_response,
         &block_results,
         &proposer_address_namada,
-        checksums,
+        &checksums,
         epoch,
         block_height,
         &native_token,

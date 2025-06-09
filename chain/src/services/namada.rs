@@ -22,6 +22,7 @@ use namada_sdk::token::Amount as NamadaSdkAmount;
 use namada_sdk::{rpc, token};
 use shared::balance::{Amount, Balance, Balances, TokenSupply};
 use shared::block::{BlockHeight, Epoch};
+use shared::checksums::Checksums;
 use shared::id::Id;
 use shared::pos::{
     Bond, BondAddresses, Bonds, Redelegation, Unbond, UnbondAddresses, Unbonds,
@@ -1071,6 +1072,22 @@ pub async fn query_all_redelegations(
         .collect::<anyhow::Result<Vec<Vec<Redelegation>>>>()?;
 
     Ok(nested_delegations.into_iter().flatten().collect())
+}
+
+pub async fn query_checksums(client: &HttpClient) -> Checksums {
+    let mut checksums = Checksums::default();
+    for code_path in Checksums::code_paths() {
+        let code =
+            query_tx_code_hash(client, &code_path)
+                .await
+                .unwrap_or_else(|| {
+                    panic!("{} must be defined in namada storage.", code_path)
+                });
+
+        checksums.add_with_ext(code_path, code.to_lowercase());
+    }
+
+    checksums
 }
 
 pub async fn get_validator_addresses_at_epoch(

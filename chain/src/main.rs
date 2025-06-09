@@ -8,7 +8,8 @@ use chain::config::AppConfig;
 use chain::repository;
 use chain::services::namada::{
     query_all_balances, query_all_bonds_and_unbonds, query_all_proposals,
-    query_bonds, query_last_block_height, query_redelegations, query_tokens,
+    query_bonds, query_checksums, query_last_block_height, query_redelegations,
+    query_tokens,
 };
 use chain::services::{
     db as db_service, namada as namada_service,
@@ -40,6 +41,7 @@ use shared::validator::ValidatorSet;
 use tendermint_rpc::HttpClient;
 use tendermint_rpc::client::CompatMode;
 use tendermint_rpc::endpoint::block::Response as TendermintBlockResponse;
+use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_retry::Retry;
 use tokio_retry::strategy::{ExponentialBackoff, jitter};
@@ -63,15 +65,7 @@ async fn main() -> Result<(), MainError> {
 
     tracing::info!("Network chain id: {}", chain_id);
 
-    let mut checksums = Checksums::default();
-    for code_path in Checksums::code_paths() {
-        let code = namada_service::query_tx_code_hash(&client, &code_path)
-            .await
-            .unwrap_or_else(|| {
-                panic!("{} must be defined in namada storage.", code_path)
-            });
-        checksums.add(code_path, code.to_lowercase());
-    }
+    let checksums = Arc::new(Mutex::new(query_checksums(&client).await));
 
     config.log.init();
 
@@ -212,10 +206,11 @@ async fn main() -> Result<(), MainError> {
             state
         }
         None => {
+            let checksums = checksums.lock().await;
             initial_query(
                 &client,
                 &conn,
-                checksums.clone(),
+                &checksums,
                 config.initial_query_retry_time,
                 config.initial_query_retry_attempts,
             )
@@ -247,7 +242,7 @@ async fn crawling_fn(
     block_height: u32,
     client: Arc<HttpClient>,
     conn: Arc<Object>,
-    checksums: Checksums,
+    checksums: Arc<Mutex<Checksums>>,
     should_update_crawler_state: bool,
 ) -> Result<(), MainError> {
     let should_process = can_process(block_height, client.clone()).await?;
@@ -272,6 +267,15 @@ async fn crawling_fn(
             .await
             .into_rpc_error()?;
 
+    let mut checksums = checksums.lock().await;
+    // If we check like this we do not have to store last epoch in memory
+    let new_epoch = first_block_in_epoch.eq(&block_height);
+    // For new epochs, we need to query checksums in case they were changed due
+    // to proposal
+    if new_epoch {
+        *checksums = namada_service::query_checksums(&client).await;
+    }
+
     let native_token = namada_service::get_native_token(&client)
         .await
         .into_rpc_error()?;
@@ -279,10 +283,10 @@ async fn crawling_fn(
         native_token.clone().into();
 
     let (block, tm_block_response, epoch) =
-        get_block(block_height, &client, checksums, &native_token_address)
+        get_block(block_height, &client, &checksums, &native_token_address)
             .await?;
 
-    let rate_limits = first_block_in_epoch.eq(&block_height).then(|| {
+    let rate_limits = new_epoch.then(|| {
         let client = Arc::clone(&client);
 
         // start this series of queries in parallel, which take
@@ -625,7 +629,7 @@ async fn crawling_fn(
 async fn initial_query(
     client: &HttpClient,
     conn: &Object,
-    checksums: Checksums,
+    checksums: &Checksums,
     retry_time: u64,
     retry_attempts: usize,
 ) -> Result<(), MainError> {
@@ -656,8 +660,7 @@ async fn try_initial_query(
             .into_rpc_error()?
             .into();
     let (block, tm_block_response, epoch) =
-        get_block(block_height, client, checksums.clone(), &native_token)
-            .await?;
+        get_block(block_height, client, &checksums, &native_token).await?;
 
     let tokens = query_tokens(client).await.into_rpc_error()?;
 
@@ -850,7 +853,7 @@ async fn update_crawler_timestamp(
 async fn get_block(
     block_height: u32,
     client: &HttpClient,
-    checksums: Checksums,
+    checksums: &Checksums,
     native_token: &namada_sdk::address::Address,
 ) -> Result<(Block, TendermintBlockResponse, u32), MainError> {
     tracing::debug!(block = block_height, "Query block...");
