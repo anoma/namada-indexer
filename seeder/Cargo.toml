@@ -13,15 +13,15 @@ name = "seeder"
 path = "src/main.rs"
 
 [dependencies]
-tokio.workspace = true 
-tracing.workspace = true
-clap.workspace = true 
 anyhow.workspace = true
-shared.workspace = true
+clap.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
 orm.workspace = true
 rand.workspace = true
+shared.workspace = true
+tokio.workspace = true
+tracing.workspace = true
 
 [build-dependencies]
 vergen = { workspace = true, features = ["build", "git", "gitcl"] }
