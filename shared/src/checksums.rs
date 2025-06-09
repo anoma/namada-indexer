@@ -40,6 +40,16 @@ impl Default for Checksums {
                 .to_string(),
             "tx_claim_rewards".to_string(),
         );
+        fallback.insert(
+            "b74104949ac0c35ee922fdc3f3db454627742e2483d79550c12fcf31755c6d01"
+                .to_string(),
+            "tx_claim_rewards".to_string(),
+        );
+        fallback.insert(
+            "ef687f96ec919f5da2e90f125a2800f198a06bcd609a37e5a9ec90d442e32239"
+                .to_string(),
+            "tx_transfer".to_string(),
+        );
 
         Self {
             current: Default::default(),
