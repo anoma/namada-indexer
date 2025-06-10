@@ -1084,7 +1084,7 @@ pub async fn query_checksums(client: &HttpClient) -> Checksums {
                     panic!("{} must be defined in namada storage.", code_path)
                 });
 
-        checksums.add_with_ext(code_path, code.to_lowercase());
+        checksums.add(code_path, code.to_lowercase());
     }
 
     checksums
