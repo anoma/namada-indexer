@@ -35,6 +35,8 @@ pub enum TransactionKindDb {
     ReactivateValidator,
     DeactivateValidator,
     UnjailValidator,
+    ChangeConsensusKey,
+    InitAccount,
     Unknown,
 }
 
@@ -48,6 +50,8 @@ impl From<TransactionKind> for TransactionKindDb {
             TransactionKind::UnshieldingTransfer(_) => {
                 Self::UnshieldingTransfer
             }
+            TransactionKind::InitAccount(_) => Self::InitAccount,
+            TransactionKind::ChangeConsensusKey(_) => Self::ChangeConsensusKey,
             TransactionKind::ShieldingTransfer(_) => Self::ShieldingTransfer,
             TransactionKind::MixedTransfer(_) => Self::MixedTransfer,
             TransactionKind::IbcMsg(_) => Self::IbcMsgTransfer,
