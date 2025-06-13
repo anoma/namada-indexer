@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use axum::async_trait;
 use diesel::{
     ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper,
@@ -6,7 +8,8 @@ use orm::schema::{
     inner_transactions, transaction_history, wrapper_transactions,
 };
 use orm::transactions::{
-    InnerTransactionDb, TransactionHistoryDb, WrapperTransactionDb,
+    InnerTransactionDb, TransactionHistoryDb, TransactionKindDb,
+    WrapperTransactionDb,
 };
 
 use super::utils::{Paginate, PaginatedResponseDb};
@@ -37,6 +40,7 @@ pub trait TransactionRepositoryTrait {
         &self,
         addresses: Vec<String>,
         page: i64,
+        transaction_types: Option<HashSet<TransactionKindDb>>,
     ) -> Result<
         PaginatedResponseDb<(TransactionHistoryDb, InnerTransactionDb, i32)>,
         String,
@@ -108,6 +112,7 @@ impl TransactionRepositoryTrait for TransactionRepository {
         &self,
         addresses: Vec<String>,
         page: i64,
+        transaction_types: Option<HashSet<TransactionKindDb>>,
     ) -> Result<
         PaginatedResponseDb<(TransactionHistoryDb, InnerTransactionDb, i32)>,
         String,
@@ -115,10 +120,19 @@ impl TransactionRepositoryTrait for TransactionRepository {
         let conn = self.app_state.get_db_connection().await;
 
         conn.interact(move |conn| {
-            transaction_history::table
+            let mut query = transaction_history::table
                 .filter(transaction_history::dsl::target.eq_any(addresses))
                 .inner_join(inner_transactions::table.on(transaction_history::dsl::inner_tx_id.eq(inner_transactions::dsl::id)))
                 .inner_join(wrapper_transactions::table.on(inner_transactions::dsl::wrapper_id.eq(wrapper_transactions::dsl::id)))
+                .into_boxed();
+            // Apply transaction type filter if provided
+            if let Some(types) = transaction_types {
+                if !types.is_empty() {
+                    query = query.filter(inner_transactions::dsl::kind.eq_any(types));
+                }
+            }
+
+            query
                 .order(wrapper_transactions::dsl::block_height.desc())
                 .select((transaction_history::all_columns, inner_transactions::all_columns, wrapper_transactions::dsl::block_height))
                 .paginate(page)
