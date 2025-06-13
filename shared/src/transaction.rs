@@ -4,14 +4,15 @@ use std::fmt::Display;
 use anyhow::Context;
 use bigdecimal::BigDecimal;
 use namada_governance::{InitProposalData, VoteProposalData};
+use namada_sdk::account::InitAccount;
 use namada_sdk::address::Address;
 use namada_sdk::borsh::BorshDeserialize;
 use namada_sdk::key::common::PublicKey;
 use namada_sdk::token::Transfer;
 use namada_sdk::uint::Uint;
 use namada_tx::data::pos::{
-    BecomeValidator, Bond, ClaimRewards, CommissionChange, MetaDataChange,
-    Redelegation, Unbond, Withdraw,
+    BecomeValidator, Bond, ClaimRewards, CommissionChange, ConsensusKeyChange,
+    MetaDataChange, Redelegation, Unbond, Withdraw,
 };
 use namada_tx::data::{TxType, compute_inner_tx_hash};
 use namada_tx::either::Either;
@@ -86,6 +87,7 @@ pub enum TransactionKind {
     ClaimRewards(Option<ClaimRewards>),
     ProposalVote(Option<VoteProposalData>),
     InitProposal(Option<InitProposalData>),
+    InitAccount(Option<InitAccount>),
     MetadataChange(Option<MetaDataChange>),
     CommissionChange(Option<CommissionChange>),
     RevealPk(Option<RevealPkData>),
@@ -93,6 +95,7 @@ pub enum TransactionKind {
     ReactivateValidator(Option<Address>),
     DeactivateValidator(Option<Address>),
     UnjailValidator(Option<Address>),
+    ChangeConsensusKey(Option<ConsensusKeyChange>),
     Unknown(Option<UnknownTransaction>),
 }
 
@@ -170,6 +173,14 @@ impl TransactionKind {
                     };
                 TransactionKind::InitProposal(data)
             }
+            "tx_init_account" => {
+                let data = if let Ok(data) = InitAccount::try_from_slice(data) {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::InitAccount(data)
+            }
             "tx_vote_proposal" => {
                 let data =
                     if let Ok(data) = VoteProposalData::try_from_slice(data) {
@@ -188,7 +199,7 @@ impl TransactionKind {
                     };
                 TransactionKind::MetadataChange(data)
             }
-            "tx_commission_change" => {
+            "tx_change_validator_commission" => {
                 let data =
                     if let Ok(data) = CommissionChange::try_from_slice(data) {
                         Some(data)
@@ -247,6 +258,16 @@ impl TransactionKind {
                         None
                     };
                 TransactionKind::BecomeValidator(data.map(Box::new))
+            }
+            "tx_change_consensus_key" => {
+                let data = if let Ok(data) =
+                    ConsensusKeyChange::try_from_slice(data)
+                {
+                    Some(data)
+                } else {
+                    None
+                };
+                TransactionKind::ChangeConsensusKey(data)
             }
             _ => {
                 tracing::warn!("Unknown transaction kind: {}", tx_kind_name);
