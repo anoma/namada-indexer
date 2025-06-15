@@ -113,7 +113,7 @@ fn packet_msg_to_balance_info(
             maybe_ibc_trace,
             Address::from(native_token),
             &packet_data.token.denom,
-        );
+        )?;
 
         let source = Id::Account(packet_data.sender.to_string());
 
@@ -157,7 +157,7 @@ pub fn ibc_ack_to_balance_info(
 pub fn transfer_to_ibc_tx_kind(
     ibc_data: namada_ibc::IbcMessage<Transfer>,
     native_token: Address,
-) -> TransactionKind {
+) -> anyhow::Result<TransactionKind> {
     match &ibc_data {
         namada_ibc::IbcMessage::Envelope(msg_envelope) => {
             if let MsgEnvelope::Packet(
@@ -192,7 +192,7 @@ pub fn transfer_to_ibc_tx_kind(
                                     packet_data.token.amount,
                                     native_token,
                                     &packet_data.token.denom,
-                                );
+                                )?;
 
                             (
                                 TransferData {
@@ -235,9 +235,9 @@ pub fn transfer_to_ibc_tx_kind(
                         }
                         _ => {
                             tracing::warn!("Found unsupported IBC packet data");
-                            return TransactionKind::IbcMsg(Some(
+                            return Ok(TransactionKind::IbcMsg(Some(
                                 ser::IbcMessage(ibc_data),
-                            ));
+                            )));
                         }
                     };
 
@@ -247,18 +247,18 @@ pub fn transfer_to_ibc_tx_kind(
                     )
                     .is_some();
                 if is_shielding {
-                    TransactionKind::IbcShieldingTransfer((
+                    Ok(TransactionKind::IbcShieldingTransfer((
                         token_id,
                         transfer_data,
-                    ))
+                    )))
                 } else {
-                    TransactionKind::IbcTrasparentTransfer((
+                    Ok(TransactionKind::IbcTrasparentTransfer((
                         token_id,
                         transfer_data,
-                    ))
+                    )))
                 }
             } else {
-                TransactionKind::IbcMsg(Some(ser::IbcMessage(ibc_data)))
+                Ok(TransactionKind::IbcMsg(Some(ser::IbcMessage(ibc_data))))
             }
         }
         namada_ibc::IbcMessage::Transfer(transfer) => {
@@ -273,7 +273,7 @@ pub fn transfer_to_ibc_tx_kind(
                 transfer.message.packet_data.token.amount,
                 native_token,
                 &transfer.message.packet_data.token.denom,
-            );
+            )?;
 
             let transfer_data = TransferData {
                 sources: crate::ser::AccountsMap(
@@ -306,15 +306,15 @@ pub fn transfer_to_ibc_tx_kind(
             };
 
             if transfer.transfer.is_some() {
-                TransactionKind::IbcUnshieldingTransfer((
+                Ok(TransactionKind::IbcUnshieldingTransfer((
                     token_id,
                     transfer_data,
-                ))
+                )))
             } else {
-                TransactionKind::IbcTrasparentTransfer((
+                Ok(TransactionKind::IbcTrasparentTransfer((
                     token_id,
                     transfer_data,
-                ))
+                )))
             }
         }
         namada_ibc::IbcMessage::NftTransfer(_nft_transfer) => {
@@ -430,33 +430,33 @@ fn get_ibc_token(
     maybe_ibc_trace: Option<String>,
     native_token: Address,
     original_denom: &PrefixedDenom,
-) -> (Address, crate::token::Token) {
+) -> anyhow::Result<(Address, crate::token::Token)> {
     if let Some(ibc_trace) = maybe_ibc_trace {
         let token_address =
             namada_ibc::trace::convert_to_address(ibc_trace.clone())
                 .expect("Failed to convert IBC trace to address");
 
-        (
+        Ok((
             token_address.clone(),
             crate::token::Token::Ibc(crate::token::IbcToken {
                 address: token_address.into(),
                 trace: Some(Id::IbcTrace(ibc_trace)),
             }),
-        )
+        ))
     } else {
         if !original_denom
             .to_string()
             .contains(&native_token.to_string())
         {
-            panic!(
+            return Err(anyhow::anyhow!(
                 "Attempting to add native token other than NAM to the database"
-            );
+            ));
         }
 
-        (
+        Ok((
             native_token.clone(),
             crate::token::Token::Native(native_token.into()),
-        )
+        ))
     }
 }
 
@@ -480,17 +480,17 @@ fn get_token_and_amount(
     amount: IbcAmount,
     native_token: Address,
     original_denom: &PrefixedDenom,
-) -> (
+) -> anyhow::Result<(
     Address,
     crate::token::Token,
     namada_sdk::token::DenominatedAmount,
-) {
+)> {
     let (address, token) =
-        get_ibc_token(maybe_ibc_trace.clone(), native_token, original_denom);
+        get_ibc_token(maybe_ibc_trace.clone(), native_token, original_denom)?;
     let is_ibc_token = maybe_ibc_trace.is_some();
     let denominated_amount = get_ibc_amount(amount, is_ibc_token);
 
-    (address, token, denominated_amount)
+    Ok((address, token, denominated_amount))
 }
 
 #[cfg(test)]
