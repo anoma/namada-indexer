@@ -13,6 +13,7 @@ members = [
   "parameters",
   "transactions",
   "test_helpers",
+  "utilities"
 ]
 
 [workspace.package]
