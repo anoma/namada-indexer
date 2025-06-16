@@ -974,7 +974,7 @@ dependencies = [
 
 [[package]]
 name = "chain"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2699,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "governance"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5461,7 +5461,7 @@ dependencies = [
 
 [[package]]
 name = "orm"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "bigdecimal",
  "chrono",
@@ -5498,7 +5498,7 @@ dependencies = [
 
 [[package]]
 name = "parameters"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5828,7 +5828,7 @@ checksum = "350e9b48cbc6b0e028b0473b114454c6316e57336ee184ceab6e53f72c178b3e"
 
 [[package]]
 name = "pos"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6340,7 +6340,7 @@ dependencies = [
 
 [[package]]
 name = "rewards"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6764,7 +6764,7 @@ dependencies = [
 
 [[package]]
 name = "seeder"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -6994,7 +6994,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -7509,7 +7509,7 @@ dependencies = [
 
 [[package]]
 name = "test_helpers"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "deadpool-diesel",
@@ -7982,7 +7982,7 @@ dependencies = [
 
 [[package]]
 name = "transactions"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -8193,7 +8193,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utility"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -8474,7 +8474,7 @@ checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
 
 [[package]]
 name = "webserver"
-version = "3.1.0"
+version = "3.2.0"
 dependencies = [
  "anyhow",
  "axum",
