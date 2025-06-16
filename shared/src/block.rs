@@ -211,8 +211,6 @@ impl Block {
                         vec![]
                     }
                 }
-                // IbcMsg is only used for non-transfer ibc packets
-                TransactionKind::IbcMsg(_) => vec![],
                 TransactionKind::IbcTrasparentTransfer((_, transfer))
                 | TransactionKind::IbcShieldingTransfer((_, transfer))
                 | TransactionKind::IbcUnshieldingTransfer((_, transfer)) => {
@@ -389,7 +387,21 @@ impl Block {
                         vec![]
                     }
                 }
-                TransactionKind::Unknown(_) => vec![],
+                TransactionKind::ChangeConsensusKey(data) => {
+                    if let Some(data) = data {
+                        let change_consensus_key_data = data.clone();
+
+                        vec![TransactionTarget::sent(
+                            tx.tx_id,
+                            change_consensus_key_data.validator.to_string(),
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TransactionKind::IbcMsg(_)
+                | TransactionKind::InitAccount(_)
+                | TransactionKind::Unknown(_) => vec![],
             })
             .collect::<HashSet<_>>()
     }
@@ -836,6 +848,8 @@ impl Block {
                 )]
             }
             TransactionKind::Redelegation(_)
+            | TransactionKind::ChangeConsensusKey(_)
+            | TransactionKind::InitAccount(_)
             | TransactionKind::CommissionChange(_)
             | TransactionKind::RevealPk(_)
             | TransactionKind::DeactivateValidator(_)
