@@ -226,6 +226,13 @@ impl TransactionKind {
                     namada_ibc::decode_message::<Transfer>(data)
                 {
                     transfer_to_ibc_tx_kind(ibc_data, native_token)
+                        .unwrap_or_else(|_| {
+                            TransactionKind::Unknown(Some(UnknownTransaction {
+                                id: Some(id.to_string()),
+                                name: Some(tx_kind_name.to_string()),
+                                data: Some(data.to_vec()),
+                            }))
+                        })
                 } else {
                     tracing::warn!("Cannot deserialize IBC transaction");
                     TransactionKind::IbcMsg(None)
