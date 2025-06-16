@@ -56,19 +56,19 @@ impl Serialize for AccountsMap {
                 ("owner", account.owner.encode()),
                 ("token", account.token.encode()),
                 ("type", "onChain".to_string()),
-                ("amount", v.to_string_precise()),
+                ("amount", v.amount().raw_amount().to_string()),
             ]),
             ChainAddress::IbcPfmAccount(account, token) => HashMap::from([
                 ("owner", account.clone()),
                 ("token", token.encode()),
                 ("type", "pfm".to_string()),
-                ("amount", v.to_string_precise()),
+                ("amount", v.amount().raw_amount().to_string()),
             ]),
             ChainAddress::ExternalAccount(account, token) => HashMap::from([
                 ("owner", account.clone()),
                 ("token", token.encode()),
                 ("type", "external".to_string()),
-                ("amount", v.to_string_precise()),
+                ("amount", v.amount().raw_amount().to_string()),
             ]),
         }))
     }
