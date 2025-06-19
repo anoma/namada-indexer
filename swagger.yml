@@ -953,6 +953,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Block"
+  /api/v1/block/hash/{value}:
+    get:
+      summary: Get the block by block hash or block apphash
+      parameters:
+        - in: path
+          name: value
+          schema:
+            type: string
+          required: true
+          description: Block hash or block apphash
+      responses:
+        "200":
+          description: Block info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Block"
   /api/v1/crawlers/timestamps:
     get:
       summary: Get timestamps of the last activity of the crawlers
@@ -1506,6 +1523,8 @@ components:
           items:
             type: string
         parentHash:
+          type: string
+        parentAppHash:
           type: string
         epoch:
           type: string

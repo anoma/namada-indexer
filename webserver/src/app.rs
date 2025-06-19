@@ -192,6 +192,10 @@ impl ApplicationServer {
                     get(block_handlers::get_block_by_timestamp),
                 )
                 .route(
+                    "/block/hash/:value",
+                    get(block_handlers::get_block_by_hash),
+                )
+                .route(
                     "/masp/aggregates",
                     get(masp_handlers::get_masp_aggregates),
                 )
