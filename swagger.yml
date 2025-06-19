@@ -1507,6 +1507,8 @@ components:
             type: string
         parentHash:
           type: string
+        parentAppHash:
+          type: string
         epoch:
           type: string
     TransactionHistory:

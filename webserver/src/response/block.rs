@@ -11,6 +11,7 @@ pub struct Block {
     pub timestamp: Option<String>,
     pub proposer: Option<String>,
     pub transactions: Vec<String>,
+    pub parent_app_hash: Option<String>,
     pub parent_hash: Option<String>,
     pub epoch: Option<String>,
 }
@@ -33,6 +34,10 @@ impl Block {
                 .into_iter()
                 .map(|wrapper| wrapper.id.to_lowercase())
                 .collect(),
+            parent_app_hash: prev_block_db
+                .clone()
+                .map(|block| block.app_hash)
+                .unwrap_or(None),
             parent_hash: prev_block_db
                 .map(|block| block.app_hash)
                 .unwrap_or(None),
