@@ -493,6 +493,11 @@ fn get_token_and_amount(
     Ok((address, token, denominated_amount))
 }
 
+pub fn is_valid_bech32_address(address: &str, prefix: &str) -> bool {
+    address.starts_with(prefix)
+        && subtle_encoding::bech32::decode(address).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
 
