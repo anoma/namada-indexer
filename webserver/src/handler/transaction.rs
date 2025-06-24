@@ -74,7 +74,7 @@ pub async fn get_transaction_history(
 
     let (transactions, total_pages, total_items) = state
         .transaction_service
-        .get_addresses_history(query.addresses, page)
+        .get_addresses_history(query.addresses, page, query.transaction_types)
         .await?;
 
     let response =

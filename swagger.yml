@@ -1021,6 +1021,11 @@ paths:
             minItems: 1
             maxItems: 10
           description: The list of address. Must contain at least 1 element
+        - in: query
+          name: transaction_types
+          schema:
+            type: string
+          description: Comma-separated list of transaction types to filter by. If not provided, all transaction types are returned. The options are transparentTransfer, shieldedTransfer, shieldingTransfer, unshieldingTransfer, mixedTransfer, ibcMsgTransfer, ibcTransparentTransfer, ibcShieldingTransfer, ibcUnshieldingTransfer, bond, redelegation, unbond, withdraw, claimRewards, voteProposal, initProposal, changeMetadata, changeCommission, revealPk, becomeValidator, reactivateValidator, deactivateValidator, unjailValidator
       responses:
         "200":
           description: Pagined historic transaction list.

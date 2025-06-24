@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -8,4 +10,6 @@ pub struct TransactionHistoryQueryParams {
     pub page: Option<u64>,
     #[validate(length(min = 1, max = 10))]
     pub addresses: Vec<String>,
+    #[validate(length(min = 1, max = 20))]
+    pub transaction_types: Option<HashSet<String>>,
 }
