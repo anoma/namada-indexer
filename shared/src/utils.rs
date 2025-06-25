@@ -494,14 +494,23 @@ fn get_token_and_amount(
 }
 
 pub fn is_valid_bech32_address(address: &str, prefix: &str) -> bool {
-    address.starts_with(prefix)
-        && subtle_encoding::bech32::decode(address).is_ok()
+    match bech32::decode(address) {
+        Ok((hrp, _)) => hrp.as_str() == prefix,
+        Err(_) => false,
+    }
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn is_valid_bech32_address() {
+        let address = "tnam1qq6xmw8crfrprhlmajrq5c28p4dqy0nyjvtvupk5";
+        let res = super::is_valid_bech32_address(address, "tnam");
+        assert!(res, "Address {address} should be valid");
+    }
 
     fn cmp_print(x: &str, y: &str) -> bool {
         if x == y {
