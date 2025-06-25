@@ -846,9 +846,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [height]
+                required: [block]
                 properties:
-                  height:
+                 block:
                     type: string
   /api/v1/chain/epoch/latest:
     get:
@@ -862,7 +862,7 @@ paths:
                 type: object
                 required: [epoch]
                 properties:
-                  height:
+                  epoch:
                     type: string
   /api/v1/chain/wrapper/{tx_id}:
     get:
