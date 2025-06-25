@@ -28,7 +28,7 @@ impl RevealedPkService {
         client: &HttpClient,
         address: String,
     ) -> Result<RevealedPk, RevealedPkError> {
-        if !utils::is_valid_bech32_address(&address, "tnam1") {
+        if !utils::is_valid_bech32_address(&address, "tnam") {
             return Err(RevealedPkError::InvalidAddress(address));
         }
 
@@ -46,11 +46,9 @@ impl RevealedPkService {
             // for it in the storage
             None => {
                 let address =
-                    if let Ok(address) = NamadaAddress::from_str(&address) {
-                        address
-                    } else {
-                        return Err(RevealedPkError::InvalidAddress(address));
-                    };
+                    NamadaAddress::from_str(&address).map_err(|_| {
+                        RevealedPkError::InvalidAddress(address.clone())
+                    })?;
 
                 let public_key = rpc::get_public_key_at(client, &address, 0)
                     .await

@@ -6998,6 +6998,7 @@ version = "3.3.0"
 dependencies = [
  "anyhow",
  "async-stream",
+ "bech32 0.11.0",
  "bigdecimal",
  "bimap",
  "clap",
